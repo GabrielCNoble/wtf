@@ -1,0 +1,127 @@
+# Project: wtf_editor
+# Makefile created by Dev-C++ 5.11
+
+CPP      = g++.exe -D__DEBUG__
+CC       = gcc.exe -D__DEBUG__
+WINDRES  = windres.exe
+OBJ      = main.o shader.o r_main.o engine.o input.o mesh.o camera.o gpu.o material.o texture.o soil/image_DXT.o soil/image_helper.o soil/SOIL.o soil/stb_image_aug.o l_main.o sound.o editor.o brush.o world.o collision.o gui.o bsp.o bsp_cmp.o gmath/frustum.o gmath/line.o gmath/matrix.o gmath/plane.o gmath/triangle.o gmath/vector.o r_editor.o pvs.o indirect.o r_skybox.o l_cache.o
+LINKOBJ  = main.o shader.o r_main.o engine.o input.o mesh.o camera.o gpu.o material.o texture.o soil/image_DXT.o soil/image_helper.o soil/SOIL.o soil/stb_image_aug.o l_main.o sound.o editor.o brush.o world.o collision.o gui.o bsp.o bsp_cmp.o gmath/frustum.o gmath/line.o gmath/matrix.o gmath/plane.o gmath/triangle.o gmath/vector.o r_editor.o pvs.o indirect.o r_skybox.o l_cache.o
+LIBS     = -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -L"SDL/lib/mingw" -L"GLEW/lib" -L"OPENAL/Win32" -L"gmath"  -lmingw32 -lopengl32 -lSDL2main -lSDL2 -lglew32 -lOpenAL32 -m32 -g3
+INCS     = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include" -I"SDL/include" -I"GLEW/include" -I"OPENAL/include" -I"soil" -I"gmath"
+CXXINCS  = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include/c++" -I"SDL/include" -I"GLEW/include" -I"OPENAL/include" -I"soil" -I"gmath"
+BIN      = wtf_editor.exe
+CXXFLAGS = $(CXXINCS) -msse2 -m32 -g3
+CFLAGS   = $(INCS) -msse2 -m32 -g3 -masm=intel
+RM       = rm.exe -f
+
+.PHONY: all all-before all-after clean clean-custom
+
+all: all-before $(BIN) all-after
+
+clean: clean-custom
+	${RM} $(OBJ) $(BIN)
+
+$(BIN): $(OBJ)
+	$(CC) $(LINKOBJ) -o $(BIN) $(LIBS)
+
+main.o: main.c
+	$(CC) -c main.c -o main.o $(CFLAGS)
+
+shader.o: shader.c
+	$(CC) -c shader.c -o shader.o $(CFLAGS)
+
+r_main.o: r_main.c
+	$(CC) -c r_main.c -o r_main.o $(CFLAGS)
+
+engine.o: engine.c
+	$(CC) -c engine.c -o engine.o $(CFLAGS)
+
+input.o: input.c
+	$(CC) -c input.c -o input.o $(CFLAGS)
+
+mesh.o: mesh.c
+	$(CC) -c mesh.c -o mesh.o $(CFLAGS)
+
+camera.o: camera.c
+	$(CC) -c camera.c -o camera.o $(CFLAGS)
+
+gpu.o: gpu.c
+	$(CC) -c gpu.c -o gpu.o $(CFLAGS)
+
+material.o: material.c
+	$(CC) -c material.c -o material.o $(CFLAGS)
+
+texture.o: texture.c
+	$(CC) -c texture.c -o texture.o $(CFLAGS)
+
+soil/image_DXT.o: soil/image_DXT.c
+	$(CC) -c soil/image_DXT.c -o soil/image_DXT.o $(CFLAGS)
+
+soil/image_helper.o: soil/image_helper.c
+	$(CC) -c soil/image_helper.c -o soil/image_helper.o $(CFLAGS)
+
+soil/SOIL.o: soil/SOIL.c
+	$(CC) -c soil/SOIL.c -o soil/SOIL.o $(CFLAGS)
+
+soil/stb_image_aug.o: soil/stb_image_aug.c
+	$(CC) -c soil/stb_image_aug.c -o soil/stb_image_aug.o $(CFLAGS)
+
+l_main.o: l_main.c
+	$(CC) -c l_main.c -o l_main.o $(CFLAGS)
+
+sound.o: sound.c
+	$(CC) -c sound.c -o sound.o $(CFLAGS)
+
+editor.o: editor.c
+	$(CC) -c editor.c -o editor.o $(CFLAGS)
+
+brush.o: brush.c
+	$(CC) -c brush.c -o brush.o $(CFLAGS)
+
+world.o: world.c
+	$(CC) -c world.c -o world.o $(CFLAGS)
+
+collision.o: collision.c
+	$(CC) -c collision.c -o collision.o $(CFLAGS)
+
+gui.o: gui.c
+	$(CC) -c gui.c -o gui.o $(CFLAGS)
+
+bsp.o: bsp.c
+	$(CC) -c bsp.c -o bsp.o $(CFLAGS)
+
+bsp_cmp.o: bsp_cmp.c
+	$(CC) -c bsp_cmp.c -o bsp_cmp.o $(CFLAGS)
+
+gmath/frustum.o: gmath/frustum.c
+	$(CC) -c gmath/frustum.c -o gmath/frustum.o $(CFLAGS)
+
+gmath/line.o: gmath/line.c
+	$(CC) -c gmath/line.c -o gmath/line.o $(CFLAGS)
+
+gmath/matrix.o: gmath/matrix.c
+	$(CC) -c gmath/matrix.c -o gmath/matrix.o $(CFLAGS)
+
+gmath/plane.o: gmath/plane.c
+	$(CC) -c gmath/plane.c -o gmath/plane.o $(CFLAGS)
+
+gmath/triangle.o: gmath/triangle.c
+	$(CC) -c gmath/triangle.c -o gmath/triangle.o $(CFLAGS)
+
+gmath/vector.o: gmath/vector.c
+	$(CC) -c gmath/vector.c -o gmath/vector.o $(CFLAGS)
+
+r_editor.o: r_editor.c
+	$(CC) -c r_editor.c -o r_editor.o $(CFLAGS)
+
+pvs.o: pvs.c
+	$(CC) -c pvs.c -o pvs.o $(CFLAGS)
+
+indirect.o: indirect.c
+	$(CC) -c indirect.c -o indirect.o $(CFLAGS)
+
+r_skybox.o: r_skybox.c
+	$(CC) -c r_skybox.c -o r_skybox.o $(CFLAGS)
+
+l_cache.o: l_cache.c
+	$(CC) -c l_cache.c -o l_cache.o $(CFLAGS)
