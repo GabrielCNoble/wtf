@@ -916,6 +916,271 @@ bsp_polygon_t *bsp_FindSplitter(bsp_polygon_t *polygons, int ignore_used)
 }
 
 
+
+#if 0
+
+bsp_polygon_t *bsp_BuildPolygonsFromBrush(brush_t *brush)
+{
+	int i;
+	int c;
+	
+	int j;
+	int k;
+	
+	int r;
+	int l;
+	
+	int n;
+	int m;
+	
+	bsp_polygon_t *p = NULL;
+	bsp_polygon_t *polygons = NULL;
+	
+	//int vertex_stack_top = -1;
+	//int *vertex_index_stack = malloc(sizeof(int) * brush->vertex_count);
+	
+	int vertex_count = 0;
+	vec3_t *vertex_buffer = malloc(sizeof(vec3_t) * 12800);
+	
+	int normal_count = 0;
+	vec3_t *normal_buffer = malloc(sizeof(vec3_t) * (brush->vertex_count + 1000));
+	int *plane_point_indexes = malloc(sizeof(int) * (brush->vertex_count + 1000));
+	
+	int plane_point_count = 0;
+	
+	vec3_t polygon_center;
+	vec3_t v0;
+	vec3_t v1;
+	
+	float angle;
+	float smallest_angle;
+	int closest_vertex_index;
+	
+	
+	
+	vec3_t plane_point;
+	vec3_t plane_normal;
+	//c = brush->triangle_group_count;
+	c = brush->vertex_count;
+	
+	
+	
+	/* Gather all normals... */
+	for(i = 0; i < c; i++)
+	{
+		normal_buffer[normal_count] = brush->vertices[i].normal;
+		plane_point_indexes[normal_count] = i;
+		normal_count++;
+	}
+	
+	
+	/* Remove duplicated normals... */
+	for(i = 0; i < normal_count; i++)
+	{
+		for(j = i + 1; j < normal_count; j++)
+		{
+			if(normal_buffer[i].x == normal_buffer[j].x &&
+			   normal_buffer[i].y == normal_buffer[j].y &&
+			   normal_buffer[i].z == normal_buffer[j].z)
+			{
+				for(l = j; l < normal_count - 1; l++)
+				{
+					normal_buffer[l] = normal_buffer[l + 1];
+					plane_point_indexes[l] = plane_point_indexes[l + 1];
+				}
+				j--;
+				normal_count--;
+			}
+		}
+	}
+	
+	
+	
+	for(j = 0; j < normal_count; j++)
+	{
+		printf("[%f %f %f] %d\n", normal_buffer[j].x, normal_buffer[j].y, normal_buffer[j].z, plane_point_indexes[j]);
+	}
+	
+	
+	
+	c = normal_count;
+	
+	
+	for(i = 0; i < c; i++)
+	{
+		plane_point = brush->vertices[plane_point_indexes[i]].position;
+		plane_normal = normal_buffer[i];
+		
+		k = brush->vertex_count;
+		
+		vertex_count = 0;
+		
+		for(j = 0; j < k; j++)
+		{	
+			if(bsp_ClassifyPoint(brush->vertices[j].position, plane_point, plane_normal) == POINT_CONTAINED)
+			{
+				vertex_buffer[vertex_count] = brush->vertices[j].position;
+				
+				vertex_count++;
+			}
+		}	
+		/* check for duplicated vertices */
+		for(j = 0; j < vertex_count; j++)
+		{
+			for(k = j + 1; k < vertex_count; k++)
+			{		
+				
+				if(vertex_buffer[j].x == vertex_buffer[k].x && 
+				   vertex_buffer[j].y == vertex_buffer[k].y &&
+				   vertex_buffer[j].z == vertex_buffer[k].z)
+				{
+					/* duplicated vertex, remove it and adjust everything else... */
+					for(l = k; l < vertex_count - 1; l++)
+					{
+						vertex_buffer[l] = vertex_buffer[l + 1];
+					}
+					k--;
+					vertex_count--;
+				}
+			}
+		}
+		
+		for(j = 0; j < vertex_count; j++)
+		{
+			printf("[%f %f %f]\n", vertex_buffer[j].x, vertex_buffer[j].y, vertex_buffer[j].z);
+		}
+		printf("\n");
+		
+		
+		/* avoid cylinder brushes for the time being... */
+		
+		#if 0
+		
+		/* remove any vertex "inside" this polygon... */
+		for(j = 0; j < vertex_count - 1; j++)
+		{
+			r = (j + 1) % vertex_count;
+			
+			/* current edge... */
+			v0.x = vertex_buffer[r].x - vertex_buffer[j].x;
+			v0.y = vertex_buffer[r].y - vertex_buffer[j].y;
+			v0.z = vertex_buffer[r].z - vertex_buffer[j].z;
+			
+			for(l = 1; l < vertex_count - 2; l++)
+			{
+				/* start at the next vertice past the end of the current edge... */
+				k = (l + r) % vertex_count;	
+				
+				v1.x = vertex_buffer[k].x - vertex_buffer[j].x;
+				v1.y = vertex_buffer[k].y - vertex_buffer[j].y;
+				v1.z = vertex_buffer[k].z - vertex_buffer[j].z;
+				
+				v1 = cross(v0, v1);
+				
+				if(dot3(plane_normal, v1) < 0.0)
+				{
+
+				}
+				
+			}
+			
+		}
+		
+		#endif
+		
+		//plane_point = vertex_buffer[0];
+		
+		
+		polygon_center = vertex_buffer[0];
+		for(j = 1; j < vertex_count; j++)
+		{
+			polygon_center.x += vertex_buffer[j].x;
+			polygon_center.y += vertex_buffer[j].y;
+			polygon_center.z += vertex_buffer[j].z;
+		}
+		
+		polygon_center.x /= (float)vertex_count;
+		polygon_center.y /= (float)vertex_count;
+		polygon_center.z /= (float)vertex_count;
+		
+		
+		
+		
+		/* sort the vertices anti clock-wise... */
+		for(j = 0; j < vertex_count - 1; j++)
+		{
+			v0.x = vertex_buffer[j].x - polygon_center.x;
+			v0.y = vertex_buffer[j].y - polygon_center.y;
+			v0.z = vertex_buffer[j].z - polygon_center.z;
+			v0 = normalize3(v0);
+			smallest_angle = 10.0;
+			closest_vertex_index = j;
+			
+			for(k = j + 1; k < vertex_count; k++)
+			{
+				r = k % vertex_count;
+			
+				v1.x = vertex_buffer[r].x - polygon_center.x;
+				v1.y = vertex_buffer[r].y - polygon_center.y;
+				v1.z = vertex_buffer[r].z - polygon_center.z;
+				
+				v1 = normalize3(v1);
+				angle = get_angle(v0, v1, plane_normal);
+				if(angle < smallest_angle)
+				{
+					smallest_angle = angle;
+					closest_vertex_index = r;
+				}
+			}
+			
+			/*printf("[%f %f %f]\n", vertex_buffer[closest_vertex_index].x,
+								   vertex_buffer[closest_vertex_index].y,
+								   vertex_buffer[closest_vertex_index].z);*/
+			
+			r = (j + 1) % vertex_count;
+			
+			v1 = vertex_buffer[r];
+			vertex_buffer[r] = vertex_buffer[closest_vertex_index];
+			vertex_buffer[closest_vertex_index] = v1;
+			
+		}
+		
+		//printf("polygon!\n");
+		printf("\n");
+		
+		for(j = 0; j < vertex_count; j++)
+		{
+			printf("[%f %f %f] [%f %f %f]\n", vertex_buffer[j].x, vertex_buffer[j].y, vertex_buffer[j].z, plane_normal.x, plane_normal.y, plane_normal.z);
+		}
+		printf("\n\n");
+		
+		assert(vertex_count > 2);
+		
+		p = malloc(sizeof(bsp_polygon_t));
+		p->vertices = malloc(sizeof(vec3_t) * vertex_count);
+		p->normal = plane_normal;
+		p->vert_count = vertex_count;
+		p->polygon_index = polygon_index++;
+		
+		for(j = 0; j < vertex_count; j++)
+		{
+			p->vertices[j] = vertex_buffer[j];
+		}
+		
+		p->next = polygons;
+		polygons = p;
+		
+	}
+	
+	free(vertex_buffer);
+	free(normal_buffer);
+	free(plane_point_indexes);
+	return polygons;
+	
+	//free(vertex_index_stack);
+}
+#endif
+
 /*
 ==============
 bsp_BuildPolygonsFromBrush

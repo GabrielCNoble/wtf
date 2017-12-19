@@ -29,11 +29,11 @@ int *light_cache_index_buffers[LIGHT_CACHE_SIZE];
 light_cache_slot_t light_cache[LIGHT_CACHE_SIZE];
 
 
-/* 600 frames (~5 seconds) before
+/* 300 frames (~5 seconds) before
 a cached light gets dropped... */
 #define OLD_THRESHOLD 300
 
-/* 300 frames (~2 seconds) between
+/* 120 frames (~2 seconds) between
 checks for old cached lights... */
 #define MASS_EVICTION_THRESHOLD 120
 static int l_last_mass_eviction = 0;
