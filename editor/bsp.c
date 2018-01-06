@@ -23,6 +23,7 @@ extern triangle_group_t *global_triangle_groups;
 
 extern int world_nodes_count;
 extern bsp_pnode_t *world_nodes;
+extern bsp_pnode_t *collision_nodes;
 extern int world_leaves_count;
 extern bsp_dleaf_t *world_leaves;
 
@@ -90,9 +91,11 @@ void bsp_DeleteBsp()
 		}
 		
 		free(world_nodes);
+		free(collision_nodes);
 		free(world_leaves);
 		
 		world_nodes = NULL;
+		collision_nodes = NULL;
 		world_leaves = NULL;
 	}
 	
@@ -165,21 +168,6 @@ int bsp_SolidPoint(bsp_pnode_t *node, vec3_t point)
 
 
 
-/*
-==============
-bsp_FirstHit
-==============
-*/
-int bsp_FirstHit(bsp_pnode_t *world_nodes, vec3_t start, vec3_t end, trace_t *trace)
-{
-	trace->frac = 1.0;
-	trace->bm_flags = TRACE_ALL_SOLID;	
-
-	return bsp_RecursiveFirstHit(world_nodes, &start, &end, 0, 1, trace);
-}
-
-
-
 
 #define DIST_EPSILON 0.03125
 /*
@@ -204,21 +192,24 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 	vec3_t mid;
 	vec3_t mid2;
 	
-	
-	//bsp_node_t *near;
-	//bsp_node_t *far;
 	bsp_dleaf_t *leaf;
-	
-	
-	if(node->child[0] == BSP_SOLID_LEAF)
+		
+	if(node->child[0] == BSP_EMPTY_LEAF || node->child[0] == BSP_SOLID_LEAF)
 	{
-		return 0;		
-	}
-	else if(node->child[0] == BSP_EMPTY_LEAF)
-	{
-		trace->bm_flags &= ~TRACE_ALL_SOLID;
+		if(node->child[0] == BSP_EMPTY_LEAF)
+		{
+			trace->bm_flags &= ~TRACE_ALL_SOLID;
+		}
+		else
+		{
+			/* we reached a solid leaf, which means this 
+			is the start point, and we're inside solid world... */
+			trace->bm_flags |= TRACE_START_SOLID;
+		}
+		
 		return 1;
 	}
+	
 	else
 	{
 		d0 = dot3(*start, node->normal) - node->dist;
@@ -227,27 +218,24 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 		
 		if(d0 >= 0.0 && d1 >= 0.0)
 		{
-			return bsp_RecursiveFirstHit(node + node->child[0], start, end, t0, t1, trace); /* 0 */
+			return bsp_RecursiveFirstHit(node + node->child[0], start, end, t0, t1, trace); 
 		}
 		else if(d0 < 0.0 && d1 < 0.0)
 		{
-			return bsp_RecursiveFirstHit(node + node->child[1], start, end, t0, t1, trace); /* 0 */
+			return bsp_RecursiveFirstHit(node + node->child[1], start, end, t0, t1, trace); 
 		}
 		
 		
 		if(d0 < 0.0)
 		{
-			/* nudge the intersection away from the plane
-			on both sides... */
+			/* nudge the intersection away from the plane... */
 			frac = (d0 + DIST_EPSILON) / (d0 - d1);
-			frac2 = (d0 - DIST_EPSILON) / (d0 - d1);
 			near_index = 1;
 			
 		}
 		else
 		{
-			frac = (d0 - DIST_EPSILON) / (d0 - d1);
-			frac2 = (d0 + DIST_EPSILON) / (d0 - d1);	
+			frac = (d0 - DIST_EPSILON) / (d0 - d1);	
 			near_index = 0;
 		}
 		
@@ -265,33 +253,38 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 		{
 			return 0;
 		}
-
-		if(frac2 > 1.0) frac2 = 1.0;
-		else if(frac2 < 0.0) frac2 = 0.0;
-
-		midf2 = t0 + (t1 - t0) * frac2;
 		
-		mid2.x = start->x + (end->x - start->x) * frac2;
-		mid2.y = start->y + (end->y - start->y) * frac2;
-		mid2.z = start->z + (end->z - start->z) * frac2;
-
-		if(bsp_RecursiveFirstHit(node + node->child[near_index ^ 1], &mid2, end, midf2, t1, trace))
+		/* test to see whether the mid point would fall in solid space in case we were
+		to thread down. If not, then the second half of the segment lies in empty space,
+		and can further straddle other planes. If it falls in solid space, it means
+		that frac is the nearest intersection, and we're done. */
+		
+		/* thank you John :) */
+		if(bsp_SolidPoint(node + node->child[near_index ^ 1], mid) != BSP_SOLID_LEAF)
 		{
-			return 1;	
+			return bsp_RecursiveFirstHit(node + node->child[near_index ^ 1], &mid, end, midf, t1, trace);	
 		}
-
 		
-		
-		/* I'm not satisfied with this... */
-		if(frac < trace->frac)
+		/*if(!near_index)
 		{
-			
-			trace->frac = frac;
 			trace->dist = d0;
 			trace->normal = node->normal;
-			trace->position = mid;
 		}
+		else
+		{
+			trace->dist = -d0;
+			trace->normal.x = -node->normal.x;
+			trace->normal.y = -node->normal.y;
+			trace->normal.z = -node->normal.z;
+		}*/
 		
+		trace->dist = d0;
+		trace->normal = node->normal;
+		trace->position = mid;
+		trace->frac = frac;
+		
+		/* return zero to avoid any further computation to be done
+		by previous recursion calls... */
 		return 0;
 		
 	}
@@ -299,71 +292,103 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 }
 
 
+/*
+==============
+bsp_FirstHit
+==============
+*/
+int bsp_FirstHit(bsp_pnode_t *bsp, vec3_t start, vec3_t end, trace_t *trace)
+{
+	trace->frac = 1.0;
+	trace->bm_flags = TRACE_ALL_SOLID;	
+
+	return bsp_RecursiveFirstHit(bsp, &start, &end, 0, 1, trace);
+}
 
 
-#define STEP_HEIGHT 0.85
+
+
+#define STEP_HEIGHT 0.5
 /*
 ==============
 bsp_TryStepUp
 ==============
 */
-int bsp_TryStepUp(vec3_t *position, vec3_t *velocity)
+int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace)
 {
 	vec3_t start;
 	vec3_t end;
+	vec3_t v;
+	trace_t tr;
 	
-	trace_t trace;
+	int s;
+	int e;
 	
-	float diff;
+	float frac;
 	
-	int in_open;
-	
-	start = *position;
-	start.y += STEP_HEIGHT;
-	
-	
-	end.x = start.x + velocity->x;
-	end.y = start.y + velocity->y;
-	end.z = start.z + velocity->z;
+	start = trace->position;
 	
 	
-	/* kick the start position STEP_HEIGHT up, and test
-	to see if we hit anything... */
-	
-	bsp_FirstHit(world_nodes, start, end, &trace);
-	
+	/* move forward an itsy-bitsy... */
+	start.x -= trace->normal.x * 0.05;
+	start.z -= trace->normal.z * 0.05;
 	
 	
-	/* if the trace hits nothing or it does hit something */	
-	if(trace.frac > 0)
+	/* kick the end-point STEP_HEIGHT up... */
+	end.x = start.x;
+	end.y = start.y + STEP_HEIGHT;
+	end.z = start.z;
+		
+	s = bsp_SolidPoint(collision_nodes, start);
+	e = bsp_SolidPoint(collision_nodes, end);
+	
+	
+	if(s == BSP_SOLID_LEAF)
 	{
+		/* both endpoints lie in
+		solid space, so the step
+		is too high to climb 
+		(or it could be a wall)... */
+		if(e == BSP_SOLID_LEAF)
+			return 0;
 		
-		/* step forward, but just enough to not clip anything on top
-		of the step (like another step)... */
-		start.x = start.x + (end.x - start.x) * trace.frac;
-		start.z = start.z + (end.z - start.z) * trace.frac;
+		/* trace downwards to find out the height of the
+		step... */	
+		bsp_FirstHit(collision_nodes, end, start, &tr);
 		
+		#if 1
+	
+		frac = tr.frac;
+		v = tr.position;	
 		
-		
-		end.x = start.x;
-		end.y = start.y - STEP_HEIGHT;		/* this step can be STEP_HEIGHT high or less... */
-		end.z = start.z;
-		
-		/* so trace downwards to find the actual height of the step... */
-		bsp_FirstHit(world_nodes, start, end, &trace);
-		
-					
+		/* see if we can step up from our current position... */
+		bsp_FirstHit(collision_nodes, *position, v, &tr);
+			
+		/* we'll bump our heads, so don't
+		step up... */
+		if(tr.frac < 1.0)
+			return 0;
+			
+			
+			
+		/* step up... */
+		position->y = start.y + (end.y - start.y) * (1.0 - frac); 
+			
+		/* ...and forward... */			
 		position->x = start.x;
-		/* nudge the adjusted position upwards a little bit so
-		the final position doesn't end up inside solid space... */
-		position->y = start.y + DIST_EPSILON + (end.y - start.y) * trace.frac; 
 		position->z = start.z;
-		
+			
 		/* dampen the speed when stepping up... */
 		velocity->x *= 0.05;
 		velocity->z *= 0.05;
+		
 		return 1;
+	
+		#endif	
 	}
+	
+	
+	
 	
 	return 0;
 }
@@ -394,8 +419,15 @@ void bsp_Move(vec3_t *position, vec3_t *velocity)
 	
 	//static int b_break = 0;
 	
-	if(world_nodes)
+	if(collision_nodes)
 	{
+		
+		/*if(input_GetKeyStatus(SDL_SCANCODE_K))
+		{
+			printf("breakpoint!\n");
+			
+			printf("breakpoint!\n");
+		}*/
 		
 		end.x = position->x + velocity->x;
 		end.y = position->y + velocity->y;
@@ -424,7 +456,7 @@ void bsp_Move(vec3_t *position, vec3_t *velocity)
 			end.z = position->z + new_velocity.z;
 			
 			
-			bsp_FirstHit(world_nodes, *position, end, &trace);
+			bsp_FirstHit(collision_nodes, *position, end, &trace);
 			
 			/* covered whole distance, bail out... */
 			if(trace.frac == 1.0)
@@ -434,16 +466,21 @@ void bsp_Move(vec3_t *position, vec3_t *velocity)
 			else
 			{
 				
+				position->x += new_velocity.x * trace.frac;
+				position->y += new_velocity.y * trace.frac;
+				position->z += new_velocity.z * trace.frac;
 				
-				
-				#if 0
+				#if 1
 				/* hit a vertical-ish surface, test to see whether it's a step or a wall... */
 				if(trace.normal.y < 0.2 && trace.normal.y > -0.2)
 				{
 					//printf("before: [%f %f %f]   after: [%f %f %f]\n", position->x, position->y, position->z, trace.position.x, trace.position.y, trace.position.z);
 					/* this will probably fail if the speed is too low... */
-					if(bsp_TryStepUp(position, &new_velocity))
+					if(bsp_TryStepUp(position, &new_velocity, &trace))
 					{
+						
+						//printf("[%f %f %f]\n", position->x, position->y, position->z);
+						
 						/* if step-up was successful, do not clip the speed... */
 						
 						/* TODO: maybe it's a good idea to dampen the speed on 
@@ -454,6 +491,8 @@ void bsp_Move(vec3_t *position, vec3_t *velocity)
 				}
 				
 				#endif 
+				
+				
 				
 				/* horizontal-ish surface (floor or slope)... */
 				bsp_ClipVelocityToPlane(trace.normal, new_velocity, &new_velocity, 1.0);
@@ -562,6 +601,9 @@ bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t camera_positi
 		leaf_index = *(int *)&node->dist;	
 		cur_leaf =  &world_leaves[leaf_index];
 		
+	//	printf("leaf index: %d\n", leaf_index);
+		
+		//assert(cur_leaf);
 		
 		/* avoid going over the pvs if the current leaf
 		didn't change between this and the last call... */
@@ -592,6 +634,9 @@ bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t camera_positi
 		return &potentially_visible_leaves[0];
 	}
 	
+//	printf("nope!\n");
+	potentially_visible_leaves_count = 0;
+	*leaf_count = 0;
 	
 	return NULL;
 	 

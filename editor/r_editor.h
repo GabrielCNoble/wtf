@@ -14,6 +14,10 @@ void renderer_DrawLights();
 
 void renderer_DrawLeaves();
 
+void renderer_DrawSelectedLightLeaves();
+
+void renderer_DrawLightBoxes();
+
 
 
 

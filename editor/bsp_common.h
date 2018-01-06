@@ -6,9 +6,10 @@
 #include "l_common.h"
 
 
-#define TRIS_FIRST_INDEX(tri) (tri&0x00ffffff)
+#define TRIS_FIRST_VERTEX(tri) (tri&0x00ffffff)
 #define TRIS_GROUP(tri) ((tri&0xff000000)>>24)
-#define TRIS(group, first_index, tri) (tri=group;tri<<=24;tri|=first_index&0x00ffffff)
+#define PACK_TRIS(group, first_index) ((group<<24)|(first_index&0x00ffffff))
+//#define TRIS(group, first_index, tri) (tri=group;tri<<=24;tri|=first_index&0x00ffffff)
 
 typedef struct
 {
@@ -33,7 +34,10 @@ typedef struct
 	vec3_t center;
 	vec3_t extents;
 	int leaf_index;
-	bsp_striangle_t *tris;				
+	//int first_batch;
+	//int batch_count;
+	bsp_striangle_t *tris;
+	//unsigned int *tris;				
 	unsigned int tris_count;			/* could get rid of this... */
 	unsigned char *pvs;/* this makes this struct not 32 byte aligned. Fuck! */
 	
@@ -44,6 +48,16 @@ typedef struct
 {
 	unsigned int lights[MAX_WORLD_LIGHTS >> 5];
 }bsp_lights_t;
+
+
+typedef struct
+{
+	int triangle_count;
+	int first_vertex;
+	int material_index;
+}bsp_batch_t;
+
+
 
 /* if this node has both child == 0, it means
 it points to a empty leaf, child == 0xffff points
@@ -121,6 +135,12 @@ enum POLYGON_SPLITTER
 	POLYGON_CONTAINED_BACK = 1 << 5,
 };
 
+enum COLLISION_SHAPE
+{
+	COLLISION_SHAPE_AABB,
+	COLLISION_SHAPE_SPHERE,
+	COLLISION_SHAPE_CAPSULE,
+};
 
 
 

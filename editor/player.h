@@ -77,4 +77,8 @@ void player_ProcessAI(float delta_time);
 
 void player_UpdatePlayers(float delta_time);
 
+void player_Move(player_t *player, vec3_t *velocity);
+
+void player_TransformPlayers();
+
 #endif

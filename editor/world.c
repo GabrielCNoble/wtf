@@ -16,6 +16,7 @@
 #include "texture.h"
 
 #include "l_main.h"
+#include "l_cache.h"
 
 #include "bsp_common.h"
 #include "bsp.h"
@@ -28,10 +29,17 @@ vertex_t *world_vertices = NULL;
 
 int world_nodes_count = 0;
 bsp_pnode_t *world_nodes = NULL;
-//bsp_polygon_t *node_polygons = NULL;			/* necessary to quickly build portals... */
+bsp_pnode_t *collision_nodes = NULL;
+
+
 int world_leaves_count = 0;
 bsp_dleaf_t *world_leaves = NULL;
 bsp_lights_t *leaf_lights = NULL;
+bsp_batch_t *leaf_batches = NULL; 
+int *leaf_batches_indexes = NULL;
+
+int world_hull_node_count = 0;
+bsp_pnode_t *world_hull = NULL;
 
 int visible_leaves_count = 0;
 bsp_dleaf_t **visible_leaves = NULL;
@@ -247,6 +255,49 @@ void world_LoadBsp(char *file_name)
 	
 }
 
+void world_BuildBatches()
+{
+	
+	int i;
+	int c;
+	
+	int k;
+	bsp_dleaf_t *leaf;
+	
+	if(!world_leaves)
+		return;
+		
+	int total_batches = 0;	
+	
+	for(i = 0; i < world_leaves_count; i++)
+	{
+		for(k = 0; k < world_triangle_group_count; k++)
+		{
+			world_triangle_groups[k].next = 0;
+		}
+		
+		leaf = &world_leaves[i];
+		
+		c = leaf->tris_count;
+		
+		for(k = 0; k < c; k++)
+		{
+			world_triangle_groups[leaf->tris[k].triangle_group].next++;
+		}
+		
+		
+		for(k = 0; k < world_triangle_group_count; k++)
+		{
+			if(world_triangle_groups[k].next)
+			{
+				total_batches++;
+			}
+		}
+	}
+		
+		
+}
+
 void world_VisibleLeaves()
 {
 	camera_t *active_camera = camera_GetActiveCamera();
@@ -298,6 +349,7 @@ void world_VisibleWorld()
 	if(visible_leaves)
 	{
 		
+		//printf("camera in leaf %d\n", visible_leaves[0]->leaf_index);
 		//light_VisibleLights(visible_leaves, visited_leaves_count);
 		
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_element_buffer);
@@ -504,9 +556,21 @@ void world_Update()
 {
 	int i;
 	int j;
+	int c;
+	int k;
+	
+	bsp_dleaf_t *leaf;
+	
+	int total_batches = 0;	
+	int cur_group_index;
+	int cur_batch_index;
+	
 	if(world_handle != -1)
 	{
 		gpu_Free(world_handle);
+		//free(leaf_batches);
+		//free(leaf_batches_indexes);
+		
 	}
 	if(leaf_lights)
 	{
@@ -524,6 +588,9 @@ void world_Update()
 	}
 	
 	
+	if(!world_leaves)
+		return;
+		
 	world_handle = gpu_Alloc(sizeof(vertex_t) * world_vertices_count);
 	world_start = gpu_GetAllocStart(world_handle) / sizeof(vertex_t);
 	
@@ -534,6 +601,7 @@ void world_Update()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	
 	light_ClearLightLeaves();
+	//light_UpdateCacheGroups();
 	
 }
 

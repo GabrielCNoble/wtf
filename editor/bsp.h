@@ -30,18 +30,15 @@ bsp_pnode_t *bsp_HullForEntity(vec3_t mins, vec3_t max);
 
 int bsp_SolidPoint(bsp_pnode_t *node, vec3_t point);
 
-int bsp_FirstHit(bsp_pnode_t *world_nodes, vec3_t start, vec3_t end, trace_t *trace);
+int bsp_FirstHit(bsp_pnode_t *bsp, vec3_t start, vec3_t end, trace_t *trace);
 
-int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t0, float t1, trace_t *trace);
-
-int bsp_TryStepUp(vec3_t *position, vec3_t *velocity);
+int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace);
 
 void bsp_Move(vec3_t *position, vec3_t *velocity);
 
 bsp_dleaf_t *bsp_GetCurrentLeaf(bsp_pnode_t *node, vec3_t camera_position);
 
 bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t camera_position);
-
 
 
 

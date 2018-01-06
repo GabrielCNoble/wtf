@@ -8,9 +8,9 @@
 #include "input.h"
 
 
-/* from renderer.h */
-extern int window_width;
-extern int window_height;
+/* from r_main.h */
+extern int r_width;
+extern int r_height;
 
 /* from input.c */
 extern float normalized_mouse_x;
@@ -160,8 +160,8 @@ void gui_ProcessGUI()
 	int widget_stack_top = -1;
 	widget_t *widget_stack[128];
 	
-	float screen_mouse_x = (window_width * 0.5) * normalized_mouse_x;
-	float screen_mouse_y = (window_height * 0.5) * normalized_mouse_y;
+	float screen_mouse_x = (r_width * 0.5) * normalized_mouse_x;
+	float screen_mouse_y = (r_height * 0.5) * normalized_mouse_y;
 
 	float relative_screen_mouse_x;
 	float relative_screen_mouse_y;
@@ -365,9 +365,9 @@ void gui_ProcessGUI()
 
 void gui_UpdateGUIProjectionMatrix()
 {
-	float right = window_width / 2;
+	float right = r_width / 2;
 	float left = -right;
-	float top = window_height / 2;
+	float top = r_height / 2;
 	float bottom = -top;
 	CreateOrthographicMatrix(&gui_projection_matrix, left, right, top, bottom, -10.0, 10.0, NULL);
 }

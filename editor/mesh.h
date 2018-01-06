@@ -30,6 +30,8 @@ void mesh_LoadModel(char *file_name, char *model_name);
 
 mesh_t *mesh_GetModel(char *model_name);
 
+void mesh_GenerateIcoSphere(float radius, int sub_divs, float **verts, int *face_count);
+
 //void mesh_LoadWorldModel(char *file_name);
 
 

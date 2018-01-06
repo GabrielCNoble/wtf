@@ -121,6 +121,11 @@ vec3_t normalize3(vec3_t vec)
 	if(length == 0.0)
 	{
 		temp = vec;
+		//temp = {0.0, 0.0 ,0.0};
+		/*temp.x = 0.0;
+		temp.y = 0.0;
+		temp.z = 0.0;*/
+		//printf("zero length vector!\n");
 	}
 	else
 	{

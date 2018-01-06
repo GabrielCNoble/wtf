@@ -37,8 +37,8 @@ SDL_Cursor *dl_arrows;
 SDL_Cursor *dr_arrows;
 
 extern SDL_Window *window;
-extern int window_width;
-extern int window_height;
+extern int r_width;
+extern int r_height;
 extern int engine_state;
 
 short key_pos_map[SDL_NUM_SCANCODES];
@@ -63,7 +63,7 @@ void input_Init()
 	mouse_dx=0.0;
 	mouse_dy=0.0;
 	kb_event=(SDL_Event *)calloc(1, sizeof(SDL_Event));
-	SDL_WarpMouseInWindow(window, window_width / 2, window_height / 2);
+	SDL_WarpMouseInWindow(window, r_width / 2, r_height / 2);
 	bm_mouse = 0;
 	registered_keys_count = 0;
 	max_registered_keys = 0;
@@ -111,7 +111,7 @@ void input_GetInput()
 	
 	//printf("%d\n", bm);
 	
-	mouse_y = window_height - mouse_y;
+	mouse_y = r_height - mouse_y;
 	
 	bm_mouse &= ~(MOUSE_WHEEL_UP | MOUSE_WHEEL_DOWN);
 	
@@ -243,8 +243,8 @@ void input_GetInput()
 	}
 	
 	
-	normalized_mouse_x=(float)mouse_x/(float)window_width;
-	normalized_mouse_y=(float)mouse_y/(float)window_height;
+	normalized_mouse_x=(float)mouse_x/(float)r_width;
+	normalized_mouse_y=(float)mouse_y/(float)r_height;
 	
 	normalized_mouse_x*=2.0;
 	normalized_mouse_x-=1.0;
@@ -267,7 +267,7 @@ void input_GetInput()
 		}
 		
 		SDL_ShowCursor(0);
-		SDL_WarpMouseInWindow(window, window_width/2, window_height/2);
+		SDL_WarpMouseInWindow(window, r_width/2, r_height/2);
 		mouse_dx=normalized_mouse_x;
 		mouse_dy=normalized_mouse_y;
 		last_mouse_x = 0.0;

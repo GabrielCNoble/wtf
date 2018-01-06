@@ -23,8 +23,6 @@ static int *free_position_stack;
 void texture_Init()
 {
 	
-	//ilInit();
-	
 	free_position_stack_top = -1;
 	texture_list_size = 64;
 	texture_count = 0;
@@ -224,7 +222,7 @@ int texture_LoadCubeTexture(char *files, char *name)
 		while(files[i] != ';') i++;	
 		i++;
 		tex_names[c][k] = '\0';
-		printf("%s\n", tex_names[c]);
+		//printf("%s\n", tex_names[c]);
 		c++;
 	}
 	

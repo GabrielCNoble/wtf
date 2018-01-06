@@ -9,7 +9,7 @@
 #include "GL\glew.h"
 
 
-#define GPU_HEAP_SIZE 67108864			/* 64 MB */
+#define GPU_HEAP_SIZE 33554432			/* 32 MB */
 #define GPU_MIN_ALLOC sizeof(vertex_t)			
 #define FREE_THRESHOLD 15
 
@@ -172,10 +172,14 @@ int gpu_Alloc(int size)
 	if(size > 0)
 	{
 		/* round the size up to the closest multiple of the minimum allowed allocation... */
-		if(size % sizeof(vertex_t))
+		//if(size % sizeof(vertex_t))
+		while(size % sizeof(vertex_t))
 		{
-			size = (size + sizeof(vertex_t) - 1) & (~(sizeof(vertex_t) - 1));
+			size += size % sizeof(vertex_t);
+			size = (size + sizeof(vertex_t) - 1) & ~(sizeof(vertex_t) - 1);
 		}
+		
+		//size -= size % sizeof(vertex_t);
 		
 
 		_try_again:

@@ -5,10 +5,11 @@
 
 #include "player.h"
 #include "camera.h"
-#include "renderer.h"
+#include "r_main.h"
 #include "input.h"
 #include "physics.h"
 #include "sound.h"
+#include "bsp.h"
 
 int player_list_size;
 int player_count;
@@ -38,11 +39,11 @@ void player_Init()
 	players = malloc(sizeof(player_t) * player_list_size);
 	active_player = NULL;
 	
-	mesh_LoadModel("weapon.obj", "weapon");
-	mesh_LoadModel("body.obj", "body");
+	//mesh_LoadModel("weapon.obj", "weapon");
+	//mesh_LoadModel("body.obj", "body");
 	
-	weapon_mesh = mesh_GetModel("weapon");
-	body_mesh = mesh_GetModel("body");
+	//weapon_mesh = mesh_GetModel("weapon");
+	//body_mesh = mesh_GetModel("body");
 	
 	
 	visible_players_body_transforms = malloc(sizeof(mat4_t ) * player_list_size);
@@ -399,8 +400,6 @@ void player_UpdatePlayers(float delta_time)
 			
 			r_direction = direction;
 			
-			//srand(time(NULL));
-			
 			for(j = 0; j < 1; j++)
 			{
 				r_direction = direction;
@@ -423,12 +422,12 @@ void player_UpdatePlayers(float delta_time)
 				r_direction.y *= 10.0;
 				r_direction.z *= 10.0;
 				
-				projectile_AddProjectile(players[i].player_camera->world_position, r_direction, 1.505, 600, i);
+				//projectile_AddProjectile(players[i].player_camera->world_position, r_direction, 1.505, 600, i);
 				
 				
 			}
 			
-			sound_PlaySound(fire_sound, players[i].player_camera->world_position, 0.9);		
+			//sound_PlaySound(fire_sound, players[i].player_camera->world_position, 0.9);		
 			/*r_direction.x *= 10.0;
 			r_direction.y *= 10.0;
 			r_direction.z *= 10.0;
@@ -436,30 +435,30 @@ void player_UpdatePlayers(float delta_time)
 			projectile_AddProjectile(players[i].player_camera->world_position, r_direction, 1.505, 600, i);*/
 		}
 		 		
-		players[i].player_camera->world_position.x = players[i].player_position.x;
+		/*players[i].player_camera->world_position.x = players[i].player_position.x;
 		players[i].player_camera->world_position.y = players[i].player_position.y + PLAYER_CAMERA_HEIGHT;
-		players[i].player_camera->world_position.z = players[i].player_position.z;
+		players[i].player_camera->world_position.z = players[i].player_position.z;*/
 		
 		camera_PitchYawCamera(players[i].player_camera, players[i].yaw, players[i].pitch);
 		
 		
 		
-		if(&players[i] == active_player)
+		/*if(&players[i] == active_player)
 		{
 			camera_ComputeWorldToCameraMatrix(players[i].player_camera);
-		}
+		}*/
 		
-		transform_index = visible_player_count++;
+		//transform_index = visible_player_count++;
 		
-		mat4_t_compose(&visible_players_body_transforms[transform_index], &players[i].player_orientation, players[i].player_position);		
+		//mat4_t_compose(&visible_players_body_transforms[transform_index], &players[i].player_orientation, players[i].player_position);		
 		//mat4_t_mult_fast(&visible_players_body_transforms[transform_index], &transform, &active_camera->world_to_camera_matrix);			
 			
-		mat4_t_compose(&transform, &players[i].player_camera->world_orientation, players[i].player_camera->world_position);
-		mat4_t_compose(&weapon_transform, &weapon_rot, weapon_position);
+		//mat4_t_compose(&transform, &players[i].player_camera->world_orientation, players[i].player_camera->world_position);
+		//mat4_t_compose(&weapon_transform, &weapon_rot, weapon_position);
 		
-		mat4_t_mult_fast(&visible_players_weapon_transforms[transform_index], &weapon_transform, &transform);
+		//mat4_t_mult_fast(&visible_players_weapon_transforms[transform_index], &weapon_transform, &transform);
 		
-		visible_players_indexes[transform_index] = i;
+		//visible_players_indexes[transform_index] = i;
 		//mat4_t_mult_fast(&visible_players_weapon_transform[transform_index], &temp_transform, &active_camera->world_to_camera_matrix);
 			
 			
@@ -480,7 +479,7 @@ void player_UpdatePlayers(float delta_time)
 		//camera_ComputeWorldToCameraMatrix(players[i].player_camera);
 	}
 	
-	for(i = 0; i < visible_player_count; i++)
+	/*for(i = 0; i < visible_player_count; i++)
 	{
 		mat4_t_mult_fast(&visible_players_body_transforms[i], &visible_players_body_transforms[i], &active_camera->world_to_camera_matrix);
 	}
@@ -488,13 +487,27 @@ void player_UpdatePlayers(float delta_time)
 	for(i = 0; i < visible_player_count; i++)
 	{
 		mat4_t_mult_fast(&visible_players_weapon_transforms[i], &visible_players_weapon_transforms[i], &active_camera->world_to_camera_matrix);
-	}
+	}*/
 	
 }
 
 
+void player_Move(player_t *player, vec3_t *velocity)
+{
+
+}
 
 
+
+void player_TransformPlayers()
+{
+	int i;
+	
+	for(i = 0; i < player_count; i++)
+	{
+		
+	}
+}
 
 
 

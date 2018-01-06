@@ -231,6 +231,10 @@ void material_DeleteMaterialByIndex(int material_index)
 	
 }
 
+void material_SetMaterial(int material_index)
+{
+	//glMaterialf(GL_FRONT_AND_BACK, )
+}
 
 
 

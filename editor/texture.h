@@ -6,9 +6,18 @@ typedef struct
 {
 	unsigned int gl_handle;
 	short texture_index;
-	short texture_unit;
-	short tex_type;
+	unsigned short texture_unit;
+	unsigned short tex_type;
 }texture_t;
+
+
+typedef struct
+{
+	unsigned int bound_texture;
+	unsigned int bound_target;
+	unsigned short tex_unit;
+	
+}tex_unit_t;
 
 
 void texture_Init();

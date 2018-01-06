@@ -445,7 +445,301 @@ mesh_t *mesh_GetModel(char *model_name)
 }
 
 
+void mesh_GenerateIcoSphere(float radius, int sub_divs, float **verts, int *face_count)
+{
+	int i;
+	int j;
+	int k;
+	mesh_t m;
+	float *a = (float *)malloc(sizeof(float) * 3 * 3 * 20);
+	float *b;
+	float v_offset = cos((60.0 * 3.14159265) / 180.0) * radius;
+	float c;
+	int f_count = 20;
+	int angle_increments = 4;
+	float len;
+	int src;
+	int dst;
+	
+	/* generate initial icosahedron... */
+	
+	/* top cap... */
+	for(i = 0; i < 5 * 3;)
+	{
+		a[i * 3] = 0.0;
+		a[i * 3 + 1] = radius;
+		a[i * 3 + 2] = 0.0;
+		
+		i++;
+		
+		a[i * 3] = sin(3.14159265 * (2.0 / 5.0) * (angle_increments)) * radius;
+		a[i * 3 + 1] = v_offset;
+		a[i * 3 + 2] = cos(3.14159265 * (2.0 / 5.0) * (angle_increments)) * radius;
+		
+		i++;
+		angle_increments--;
+		
+		a[i * 3] = sin(3.14159265 * (2.0 / 5.0) * angle_increments) * radius;
+		a[i * 3 + 1] = v_offset;
+		a[i * 3 + 2] = cos(3.14159265 * (2.0 / 5.0) * angle_increments) * radius;
+			
+		i++;
+		//angle_increments++;
+	}
+	
+	
+	j = i;
+	angle_increments = 0;
+	/* center strip... */
+	for(i = 0; i < 10 * 3;)
+	{
+		
+		angle_increments++;
+		
+		a[j * 3 + i * 3] = sin(3.14159265 * (2.0 / 5.0) * ((angle_increments - 1) * 0.5 + 0.5)) * radius;
+		a[j * 3 + i * 3 + 1] = -v_offset;
+		a[j * 3 + i * 3 + 2] = cos(3.14159265 * (2.0 / 5.0) * ((angle_increments - 1) * 0.5 + 0.5)) * radius;
+		
+		i++;
+		
+		
+		a[j * 3 + i * 3] = sin(3.14159265 * (2.0 / 5.0) * (angle_increments * 0.5 + 0.5)) * radius;
+		a[j * 3 + i * 3 + 1] = v_offset;
+		a[j * 3 + i * 3 + 2] = cos(3.14159265 * (2.0 / 5.0) * (angle_increments * 0.5 + 0.5)) * radius;
+		
+		i++;
+		
+		
+		a[j * 3 + i * 3] = sin(3.14159265 * (2.0 / 5.0) * ((angle_increments + 1) * 0.5 + 0.5)) * radius;
+		a[j * 3 + i * 3 + 1] = -v_offset;
+		a[j * 3 + i * 3 + 2] = cos(3.14159265 * (2.0 / 5.0) * ((angle_increments + 1) * 0.5 + 0.5)) * radius;
+		
+		i++;
+		
+		angle_increments++;
+		
+		a[j * 3 + i * 3] = sin(3.14159265 * (2.0 / 5.0) * ((angle_increments + 1) * 0.5 + 0.5)) * radius;
+		a[j * 3 + i * 3 + 1] = v_offset;
+		a[j * 3 + i * 3 + 2] = cos(3.14159265 * (2.0 / 5.0) * ((angle_increments + 1) * 0.5 + 0.5)) * radius;
+		
+		i++;
 
+		a[j * 3 + i * 3] = sin(3.14159265 * (2.0 / 5.0) * (angle_increments * 0.5 + 0.5)) * radius;
+		a[j * 3 + i * 3 + 1] = -v_offset;
+		a[j * 3 + i * 3 + 2] = cos(3.14159265 * (2.0 / 5.0) * (angle_increments * 0.5 + 0.5)) * radius;
+		
+		i++;
+		
+		a[j * 3 + i * 3] = sin(3.14159265 * (2.0 / 5.0) * ((angle_increments - 1) * 0.5 + 0.5)) * radius;
+		a[j * 3 + i * 3 + 1] = v_offset;
+		a[j * 3 + i * 3 + 2] = cos(3.14159265 * (2.0 / 5.0) * ((angle_increments - 1) * 0.5 + 0.5)) * radius;
+		
+		i++;
+			
+	}
+	
+	j += i;
+	angle_increments = 0;
+	/* bottom cap... */
+	for(i = 0; i < 5 * 3;)
+	{
+		a[j * 3 + i * 3] = 0.0;
+		a[j * 3 + i * 3 + 1] = -radius;
+		a[j * 3 + i * 3 + 2] = 0.0;
+		
+		i++;
+		
+		a[j * 3 + i * 3] = sin(3.14159265 * (2.0 / 5.0) * ((float)angle_increments - 0.5)) * radius;
+		a[j * 3 + i * 3 + 1] = -v_offset;
+		a[j * 3 + i * 3 + 2] = cos(3.14159265 * (2.0 / 5.0) * ((float)angle_increments - 0.5)) * radius;
+		
+		i++;
+		angle_increments++;
+		
+		a[j * 3 + i * 3] = sin(3.14159265 * (2.0 / 5.0) * ((float)angle_increments - 0.5)) * radius;
+		a[j * 3 + i * 3 + 1] = -v_offset;
+		a[j * 3 + i * 3 + 2] = cos(3.14159265 * (2.0 / 5.0) * ((float)angle_increments - 0.5)) * radius;
+			
+		i++;
+	}
+	
+	
+	if(sub_divs > 0)
+	{
+		for(k = 0; k < sub_divs; k++)
+		{
+
+				
+			
+				dst = 0;
+				//src = 0;
+				
+				b = (float *)malloc(sizeof(float) * 3 * 3 * f_count * 4);
+				
+				/* for each face, add a vertex in the middle
+				of each edge, and then triangulate. Each triangle 
+				gets subdivided into four equilateral triangles... */
+				for(i = 0; i < f_count * 3;)
+				{
+					
+					/* first triangle... */
+					/* v0 */
+					b[dst * 3] = a[i * 3];
+					b[dst * 3 + 1] = a[i * 3 + 1];
+					b[dst * 3 + 2] = a[i * 3 + 2];		
+					len = sqrt(b[dst * 3] * b[dst * 3] + b[dst * 3 + 1] * b[dst * 3 + 1] + b[dst * 3 + 2] * b[dst * 3 + 2]);
+					
+					/* adjust the vertex so it's distance to the center
+					of the sphere equals the radius... */
+					b[dst * 3] = (b[dst * 3] / len) * radius;
+					b[dst * 3 + 1] = (b[dst * 3 + 1] / len) * radius;
+					b[dst * 3 + 2] = (b[dst * 3 + 2] / len) * radius;
+					
+					dst++;
+					
+					/* v1 */
+					b[dst * 3] = (a[i * 3] + a[(i + 1) * 3]) / 2.0;
+					b[dst * 3 + 1] = (a[i * 3 + 1] + a[(i + 1) * 3 + 1]) / 2.0;
+					b[dst * 3 + 2] = (a[i * 3 + 2] + a[(i + 1) * 3 + 2]) / 2.0;
+					len = sqrt(b[dst * 3] * b[dst * 3] + b[dst * 3 + 1] * b[dst * 3 + 1] + b[dst * 3 + 2] * b[dst * 3 + 2]);
+					b[dst * 3] = (b[dst * 3] / len) * radius;
+					b[dst * 3 + 1] = (b[dst * 3 + 1] / len) * radius;
+					b[dst * 3 + 2] = (b[dst * 3 + 2] / len) * radius;
+					
+					dst++;
+					
+					/* v2 */
+					b[dst * 3] = (a[i * 3] + a[(i + 2) * 3]) / 2.0;
+					b[dst * 3 + 1] = (a[i * 3 + 1] + a[(i + 2) * 3 + 1]) / 2.0;
+					b[dst * 3 + 2] = (a[i * 3 + 2] + a[(i + 2) * 3 + 2]) / 2.0;
+					len = sqrt(b[dst * 3] * b[dst * 3] + b[dst * 3 + 1] * b[dst * 3 + 1] + b[dst * 3 + 2] * b[dst * 3 + 2]);
+					b[dst * 3] = (b[dst * 3] / len) * radius;
+					b[dst * 3 + 1] = (b[dst * 3 + 1] / len) * radius;
+					b[dst * 3 + 2] = (b[dst * 3 + 2] / len) * radius;
+					
+					dst++;
+					
+					
+					/* second triangle */
+					/* v3 */
+					b[dst * 3] = (a[i * 3] + a[(i + 1) * 3]) / 2.0;
+					b[dst * 3 + 1] = (a[i * 3 + 1] + a[(i + 1) * 3 + 1]) / 2.0;
+					b[dst * 3 + 2] = (a[i * 3 + 2] + a[(i + 1) * 3 + 2]) / 2.0;
+					len = sqrt(b[dst * 3] * b[dst * 3] + b[dst * 3 + 1] * b[dst * 3 + 1] + b[dst * 3 + 2] * b[dst * 3 + 2]);
+					b[dst * 3] = (b[dst * 3] / len) * radius;
+					b[dst * 3 + 1] = (b[dst * 3 + 1] / len) * radius;
+					b[dst * 3 + 2] = (b[dst * 3 + 2] / len) * radius;
+					
+					dst++;
+					
+					/* v4 */
+					b[dst * 3] = a[(i + 1)  * 3];
+					b[dst * 3 + 1] = a[(i + 1) * 3 + 1];
+					b[dst * 3 + 2] = a[(i + 1) * 3 + 2];
+					len = sqrt(b[dst * 3] * b[dst * 3] + b[dst * 3 + 1] * b[dst * 3 + 1] + b[dst * 3 + 2] * b[dst * 3 + 2]);
+					b[dst * 3] = (b[dst * 3] / len) * radius;
+					b[dst * 3 + 1] = (b[dst * 3 + 1] / len) * radius;
+					b[dst * 3 + 2] = (b[dst * 3 + 2] / len) * radius;
+					
+					dst++;
+					/* v5 */
+					b[dst * 3] = (a[(i + 1) * 3] + a[(i + 2) * 3]) / 2.0;
+					b[dst * 3 + 1] = (a[(i + 1) * 3 + 1] + a[(i + 2) * 3 + 1]) / 2.0;
+					b[dst * 3 + 2] = (a[(i + 1) * 3 + 2] + a[(i + 2) * 3 + 2]) / 2.0;
+					len = sqrt(b[dst * 3] * b[dst * 3] + b[dst * 3 + 1] * b[dst * 3 + 1] + b[dst * 3 + 2] * b[dst * 3 + 2]);
+					b[dst * 3] = (b[dst * 3] / len) * radius;
+					b[dst * 3 + 1] = (b[dst * 3 + 1] / len) * radius;
+					b[dst * 3 + 2] = (b[dst * 3 + 2] / len) * radius;
+					
+					dst++;
+					
+					
+					/* third triangle... */
+					/* v6 */
+					b[dst * 3] = (a[(i + 1) * 3] + a[(i + 2) * 3]) / 2.0;
+					b[dst * 3 + 1] = (a[(i + 1) * 3 + 1] + a[(i + 2) * 3 + 1]) / 2.0;
+					b[dst * 3 + 2] = (a[(i + 1) * 3 + 2] + a[(i + 2) * 3 + 2]) / 2.0;
+					len = sqrt(b[dst * 3] * b[dst * 3] + b[dst * 3 + 1] * b[dst * 3 + 1] + b[dst * 3 + 2] * b[dst * 3 + 2]);
+					b[dst * 3] = (b[dst * 3] / len) * radius;
+					b[dst * 3 + 1] = (b[dst * 3 + 1] / len) * radius;
+					b[dst * 3 + 2] = (b[dst * 3 + 2] / len) * radius;
+					
+					dst++;
+					
+					/* v7 */
+					b[dst * 3] = a[(i + 2) * 3];
+					b[dst * 3 + 1] = a[(i + 2) * 3 + 1];
+					b[dst * 3 + 2] = a[(i + 2) * 3 + 2];
+					len = sqrt(b[dst * 3] * b[dst * 3] + b[dst * 3 + 1] * b[dst * 3 + 1] + b[dst * 3 + 2] * b[dst * 3 + 2]);
+					b[dst * 3] = (b[dst * 3] / len) * radius;
+					b[dst * 3 + 1] = (b[dst * 3 + 1] / len) * radius;
+					b[dst * 3 + 2] = (b[dst * 3 + 2] / len) * radius;
+					
+					dst++;
+					
+					/* v8 */
+					b[dst * 3] = (a[i * 3] + a[(i + 2) * 3]) / 2.0;
+					b[dst * 3 + 1] = (a[i * 3 + 1] + a[(i + 2) * 3 + 1]) / 2.0;
+					b[dst * 3 + 2] = (a[i * 3 + 2] + a[(i + 2) * 3 + 2]) / 2.0;
+					len = sqrt(b[dst * 3] * b[dst * 3] + b[dst * 3 + 1] * b[dst * 3 + 1] + b[dst * 3 + 2] * b[dst * 3 + 2]);
+					b[dst * 3] = (b[dst * 3] / len) * radius;
+					b[dst * 3 + 1] = (b[dst * 3 + 1] / len) * radius;
+					b[dst * 3 + 2] = (b[dst * 3 + 2] / len) * radius;
+					
+					dst++;
+					
+					
+					
+					/* fourth triangle... */
+					/* v9 */
+					b[dst * 3] = (a[(i + 1) * 3] + a[(i + 2) * 3]) / 2.0;
+					b[dst * 3 + 1] = (a[(i + 1) * 3 + 1] + a[(i + 2) * 3 + 1]) / 2.0;
+					b[dst * 3 + 2] = (a[(i + 1) * 3 + 2] + a[(i + 2) * 3 + 2]) / 2.0;
+					len = sqrt(b[dst * 3] * b[dst * 3] + b[dst * 3 + 1] * b[dst * 3 + 1] + b[dst * 3 + 2] * b[dst * 3 + 2]);
+					b[dst * 3] = (b[dst * 3] / len) * radius;
+					b[dst * 3 + 1] = (b[dst * 3 + 1] / len) * radius;
+					b[dst * 3 + 2] = (b[dst * 3 + 2] / len) * radius;
+					
+					dst++;
+					
+					/* v10 */
+					b[dst * 3] = (a[i * 3] + a[(i + 2) * 3]) / 2.0;
+					b[dst * 3 + 1] = (a[i * 3 + 1] + a[(i + 2) * 3 + 1]) / 2.0;
+					b[dst * 3 + 2] = (a[i * 3 + 2] + a[(i + 2) * 3 + 2]) / 2.0;
+					len = sqrt(b[dst * 3] * b[dst * 3] + b[dst * 3 + 1] * b[dst * 3 + 1] + b[dst * 3 + 2] * b[dst * 3 + 2]);
+					b[dst * 3] = (b[dst * 3] / len) * radius;
+					b[dst * 3 + 1] = (b[dst * 3 + 1] / len) * radius;
+					b[dst * 3 + 2] = (b[dst * 3 + 2] / len) * radius;
+					
+					dst++;
+					
+					/* v11 */
+					b[dst * 3] = (a[i * 3] + a[(i + 1) * 3]) / 2.0;
+					b[dst * 3 + 1] = (a[i * 3 + 1] + a[(i + 1) * 3 + 1]) / 2.0;
+					b[dst * 3 + 2] = (a[i * 3 + 2] + a[(i + 1) * 3 + 2]) / 2.0;
+					len = sqrt(b[dst * 3] * b[dst * 3] + b[dst * 3 + 1] * b[dst * 3 + 1] + b[dst * 3 + 2] * b[dst * 3 + 2]);
+					b[dst * 3] = (b[dst * 3] / len) * radius;
+					b[dst * 3 + 1] = (b[dst * 3 + 1] / len) * radius;
+					b[dst * 3 + 2] = (b[dst * 3 + 2] / len) * radius;
+					
+					dst++;
+					
+					i+=3;
+				}
+				
+				f_count *= 4;
+
+				free(a);
+				a = b;		
+
+		}
+	}
+	
+	*verts = a;
+	*face_count = f_count;
+	
+	return;
+}
 
 
 

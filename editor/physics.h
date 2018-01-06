@@ -75,33 +75,9 @@ void physics_Init();
 
 void physics_Finish();
 
-void physics_CreateBlock(vec3_t position, vec3_t half_extents);
-
 void physics_ProcessCollisions(float delta_time);
 
-void physics_UpdateWorldMesh(vertex_t *vertices, int vertex_count);
 
-void physics_BuildWorldMeshBVH();
-
-void physics_DeleteWorldMeshBVH();
-
-void physics_WalkBVH(bvh_node_t *root, vec3_t *capsule_a, vec3_t *capsule_b, vec3_t *capsule_direction, vec3_t *capsule_normalized_direction, player_t *player);
-
-void physics_RayCastBVH(bvh_node_t *root, vec3_t *origin, vec3_t *normalized_direction, float max_distance, ray_cast_result_t *result);
-
-void physics_RayCast(vec3_t *origin, vec3_t *normalized_direction, float max_distance, ray_cast_result_t *result);
-
-int physics_CheckProjectileCollisionBVH(bvh_node_t *root, projectile_t *projectile, vec3_t *position, vec3_t *normal, int *collided);
-
-int physics_CheckProjectileCollisionPlayers(projectile_t *projectile, player_t **hit);
-
-int physics_CheckProjectileCollision(projectile_t *projectile, vec3_t *position, vec3_t *normal, player_t **hit);
-
-float physics_ClipEdge(vec3_t plane_point, vec3_t plane_normal, vec3_t a, vec3_t b);
-
-float physics_IntersectPlane(vec3_t plane_point, vec3_t plane_normal, vec3_t ray_origin, vec3_t ray_direction);
-
-vec3_t physics_ProjectPointOnPlane(vec3_t a, vec3_t plane_point, vec3_t plane_normal);
 
 
 

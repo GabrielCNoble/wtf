@@ -128,9 +128,9 @@ void mat4_t_rotate(mat4_t *mat, vec3_t axis, float angle, int b_set)
 		result.floats[2][1]+=nAxis.floats[1]*nAxis.floats[2]*(o_m_cos)-nAxis.floats[0]*Sin;
 		result.floats[2][2]+=nAxis.floats[2]*nAxis.floats[2]*(o_m_cos)+Cos;
 	
-		row1=normalize3(vec3(result.floats[0][0], result.floats[0][1], result.floats[0][2]));
-		row2=normalize3(vec3(result.floats[1][0], result.floats[1][1], result.floats[1][2]));
-		row3=normalize3(vec3(result.floats[2][0], result.floats[2][1], result.floats[2][2]));
+		row1=(vec3(result.floats[0][0], result.floats[0][1], result.floats[0][2]));
+		row2=(vec3(result.floats[1][0], result.floats[1][1], result.floats[1][2]));
+		row3=(vec3(result.floats[2][0], result.floats[2][1], result.floats[2][2]));
 	
 		result.floats[0][0]=row1.floats[0];
 		result.floats[0][1]=row1.floats[1];

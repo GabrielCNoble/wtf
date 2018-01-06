@@ -7,18 +7,31 @@ enum INIT_MODE
 	INIT_WINDOWED
 };
 
-
-typedef struct
+enum WINDOW_FLAGS
 {
-	int start;
-	int count;
-}command_buffer_t;
+	WINDOW_FULLSCREEN = 1,
+	
+};
 
-void renderer_Init(int width, int height, int init_mode);;
+enum RENDERER_CALLBACK_TYPE
+{
+	PRE_SHADING_STAGE_CALLBACK = 1,
+	POST_SHADING_STAGE_CALLBACK,
+	RENDERER_RESOLUTION_CHANGE_CALLBACK,
+	WINDOW_RESIZE_CALLBACK,
+};
+
+void renderer_Init(int width, int height, int init_mode);
 
 void renderer_Finish();
 
-void renderer_RegisterFunction(void (*r_fn)(void));
+void renderer_SetWindowSize(int width, int height);
+
+void renderer_SetRendererResolution(int width, int height);
+
+void renderer_Fullscreen(int enable);
+
+void renderer_RegisterCallback(void (*r_fn)(void), int type);
 
 void renderer_OpenFrame();
 
@@ -30,15 +43,21 @@ void renderer_DrawShadowMaps();
 
 void renderer_DrawGUI();
 
+void renderer_DrawPlayers();
+
+void renderer_DrawActivePlayer();
+
 void renderer_DrawWorld();
+
+//void renderer_DrawWorldDeferred();
 
 void renderer_DrawSkyBox();
 
+//void renderer_Shade();
+
 void renderer_CloseFrame();
 
-void renderer_GetWindowSize(int *w, int *h);
 
-void renderer_SubmitCommandBuffer();
 
 
 

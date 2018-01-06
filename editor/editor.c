@@ -27,9 +27,9 @@
 static camera_t *editor_camera;
 static int editor_camera_index;
 
-/* from renderer.c */
-extern int window_width;
-extern int window_height;
+/* from r_main.c */
+extern int r_width;
+extern int r_height;
 
 
 /* from light.c */
@@ -93,7 +93,7 @@ int handle_3d_mode;
 void editor_Init()
 {
 	mat3_t r = mat3_t_id();
-	editor_camera_index = camera_CreateCamera("editor_camera", vec3(5.0, 10.0, 0.0), &r, 0.68, window_width, window_height, 0.1, 500.0);
+	editor_camera_index = camera_CreateCamera("editor_camera", vec3(5.0, 10.0, 0.0), &r, 0.68, r_width, r_height, 0.1, 500.0);
 	editor_camera = camera_GetCameraByIndex(editor_camera_index);
 	
 	camera_SetCameraByIndex(editor_camera_index);
@@ -113,16 +113,18 @@ void editor_Init()
 	input_RegisterKey(SDL_SCANCODE_J);
 	input_RegisterKey(SDL_SCANCODE_L);
 	
-	//renderer_RegisterFunction(bsp_Draw);
 	
-	//renderer_RegisterFunction(bsp_DrawPortals);
+	//renderer_RegisterCallback(bsp_DrawPortals, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterFunction(indirect_DrawVolumes);
-	renderer_RegisterFunction(renderer_DrawBrushes);
-	//renderer_RegisterFunction(renderer_DrawLeaves);
-	renderer_RegisterFunction(renderer_DrawGrid);
-	renderer_RegisterFunction(renderer_DrawLights);
-	renderer_RegisterFunction(renderer_DrawSelected);
-	renderer_RegisterFunction(renderer_DrawCursors);
+	renderer_RegisterCallback(renderer_DrawBrushes, PRE_SHADING_STAGE_CALLBACK);
+	renderer_RegisterCallback(bsp_DrawExpandedBrushes, POST_SHADING_STAGE_CALLBACK);
+	//renderer_RegisterCallback(renderer_DrawLeaves, POST_SHADING_STAGE_CALLBACK);
+	//renderer_RegisterFunction(renderer_DrawLightBoxes);
+	//renderer_RegisterFunction(renderer_DrawSelectedLightLeaves);
+	renderer_RegisterCallback(renderer_DrawGrid, POST_SHADING_STAGE_CALLBACK);
+	renderer_RegisterCallback(renderer_DrawLights, POST_SHADING_STAGE_CALLBACK);
+	renderer_RegisterCallback(renderer_DrawSelected, POST_SHADING_STAGE_CALLBACK);
+	renderer_RegisterCallback(renderer_DrawCursors, POST_SHADING_STAGE_CALLBACK);
 	
 	
 	
@@ -139,7 +141,7 @@ void editor_Init()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, window_width, window_height, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, r_width, r_height, 0, GL_RGBA, GL_FLOAT, NULL);
 	
 	glBindTexture(GL_TEXTURE_2D, pick_framebuffer_depth_texture);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -148,7 +150,7 @@ void editor_Init()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_width, window_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, r_width,r_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, pick_framebuffer_id);
@@ -171,7 +173,7 @@ void editor_Init()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, window_width, window_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, r_width, r_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	
 	glBindTexture(GL_TEXTURE_2D, cursor_depth_texture_id);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -180,7 +182,7 @@ void editor_Init()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, window_width, window_height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, r_width, r_height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
 	
 	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, cursor_color_texture_id, 0);
 	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, cursor_depth_texture_id, 0);
@@ -203,7 +205,7 @@ void editor_Init()
 	
 	int i;
 	
-	/*for(i = 0; i < 20; i++)
+	/*for(i = 0; i < 5; i++)
 	{
 		brush_CreateBrush(vec3(0.0, 0.2 + 0.25 * i, i * 0.5), &r, vec3(10.0 - i * 0.1, 0.5, 10.0), BRUSH_CUBE);
 	}*/
@@ -212,9 +214,26 @@ void editor_Init()
 
 	//brush_CreateBrush(vec3(0.0, 0.0, 0.0), &r, vec3(10.0, 2.0, 10.0), BRUSH_CUBE);
 	
-	//brush_CreateBrush(vec3(0.0, 5.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
-	//brush_CreateBrush(vec3(0.0, -5.0, -10.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
-	/*brush_CreateBrush(vec3(0.0, -1.0, 0.0), &r, vec3(10.0, 1.0, 10.0), BRUSH_CUBE);*/
+	
+	#if 0
+	
+	brush_CreateBrush(vec3(0.0, 10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, -10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(10.0, 0.0, 0.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-10.0, 0.0,0.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 0.0, 10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 0.0,-10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	
+	
+	mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
+	brush_CreateBrush(vec3(4.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
+	brush_CreateBrush(vec3(-4.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
+	brush_CreateBrush(vec3(0.0, 0.0, 4.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
+	brush_CreateBrush(vec3(0.0, 0.0, -4.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
+	brush_CreateBrush(vec3(5.0, 0.0,-5.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	
+	#endif
+	
 	//brush_CreateBrush(vec3(2.0, 0.0, 0.0), &r, vec3(1.0, 1.0, 1.0), BRUSH_CUBE);
 	//brush_CreateBrush(vec3(-2.0, 0.0, 0.0), &r, vec3(1.0, 1.0, 1.0), BRUSH_CUBE);
 	//brush_CreateBrush(vec3(0.0, 0.0, 4.0), &r, vec3(4.0, 1.0, 1.0), BRUSH_CUBE);
@@ -222,7 +241,30 @@ void editor_Init()
 	
 	//brush_CreateBrush(vec3(0.0, -2.5, 0.0), &r, vec3(10.0, 0.5, 10.0), BRUSH_CUBE);
 	//brush_CreateBrush(vec3(0.0, 2.5, -10.0), &r, vec3(10.0, 0.5, 10.0), BRUSH_CUBE);
-	light_CreateLight("light0", &r, vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 40.0, 20.0);
+	/*for(i = 0; i < 1; i++)
+	{
+		light_CreateLight("light0", &r, vec3(5.0, 5.0, 0.0), vec3(1.0, 1.0, 1.0), 40.0, 20.0);
+	}*/
+	
+	light_CreateLight("light0", &r, vec3(4.0, 7.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
+	//light_CreateLight("light1", &r, vec3(4.0, 4.0, 4.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	//light_CreateLight("light2", &r, vec3(-4.0, 4.0, -4.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	/*light_CreateLight("light3", &r, vec3(-4.0, 4.0, 4.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);*/
+	
+	//brush_CreateBrush(vec3(0.0, 0.0, 0.0), &r, vec3(1.0, 1.0, 1.0), BRUSH_CUBE);
+	
+	
+	brush_CreateBrush(vec3(0.0, 0.0, 0.0), &r, vec3(25.0, 1.0, 25.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 0.75, 0.0), &r, vec3(1.0, 2.0, 1.0), BRUSH_CUBE);
+	
+	
+	/*brush_CreateBrush(vec3(0.0, -99.9, 0.0), &r, vec3(100.0, 1.0, 100.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(99.9, 0.0, 0.0), &r, vec3(1.0, 100.0, 100.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-99.9, 0.0, 0.0), &r, vec3(1.0, 100.0, 100.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 0.0, 99.9), &r, vec3(100.0, 100.0, 1.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 0.0, -99.9), &r, vec3(100.0, 100.0, 1.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 99.9, 0.0), &r, vec3(100.0, 1.0, 100.0), BRUSH_CUBE);*/
+	
 	
 	/*brush_CreateBrush(vec3(0.0, -10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
 	
@@ -234,14 +276,127 @@ void editor_Init()
 	brush_CreateBrush(vec3(0.0, 10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);*/
 	
 	
-	#if 1
+	#if 0
+	
+	light_CreateLight("light0", &r, vec3(16.0, 0.0, 8.0), vec3(1.0, 0.0, 1.0), 35.0, 20.0);
+	//light_CreateLight("light0", &r, vec3(16.0, 0.0, -8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	light_CreateLight("light0", &r, vec3(16.0, 0.0, 20.0), vec3(1.0, 1.0, 0.0), 35.0, 20.0);
+	//light_CreateLight("light0", &r, vec3(16.0, 0.0, -20.0), vec3(0.5, 0.5, 1.0), 35.0, 80.0);
+	
+	//light_CreateLight("light0", &r, vec3(4.0, 0.0, 8.0), vec3(1.0, 0.63, 0.24), 35.0, 80.0);	
+	light_CreateLight("light0", &r, vec3(4.0, 0.0, -8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	//light_CreateLight("light0", &r, vec3(4.0, 0.0, 20.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	light_CreateLight("light0", &r, vec3(4.0, 0.0, -20.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	
+	light_CreateLight("light0", &r, vec3(-8.0, 0.0, 8.0), vec3(0.3, 0.4, 1.0), 35.0, 20.0);	
+	//light_CreateLight("light0", &r, vec3(-8.0, 0.0, -8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);	
+	light_CreateLight("light0", &r, vec3(-8.0, 0.0, 20.0), vec3(0.2, 1.0, 0.3), 35.0, 20.0);
+	//light_CreateLight("light0", &r, vec3(-8.0, 0.0, -20.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	
+	//light_CreateLight("light0", &r, vec3(-20.0, 0.0, 8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);	
+	light_CreateLight("light0", &r, vec3(-20.0, 0.0, -8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);	
+	//light_CreateLight("light0", &r, vec3(-20.0, 0.0, 20.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	light_CreateLight("light0", &r, vec3(-20.0, 0.0, -20.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	
+	
+	light_CreateLight("light0", &r, vec3(16.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);	
+	//light_CreateLight("light0", &r, vec3(4.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);	
+	light_CreateLight("light0", &r, vec3(-8.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	//light_CreateLight("light0", &r, vec3(-20.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	
+	
+	/*light_CreateLight("light0", &r, vec3(-55.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 20.0, 20.0);
+	light_CreateLight("light0", &r, vec3(-59.0, 0.0, -24.0), vec3(1.0, 1.0, 1.0), 20.0, 20.0);
+	light_CreateLight("light0", &r, vec3(-80.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 20.0, 20.0);
+	light_CreateLight("light0", &r, vec3(-80.0, 0.0, -25.0), vec3(1.0, 1.0, 1.0), 20.0, 20.0);
+	light_CreateLight("light0", &r, vec3(-80.0, 0.0, -39.0), vec3(1.0, 1.0, 1.0), 20.0, 20.0);*/
+	
+	
 	/* walls */
+	
+	brush_CreateBrush(vec3(-40.0, 0.0, 10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-40.0, 0.0, -10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, 0.0, 10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, 0.0, -10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-80.0, 0.0, 10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	//brush_CreateBrush(vec3(-80.0, 0.0, -10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	
+	brush_CreateBrush(vec3(-40.0, 10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-40.0, -10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, 10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, -10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-80.0, 10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-80.0, -10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	
+	
+	//brush_CreateBrush(vec3(-90.0, 0.0, 0.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	
+	brush_CreateBrush(vec3(-90.0, 0.0, 0.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-90.0, 0.0, -20.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-50.0, 0.0, -20.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-90.0, 0.0, -40.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-50.0, 0.0, -40.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	
+	
+	brush_CreateBrush(vec3(-80.0, 10.0, -20.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, 10.0, -20.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-80.0, 10.0, -40.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, 10.0, -40.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	
+	brush_CreateBrush(vec3(-80.0, -10.0, -20.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, -10.0, -20.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-80.0, -10.0, -40.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, -10.0, -40.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, 0.0, -50.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-80.0, 0.0, -50.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	
+	brush_CreateBrush(vec3(-80.0, 0.0, -50.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	
+	brush_CreateBrush(vec3(-90.0, 0.0, -60.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-50.0, 0.0, -60.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-90.0, 0.0, -80.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-50.0, 0.0, -80.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-90.0, -20.0, -60.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-50.0, -20.0, -60.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-90.0, -20.0, -80.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-50.0, -20.0, -80.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	
+	
+	brush_CreateBrush(vec3(-80.0, -20.0, -50.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, -20.0, -50.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	
+	brush_CreateBrush(vec3(-80.0, -30.0, -80.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-80.0, -30.0, -60.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, -30.0, -80.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, -30.0, -60.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	
+	
+	brush_CreateBrush(vec3(-80.0, 10.0, -80.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-80.0, 10.0, -60.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, 10.0, -80.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, 10.0, -60.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
+	
+	
+	brush_CreateBrush(vec3(-80.0, -20.0, -90.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, -20.0, -90.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	
+	brush_CreateBrush(vec3(-80.0, 0.0, -90.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, 0.0, -90.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	
+	//light_CreateLight("light0", &r, vec3(-70.0, -10.0, -70.0), vec3(1.0, 1.0, 1.0), 60.0, 20.0);
+	
+	
+	
+	
+	
+	
 	brush_CreateBrush(vec3(30.0, 0.0, 0.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
-	brush_CreateBrush(vec3(-30.0, 0.0, 0.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
 	brush_CreateBrush(vec3(30.0, 0.0, 20.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
 	brush_CreateBrush(vec3(-30.0, 0.0, 20.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
 	brush_CreateBrush(vec3(30.0, 0.0, -20.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
 	brush_CreateBrush(vec3(-30.0, 0.0, -20.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	
+	//brush_CreateBrush(vec3(-30.0, 0.0, 0.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
 	
 	
 	brush_CreateBrush(vec3(0.0, 0.0, 30.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
@@ -254,6 +409,7 @@ void editor_Init()
 	
 	
 	brush_CreateBrush(vec3(29.0, -6.0, 0.0), &r, vec3(5.0, 5.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(29.0, 6.0, 0.0), &r, vec3(5.0, 5.0, 10.0), BRUSH_CUBE);
 	
 	
 	/* floor */
@@ -278,6 +434,13 @@ void editor_Init()
 	brush_CreateBrush(vec3(0.0, 10.0, -20.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
 	brush_CreateBrush(vec3(-20.0, 10.0, -20.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
 	
+	
+	mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
+	brush_CreateBrush(vec3(-40.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
+	brush_CreateBrush(vec3(-60.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
+	brush_CreateBrush(vec3(-80.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
+	
+	
 	#endif
 	
 	#if 0
@@ -296,6 +459,19 @@ void editor_Init()
 	brush_CreateBrush(vec3(0.0, 60.0, -10.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
 	brush_CreateBrush(vec3(0.0, 65.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
 	
+	
+	light_CreateLight("light12", &r, vec3(0.0, 2.5, -4.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light12", &r, vec3(0.0, 7.5, -4.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light12", &r, vec3(0.0, 12.5, -4.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light12", &r, vec3(0.0, 17.5, -4.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	/*light_CreateLight("light12", &r, vec3(0.0, 22.5, -4.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light12", &r, vec3(0.0, 27.5, -4.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light12", &r, vec3(0.0, 32.5, -4.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light12", &r, vec3(0.0, 37.5, -4.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light12", &r, vec3(0.0, 42.5, -4.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light12", &r, vec3(0.0, 47.5, -4.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light12", &r, vec3(0.0, 52.5, -4.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light12", &r, vec3(0.0, 57.5, -4.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);*/
 	
 	brush_CreateBrush(vec3(5.0, 0.0, 0.0), &r, vec3(0.25, 10.0, 15.0), BRUSH_CUBE);
 	brush_CreateBrush(vec3(-5.0, 0.0, 0.0), &r, vec3(0.25, 10.0, 15.0), BRUSH_CUBE);
@@ -316,21 +492,22 @@ void editor_Init()
 	brush_CreateBrush(vec3(0.0, 60.0, 5.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
 	brush_CreateBrush(vec3(0.0, 60.0, -15.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);	
 	
-	mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
-	brush_CreateBrush(vec3(0.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
+	/*mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
+	brush_CreateBrush(vec3(0.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);*/
 	
 	
-	light_CreateLight("light0", &r, vec3(0.0, 0.0, 24.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	
+	
+	
+	/*light_CreateLight("light0", &r, vec3(0.0, 0.0, 24.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
 	light_CreateLight("light1", &r, vec3(24.0, 0.0, 0.0), vec3(1.0, 0.0, 0.0), 10.0, 20.0);
 	light_CreateLight("light2", &r, vec3(-24.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
 	light_CreateLight("light3", &r, vec3(0.0, 0.0, -24.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
-	
 	
 	light_CreateLight("light4", &r, vec3(0.0, 20.0, 24.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
 	light_CreateLight("light5", &r, vec3(24.0, 20.0, 0.0), vec3(1.0, 0.0, 0.0), 10.0, 20.0);
 	light_CreateLight("light6", &r, vec3(-24.0, 20.0, 0.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
 	light_CreateLight("light7", &r, vec3(0.0, 20.0, -24.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
-	
 	
 	light_CreateLight("light8", &r, vec3(0.0, 40.0, 24.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
 	light_CreateLight("light9", &r, vec3(24.0, 40.0, 0.0), vec3(1.0, 0.0, 0.0), 10.0, 20.0);
@@ -340,8 +517,14 @@ void editor_Init()
 	light_CreateLight("light8", &r, vec3(0.0, 60.0, 24.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
 	light_CreateLight("light9", &r, vec3(24.0, 60.0, 0.0), vec3(1.0, 0.0, 0.0), 10.0, 20.0);
 	light_CreateLight("light10", &r, vec3(-24.0, 60.0, 0.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
-	light_CreateLight("light11", &r, vec3(0.0, 60.0, -24.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light11", &r, vec3(0.0, 60.0, -24.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);*/
 	
+	/*light_CreateLight("light12", &r, vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light13", &r, vec3(0.0, 20.0, 0.0), vec3(1.0, 0.0, 0.0), 10.0, 20.0);
+	light_CreateLight("light14", &r, vec3(0.0, 40.0, 0.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light15", &r, vec3(0.0, 60.0, 0.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light15", &r, vec3(0.0, 80.0, 0.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);
+	light_CreateLight("light15", &r, vec3(0.0, 100.0, 0.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);*/
 	#endif 
 	
 	//widget_t *w = gui_CreateWidget("widget0", 100, 0, 400, 50);
@@ -352,61 +535,7 @@ void editor_Init()
 	handle_3d_position_mode = HANDLE_3D_MEDIAN_POINT;
 	handle_3d_mode = HANDLE_3D_TRANSLATION;
 	
-	
-	/*bsp_triangle_t tri;
-	bsp_triangle_t splitter;
-	bsp_triangle_t *ret;
-	
-	
-	tri.a = vec3(-1.0, 0.0, 0.0);
-	tri.b = vec3(0.2, 1.0, 0.0);
-	tri.c = vec3(1.0, 0.0, 0.0);
-	tri.normal = vec3(0.0, 0.0, 1.0);
-	
-	splitter.a = vec3(0.0, 0.0, -1.0);
-	splitter.b = vec3(0.0, 0.0, 1.0);
-	splitter.c = vec3(0.0, 1.0, 0.0);
-	splitter.normal = vec3(-1.0, 0.0, 0.0);
-	
-	bsp_SplitTriangle(&tri, &splitter, &ret);*/
-	
-	
-	/*bsp_edge_t front;
-	bsp_edge_t back;
-	int q;
-	
-	q = bsp_ClipEdge(vec3(0.0, 1.0, 0.0), vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.0), vec3(1.0, 0.0, 0.0), &front, &back);
-	
-	if(q & POINT_FRONT)
-	{
-		printf("edge in front of plane!\n[%f %f %f]   [%f %f %f]\n", front.a.x, front.a.y, front.a.z, front.b.x, front.b.y, front.b.z);
-	}
-	
-	if(q & POINT_BACK)
-	{
-		printf("edge in back of plane!\n[%f %f %f]   [%f %f %f]\n", back.a.x, back.a.y, back.a.z, back.b.x, back.b.y, back.b.z);
-	}*/
-	
-	//vec3_t rrr = cross(vec3(0.0, 0.0, 1.0), vec3(1.0, 0.0, 0.0));
-	
-	
-	//printf("[%f %f %f]\n", rrr.x, rrr.y, rrr.z);
-	
-	//printf("%f\n", get_angle(vec3(0.0, -0.70710659, 0.707106948), vec3(0.0, -0.707106769, -0.707106769), vec3(1.0, 0.0, 0.0)));
-	
-	//printf("%f\n", get_angle(vec3(0.0, 0.0, 1.0), vec3(-1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0)));
-	
-	//printf("%f\n", get_angle(vec3(0.0, 0.70710665, 0.707106829), vec3(0.0, -0.70710665, 0.707106829), vec3(-1.0, 0.0, 0.0)));
-	
-	
-	/*texture_LoadTexture("textures\\env\\aliencube_neg_z.jpg", "negz");
-	texture_LoadTexture("textures\\env\\aliencube_pos_z.jpg", "posz");
-	texture_LoadTexture("textures\\env\\aliencube_neg_x.jpg", "negx");
-	texture_LoadTexture("textures\\env\\aliencube_pos_x.jpg", "posx");
-	texture_LoadTexture("textures\\env\\aliencube_neg_y.jpg", "negy");
-	texture_LoadTexture("textures\\env\\aliencube_pos_y.jpg", "posy");*/
-	
-	
+		
 	texture_LoadCubeTexture("textures\\env\\aliencube_pos_x.jpg;"
 					        "textures\\env\\aliencube_neg_x.jpg;"
 					        "textures\\env\\aliencube_pos_y.jpg;"
@@ -445,6 +574,8 @@ void editor_Main(float delta_time)
 	static float pitch = 0.0;
 	
 	static float r = 0.0;
+	
+	//printf("%f\n", delta_time);
 	
 	mat3_t rot = mat3_t_id();
 	
@@ -487,8 +618,8 @@ void editor_Main(float delta_time)
 		}
 		
 		
-		yaw -= normalized_mouse_x * 0.25;
-		pitch += normalized_mouse_y * 0.25;
+		yaw -= (normalized_mouse_x) * 0.5;
+		pitch += (normalized_mouse_y) * 0.5;
 		
 		//printf("%f %f\n", yaw, pitch);
 		
@@ -506,7 +637,7 @@ void editor_Main(float delta_time)
 		//translation = vec3(0.0, 0.0, 0.0);
 		
 		
-		if(input_GetKeyStatus(SDL_SCANCODE_H) & KEY_JUST_PRESSED)
+		/*if(input_GetKeyStatus(SDL_SCANCODE_H) & KEY_JUST_PRESSED)
 		{
 			brush_CreateBrush(vec3(0.0, 0.0, 0.0), &rot, vec3(10.0, 0.5, 10.0), BRUSH_CUBE);
 		}
@@ -519,7 +650,7 @@ void editor_Main(float delta_time)
 		if(input_GetKeyStatus(SDL_SCANCODE_K) & KEY_JUST_PRESSED)
 		{
 			brush_CreateBrush(vec3(0.0, 0.0, 0.0), &rot, vec3(0.5, 10.0, 10.0), BRUSH_CUBE);
-		}
+		}*/
 		
 		
 		
@@ -564,7 +695,7 @@ void editor_Main(float delta_time)
 		
 		if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED)
 		{
-			velocity.y = 0.2;
+			velocity.y = 0.08;
 		}
 		
 		if(bm_mouse & MOUSE_WHEEL_UP)
@@ -583,13 +714,13 @@ void editor_Main(float delta_time)
 		
 		//printf("before: [%f %f %f]\n", editor_camera->world_position.x, editor_camera->world_position.y, editor_camera->world_position.z);
 		
-		translation.x *= camera_speed;
-		translation.y *= camera_speed;
-		translation.z *= camera_speed;
+		translation.x *= camera_speed * delta_time * 0.045;
+		translation.y *= camera_speed * delta_time * 0.045;
+		translation.z *= camera_speed * delta_time * 0.045;
 		
 		velocity.x = translation.x;
 		velocity.y = translation.y;
-		//velocity.y -= 0.0098;
+		//velocity.y -= 0.0098 * delta_time * 0.01;
 		velocity.z = translation.z;
 		
 		//bsp_Collide(&editor_camera->world_position, translation);
@@ -622,11 +753,11 @@ void editor_Main(float delta_time)
 		//camera_TranslateCamera(editor_camera, translation, 1.0, 0);
 		
 		
-		//editor_camera->world_position.y += 3.5;
+		//editor_camera->world_position.y += 1.5;
 		
 		camera_ComputeWorldToCameraMatrix(editor_camera);
 		
-		//editor_camera->world_position.y -= 3.5;
+		//editor_camera->world_position.y -= 1.5;
 		
 	}
 	else
@@ -638,11 +769,12 @@ void editor_Main(float delta_time)
 		{
 			if(input_GetKeyStatus(SDL_SCANCODE_C) & KEY_JUST_PRESSED)
 			{
-				bsp_CompileBsp();
+				bsp_CompileBsp(0);
 				//indirect_BuildVolumes();
 			}
 			else if(input_GetKeyStatus(SDL_SCANCODE_S) & KEY_JUST_PRESSED)
 			{
+				renderer_Fullscreen(1);
 				/* save project... */
 			}
 			else if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED)
@@ -913,7 +1045,7 @@ void editor_EnablePicking()
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, pick_framebuffer_id);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, pick_framebuffer_id);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	glViewport(0, 0, window_width, window_height);
+	glViewport(0, 0, r_width, r_height);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);	
 }
 
@@ -998,8 +1130,8 @@ int editor_Pick(pick_record_t *record)
 	glDisable(GL_POINT_SMOOTH);
 	glPointSize(1.0);
 	
-	x = window_width * (normalized_mouse_x * 0.5 + 0.5);
-	y = window_height * (normalized_mouse_y * 0.5 + 0.5);
+	x = r_width * (normalized_mouse_x * 0.5 + 0.5);
+	y = r_height * (normalized_mouse_y * 0.5 + 0.5);
 	glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, q);
 	
 	//printf("[%d %d %d %d]\n", *(int *)&q[0], *(int *)&q[1], *(int *)&q[2], *(int *)&q[3]);
@@ -1193,8 +1325,8 @@ int editor_Check3dHandle()
 			
 		
 		
-		x = window_width * (normalized_mouse_x * 0.5 + 0.5);
-		y = window_height * (normalized_mouse_y * 0.5 + 0.5);
+		x = r_width * (normalized_mouse_x * 0.5 + 0.5);
+		y = r_height * (normalized_mouse_y * 0.5 + 0.5);
 		glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, q);
 		
 		bm_handle_3d_flags;

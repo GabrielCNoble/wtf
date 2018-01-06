@@ -29,6 +29,7 @@ int material_LoadMaterial(char *file_name);
 
 void material_DeleteMaterialByIndex(int material_index);
 
+void material_SetMaterial(int material_index);
 
 
 

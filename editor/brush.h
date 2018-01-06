@@ -5,12 +5,16 @@
 #include "vector_types.h"
 #include "mesh.h"
 #include "world.h"
+#include "bsp_common.h"
+//#include "bsp_cmp.h"
 
 enum BRUSH_TYPE
 {
 	BRUSH_CUBE = 1,
 	BRUSH_CONE,
 	BRUSH_CYLINDER,
+	BRUSH_BOUNDS,
+	BRUSH_COLLISION,
 };
 
 
@@ -18,11 +22,11 @@ enum BRUSH_TYPE
 
 /* A brush_triangle_t groups three vertices into a triangle, and links them to a 
 triangle_group_t. */
-typedef struct
+/*typedef struct
 {
 	int first_vertex;
 	int triangle_group_index;			
-}brush_triangle_t;
+}brush_triangle_t;*/
 
 
 /* Each brush_t contains its own GL_ELEMENT_ARRAY_BUFFER, in order to
@@ -44,14 +48,16 @@ typedef struct
 												       to avoid doing a potentially expensive 
 													   update on a global group list when a brush 
 													   is added/removed to/from the world... */
-	brush_triangle_t *triangles;
+	bsp_striangle_t *triangles;
 	vertex_t *vertices;
-
+	
+	struct bsp_polygon_t *polygons;						/* HACK!! */
 	
 	int max_vertexes;								/* max number before a gpu realloc is needed... */
 	int vertex_count;
 	int start;
 	int handle;
+	int type;
 	unsigned int element_buffer;
 }brush_t;
 

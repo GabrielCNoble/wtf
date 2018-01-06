@@ -7,6 +7,7 @@
 #include "brush.h"
 #include "gpu.h"
 #include "vector.h"
+#include "bsp_cmp.h"
 
 
 /* keeping several copies of the vertices is necessary to enable multiple normals per vertex... */
@@ -115,6 +116,7 @@ vec3_t cube_bmodel_collision_normals[] =
 static int brush_list_size;
 int brush_count;
 brush_t *brushes;
+brush_t *expanded_brushes = NULL;
 
 static unsigned int element_buffer;
 
@@ -147,6 +149,9 @@ void brush_Finish()
 	
 	free(brushes);
 	
+	if(expanded_brushes)
+		free(expanded_brushes);
+	
 	glDeleteBuffers(1, &element_buffer);
 }
 
@@ -159,6 +164,7 @@ int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short 
 	int brush_index;
 	int i;
 	int c;
+	int default_group;
 	float *vertex_positions;
 	float *vertex_normals;
 	int vertex_count;
@@ -200,18 +206,23 @@ int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short 
 	//brush->collision_vertices = malloc(sizeof(vec3_t ) * CUBE_BMODEL_COLLISION_VERTEX_COUNT);
 	//brush->collision_normals = malloc(sizeof(vec3_t) * CUBE)
 	
-	
+	brush->type = type;
 	brush->position = position;
 	brush->scale = scale;
 	brush->orientation = *orientation;
 	brush->vertex_count = vertex_count;
 	brush->vertices = malloc(sizeof(vertex_t) * vertex_count);
-	brush->triangles = malloc(sizeof(brush_triangle_t) * (vertex_count / 3));
+	brush->triangles = malloc(sizeof(bsp_striangle_t) * (vertex_count / 3));
+	brush->polygons = NULL;
 	
 	brush->max_triangle_groups = 4;
 	brush->triangle_groups = malloc(sizeof(triangle_group_t) * brush->max_triangle_groups);
 	
 	brush->triangle_group_count = 1;
+	
+	//if(type == BRUSH_BOUNDS) brush->triangle_groups[0].material_index = -1;
+	//else brush->triangle_groups[0].material_index = default_material;
+	
 	brush->triangle_groups[0].material_index = default_material;
 	brush->triangle_groups[0].start = 0;
 	brush->triangle_groups[0].next = 0;
@@ -225,12 +236,15 @@ int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brush->element_buffer);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * brush->max_vertexes, NULL, GL_DYNAMIC_DRAW);
 	
+	if(type == BRUSH_BOUNDS) default_group = -1;
+	else default_group = 0;
+	
 	for(i = 0; i < vertex_count; i++)
 	{
 		if(!(i % 3))
 		{
 			brush->triangles[i / 3].first_vertex = i;
-			brush->triangles[i / 3].triangle_group_index = 0;		/* only triangle group in this brush upon creation... */
+			brush->triangles[i / 3].triangle_group = default_group;		/* only triangle group in this brush upon creation... */
 		}
 		
 		p.x = vertex_positions[i * 3	] * scale.x;
@@ -514,7 +528,7 @@ void brush_UpdateBrushElementBuffer(brush_t *brush)
 	for(i = 0; i < c; i++)
 	{
 		/* the triangle_group_t of this triangle... */
-		triangle_group = brush->triangles[i].triangle_group_index;
+		triangle_group = brush->triangles[i].triangle_group;
 		
 		/* the offset within the GL_ELEMENT_ARRAY_BUFFER of this brush... */
 		index_start = brush->triangle_groups[triangle_group].start;

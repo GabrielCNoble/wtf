@@ -12,7 +12,16 @@ typedef struct bsp_portal_t
 	bsp_leaf_t *leaf1;
 	bsp_polygon_t *portal_polygon;
 	float approx_area;
+	short pass_through0;
+	short pass_through1;
+	short go_through;
 }bsp_portal_t;
+
+typedef struct
+{
+	vec3_t normal;
+	vec3_t point;
+}bsp_clipplane_t;
 
 enum PORTAL_PLANE
 {
@@ -51,6 +60,14 @@ void bsp_PvsForLeaf(bsp_leaf_t *leaf);
 void bsp_PvsForLeaves(bsp_node_t *bsp, bsp_portal_t *portals);
 
 void bsp_CalculatePvs(bsp_node_t *bsp);
+
+void bsp_ApproximatePvsForLeaf(bsp_leaf_t *src_leaf, vec3_t *src_center, bsp_node_t *node, bsp_node_t *bsp);
+
+void bsp_ApproximatePvsForLeaves(bsp_node_t *node, bsp_node_t *bsp, int leaf_count);
+
+void bsp_CalculateApproximatePvs(bsp_node_t *bsp);
+
+int bsp_LineOfSight(bsp_node_t *root, vec3_t *start, vec3_t *end);
 
 void bsp_DrawPortals();
 

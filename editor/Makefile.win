@@ -1,17 +1,17 @@
 # Project: wtf_editor
-# Makefile created by Dev-C++ 5.11
+# Makefile created by Dev-C++ 5.10
 
 CPP      = g++.exe -D__DEBUG__
 CC       = gcc.exe -D__DEBUG__
 WINDRES  = windres.exe
-OBJ      = main.o shader.o r_main.o engine.o input.o mesh.o camera.o gpu.o material.o texture.o soil/image_DXT.o soil/image_helper.o soil/SOIL.o soil/stb_image_aug.o l_main.o sound.o editor.o brush.o world.o collision.o gui.o bsp.o bsp_cmp.o gmath/frustum.o gmath/line.o gmath/matrix.o gmath/plane.o gmath/triangle.o gmath/vector.o r_editor.o pvs.o indirect.o r_skybox.o l_cache.o
-LINKOBJ  = main.o shader.o r_main.o engine.o input.o mesh.o camera.o gpu.o material.o texture.o soil/image_DXT.o soil/image_helper.o soil/SOIL.o soil/stb_image_aug.o l_main.o sound.o editor.o brush.o world.o collision.o gui.o bsp.o bsp_cmp.o gmath/frustum.o gmath/line.o gmath/matrix.o gmath/plane.o gmath/triangle.o gmath/vector.o r_editor.o pvs.o indirect.o r_skybox.o l_cache.o
-LIBS     = -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -L"SDL/lib/mingw" -L"GLEW/lib" -L"OPENAL/Win32" -L"gmath"  -lmingw32 -lopengl32 -lSDL2main -lSDL2 -lglew32 -lOpenAL32 -m32 -g3
-INCS     = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include" -I"SDL/include" -I"GLEW/include" -I"OPENAL/include" -I"soil" -I"gmath"
-CXXINCS  = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include/c++" -I"SDL/include" -I"GLEW/include" -I"OPENAL/include" -I"soil" -I"gmath"
+OBJ      = main.o shader.o r_main.o engine.o input.o mesh.o camera.o gpu.o material.o texture.o l_main.o sound.o editor.o brush.o world.o gui.o bsp.o bsp_cmp.o r_editor.o pvs.o indirect.o r_skybox.o l_cache.o player.o physics.o ../common/gmath/frustum.o ../common/gmath/line.o ../common/gmath/matrix.o ../common/gmath/plane.o ../common/gmath/triangle.o ../common/gmath/vector.o ../common/soil/image_DXT.o ../common/soil/image_helper.o ../common/soil/SOIL.o ../common/soil/stb_image_aug.o
+LINKOBJ  = main.o shader.o r_main.o engine.o input.o mesh.o camera.o gpu.o material.o texture.o l_main.o sound.o editor.o brush.o world.o gui.o bsp.o bsp_cmp.o r_editor.o pvs.o indirect.o r_skybox.o l_cache.o player.o physics.o ../common/gmath/frustum.o ../common/gmath/line.o ../common/gmath/matrix.o ../common/gmath/plane.o ../common/gmath/triangle.o ../common/gmath/vector.o ../common/soil/image_DXT.o ../common/soil/image_helper.o ../common/soil/SOIL.o ../common/soil/stb_image_aug.o
+LIBS     = -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib32" -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -L"../common/SDL/lib/mingw" -L"../common/OPENAL/Win32" -L"../common/GLEW/lib"  -lmingw32 -lopengl32 -lSDL2main -lSDL2 -lglew32 -lOpenAL32 -m32 -g3
+INCS     = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include" -I"../common/SDL/include" -I"../common/GLEW/include" -I"../common/soil" -I"../common/gmath" -I"../common/OPENAL/include"
+CXXINCS  = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include/c++" -I"../common/SDL/include" -I"../common/GLEW/include" -I"../common/soil" -I"../common/gmath" -I"../common/OPENAL/include"
 BIN      = wtf_editor.exe
-CXXFLAGS = $(CXXINCS) -msse2 -m32 -g3
-CFLAGS   = $(INCS) -msse2 -m32 -g3 -masm=intel
+CXXFLAGS = $(CXXINCS) -msse3 -m32 -g3
+CFLAGS   = $(INCS) -msse3 -m32 -g3 -masm=intel
 RM       = rm.exe -f
 
 .PHONY: all all-before all-after clean clean-custom
@@ -54,18 +54,6 @@ material.o: material.c
 texture.o: texture.c
 	$(CC) -c texture.c -o texture.o $(CFLAGS)
 
-soil/image_DXT.o: soil/image_DXT.c
-	$(CC) -c soil/image_DXT.c -o soil/image_DXT.o $(CFLAGS)
-
-soil/image_helper.o: soil/image_helper.c
-	$(CC) -c soil/image_helper.c -o soil/image_helper.o $(CFLAGS)
-
-soil/SOIL.o: soil/SOIL.c
-	$(CC) -c soil/SOIL.c -o soil/SOIL.o $(CFLAGS)
-
-soil/stb_image_aug.o: soil/stb_image_aug.c
-	$(CC) -c soil/stb_image_aug.c -o soil/stb_image_aug.o $(CFLAGS)
-
 l_main.o: l_main.c
 	$(CC) -c l_main.c -o l_main.o $(CFLAGS)
 
@@ -81,9 +69,6 @@ brush.o: brush.c
 world.o: world.c
 	$(CC) -c world.c -o world.o $(CFLAGS)
 
-collision.o: collision.c
-	$(CC) -c collision.c -o collision.o $(CFLAGS)
-
 gui.o: gui.c
 	$(CC) -c gui.c -o gui.o $(CFLAGS)
 
@@ -92,24 +77,6 @@ bsp.o: bsp.c
 
 bsp_cmp.o: bsp_cmp.c
 	$(CC) -c bsp_cmp.c -o bsp_cmp.o $(CFLAGS)
-
-gmath/frustum.o: gmath/frustum.c
-	$(CC) -c gmath/frustum.c -o gmath/frustum.o $(CFLAGS)
-
-gmath/line.o: gmath/line.c
-	$(CC) -c gmath/line.c -o gmath/line.o $(CFLAGS)
-
-gmath/matrix.o: gmath/matrix.c
-	$(CC) -c gmath/matrix.c -o gmath/matrix.o $(CFLAGS)
-
-gmath/plane.o: gmath/plane.c
-	$(CC) -c gmath/plane.c -o gmath/plane.o $(CFLAGS)
-
-gmath/triangle.o: gmath/triangle.c
-	$(CC) -c gmath/triangle.c -o gmath/triangle.o $(CFLAGS)
-
-gmath/vector.o: gmath/vector.c
-	$(CC) -c gmath/vector.c -o gmath/vector.o $(CFLAGS)
 
 r_editor.o: r_editor.c
 	$(CC) -c r_editor.c -o r_editor.o $(CFLAGS)
@@ -125,3 +92,39 @@ r_skybox.o: r_skybox.c
 
 l_cache.o: l_cache.c
 	$(CC) -c l_cache.c -o l_cache.o $(CFLAGS)
+
+player.o: player.c
+	$(CC) -c player.c -o player.o $(CFLAGS)
+
+physics.o: physics.c
+	$(CC) -c physics.c -o physics.o $(CFLAGS)
+
+../common/gmath/frustum.o: ../common/gmath/frustum.c
+	$(CC) -c ../common/gmath/frustum.c -o ../common/gmath/frustum.o $(CFLAGS)
+
+../common/gmath/line.o: ../common/gmath/line.c
+	$(CC) -c ../common/gmath/line.c -o ../common/gmath/line.o $(CFLAGS)
+
+../common/gmath/matrix.o: ../common/gmath/matrix.c
+	$(CC) -c ../common/gmath/matrix.c -o ../common/gmath/matrix.o $(CFLAGS)
+
+../common/gmath/plane.o: ../common/gmath/plane.c
+	$(CC) -c ../common/gmath/plane.c -o ../common/gmath/plane.o $(CFLAGS)
+
+../common/gmath/triangle.o: ../common/gmath/triangle.c
+	$(CC) -c ../common/gmath/triangle.c -o ../common/gmath/triangle.o $(CFLAGS)
+
+../common/gmath/vector.o: ../common/gmath/vector.c
+	$(CC) -c ../common/gmath/vector.c -o ../common/gmath/vector.o $(CFLAGS)
+
+../common/soil/image_DXT.o: ../common/soil/image_DXT.c
+	$(CC) -c ../common/soil/image_DXT.c -o ../common/soil/image_DXT.o $(CFLAGS)
+
+../common/soil/image_helper.o: ../common/soil/image_helper.c
+	$(CC) -c ../common/soil/image_helper.c -o ../common/soil/image_helper.o $(CFLAGS)
+
+../common/soil/SOIL.o: ../common/soil/SOIL.c
+	$(CC) -c ../common/soil/SOIL.c -o ../common/soil/SOIL.o $(CFLAGS)
+
+../common/soil/stb_image_aug.o: ../common/soil/stb_image_aug.c
+	$(CC) -c ../common/soil/stb_image_aug.c -o ../common/soil/stb_image_aug.o $(CFLAGS)

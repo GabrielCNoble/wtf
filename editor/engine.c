@@ -22,18 +22,18 @@ void engine_Init(int width, int height, int init_mode)
 	int camera_index;
 	
 	renderer_Init(width, height, init_mode);
-	shader_Init();
+	shader_Init("shaders");
 	input_Init();
 	gpu_Init();
 	mesh_Init();
 	light_Init();
 	world_Init();
 	camera_Init();
-	//player_Init();
+	player_Init();
 	sound_Init();
-	collision_Init();
+	//collision_Init();
 	gui_Init();
-	//physics_Init();
+	physics_Init();
 	//projectile_Init();
 	brush_Init();
 	material_Init();
@@ -45,8 +45,9 @@ void engine_Init(int width, int height, int init_mode)
 	
 	performance_frequency = SDL_GetPerformanceFrequency();
 	
-	start_delta = 0.0;
-	end_delta = 0.0;
+	start_delta = 0;
+	end_delta = 0;
+	delta_time = 0.0;
 }
 
 void engine_Finish()
@@ -61,12 +62,12 @@ void engine_Finish()
 	light_Finish();
 	texture_Finish();
 	sound_Finish();
-	collision_Finish();
+	//collision_Finish();
 	gui_Finish();
 	bsp_Finish();
-	//player_Finish();
+	player_Finish();
 	//projectile_Finish();
-	//physics_Finish();
+	physics_Finish();
 	brush_Finish();
 	gpu_Finish();
 	renderer_Finish();
@@ -79,16 +80,18 @@ void engine_MainLoop()
 		engine_StartUp();
 	}
 	
+	
+	
 	while(engine_state)
 	{
 		engine_UpdateDeltaTime();
 		renderer_OpenFrame();
 		input_GetInput();
 		gui_ProcessGUI();
-		engine_GameMain(0.0);
+		engine_GameMain(delta_time);
 		//editor_Main();				
 		
-		/*game_main(delta_time);
+		/*game_main(delta_time);*/
 		
 		if(engine_state == ENGINE_PLAYING)
 		{
@@ -96,15 +99,12 @@ void engine_MainLoop()
 			player_ProcessAI(delta_time);
 			player_UpdatePlayers(delta_time);
 			physics_ProcessCollisions(delta_time);
-			projectile_UpdateProjectiles();
-		}*/
+			//projectile_UpdateProjectiles();
+		}
 		
 		sound_ProcessSound();
 		
-		light_UpdateLights();
-
-		//world_VisibleLeaves();
-		
+		light_UpdateLights();	
 		world_VisibleWorld();
 		light_VisibleLights();
 		

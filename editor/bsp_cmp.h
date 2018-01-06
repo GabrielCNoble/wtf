@@ -32,6 +32,17 @@ typedef struct bsp_polygon_t
 	vec3_t normal;
 }bsp_polygon_t;
 
+
+typedef struct bsp_edge_t
+{
+	struct bsp_edge_t *next;
+	vec3_t v0;
+	vec3_t v1;
+	float dot;
+	bsp_polygon_t *polygon0;
+	bsp_polygon_t *polygon1;
+}bsp_edge_t; 
+
 #define MAX_PORTALS_PER_LEAF 512
 
 typedef struct bsp_leaf_t
@@ -48,6 +59,7 @@ typedef struct bsp_leaf_t
 	int portal_count;
 	struct bsp_portal_t *portals[MAX_PORTALS_PER_LEAF];
 	
+	//int pvs_size;
 	unsigned char *pvs;
 	
 	
@@ -85,6 +97,10 @@ int bsp_SplitPolygon(bsp_polygon_t *polygon, vec3_t point, vec3_t normal, bsp_po
 
 int bsp_TrimPolygon(bsp_polygon_t *polygon, vec3_t point, vec3_t normal);
 
+bsp_polygon_t *bsp_DeepCopyPolygon(bsp_polygon_t *src);
+
+bsp_polygon_t *bsp_DeepCopyPolygons(bsp_polygon_t *src);
+
 
 bsp_triangle_t *bsp_FindSplittingTriangle(bsp_triangle_t *triangles, int ignore_used);
 
@@ -92,13 +108,15 @@ bsp_polygon_t *bsp_FindSplitter(bsp_polygon_t *polygons, int ignore_used);
 
 bsp_polygon_t *bsp_BuildPolygonsFromBrush(brush_t *brush);
 
+bsp_polygon_t *bsp_BuildPolygonsFromTriangles(bsp_triangle_t *triangles);
+
 bsp_triangle_t *bsp_BuildTrianglesFromBrushes();
 
 bsp_polygon_t *bsp_ClipPolygonToBsp(bsp_node_t *bsp, bsp_polygon_t *polygon, int copy);
 
 bsp_polygon_t *bsp_ClipBspToBsp(bsp_node_t *bsp, bsp_node_t *input);
 
-bsp_polygon_t *bsp_ClipBrushes();
+bsp_polygon_t *bsp_ClipBrushes(brush_t *brushes, int brush_count);
 
 void bsp_ClipTriangleToSolidLeaves(bsp_node_t *root, bsp_triangle_t *triangle);
 
@@ -108,11 +126,17 @@ void bsp_CountNodesAndLeaves(bsp_node_t *bsp, int *leaves, int *nodes);
 
 void bsp_BuildTriangleGroups(bsp_node_t *root, triangle_group_t **groups, int *count);
 
-//void bsp_BuildNodePolygons(bsp_node_t *root, bsp_polygon_t **node_polygons);
+void bsp_RemoveExterior(bsp_node_t *bsp);
 
-void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, bsp_pnode_t **lnodes, int *lnode_count, bsp_dleaf_t **lleaves, int *lleaves_count, triangle_group_t *groups, int tri_group_count);
+void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, bsp_pnode_t **lnodes, int *lnode_count, bsp_dleaf_t **lleaves, int *lleaves_count, triangle_group_t *groups, int tri_group_count, int create_leaves);
 
+bsp_edge_t *bsp_BuildBevelEdges(bsp_polygon_t *brush_polygons);
 
+bsp_edge_t *bsp_BuildEdgesFromBrushes();
+
+void bsp_ExpandBrushes(vec3_t box_extents);
+
+void bsp_BuildCollisionBsp();
 
 
 void bsp_MergeLeafTriangles(bsp_node_t *root);
@@ -129,9 +153,11 @@ void bsp_DeleteSolid(bsp_node_t *root);
 
 void bsp_DeleteSolidLeaf(bsp_node_t *root);
 
-void bsp_CompileBsp();
+void bsp_CompileBsp(int remove_outside);
 
 int bsp_CompileBspAsync(void *param);
+
+void bsp_DrawExpandedBrushes();
 
 
 
