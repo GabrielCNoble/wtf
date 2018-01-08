@@ -34,6 +34,8 @@ int bsp_FirstHit(bsp_pnode_t *bsp, vec3_t start, vec3_t end, trace_t *trace);
 
 int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace);
 
+int bsp_TryStepDown(vec3_t *position, vec3_t *velocity, trace_t *trace);
+
 void bsp_Move(vec3_t *position, vec3_t *velocity);
 
 bsp_dleaf_t *bsp_GetCurrentLeaf(bsp_pnode_t *node, vec3_t camera_position);

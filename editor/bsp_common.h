@@ -69,7 +69,8 @@ typedef struct
 	vec3_t normal;
 	//vec3_t point;
 	float dist;									
-	unsigned short child[2];		/* relative displacement... */
+	unsigned short child[2];		/* relative displacement... */	 /* given that the front child will be always one position away, it's
+																		only necessary to keep the stride to the back child. */
 }bsp_pnode_t;	/* would like to shrink this from 20 to 16 bytes... */
 
 typedef struct
@@ -103,7 +104,6 @@ enum BSP_LEAF_FLAGS
 enum BSP_NODE_TYPE
 {
 	BSP_LEAF = 1,
-	BSP_SHORT_LEAF,
 	BSP_NODE,
 
 };

@@ -27,6 +27,8 @@ enum PLAYER_MOVEMENT
 	PLAYER_FLYING = 1 << 5,
 	PLAYER_JUMPED = 1 << 6,
 	PLAYER_FIRED = 1 << 7,
+	PLAYER_ON_GROUND = 1 << 8,
+	PLAYER_STEPPING_UP = 1 << 9,
 };
 
 
@@ -34,6 +36,7 @@ enum PLAYER_MOVEMENT
 typedef struct
 {
 	mat3_t player_orientation;
+	vec3_t collision_box_position;
 	vec3_t player_position;
 	vec3_t delta;
 	
@@ -75,9 +78,9 @@ void player_ProcessActivePlayer(float delta_time);
 
 void player_ProcessAI(float delta_time);
 
-void player_UpdatePlayers(float delta_time);
+void player_UpdatePlayers(double delta_time);
 
-void player_Move(player_t *player, vec3_t *velocity);
+void player_Move(player_t *player);
 
 void player_TransformPlayers();
 

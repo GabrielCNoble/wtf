@@ -456,6 +456,7 @@ void renderer_DrawFrame()
 	renderer_ZPrePass();
 	renderer_DrawSkyBox();
 	renderer_DrawWorld();
+	renderer_DrawPlayers();
 	//renderer_DrawActivePlayer();
 	//renderer_DrawPlayers();
 	/*renderer_DrawWorldDeferred();	
@@ -821,6 +822,8 @@ void renderer_DrawGUI()
 	int b_do_top = 0;
 	widget_t *widget_stack[128];
 	button_t *button;
+	checkbox_t *checkbox;
+	dropdown_t *dropdown;
 	
 	short x = 0;
 	short y = 0;
@@ -834,7 +837,7 @@ void renderer_DrawGUI()
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_DEPTH_TEST);
 	
-	w = last_widget;
+	w = widgets;
 	
 	_do_top:
 	
@@ -847,7 +850,7 @@ void renderer_DrawGUI()
 		{
 			if(!b_do_top)
 			{
-				w = w->prev;
+				w = w->next;
 				continue;
 			}
 		}
@@ -912,6 +915,57 @@ void renderer_DrawGUI()
 				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
 				glEnd();
 			break;
+			
+			case WIDGET_CHECKBOX:
+				checkbox = (checkbox_t *)w;
+				
+				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+				glColor3f(0.4, 0.4, 0.4);
+				glLineWidth(2.0);
+				glBegin(GL_QUADS);
+				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+				glEnd();
+				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+				glLineWidth(1.0);
+				
+				if(checkbox->bm_checkbox_flags & CHECKBOX_CHECKED)
+				{
+					glColor3f(0.5, 0.5, 0.5);
+					glBegin(GL_QUADS);
+					glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+					glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+					glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+					glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+					glEnd();
+				}
+				
+				
+				
+				
+			break;
+			
+			case WIDGET_DROPDOWN:
+				dropdown = (dropdown_t *)w;
+				
+				if(dropdown->bm_dropdown_flags & DROPDOWN_DROPPED)
+				{
+					
+				}
+				else
+				{
+					glColor3f(0.4, 0.4, 0.4);
+					glBegin(GL_QUADS);
+					glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+					glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+					glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+					glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+					glEnd();
+				}
+				
+			break;	
 		}
 		
 		
@@ -925,7 +979,7 @@ void renderer_DrawGUI()
 		
 		_advance_widget:
 		
-		w = w->prev;
+		w = w->next;
 		
 		if(!w)
 		{
@@ -1028,7 +1082,34 @@ void renderer_DrawGUI()
 
 void renderer_DrawPlayers()
 {
+	
 	int i;
+	int c = player_count;
+	
+	camera_t *active_camera = camera_GetActiveCamera();
+	
+	glUseProgram(0);
+	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
+	glPointSize(8.0);
+	glColor3f(1.0, 1.0, 1.0);
+	
+	glBegin(GL_POINTS);
+	
+	for(i = 0; i < c; i++)
+	{
+		glVertex3f(players[i].player_position.x, players[i].player_position.y, players[i].player_position.z);
+	}
+	
+	
+	glEnd();
+	glPointSize(1.0);
+	
+	
+	
+	
+	
+	
+/*	int i;
 	int c = player_count;
 	camera_t *active_camera = camera_GetActiveCamera();
 	mat4_t transform;
@@ -1054,7 +1135,7 @@ void renderer_DrawPlayers()
 	
 	for(i = 0; i < c; i++)
 	{
-		/*if(&players[i] != active_player)
+		if(&players[i] != active_player)
 		{
 
 			glLoadMatrixf(&visible_players_body_transforms[i].floats[0][0]);
@@ -1064,11 +1145,12 @@ void renderer_DrawPlayers()
 			glLoadMatrixf(&visible_players_weapon_transforms[i].floats[0][0]);
 			glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, weapon_color);
 			glDrawArrays(GL_TRIANGLES, players[i].weapon_start, players[i].weapon_count);
-		}*/
+		}
 	}
 	
 	glDisable(GL_STENCIL_TEST);
-	glDepthMask(GL_TRUE);
+	glDepthMask(GL_TRUE);*/
+
 	
 }
 

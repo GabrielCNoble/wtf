@@ -8,13 +8,13 @@
 
 #define GRAVITY 0.0098
 
-#define GROUND_FRICTION 0.85
-#define AIR_FRICTION 0.99
+#define GROUND_FRICTION 0.65
+#define AIR_FRICTION 0.01
 
 #define GROUND_DELTA_INCREMENT 0.5
-#define AIR_DELTA_INCREMENT 0.025
+#define AIR_DELTA_INCREMENT 0.25
 
-#define MAX_HORIZONTAL_DELTA 0.5
+#define MAX_HORIZONTAL_DELTA 0.065
 
 #define JUMP_DELTA 0.3 
 
@@ -75,7 +75,7 @@ void physics_Init();
 
 void physics_Finish();
 
-void physics_ProcessCollisions(float delta_time);
+void physics_ProcessCollisions(double delta_time);
 
 
 

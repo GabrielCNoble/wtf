@@ -52,6 +52,9 @@ widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h)
 	widget->h = h / 2;
 	widget->bm_flags = 0;
 	widget->type = WIDGET_NONE;
+	widget->parent = NULL;
+	//widget->first_parent = NULL;
+	widget->widget_callback = NULL;
 	
 	widget->name = strdup(name);
 	
@@ -71,9 +74,11 @@ widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h)
 	return widget;
 }
 
-button_t *gui_AddButtonToWidget(widget_t *widget, char *name, short x, short y, short w, short h, short bm_flags)
+
+button_t *gui_AddButton(widget_t *widget, char *name, short x, short y, short w, short h, short bm_flags, void (*button_callback)(widget_t *widget))
 {
 	button_t *button = NULL;
+	widget_t *wdgt;
 	
 	if(widget)
 	{
@@ -93,7 +98,9 @@ button_t *gui_AddButtonToWidget(widget_t *widget, char *name, short x, short y, 
 		button->widget.bm_flags = 0;
 		button->widget.type = WIDGET_BUTTON;
 		button->widget.name = strdup(name);
-		
+		button->widget.parent = widget;
+		button->widget.widget_callback = button_callback;
+			
 		button->bm_button_flags = bm_flags & (~BUTTON_PRESSED);
 		
 		if(!widget->nestled)
@@ -110,6 +117,114 @@ button_t *gui_AddButtonToWidget(widget_t *widget, char *name, short x, short y, 
 	}
 	
 	return button;
+}
+
+
+checkbox_t *gui_AddCheckBox(widget_t *widget, short x, short y, short w, short h, short bm_flags, void (*checkbox_callback)(widget_t *widget))
+{
+	checkbox_t *checkbox = NULL;
+	widget_t *wdgt;
+	
+	if(widget)
+	{
+		checkbox = malloc(sizeof(checkbox_t));
+	
+		if(w < CHECKBOX_MIN_SIZE) w = CHECKBOX_MIN_SIZE;
+		if(h < CHECKBOX_MIN_SIZE) h = CHECKBOX_MIN_SIZE;
+		
+		checkbox->widget.last_nestled = NULL;
+		checkbox->widget.nestled = NULL;
+		checkbox->widget.next = NULL;
+		checkbox->widget.prev = NULL;
+		checkbox->widget.x = x;
+		checkbox->widget.y = y;
+		checkbox->widget.w = w / 2;
+		checkbox->widget.h = h / 2;
+		checkbox->widget.bm_flags = 0;
+		checkbox->widget.type = WIDGET_CHECKBOX;
+		//checkbox->widget.name = strdup(name);
+		checkbox->widget.parent = widget;
+		checkbox->widget.widget_callback = checkbox_callback;
+			
+		checkbox->bm_checkbox_flags = bm_flags;
+		
+		if(!widget->nestled)
+		{
+			widget->nestled = (widget_t *)checkbox;
+			widget->last_nestled = (widget_t *)checkbox;
+		}
+		else
+		{
+			widget->last_nestled->next = (widget_t *)checkbox;
+			checkbox->widget.prev = widget->last_nestled;
+			widget->last_nestled = (widget_t *)checkbox;
+		}
+	}
+	
+	return checkbox;
+}
+
+
+
+dropdown_t *gui_AddDropDown(widget_t *widget, char *name, short x, short y, short w, short bm_flags)
+{
+	dropdown_t *dropdown;
+	widget_t *wdgt;
+	if(widget)
+	{
+		dropdown = malloc(sizeof(dropdown_t));
+		
+		dropdown->widget.bm_flags = 0;
+		dropdown->widget.x = x;
+		dropdown->widget.y = y;
+		dropdown->widget.h = DROPDOWN_HEIGHT;
+		
+		if(w < WIDGET_MIN_SIZE)
+			w = WIDGET_MIN_SIZE;
+		
+		dropdown->widget.w = w / 2;
+		dropdown->widget.type = WIDGET_DROPDOWN;
+		dropdown->widget.name = strdup(name);
+		dropdown->widget.parent = widget;
+		
+		dropdown->max_options = 4;
+		dropdown->options = malloc(sizeof(dropdown_option_t) * dropdown->max_options);
+		
+		dropdown->option_count = 0;
+		dropdown->bm_dropdown_flags = bm_flags;
+		
+		dropdown->x_closed = x;
+		dropdown->y_closed = y;
+		dropdown->w_closed = w / 2;
+		dropdown->h_closed = DROPDOWN_HEIGHT;
+		
+		dropdown->x_dropped = x;
+		dropdown->y_dropped = y; 
+		dropdown->w_dropped = w / 2;
+		dropdown->h_dropped = DROPDOWN_HEIGHT;
+		
+		
+		if(!widget->nestled)
+		{
+			widget->nestled = (widget_t *)dropdown;
+			widget->last_nestled = (widget_t *)dropdown;
+		}
+		else
+		{
+			widget->last_nestled->next = (widget_t *)dropdown;
+			dropdown->widget.prev = widget->last_nestled;
+			widget->last_nestled = (widget_t *)dropdown;
+		}
+		
+		/*wdgt = widget;
+		
+		while(wdgt->parent)
+		{
+			wdgt = wdgt->parent;
+		}
+		
+		dropdown->widget.first_parent = wdgt;*/
+	}
 }
 
 #if 0
@@ -156,6 +271,8 @@ void gui_ProcessGUI()
 	widget_t *w = widgets;
 	widget_t *new_top;
 	button_t *button;
+	dropdown_t *dropdown;
+	checkbox_t *checkbox;
 	
 	int widget_stack_top = -1;
 	widget_t *widget_stack[128];
@@ -170,8 +287,9 @@ void gui_ProcessGUI()
 	float relative_mouse_y;
 	
 	int b_do_rest = 0;
-	short x = 0;
-	short y = 0;
+	int x = 0;
+	int y = 0;
+	int call_callback;
 	
 	new_top = NULL;
 	
@@ -241,8 +359,17 @@ void gui_ProcessGUI()
 		   w->relative_mouse_y >= -1.0 && w->relative_mouse_y <= 1.0)
 		{
 			
-			if(!(top_widget->bm_flags & WIDGET_MOUSE_OVER))
+			if((!(top_widget->bm_flags & WIDGET_MOUSE_OVER)) || (w->parent->bm_flags & WIDGET_MOUSE_OVER) /* w->first_parent == top_widget*/)
 			{
+				
+				if(w->parent)
+				{
+					if(!(w->parent->bm_flags & WIDGET_MOUSE_OVER))
+					{
+						goto _skip_mouse_over;
+					}
+				}
+				
 				w->bm_flags |= WIDGET_MOUSE_OVER;
 				
 				if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
@@ -258,6 +385,9 @@ void gui_ProcessGUI()
 				
 			}
 		}
+		
+		_skip_mouse_over:
+		
 		/*else
 		{
 			w->bm_flags &= ~WIDGET_MOUSE_OVER;
@@ -265,6 +395,7 @@ void gui_ProcessGUI()
 		
 		//_update_specific_flags:
 		
+		call_callback = 0;
 		
 		switch(w->type)
 		{
@@ -284,6 +415,8 @@ void gui_ProcessGUI()
 				
 				button = (button_t *)w;
 				
+				//printf("%d\n", w->bm_flags & WIDGET_MOUSE_OVER);
+				
 				if(button->bm_button_flags & BUTTON_TOGGLE)
 				{
 					if(w->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
@@ -295,6 +428,13 @@ void gui_ProcessGUI()
 						else
 						{
 							button->bm_button_flags |= BUTTON_PRESSED;
+							
+							if(w->widget_callback)
+							{
+								call_callback = 1;
+								//w->widget_callback();
+							}
+								
 						}
 					}
 				}
@@ -302,6 +442,15 @@ void gui_ProcessGUI()
 				{
 					if(w->bm_flags & WIDGET_HAS_LEFT_MOUSE_BUTTON)
 					{
+						if(w->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
+						{
+							if(w->widget_callback)
+							{
+								call_callback = 1;
+								//w->widget_callback();
+							}		
+						}
+							
 						button->bm_button_flags |= BUTTON_PRESSED;
 					}
 					else
@@ -312,11 +461,76 @@ void gui_ProcessGUI()
 			break;
 			
 			case WIDGET_CHECKBOX:
+				checkbox = (checkbox_t *)w;
+				
+				if(w->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
+				{
+					if(checkbox->bm_checkbox_flags & CHECKBOX_CHECKED)
+					{
+						checkbox->bm_checkbox_flags &= ~CHECKBOX_CHECKED;
+					}
+					else
+					{
+						checkbox->bm_checkbox_flags |= CHECKBOX_CHECKED;
+					}
+					
+					if(w->widget_callback)
+					{
+						call_callback = 1;
+					}
+					
+				}
+				
+			break;
 			
+			case WIDGET_DROPDOWN:
+				
+				dropdown = (dropdown_t *)w;
+				
+				if(dropdown->bm_dropdown_flags & DROPDOWN_DROPPED)
+				{
+					
+				}
+				
+				if(w->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
+				{
+					if(dropdown->bm_dropdown_flags & DROPDOWN_DROPPED)
+					{
+						dropdown->bm_dropdown_flags &= ~DROPDOWN_DROPPED;
+						
+						w->x = dropdown->x_closed;
+						w->y = dropdown->y_closed;
+						w->w = dropdown->w_closed;
+						w->h = dropdown->h_closed;
+						printf("nope!\n");
+					}
+					else
+					{
+						dropdown->bm_dropdown_flags |= DROPDOWN_DROPPED;
+						
+						w->x = dropdown->x_dropped;
+						w->y = dropdown->y_dropped;
+						w->w = dropdown->w_dropped;
+						w->h = dropdown->h_dropped;
+						
+						printf("dropped!\n");
+					}
+				}
+				
+				
+				
+				
+				
+				
 			break;
 		}
 		
-		/* if all the nestled widgets of the top widgets have been 
+		if(call_callback)
+		{
+			w->widget_callback(w);
+		}
+		
+		/* if all the nestled widgets of the top widget have been 
 		properly processed, quit the loop and allow the rest
 		of the list to be updated... */
 		if(widget_stack_top < 0 && (!b_do_rest))

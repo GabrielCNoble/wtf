@@ -50,6 +50,12 @@ static SDL_Thread *bsp_build_thread;
 bsp_polygon_t *beveled_polygons = NULL;
 bsp_edge_t *bevel_edges = NULL;
 
+
+
+#define DRAW_EXPANDED_BRUSHES
+#define DRAW_BEVEL_EDGES
+
+
 /*
 ==============
 bsp_ClassifyPoint
@@ -1706,11 +1712,6 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brushes, int brush_count)
 	
 	int i;
 	int c;
-	//brush_cluster_t *brush_clusters = NULL;
-	//brush_cluster_t *cluster = NULL;
-	//brush_cluster_t *cur_cluster;
-	//brush_cluster_t *r;
-	//brush_cluster_t *p;
 	bsp_node_t *bsp_a;
 	bsp_node_t *bsp_b;
 	bsp_polygon_t *p;
@@ -1724,15 +1725,7 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brushes, int brush_count)
 	bsp_polygon_t *s;
 	
 	c = brush_count;
-	
-	
-	/*if(input_GetKeyStatus(SDL_SCANCODE_K) & KEY_PRESSED)
-	{
-		printf("breakpoint!\n");
 		
-		printf("breakpoint!\n");
-	}*/
-	
 	
 	/* to do the union operation between two brushes, it's necessary
 	to "push" brush A's polygons through brush B's bsp and vice versa,
@@ -1746,29 +1739,31 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brushes, int brush_count)
 		
 		/* build the polygon list for the first brush in the list
 		(brush A in the first iteration of the loop below)... */
-		
-		
+	
 		/* HACK!! */
 		if(!brushes[0].polygons)
 			polygons_a = bsp_BuildPolygonsFromBrush(&brushes[0]);
 		else
+			
+			#ifdef DRAW_EXPANDED_BRUSHES
 			polygons_a = bsp_DeepCopyPolygons(brushes[0].polygons);
-			//polygons_a = brushes[0].polygons;
+			#else
+			polygons_a = brushes[0].polygons;
+			#endif
 		
 		for(i = 1; i < c; i++)
 		{
 			
-			/* build the polygon list for this brush... */
-		//	polygons_b = bsp_BuildPolygonsFromBrush(&brushes[i]);
-		
+			/* build the polygon list for this brush... */	
 			/* HACK! HACK! HACK! */
 			if(!brushes[i].polygons)
 				polygons_b = bsp_BuildPolygonsFromBrush(&brushes[i]);
 			else
+				#ifdef DRAW_EXPANDED_BRUSHES
 				polygons_b = bsp_DeepCopyPolygons(brushes[i].polygons);
-				
-				//polygons_b = brushes[i].polygons;
-			
+				#else
+				polygons_b = brushes[i].polygons;
+				#endif
 			
 			bsp_a = NULL;
 			/* build the bsp for the polygons of brush A... */
@@ -2429,7 +2424,7 @@ bsp_edge_t *bsp_BuildBevelEdges(bsp_polygon_t *brush_polygons)
 						if(!check_edge)
 						{
 							
-							
+							#if 0
 							if((fabs(p->normal.x) == 1.0 && p->normal.y == 0.0 && p->normal.z == 0.0) || 
 							   (p->normal.x == 0.0 && fabs(p->normal.y) == 1.0 && p->normal.z == 0.0) ||
 							   (p->normal.x == 0.0 && p->normal.y == 0.0 && fabs(p->normal.z) == 1.0))
@@ -2449,11 +2444,18 @@ bsp_edge_t *bsp_BuildBevelEdges(bsp_polygon_t *brush_polygons)
 								if(dot3(p->normal, r->normal) >= 0.0)
 									continue;	/* this polygon already acts as the beveling plane... */
 							}
+							
+							#endif
 						
 							
 							edge = malloc(sizeof(bsp_edge_t) );
 							edge->v0 = p0;
 							edge->v1 = p1;
+							edge->v0_p0 = i;
+							edge->v0_p1 = (i + 1) % c;
+							edge->v1_p0 = j;
+							edge->v1_p1 = (j + 1) % k;
+							
 							edge->polygon0 = p;
 							edge->polygon1 = r;
 							
@@ -2516,18 +2518,60 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 	float d;
 	bsp_edge_t *edges;
 	bsp_edge_t *edge;
+	bsp_edge_t *prev;
 	bsp_polygon_t *polygons;
 	bsp_polygon_t *polygon;
+	bsp_polygon_t *adj;
+	bsp_polygon_t *p0;
+	bsp_polygon_t *p1;
 	
 	vec3_t polygon_normal;
 	vec3_t v;
 	vec3_t polygon_center;
 	vec3_t r;
 	
+	short adj_v0;
+	short adj_v1;
+	
+	
 	
 	if(!expanded_brushes)
 		expanded_brushes = malloc(sizeof(brush_t) * brush_count);
+	else
+	{
+		for(i = 0; i < brush_count; i++)
+		{
+			polygons = expanded_brushes[i].polygons;
+			
+			while(polygons)
+			{
+				polygon = polygons->next;
+				free(polygons->vertices);
+				free(polygons);
+				polygons = polygon;
+			}
+			
+			expanded_brushes[i].polygons = NULL;	
 		
+		}
+	}	
+	
+	#ifdef DRAW_BEVEL_EDGES
+		
+	if(bevel_edges)
+	{
+		edges = bevel_edges;
+		while(edges)
+		{
+			edge = edges->next;
+			free(edges);
+			edges = edge;
+		}
+		
+		bevel_edges = NULL;
+	}
+	
+	#endif
 	
 	
 		
@@ -2545,7 +2589,7 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 		expanded_brushes[i].polygons = polygons;
 		
 		
-		#if 1
+		
 		polygon = polygons;
 		
 		while(polygon)
@@ -2554,57 +2598,149 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 			vert_count = polygon->vert_count;
 			polygon_normal = polygon->normal;
 			
-			d = fabs(dot3(box_extents, polygon_normal));
+			v.x = fabs(polygon_normal.x);
+			v.y = fabs(polygon_normal.y);
+			v.z = fabs(polygon_normal.z);
 			
-			polygon_center.x = 0.0;
-			polygon_center.y = 0.0;
-			polygon_center.z = 0.0;
-			
-			for(j = 0; j < vert_count; j++)
-			{
-				polygon_center.x += polygon->vertices[j].x;
-				polygon_center.y += polygon->vertices[j].y;
-				polygon_center.z += polygon->vertices[j].z;
-			}
-			
-			polygon_center.x /= vert_count;
-			polygon_center.y /= vert_count;
-			polygon_center.z /= vert_count;
-			
-			
-			for(j = 0; j < vert_count; j++)
-			{
-				v = polygon->vertices[j];
+			d = fabs(dot3(box_extents, v));
 					
-				r.x = v.x - polygon_center.x;
-				r.y = v.y - polygon_center.y;
-				r.z = v.z - polygon_center.z;
-				
-				r = normalize3(r);
-				
-				/*r.x -= polygon_normal.x;
-				r.y -= polygon_normal.y;
-				r.z -= polygon_normal.z;*/
-				
-				//r = normalize3(r);
-				
-				v.x += polygon_normal.x * d;
-				v.y += polygon_normal.y * d;
-				v.z += polygon_normal.z * d;
-				
-				v.x += r.x * d;
-				v.y += r.y * d;
-				v.z += r.z * d;
-				
-				polygon->vertices[j] = v;
-						
+			for(j = 0; j < vert_count; j++)
+			{			
+				polygon->vertices[j].x += polygon_normal.x * d;
+				polygon->vertices[j].y += polygon_normal.y * d;
+				polygon->vertices[j].z += polygon_normal.z * d;
 			}
+			
+			edge = edges;
+			
+			/* go over the edges... */
+			while(edge)
+			{				
+			
+				if(edge->polygon0 == polygon)
+				{
+					adj = edge->polygon1;
+					adj_v0 = edge->v1_p0;
+					adj_v1 = edge->v1_p1;
+				}
+				else if(edge->polygon1 == polygon)
+				{
+					adj = edge->polygon0;
+					adj_v0 = edge->v0_p0;
+					adj_v1 = edge->v0_p1;
+				}
+				else
+				{
+					edge = edge->next;
+					continue;
+				}
+				
+				/* ... and move the vertices of any polygon that share 
+				an edge with the polygon we just moved...*/
+				adj->vertices[adj_v0].x += polygon_normal.x * d;
+				adj->vertices[adj_v0].y += polygon_normal.y * d;
+				adj->vertices[adj_v0].z += polygon_normal.z * d;
+				
+				adj->vertices[adj_v1].x += polygon_normal.x * d;
+				adj->vertices[adj_v1].y += polygon_normal.y * d;
+				adj->vertices[adj_v1].z += polygon_normal.z * d;
+				
+				edge = edge->next;
+			}
+			
 				
 			
 			polygon = polygon->next;
 		}
 		
+		edge = edges;
+		prev = NULL;
+		while(edge)
+		{
+			
+			p0 = edge->polygon0;
+			p1 = edge->polygon1;
+			
+			if((fabs(p0->normal.x) == 1.0 && p0->normal.y == 0.0 && p0->normal.z == 0.0) || 
+			   (p0->normal.x == 0.0 && fabs(p0->normal.y) == 1.0 && p0->normal.z == 0.0) ||
+			   (p0->normal.x == 0.0 && p0->normal.y == 0.0 && fabs(p0->normal.z) == 1.0))
+			{	
+				/* this polygon is aligned to one of the axial planes... */
+										
+				if(dot3(p0->normal, p1->normal) >= 0.0)
+				{
+					if(prev)
+					{
+						prev->next = edge->next;
+						free(edge);
+						edge = prev->next;
+						continue;
+					}
+					else
+					{
+						prev = edge->next;
+						free(edge);
+						edge = prev;
+						edges = prev;
+						prev = NULL;
+						continue;
+					}
+				}
+					
+			}
+								
+			else if((fabs(p1->normal.x) == 1.0 && p1->normal.y == 0.0 && p1->normal.z == 0.0) || 
+			   		(p1->normal.x == 0.0 && fabs(p1->normal.y) == 1.0 && p1->normal.z == 0.0) ||
+			   		(p1->normal.x == 0.0 && p1->normal.y == 0.0 && fabs(p1->normal.z) == 1.0))
+			{	
+				/* this polygon is aligned to one of the axial planes... */
+										
+				if(dot3(p0->normal, p1->normal) >= 0.0)
+				{
+					if(prev)
+					{
+						prev->next = edge->next;
+						free(edge);
+						edge = prev->next;
+						continue;
+					}
+					else
+					{
+						prev = edge->next;
+						free(edge);
+						edge = prev;
+						prev = NULL;
+						continue;
+					}
+				}
+					
+			}
+			
+			prev = edge;
+			edge = edge->next;
+		} 
+		
+		#ifdef DRAW_BEVEL_EDGES
+			
+		if(prev)
+		{
+			prev->next = bevel_edges;
+			bevel_edges = edges;	
+		}	
+		
+		#else
+		
+		while(edges)
+		{
+			edge = edges->next;
+			free(edges);
+			edges = edge;
+		}
+		
 		#endif
+		
+		
+		
 		
 	//	#endif
 		
@@ -3345,6 +3481,7 @@ void bsp_CompileBsp(int remove_outside)
 	if(world_nodes)
 	{
 		free(world_nodes);
+		free(collision_nodes);
 	}
 	
 	if(world_leaves)
@@ -3462,6 +3599,7 @@ int bsp_CompileBspAsync(void *param)
 
 void bsp_DrawExpandedBrushes()
 {
+	#ifdef DRAW_EXPANDED_BRUSHES
 	int i;
 	int j;
 	int c;
@@ -3510,6 +3648,8 @@ void bsp_DrawExpandedBrushes()
 	
 	glPopMatrix();
 	
+	#endif
+	
 }
 
 
@@ -3517,7 +3657,41 @@ void bsp_DrawExpandedBrushes()
 
 
 
-
+void bsp_DrawBevelEdges()
+{
+	
+	#ifdef DRAW_BEVEL_EDGES
+	
+	bsp_edge_t *edge;
+	camera_t *active_camera = camera_GetActiveCamera();
+	
+	
+	if(!bevel_edges)
+		return;
+	
+	glUseProgram(0);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
+	
+	
+	edge = bevel_edges;
+	
+	glLineWidth(4.0);
+	glColor3f(1.0, 0.0, 0.0);
+	glBegin(GL_LINES);
+	
+	while(edge)
+	{
+		glVertex3f(edge->v0.x, edge->v0.y, edge->v0.z);
+		glVertex3f(edge->v1.x, edge->v1.y, edge->v1.z);
+		edge = edge->next;
+	}
+	
+	glEnd();
+	
+	#endif
+		
+}
 
 
 

@@ -3,6 +3,8 @@
 #include "engine.h"
 #include "SDL2\SDL_timer.h"
 
+#include <float.h>
+
 
 int engine_state;
 
@@ -87,23 +89,19 @@ void engine_MainLoop()
 		engine_UpdateDeltaTime();
 		renderer_OpenFrame();
 		input_GetInput();
-		gui_ProcessGUI();
 		engine_GameMain(delta_time);
-		//editor_Main();				
-		
-		/*game_main(delta_time);*/
-		
+		gui_ProcessGUI();
+
 		if(engine_state == ENGINE_PLAYING)
 		{
 			player_ProcessActivePlayer(delta_time);
 			player_ProcessAI(delta_time);
 			player_UpdatePlayers(delta_time);
-			physics_ProcessCollisions(delta_time);
+			physics_ProcessCollisions(*(float *)&delta_time);
 			//projectile_UpdateProjectiles();
 		}
 		
 		sound_ProcessSound();
-		
 		light_UpdateLights();	
 		world_VisibleWorld();
 		light_VisibleLights();
@@ -135,6 +133,7 @@ void engine_SetEngineState(int state)
 		case ENGINE_QUIT:
 		case ENGINE_PAUSED:
 		case ENGINE_PLAYING:
+		case ENGINE_EDITING:
 			
 			/*if(engine_state == ENGINE_PLAYING && state == ENGINE_PAUSED)
 			{

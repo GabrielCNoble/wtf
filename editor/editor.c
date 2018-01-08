@@ -20,6 +20,7 @@
 #include "bsp.h"
 #include "pvs.h"
 #include "indirect.h"
+#include "player.h"
 
 #include "r_main.h"
 #include "r_editor.h"
@@ -90,6 +91,28 @@ int handle_3d_position_mode;
 int handle_3d_mode;
 
 
+void button0_callback(widget_t *widget)
+{
+	//printf("ha\n");
+	engine_SetEngineState(ENGINE_QUIT);
+}
+
+void checkbox_callback(widget_t *widget)
+{
+	checkbox_t *checkbox = (checkbox_t *)widget;
+	
+	if(checkbox->bm_checkbox_flags & CHECKBOX_CHECKED)
+	{
+		printf("check\n");
+	}
+	else
+	{
+		printf("uncheck\n");
+	}
+	//printf("haha\n");
+}
+
+
 void editor_Init()
 {
 	mat3_t r = mat3_t_id();
@@ -112,12 +135,14 @@ void editor_Init()
 	input_RegisterKey(SDL_SCANCODE_H);
 	input_RegisterKey(SDL_SCANCODE_J);
 	input_RegisterKey(SDL_SCANCODE_L);
+	input_RegisterKey(SDL_SCANCODE_P);
 	
 	
 	//renderer_RegisterCallback(bsp_DrawPortals, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterFunction(indirect_DrawVolumes);
 	renderer_RegisterCallback(renderer_DrawBrushes, PRE_SHADING_STAGE_CALLBACK);
-	renderer_RegisterCallback(bsp_DrawExpandedBrushes, POST_SHADING_STAGE_CALLBACK);
+	//renderer_RegisterCallback(bsp_DrawExpandedBrushes, POST_SHADING_STAGE_CALLBACK);
+	//renderer_RegisterCallback(bsp_DrawBevelEdges, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterCallback(renderer_DrawLeaves, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterFunction(renderer_DrawLightBoxes);
 	//renderer_RegisterFunction(renderer_DrawSelectedLightLeaves);
@@ -246,7 +271,11 @@ void editor_Init()
 		light_CreateLight("light0", &r, vec3(5.0, 5.0, 0.0), vec3(1.0, 1.0, 1.0), 40.0, 20.0);
 	}*/
 	
-	light_CreateLight("light0", &r, vec3(4.0, 7.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
+	
+	#if 1
+	
+	light_CreateLight("light0", &r, vec3(6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
+	light_CreateLight("light0", &r, vec3(-6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
 	//light_CreateLight("light1", &r, vec3(4.0, 4.0, 4.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
 	//light_CreateLight("light2", &r, vec3(-4.0, 4.0, -4.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
 	/*light_CreateLight("light3", &r, vec3(-4.0, 4.0, 4.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);*/
@@ -255,7 +284,37 @@ void editor_Init()
 	
 	
 	brush_CreateBrush(vec3(0.0, 0.0, 0.0), &r, vec3(25.0, 1.0, 25.0), BRUSH_CUBE);
-	brush_CreateBrush(vec3(0.0, 0.75, 0.0), &r, vec3(1.0, 2.0, 1.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 1.0, 1.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 2.0, 2.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 3.0, 3.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 4.0, 4.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 5.0, 5.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 6.0, 6.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 7.0, 7.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(0.0, 8.0, 8.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
+	
+	/*mat3_t_rotate(&r, vec3(1.0, 0.0, 0.0), 0.1, 1);
+	brush_CreateBrush(vec3(5.0, 1.0, 8.0), &r, vec3(5.0, 1.0, 15.0), BRUSH_CUBE);*/
+	
+	/*brush_CreateBrush(vec3(0.0, 9.0, 26.0), &r, vec3(5.0, 1.0, 20.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(25.0, 10.0, 26.0), &r, vec3(20.0, 1.0, 5.0), BRUSH_CUBE);
+	
+	
+	
+	brush_CreateBrush(vec3(40.0, 11.0, 26.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(41.0, 12.0, 26.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(42.0, 13.0, 26.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(43.0, 14.0, 26.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
+	
+	brush_CreateBrush(vec3(43.0, 14.0, 26.0), &r, vec3(50.0, 10.0, 1.0), BRUSH_CUBE);*/
+	
+	
+	
+	#endif
+	
+	/*mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
+	brush_CreateBrush(vec3(15.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);*/
+	//brush_CreateBrush(vec3(0.0, 0.75, 0.0), &r, vec3(1.0, 2.0, 1.0), BRUSH_CUBE);
 	
 	
 	/*brush_CreateBrush(vec3(0.0, -99.9, 0.0), &r, vec3(100.0, 1.0, 100.0), BRUSH_CUBE);
@@ -275,6 +334,7 @@ void editor_Init()
 	
 	brush_CreateBrush(vec3(0.0, 10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);*/
 	
+	player_CreatePlayer("player", vec3(0.0, 5.0 ,0.0), &r);
 	
 	#if 0
 	
@@ -435,10 +495,10 @@ void editor_Init()
 	brush_CreateBrush(vec3(-20.0, 10.0, -20.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
 	
 	
-	mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
+/*	mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
 	brush_CreateBrush(vec3(-40.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
 	brush_CreateBrush(vec3(-60.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
-	brush_CreateBrush(vec3(-80.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
+	brush_CreateBrush(vec3(-80.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);*/
 	
 	
 	#endif
@@ -527,8 +587,11 @@ void editor_Init()
 	light_CreateLight("light15", &r, vec3(0.0, 100.0, 0.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);*/
 	#endif 
 	
-	//widget_t *w = gui_CreateWidget("widget0", 100, 0, 400, 50);
-	//gui_AddButtonToWidget(w, "button0", 0, 0, 100, 40, 0);
+	//widget_t *w = gui_CreateWidget("widget0", 0, 0, 400, 70);
+	//gui_AddDropDown(w, "dropdown0", 0, 0, 50, 0);
+	//gui_AddButton(w, "button0", -80, 0, 50, 50, 0, button0_callback);
+	//gui_AddCheckBox(w, 80, 0, 16, 16, 0, checkbox_callback);
+	//gui_AddButton(w, "button1", 80, 0, 50, 50, 0, button1_callback);
 	//gui_CreateWidget("widget1", -100.0, 0.0, 400.0, 50.0);
 		
 	bm_handle_3d_flags = 0;
@@ -574,6 +637,8 @@ void editor_Main(float delta_time)
 	static float pitch = 0.0;
 	
 	static float r = 0.0;
+	
+	static int playing = 0;
 	
 	//printf("%f\n", delta_time);
 	
@@ -762,26 +827,37 @@ void editor_Main(float delta_time)
 	}
 	else
 	{
-		engine_SetEngineState(ENGINE_PAUSED);
-		editor_ProcessMouse();
-		
-		if(input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED)
+		if(!playing)
 		{
-			if(input_GetKeyStatus(SDL_SCANCODE_C) & KEY_JUST_PRESSED)
+			engine_SetEngineState(ENGINE_PAUSED);
+			editor_ProcessMouse();
+			
+			if(input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED)
 			{
-				bsp_CompileBsp(0);
-				//indirect_BuildVolumes();
+				if(input_GetKeyStatus(SDL_SCANCODE_C) & KEY_JUST_PRESSED)
+				{
+					bsp_CompileBsp(0);
+					//indirect_BuildVolumes();
+				}
+				else if(input_GetKeyStatus(SDL_SCANCODE_S) & KEY_JUST_PRESSED)
+				{
+					renderer_Fullscreen(1);
+					/* save project... */
+				}
+				else if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED)
+				{
+					b_draw_brushes ^= 1;
+					//bsp_NextPortal();
+				}
 			}
-			else if(input_GetKeyStatus(SDL_SCANCODE_S) & KEY_JUST_PRESSED)
-			{
-				renderer_Fullscreen(1);
-				/* save project... */
-			}
-			else if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED)
-			{
-				b_draw_brushes ^= 1;
-				//bsp_NextPortal();
-			}
+		}
+		
+		
+		if(input_GetKeyStatus(SDL_SCANCODE_P) & KEY_PRESSED)
+		{
+			player_SetPlayerAsActive(player_GetPlayer("player"));
+			engine_SetEngineState(ENGINE_PLAYING);
+			playing = 1;
 		}
 			
 	}

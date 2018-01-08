@@ -4,6 +4,10 @@
 #define WIDGET_MIN_SIZE 32
 #define WIDGET_BORDER_WIDTH 10
 
+#define DROPDOWN_HEIGHT 12
+
+#define CHECKBOX_MIN_SIZE 8
+
 
 enum WIDGET_FLAGS
 {
@@ -34,6 +38,16 @@ enum BUTTON_FLAGS
 	BUTTON_TOGGLE = 1 << 1
 };
 
+enum CHECKBOX_FLAGS
+{
+	CHECKBOX_CHECKED = 1,
+};
+
+enum DROPDOWN_FLAGS
+{
+	DROPDOWN_DROPPED = 1,
+};
+
 typedef struct widget_t
 {
 	short x;
@@ -46,6 +60,9 @@ typedef struct widget_t
 	struct widget_t *prev;
 	struct widget_t *nestled;
 	struct widget_t *last_nestled;
+	struct widget_t *parent;
+	//struct widget_t *first_parent;
+	void (*widget_callback)(struct widget_t *widget);
 	int bm_flags;
 	int type;
 	char *name;
@@ -62,15 +79,32 @@ typedef struct
 typedef struct
 {
 	widget_t widget;
-	int check_box_state;
+	int bm_checkbox_flags;
 }checkbox_t;
+
+typedef struct 
+{
+	char *option;
+}dropdown_option_t;
 
 typedef struct
 {
 	widget_t widget;
-	int dropdown_state;
-	int option_count;
-	int selected_option;
+	unsigned char bm_dropdown_flags;
+	unsigned char max_options;
+	unsigned char option_count;
+	unsigned char selected_option;
+	dropdown_option_t *options;
+	
+	short x_closed;
+	short y_closed;
+	short w_closed;
+	short h_closed;
+	
+	short x_dropped;
+	short y_dropped;
+	short w_dropped;
+	short h_dropped;
 }dropdown_t;
 
 void gui_Init();
@@ -79,9 +113,13 @@ void gui_Finish();
 
 widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h);
 
-button_t *gui_AddButtonToWidget(widget_t *widget, char *name, short x, short y, short w, short h, short bm_flags);
+button_t *gui_AddButton(widget_t *widget, char *name, short x, short y, short w, short h, short bm_flags, void (*button_callback)(widget_t *widget));
 
-//void gui_SetTopWidget(widget_t *widget);
+checkbox_t *gui_AddCheckBox(widget_t *widget, short x, short y, short w, short h, short bm_flags, void (*checkbox_callback)(widget_t *widget));
+
+dropdown_t *gui_AddDropDown(widget_t *widget, char *name, short x, short y, short w, short bm_flags);
+
+
 
 void gui_ProcessGUI();
 

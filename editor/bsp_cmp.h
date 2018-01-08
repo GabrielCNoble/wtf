@@ -38,6 +38,10 @@ typedef struct bsp_edge_t
 	struct bsp_edge_t *next;
 	vec3_t v0;
 	vec3_t v1;
+	short v0_p0;
+	short v1_p0;
+	short v0_p1;
+	short v1_p1;
 	float dot;
 	bsp_polygon_t *polygon0;
 	bsp_polygon_t *polygon1;
@@ -158,6 +162,8 @@ void bsp_CompileBsp(int remove_outside);
 int bsp_CompileBspAsync(void *param);
 
 void bsp_DrawExpandedBrushes();
+
+void bsp_DrawBevelEdges();
 
 
 

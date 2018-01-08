@@ -255,7 +255,7 @@ void input_GetInput()
 	//input.bm_mouse &= ~MOUSE_OVER_WIDGET;
 	
 	//if(!pew.b_console)
-	if(engine_state == ENGINE_PLAYING)
+	if(engine_state == ENGINE_PLAYING || engine_state == ENGINE_EDITING)
 	{
 		
 		if(last_mouse_x || last_mouse_y)

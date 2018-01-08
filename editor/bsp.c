@@ -281,7 +281,32 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 		trace->dist = d0;
 		trace->normal = node->normal;
 		trace->position = mid;
-		trace->frac = frac;
+		trace->frac = midf;
+		
+		//frac = trace->frac;
+		
+		/*while(bsp_SolidPoint(collision_nodes, mid) == BSP_SOLID_LEAF)
+		{
+			frac -= 0.1;
+			
+			if(frac < 0.0)
+			{
+				printf("backup past zero!\n");
+				break;
+			}
+				
+			
+			midf = t0 + (t1 - t0) * frac;
+			mid.x = start->x + (end->x - start->x) * frac;
+			mid.y = start->y + (end->y - start->y) * frac;
+			mid.z = start->z + (end->z - start->z) * frac;
+			
+		}
+		
+		trace->position = mid;
+		trace->frac = midf;*/
+		
+		//assert(bsp_SolidPoint(collision_nodes, mid) != BSP_SOLID_LEAF);
 		
 		/* return zero to avoid any further computation to be done
 		by previous recursion calls... */
@@ -308,7 +333,7 @@ int bsp_FirstHit(bsp_pnode_t *bsp, vec3_t start, vec3_t end, trace_t *trace)
 
 
 
-#define STEP_HEIGHT 0.5
+#define STEP_HEIGHT 1.1
 /*
 ==============
 bsp_TryStepUp
@@ -325,6 +350,7 @@ int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace)
 	int e;
 	
 	float frac;
+	float step_height;
 	
 	start = trace->position;
 	
@@ -341,6 +367,8 @@ int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace)
 		
 	s = bsp_SolidPoint(collision_nodes, start);
 	e = bsp_SolidPoint(collision_nodes, end);
+	
+	//printf("%d %d\n", s, e);
 	
 	
 	if(s == BSP_SOLID_LEAF)
@@ -359,7 +387,11 @@ int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace)
 		#if 1
 	
 		frac = tr.frac;
-		v = tr.position;	
+		step_height = (end.y - start.y) * (1.0 - frac);
+		//v = tr.position;	
+		
+		v = *position;
+		v.y += step_height;
 		
 		/* see if we can step up from our current position... */
 		bsp_FirstHit(collision_nodes, *position, v, &tr);
@@ -367,20 +399,18 @@ int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace)
 		/* we'll bump our heads, so don't
 		step up... */
 		if(tr.frac < 1.0)
-			return 0;
-			
-			
+			return 0;		
 			
 		/* step up... */
-		position->y = start.y + (end.y - start.y) * (1.0 - frac); 
+		position->y = start.y + step_height; 
 			
 		/* ...and forward... */			
 		position->x = start.x;
 		position->z = start.z;
 			
 		/* dampen the speed when stepping up... */
-		velocity->x *= 0.05;
-		velocity->z *= 0.05;
+		velocity->x *= 0.5;
+		velocity->z *= 0.5;
 		
 		return 1;
 	
@@ -393,6 +423,38 @@ int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace)
 	return 0;
 }
 
+
+int bsp_TryStepDown(vec3_t *position, vec3_t *velocity, trace_t *trace)
+{
+	vec3_t end;
+	
+	end = *position;
+	end.y -= STEP_HEIGHT * 2.0;
+	trace_t tr;
+	
+	
+	bsp_FirstHit(collision_nodes, *position, end, &tr);
+	
+	//printf("%f\n", tr.frac);
+	
+	if(tr.frac > 0.0)
+	{
+		if(position->x == tr.position.x && position->y == tr.position.y && position->z == tr.position.z)
+			return 0;
+		
+		//printf("[%f %f %f]\n")
+		
+		*position = tr.position;
+		
+		return 1;	
+	}
+	
+	
+	return 0;
+	
+	
+	
+}
 
 
 
@@ -420,26 +482,11 @@ void bsp_Move(vec3_t *position, vec3_t *velocity)
 	//static int b_break = 0;
 	
 	if(collision_nodes)
-	{
-		
-		/*if(input_GetKeyStatus(SDL_SCANCODE_K))
-		{
-			printf("breakpoint!\n");
-			
-			printf("breakpoint!\n");
-		}*/
-		
+	{	
 		end.x = position->x + velocity->x;
 		end.y = position->y + velocity->y;
 		end.z = position->z + velocity->z;
 		
-		
-		/*if(!bsp_SolidPoint(bsp_root, end))
-		{
-			printf("point in open space!\n");
-		}*/
-		
-	//	printf(">>>>>>>>>start bsp_Move()\n");
 		for(i = 0; i < BUMP_COUNT; i++)
 		{
 			
@@ -474,12 +521,9 @@ void bsp_Move(vec3_t *position, vec3_t *velocity)
 				/* hit a vertical-ish surface, test to see whether it's a step or a wall... */
 				if(trace.normal.y < 0.2 && trace.normal.y > -0.2)
 				{
-					//printf("before: [%f %f %f]   after: [%f %f %f]\n", position->x, position->y, position->z, trace.position.x, trace.position.y, trace.position.z);
-					/* this will probably fail if the speed is too low... */
+
 					if(bsp_TryStepUp(position, &new_velocity, &trace))
 					{
-						
-						//printf("[%f %f %f]\n", position->x, position->y, position->z);
 						
 						/* if step-up was successful, do not clip the speed... */
 						
@@ -491,7 +535,6 @@ void bsp_Move(vec3_t *position, vec3_t *velocity)
 				}
 				
 				#endif 
-				
 				
 				
 				/* horizontal-ish surface (floor or slope)... */
