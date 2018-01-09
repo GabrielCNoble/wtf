@@ -166,7 +166,7 @@ checkbox_t *gui_AddCheckBox(widget_t *widget, short x, short y, short w, short h
 
 
 
-dropdown_t *gui_AddDropDown(widget_t *widget, char *name, short x, short y, short w, short bm_flags)
+dropdown_t *gui_AddDropDown(widget_t *widget, char *name, short x, short y, short w, short bm_flags, void (*dropdown_callback)(widget_t *widget))
 {
 	dropdown_t *dropdown;
 	widget_t *wdgt;
@@ -186,6 +186,9 @@ dropdown_t *gui_AddDropDown(widget_t *widget, char *name, short x, short y, shor
 		dropdown->widget.type = WIDGET_DROPDOWN;
 		dropdown->widget.name = strdup(name);
 		dropdown->widget.parent = widget;
+		dropdown->widget.next = NULL;
+		dropdown->widget.prev = NULL;
+		dropdown->widget.widget_callback = dropdown_callback;
 		
 		dropdown->max_options = 4;
 		dropdown->options = malloc(sizeof(dropdown_option_t) * dropdown->max_options);
@@ -215,17 +218,63 @@ dropdown_t *gui_AddDropDown(widget_t *widget, char *name, short x, short y, shor
 			dropdown->widget.prev = widget->last_nestled;
 			widget->last_nestled = (widget_t *)dropdown;
 		}
-		
-		/*wdgt = widget;
-		
-		while(wdgt->parent)
-		{
-			wdgt = wdgt->parent;
-		}
-		
-		dropdown->widget.first_parent = wdgt;*/
 	}
 }
+
+
+int gui_AddOption(dropdown_t *dropdown, char *name)
+{
+	
+}
+
+
+void gui_SetAsTop(widget_t *widget)
+{
+	widget_t **first;
+	widget_t **last;
+	
+	if(widget)
+	{
+		if(widget->parent)
+		{			
+			first = &widget->parent->nestled;
+			last = &widget->parent->last_nestled;
+		}
+		else
+		{
+			first = &widgets;
+			last = &last_widget;
+		}
+		
+		/* widget is already first in the list (or the only one in the list)... */
+		if(!widget->prev)
+		{
+			return;
+		}
+			
+		/* by here there will be at least two widgets in the list, 
+		and it will be either in the middle or the last... */
+		widget->prev->next = widget->next;
+			
+		if(widget->next)
+		{
+			/* middle... */
+			widget->next->prev = widget->prev;
+		}
+		else
+		{
+			/* last... */
+			*last = widget->prev;
+		}
+			
+		widget->prev = NULL;
+		widget->next = *first;
+		(*first)->prev = widget;
+		*first = widget;		
+	}
+}
+
+
 
 #if 0
 /* this function scrambles the links
@@ -266,16 +315,37 @@ void gui_SetTopWidget(widget_t *widget)
 }
 #endif
 
+#define WIDGET_STACK_SIZE 128
+
+#define push_widget(w) if(widget_stack_top+1>=WIDGET_STACK_SIZE)		\\
+					   {												\\
+							printf("cannot push widget!\n");			\\
+					   }												\\
+					   else												\\
+					   {												\\
+					   		x += w->x;									\\
+							y += w->y;									\\
+							widget_stack_top++;							\\
+							widget_stack[widget_stack_top] = w;			\\
+							w = w->nestled;								\\
+					   }
+
+
+
+
+
 void gui_ProcessGUI()
 {
-	widget_t *w = widgets;
+	widget_t *w;
 	widget_t *new_top;
+	widget_t *top = top_widget;
+	widget_t *r;
 	button_t *button;
 	dropdown_t *dropdown;
 	checkbox_t *checkbox;
 	
 	int widget_stack_top = -1;
-	widget_t *widget_stack[128];
+	widget_t *widget_stack[WIDGET_STACK_SIZE];
 	
 	float screen_mouse_x = (r_width * 0.5) * normalized_mouse_x;
 	float screen_mouse_y = (r_height * 0.5) * normalized_mouse_y;
@@ -290,10 +360,12 @@ void gui_ProcessGUI()
 	int x = 0;
 	int y = 0;
 	int call_callback;
+	int mouse_over_top;
 	
 	new_top = NULL;
 	
-	w = top_widget;
+	//w = top_widget;
+	w = widgets;
 	
 	_do_rest:
 		
@@ -305,69 +377,47 @@ void gui_ProcessGUI()
 		w->relative_mouse_x = relative_screen_mouse_x / (float)w->w;
 		w->relative_mouse_y = relative_screen_mouse_y / (float)w->h;
 		
-		if(w == top_widget)
+		
+		if(w->parent)
 		{
-			/* if the top widget was already processed, skip
-			reprocessing it when updating the rest of the list... */
-			if(b_do_rest)
-			{
-				w = w->next;
-				continue;
-			}
-			
-			
+			top = w->parent->nestled;
+		}
+		else
+		{
+			top = widgets;
+		}
+				
+		if(w == top)
+		{	
 			/* this enables manipulating widgets like sliders. This
 			only clears the WIDGET_HAS_LEFT_MOUSE_BUTTON if the left
-			mouse button is not pressed... */
+			mouse button is not pressed, given that the top widget will
+			conserve the flag even if the mouse is not over it... */
 			if(!(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED))
 			{
 				w->bm_flags &= ~WIDGET_HAS_LEFT_MOUSE_BUTTON;
 			}
-			
 		}
 		else
 		{
-			w->bm_flags &= ~(WIDGET_HAS_LEFT_MOUSE_BUTTON | 
-							 WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON | 
-							 WIDGET_HAS_RIGHT_MOUSE_BUTTON |
-							 WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON);
+			w->bm_flags &= ~(WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_HAS_RIGHT_MOUSE_BUTTON);
 		}
 		
-		
-		/* every widget that is not the top widget
-		must have its WIDGET_MOUSE_OVER flag cleared,
-		to avoid other keeping this flag when
-		the mouse just hovered over the top widget... */
-		w->bm_flags &= ~WIDGET_MOUSE_OVER;
-		
-		
-		
-		
-		/* if the top widget has the mouse over itself,
-		avoid updating anything else from the rest of the
-		list... */
-		//if(top_widget->bm_flags & WIDGET_MOUSE_OVER && b_do_rest)
-		//{
-		//	w = w->next;
-		//	goto _update_specific_flags;
-			//continue;
-	//	}
-		
+		w->bm_flags &= ~(WIDGET_MOUSE_OVER | WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON);
 		
 		
 		if(w->relative_mouse_x >= -1.0 && w->relative_mouse_x <= 1.0 &&
 		   w->relative_mouse_y >= -1.0 && w->relative_mouse_y <= 1.0)
 		{
-			
-			if((!(top_widget->bm_flags & WIDGET_MOUSE_OVER)) || (w->parent->bm_flags & WIDGET_MOUSE_OVER) /* w->first_parent == top_widget*/)
+			if(!(top->bm_flags & WIDGET_MOUSE_OVER))
 			{
-				
-				if(w->parent)
+								
+				r = top->parent;
+				/* propagate the flag upwards... */
+				while(r)
 				{
-					if(!(w->parent->bm_flags & WIDGET_MOUSE_OVER))
-					{
-						goto _skip_mouse_over;
-					}
+					r->bm_flags |= WIDGET_MOUSE_OVER;
+					r = r->parent;
 				}
 				
 				w->bm_flags |= WIDGET_MOUSE_OVER;
@@ -376,24 +426,13 @@ void gui_ProcessGUI()
 				{
 					w->bm_flags |= WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON;
 					
-					/* latch the change until everything is done... */
-					if(!new_top)
-					{
-						new_top = w;
-					}
+					top->bm_flags &= ~(WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON | WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_HAS_RIGHT_MOUSE_BUTTON);
+					
+					gui_SetAsTop(w);
 				}
 				
 			}
 		}
-		
-		_skip_mouse_over:
-		
-		/*else
-		{
-			w->bm_flags &= ~WIDGET_MOUSE_OVER;
-		}*/
-		
-		//_update_specific_flags:
 		
 		call_callback = 0;
 		
@@ -404,7 +443,7 @@ void gui_ProcessGUI()
 				{
 					x += w->x;
 					y += w->y;
-					widget_stack_top++;
+					widget_stack_top++;		
 					widget_stack[widget_stack_top] = w;
 					w = w->nestled;
 					continue;
@@ -414,8 +453,6 @@ void gui_ProcessGUI()
 			case WIDGET_BUTTON:
 				
 				button = (button_t *)w;
-				
-				//printf("%d\n", w->bm_flags & WIDGET_MOUSE_OVER);
 				
 				if(button->bm_button_flags & BUTTON_TOGGLE)
 				{
@@ -432,7 +469,6 @@ void gui_ProcessGUI()
 							if(w->widget_callback)
 							{
 								call_callback = 1;
-								//w->widget_callback();
 							}
 								
 						}
@@ -447,7 +483,6 @@ void gui_ProcessGUI()
 							if(w->widget_callback)
 							{
 								call_callback = 1;
-								//w->widget_callback();
 							}		
 						}
 							
@@ -502,7 +537,6 @@ void gui_ProcessGUI()
 						w->y = dropdown->y_closed;
 						w->w = dropdown->w_closed;
 						w->h = dropdown->h_closed;
-						printf("nope!\n");
 					}
 					else
 					{
@@ -512,15 +546,8 @@ void gui_ProcessGUI()
 						w->y = dropdown->y_dropped;
 						w->w = dropdown->w_dropped;
 						w->h = dropdown->h_dropped;
-						
-						printf("dropped!\n");
 					}
 				}
-				
-				
-				
-				
-				
 				
 			break;
 		}
@@ -530,13 +557,6 @@ void gui_ProcessGUI()
 			w->widget_callback(w);
 		}
 		
-		/* if all the nestled widgets of the top widget have been 
-		properly processed, quit the loop and allow the rest
-		of the list to be updated... */
-		if(widget_stack_top < 0 && (!b_do_rest))
-		{
-			break;
-		}
 		
 		_advance_widget:
 		
@@ -560,19 +580,6 @@ void gui_ProcessGUI()
 			}
 		}
 		
-	}
-	
-	
-	if(!b_do_rest)
-	{
-		b_do_rest = 1;
-		w = widgets;
-		goto _do_rest;
-	}
-	
-	if(new_top)
-	{
-		top_widget = new_top;
 	}
 		
 }

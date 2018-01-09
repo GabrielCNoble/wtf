@@ -837,7 +837,7 @@ void renderer_DrawGUI()
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_DEPTH_TEST);
 	
-	w = widgets;
+	w = last_widget;
 	
 	_do_top:
 	
@@ -846,14 +846,14 @@ void renderer_DrawGUI()
 		
 		/* Ignore the top widget if it isn't its
 		turn to be rendered... */
-		if(w == top_widget)
+		/*if(w == top_widget)
 		{
 			if(!b_do_top)
 			{
 				w = w->next;
 				continue;
 			}
-		}
+		}*/
 		
 		switch(w->type)
 		{
@@ -883,7 +883,7 @@ void renderer_DrawGUI()
 					
 					widget_stack_top++;
 					widget_stack[widget_stack_top] = w;
-					w = w->nestled;
+					w = w->last_nestled;
 					continue;
 				}
 			break;
@@ -972,14 +972,14 @@ void renderer_DrawGUI()
 		/* If this is the top widget, and everything
 		nestled in it was already processed, quit the loop
 		to avoid rerendering anything on the list... */
-		if(b_do_top && widget_stack_top < 0)
+		/*if(b_do_top && widget_stack_top < 0)
 		{
 			break;
-		}
+		}*/
 		
 		_advance_widget:
 		
-		w = w->next;
+		w = w->prev;
 		
 		if(!w)
 		{
@@ -999,12 +999,12 @@ void renderer_DrawGUI()
 	/* All the list (excluding the top widget) have been
 	drawn, so repeat the loop just for the top widget 
 	(and any eventual nestled widget)... */
-	if(!b_do_top)
+	/*if(!b_do_top)
 	{
 		b_do_top = 1;
 		w = top_widget;
 		goto _do_top;
-	}
+	}*/
 	
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();

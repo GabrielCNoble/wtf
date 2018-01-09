@@ -60,6 +60,7 @@ typedef struct widget_t
 	struct widget_t *prev;
 	struct widget_t *nestled;
 	struct widget_t *last_nestled;
+	//struct widget_t *nestled_top;
 	struct widget_t *parent;
 	//struct widget_t *first_parent;
 	void (*widget_callback)(struct widget_t *widget);
@@ -117,9 +118,11 @@ button_t *gui_AddButton(widget_t *widget, char *name, short x, short y, short w,
 
 checkbox_t *gui_AddCheckBox(widget_t *widget, short x, short y, short w, short h, short bm_flags, void (*checkbox_callback)(widget_t *widget));
 
-dropdown_t *gui_AddDropDown(widget_t *widget, char *name, short x, short y, short w, short bm_flags);
+dropdown_t *gui_AddDropDown(widget_t *widget, char *name, short x, short y, short w, short bm_flags, void (*dropdown_callback)(widget_t *widget));
 
+int gui_AddOption(dropdown_t *dropdown, char *name);
 
+void gui_SetAsTop(widget_t *widget);
 
 void gui_ProcessGUI();
 

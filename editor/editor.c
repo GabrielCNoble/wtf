@@ -93,8 +93,14 @@ int handle_3d_mode;
 
 void button0_callback(widget_t *widget)
 {
-	//printf("ha\n");
-	engine_SetEngineState(ENGINE_QUIT);
+	printf("fuck ");
+	//engine_SetEngineState(ENGINE_QUIT);
+}
+
+void button1_callback(widget_t *widget)
+{
+	printf("you\n");
+	//engine_SetEngineState(ENGINE_QUIT);
 }
 
 void checkbox_callback(widget_t *widget)
@@ -587,11 +593,11 @@ void editor_Init()
 	light_CreateLight("light15", &r, vec3(0.0, 100.0, 0.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);*/
 	#endif 
 	
-	//widget_t *w = gui_CreateWidget("widget0", 0, 0, 400, 70);
+	widget_t *w = gui_CreateWidget("widget0", 0, 0, 400, 70);
 	//gui_AddDropDown(w, "dropdown0", 0, 0, 50, 0);
-	//gui_AddButton(w, "button0", -80, 0, 50, 50, 0, button0_callback);
-	//gui_AddCheckBox(w, 80, 0, 16, 16, 0, checkbox_callback);
-	//gui_AddButton(w, "button1", 80, 0, 50, 50, 0, button1_callback);
+	gui_AddButton(w, "button0", -100, 0, 50, 50, 0, button0_callback);
+	gui_AddCheckBox(w, 0, 0, 16, 16, 0, checkbox_callback);
+	gui_AddButton(w, "button1", 100, 0, 50, 50, 0, button1_callback);
 	//gui_CreateWidget("widget1", -100.0, 0.0, 400.0, 50.0);
 		
 	bm_handle_3d_flags = 0;
