@@ -25,6 +25,9 @@
 #include "r_main.h"
 #include "r_editor.h"
 
+#include "ed_ui.h"
+#include "ed_proj.h"
+
 static camera_t *editor_camera;
 static int editor_camera_index;
 
@@ -32,6 +35,8 @@ static int editor_camera_index;
 extern int r_width;
 extern int r_height;
 
+extern int r_window_width;
+extern int r_window_height;
 
 /* from light.c */
 extern light_position_t *visible_light_positions;
@@ -144,12 +149,12 @@ void editor_Init()
 	input_RegisterKey(SDL_SCANCODE_P);
 	
 	
-	//renderer_RegisterCallback(bsp_DrawPortals, POST_SHADING_STAGE_CALLBACK);
+	renderer_RegisterCallback(bsp_DrawPortals, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterFunction(indirect_DrawVolumes);
 	renderer_RegisterCallback(renderer_DrawBrushes, PRE_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterCallback(bsp_DrawExpandedBrushes, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterCallback(bsp_DrawBevelEdges, POST_SHADING_STAGE_CALLBACK);
-	//renderer_RegisterCallback(renderer_DrawLeaves, POST_SHADING_STAGE_CALLBACK);
+	renderer_RegisterCallback(renderer_DrawLeaves, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterFunction(renderer_DrawLightBoxes);
 	//renderer_RegisterFunction(renderer_DrawSelectedLightLeaves);
 	renderer_RegisterCallback(renderer_DrawGrid, POST_SHADING_STAGE_CALLBACK);
@@ -223,6 +228,8 @@ void editor_Init()
 	
 	
 	
+	editor_InitUI();
+	
 	
 	max_selections = 64;
 	selection_count = 0;
@@ -278,7 +285,7 @@ void editor_Init()
 	}*/
 	
 	
-	#if 1
+	#if 0
 	
 	light_CreateLight("light0", &r, vec3(6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
 	light_CreateLight("light0", &r, vec3(-6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
@@ -342,7 +349,7 @@ void editor_Init()
 	
 	player_CreatePlayer("player", vec3(0.0, 5.0 ,0.0), &r);
 	
-	#if 0
+	#if 1
 	
 	light_CreateLight("light0", &r, vec3(16.0, 0.0, 8.0), vec3(1.0, 0.0, 1.0), 35.0, 20.0);
 	//light_CreateLight("light0", &r, vec3(16.0, 0.0, -8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
@@ -501,10 +508,10 @@ void editor_Init()
 	brush_CreateBrush(vec3(-20.0, 10.0, -20.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
 	
 	
-/*	mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
+	mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
 	brush_CreateBrush(vec3(-40.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
 	brush_CreateBrush(vec3(-60.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
-	brush_CreateBrush(vec3(-80.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);*/
+	brush_CreateBrush(vec3(-80.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
 	
 	
 	#endif
@@ -593,11 +600,49 @@ void editor_Init()
 	light_CreateLight("light15", &r, vec3(0.0, 100.0, 0.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);*/
 	#endif 
 	
-	widget_t *w = gui_CreateWidget("widget0", 0, 0, 400, 70);
-	//gui_AddDropDown(w, "dropdown0", 0, 0, 50, 0);
-	gui_AddButton(w, "button0", -100, 0, 50, 50, 0, button0_callback);
-	gui_AddCheckBox(w, 0, 0, 16, 16, 0, checkbox_callback);
-	gui_AddButton(w, "button1", 100, 0, 50, 50, 0, button1_callback);
+	//widget_t *w = gui_CreateWidget("menu", 0, r_window_height * 0.5 - 10, r_window_width, 20);
+	//dropdown_t *dropdown = gui_AddDropDown(w, "dropdown0", 0, 0, 150, 0, NULL);
+	/*widget_t *w = gui_CreateWidget("widget0", 0, 0, 400, 200);
+	dropdown_t *dropdown = gui_AddDropDown(w, "dropdown0", 0, 0, 150, 0, NULL);
+	gui_AddOption(dropdown, "option0", "test0");
+	gui_AddOption(dropdown, "option1", "test1");
+	gui_AddOption(dropdown, "option2", "test2");
+	gui_AddOption(dropdown, "option3", "test3");
+	gui_AddOption(dropdown, "option4", "test4");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 1, "option0", "wow0");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 1, "option1", "wow1");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 1, "option2", "wow2");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 1, "option3", "wow3");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 1, "option4", "wow4");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 1, "option5", "wow5");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 1, "option6", "wow6");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 1, "option7", "wow7");
+	
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 2, "option0", "bleh0");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 2, "option1", "bleh1");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 2, "option2", "bleh2");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 2, "option3", "bleh3");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 2, "option4", "bleh4");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 2, "option5", "bleh5");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 2, "option6", "bleh6");
+	gui_NestleOption((option_list_t *)dropdown->widget.nestled, 2, "option7", "bleh7");*/
+	/*gui_AddOption(dropdown, "option3");
+	gui_AddOption(dropdown, "option4");
+	gui_AddOption(dropdown, "option5");
+	gui_AddOption(dropdown, "option6");
+	gui_AddOption(dropdown, "option7");*/
+	
+	/*dropdown = gui_AddDropDown(w, "dropdown0", 25, -23, 150, 0, NULL);
+	gui_AddOption(dropdown, "option0");
+	gui_AddOption(dropdown, "option1");
+	gui_AddOption(dropdown, "option2");
+	gui_AddOption(dropdown, "option3");*/
+	//gui_AddOption(dropdown, "option1");
+	//gui_AddOption(dropdown, "option2");
+	
+	//gui_AddButton(w, "button0", 0, -20, 50, 50, 0, button0_callback);
+	//gui_AddCheckBox(w, 0, 0, 16, 16, 0, checkbox_callback);
+	//gui_AddButton(w, "button1", 100, 0, 50, 50, 0, button1_callback);
 	//gui_CreateWidget("widget1", -100.0, 0.0, 400.0, 50.0);
 		
 	bm_handle_3d_flags = 0;

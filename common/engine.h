@@ -13,10 +13,10 @@
 #include "l_main.h"
 //#include "projectile.h"
 #include "sound.h"
-#include "collision.h"
+//#include "collision.h"
 #include "gui.h"
 #include "bsp.h"
-
+#include "font.h"
 
 enum ENGINE_STATE
 {

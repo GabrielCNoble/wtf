@@ -40,6 +40,7 @@ void engine_Init(int width, int height, int init_mode)
 	brush_Init();
 	material_Init();
 	texture_Init();
+	font_Init();
 	bsp_Init();
 	//editor_Init();
 	
@@ -68,6 +69,7 @@ void engine_Finish()
 	gui_Finish();
 	bsp_Finish();
 	player_Finish();
+	font_Finish();
 	//projectile_Finish();
 	physics_Finish();
 	brush_Finish();

@@ -4,11 +4,11 @@
 CPP      = g++.exe -D__DEBUG__
 CC       = gcc.exe -D__DEBUG__
 WINDRES  = windres.exe
-OBJ      = main.o shader.o r_main.o engine.o input.o mesh.o camera.o gpu.o material.o texture.o l_main.o sound.o editor.o brush.o world.o gui.o bsp.o bsp_cmp.o r_editor.o pvs.o indirect.o r_skybox.o l_cache.o player.o physics.o ../common/gmath/frustum.o ../common/gmath/line.o ../common/gmath/matrix.o ../common/gmath/plane.o ../common/gmath/triangle.o ../common/gmath/vector.o ../common/soil/image_DXT.o ../common/soil/image_helper.o ../common/soil/SOIL.o ../common/soil/stb_image_aug.o
-LINKOBJ  = main.o shader.o r_main.o engine.o input.o mesh.o camera.o gpu.o material.o texture.o l_main.o sound.o editor.o brush.o world.o gui.o bsp.o bsp_cmp.o r_editor.o pvs.o indirect.o r_skybox.o l_cache.o player.o physics.o ../common/gmath/frustum.o ../common/gmath/line.o ../common/gmath/matrix.o ../common/gmath/plane.o ../common/gmath/triangle.o ../common/gmath/vector.o ../common/soil/image_DXT.o ../common/soil/image_helper.o ../common/soil/SOIL.o ../common/soil/stb_image_aug.o
-LIBS     = -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib32" -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -L"../common/SDL/lib/mingw" -L"../common/OPENAL/Win32" -L"../common/GLEW/lib"  -lmingw32 -lopengl32 -lSDL2main -lSDL2 -lglew32 -lOpenAL32 -m32 -g3
-INCS     = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include" -I"../common/SDL/include" -I"../common/GLEW/include" -I"../common/soil" -I"../common/gmath" -I"../common/OPENAL/include"
-CXXINCS  = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include/c++" -I"../common/SDL/include" -I"../common/GLEW/include" -I"../common/soil" -I"../common/gmath" -I"../common/OPENAL/include"
+OBJ      = main.o editor.o brush.o bsp_cmp.o r_editor.o pvs.o indirect.o r_skybox.o ../common/gmath/frustum.o ../common/gmath/line.o ../common/gmath/matrix.o ../common/gmath/plane.o ../common/gmath/triangle.o ../common/gmath/vector.o ../common/soil/image_DXT.o ../common/soil/image_helper.o ../common/soil/SOIL.o ../common/soil/stb_image_aug.o ../common/texture.o ../common/sound.o ../common/camera.o ../common/engine.o ../common/r_main.o ../common/shader.o ../common/input.o ../common/mesh.o ../common/gpu.o ../common/material.o ../common/l_cache.o ../common/l_main.o ../common/bsp.o ../common/gui.o ../common/player.o ../common/world.o ../common/physics.o ../common/r_text.o ed_ui.o ed_proj.o ../common/font.o
+LINKOBJ  = main.o editor.o brush.o bsp_cmp.o r_editor.o pvs.o indirect.o r_skybox.o ../common/gmath/frustum.o ../common/gmath/line.o ../common/gmath/matrix.o ../common/gmath/plane.o ../common/gmath/triangle.o ../common/gmath/vector.o ../common/soil/image_DXT.o ../common/soil/image_helper.o ../common/soil/SOIL.o ../common/soil/stb_image_aug.o ../common/texture.o ../common/sound.o ../common/camera.o ../common/engine.o ../common/r_main.o ../common/shader.o ../common/input.o ../common/mesh.o ../common/gpu.o ../common/material.o ../common/l_cache.o ../common/l_main.o ../common/bsp.o ../common/gui.o ../common/player.o ../common/world.o ../common/physics.o ../common/r_text.o ed_ui.o ed_proj.o ../common/font.o
+LIBS     = -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib32" -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -L"../common/SDL/lib/mingw" -L"../common/OPENAL/Win32" -L"../common/GLEW/lib"  -lmingw32 -lopengl32 -lSDL2main -lSDL2 -lSDL2_ttf -lglew32 -lOpenAL32 -m32 -g3
+INCS     = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include" -I"../common/SDL/include" -I"../common/GLEW/include" -I"../common/soil" -I"../common/gmath" -I"../common/OPENAL/include" -I"../common"
+CXXINCS  = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include/c++" -I"../common/SDL/include" -I"../common/GLEW/include" -I"../common/soil" -I"../common/gmath" -I"../common/OPENAL/include" -I"../common"
 BIN      = wtf_editor.exe
 CXXFLAGS = $(CXXINCS) -msse3 -m32 -g3
 CFLAGS   = $(INCS) -msse3 -m32 -g3 -masm=intel
@@ -27,53 +27,11 @@ $(BIN): $(OBJ)
 main.o: main.c
 	$(CC) -c main.c -o main.o $(CFLAGS)
 
-shader.o: shader.c
-	$(CC) -c shader.c -o shader.o $(CFLAGS)
-
-r_main.o: r_main.c
-	$(CC) -c r_main.c -o r_main.o $(CFLAGS)
-
-engine.o: engine.c
-	$(CC) -c engine.c -o engine.o $(CFLAGS)
-
-input.o: input.c
-	$(CC) -c input.c -o input.o $(CFLAGS)
-
-mesh.o: mesh.c
-	$(CC) -c mesh.c -o mesh.o $(CFLAGS)
-
-camera.o: camera.c
-	$(CC) -c camera.c -o camera.o $(CFLAGS)
-
-gpu.o: gpu.c
-	$(CC) -c gpu.c -o gpu.o $(CFLAGS)
-
-material.o: material.c
-	$(CC) -c material.c -o material.o $(CFLAGS)
-
-texture.o: texture.c
-	$(CC) -c texture.c -o texture.o $(CFLAGS)
-
-l_main.o: l_main.c
-	$(CC) -c l_main.c -o l_main.o $(CFLAGS)
-
-sound.o: sound.c
-	$(CC) -c sound.c -o sound.o $(CFLAGS)
-
 editor.o: editor.c
 	$(CC) -c editor.c -o editor.o $(CFLAGS)
 
 brush.o: brush.c
 	$(CC) -c brush.c -o brush.o $(CFLAGS)
-
-world.o: world.c
-	$(CC) -c world.c -o world.o $(CFLAGS)
-
-gui.o: gui.c
-	$(CC) -c gui.c -o gui.o $(CFLAGS)
-
-bsp.o: bsp.c
-	$(CC) -c bsp.c -o bsp.o $(CFLAGS)
 
 bsp_cmp.o: bsp_cmp.c
 	$(CC) -c bsp_cmp.c -o bsp_cmp.o $(CFLAGS)
@@ -89,15 +47,6 @@ indirect.o: indirect.c
 
 r_skybox.o: r_skybox.c
 	$(CC) -c r_skybox.c -o r_skybox.o $(CFLAGS)
-
-l_cache.o: l_cache.c
-	$(CC) -c l_cache.c -o l_cache.o $(CFLAGS)
-
-player.o: player.c
-	$(CC) -c player.c -o player.o $(CFLAGS)
-
-physics.o: physics.c
-	$(CC) -c physics.c -o physics.o $(CFLAGS)
 
 ../common/gmath/frustum.o: ../common/gmath/frustum.c
 	$(CC) -c ../common/gmath/frustum.c -o ../common/gmath/frustum.o $(CFLAGS)
@@ -128,3 +77,66 @@ physics.o: physics.c
 
 ../common/soil/stb_image_aug.o: ../common/soil/stb_image_aug.c
 	$(CC) -c ../common/soil/stb_image_aug.c -o ../common/soil/stb_image_aug.o $(CFLAGS)
+
+../common/texture.o: ../common/texture.c
+	$(CC) -c ../common/texture.c -o ../common/texture.o $(CFLAGS)
+
+../common/sound.o: ../common/sound.c
+	$(CC) -c ../common/sound.c -o ../common/sound.o $(CFLAGS)
+
+../common/camera.o: ../common/camera.c
+	$(CC) -c ../common/camera.c -o ../common/camera.o $(CFLAGS)
+
+../common/engine.o: ../common/engine.c
+	$(CC) -c ../common/engine.c -o ../common/engine.o $(CFLAGS)
+
+../common/r_main.o: ../common/r_main.c
+	$(CC) -c ../common/r_main.c -o ../common/r_main.o $(CFLAGS)
+
+../common/shader.o: ../common/shader.c
+	$(CC) -c ../common/shader.c -o ../common/shader.o $(CFLAGS)
+
+../common/input.o: ../common/input.c
+	$(CC) -c ../common/input.c -o ../common/input.o $(CFLAGS)
+
+../common/mesh.o: ../common/mesh.c
+	$(CC) -c ../common/mesh.c -o ../common/mesh.o $(CFLAGS)
+
+../common/gpu.o: ../common/gpu.c
+	$(CC) -c ../common/gpu.c -o ../common/gpu.o $(CFLAGS)
+
+../common/material.o: ../common/material.c
+	$(CC) -c ../common/material.c -o ../common/material.o $(CFLAGS)
+
+../common/l_cache.o: ../common/l_cache.c
+	$(CC) -c ../common/l_cache.c -o ../common/l_cache.o $(CFLAGS)
+
+../common/l_main.o: ../common/l_main.c
+	$(CC) -c ../common/l_main.c -o ../common/l_main.o $(CFLAGS)
+
+../common/bsp.o: ../common/bsp.c
+	$(CC) -c ../common/bsp.c -o ../common/bsp.o $(CFLAGS)
+
+../common/gui.o: ../common/gui.c
+	$(CC) -c ../common/gui.c -o ../common/gui.o $(CFLAGS)
+
+../common/player.o: ../common/player.c
+	$(CC) -c ../common/player.c -o ../common/player.o $(CFLAGS)
+
+../common/world.o: ../common/world.c
+	$(CC) -c ../common/world.c -o ../common/world.o $(CFLAGS)
+
+../common/physics.o: ../common/physics.c
+	$(CC) -c ../common/physics.c -o ../common/physics.o $(CFLAGS)
+
+../common/r_text.o: ../common/r_text.c
+	$(CC) -c ../common/r_text.c -o ../common/r_text.o $(CFLAGS)
+
+ed_ui.o: ed_ui.c
+	$(CC) -c ed_ui.c -o ed_ui.o $(CFLAGS)
+
+ed_proj.o: ed_proj.c
+	$(CC) -c ed_proj.c -o ed_proj.o $(CFLAGS)
+
+../common/font.o: ../common/font.c
+	$(CC) -c ../common/font.c -o ../common/font.o $(CFLAGS)

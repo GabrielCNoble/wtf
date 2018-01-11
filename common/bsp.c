@@ -6,7 +6,8 @@
 #include "GL\glew.h"
 
 #include "bsp.h"
-#include "brush.h"
+//#include "brush.h"
+#include "w_common.h"
 #include "camera.h"
 #include "material.h"
 #include "shader.h"

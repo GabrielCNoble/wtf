@@ -9,7 +9,6 @@
 #define TRIS_FIRST_VERTEX(tri) (tri&0x00ffffff)
 #define TRIS_GROUP(tri) ((tri&0xff000000)>>24)
 #define PACK_TRIS(group, first_index) ((group<<24)|(first_index&0x00ffffff))
-//#define TRIS(group, first_index, tri) (tri=group;tri<<=24;tri|=first_index&0x00ffffff)
 
 typedef struct
 {

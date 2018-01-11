@@ -2,8 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "SDL2\SDL_ttf.h"
+
 #include "matrix.h"
 #include "gui.h"
+#include "font.h"
 #include "r_main.h"
 #include "input.h"
 
@@ -21,6 +24,11 @@ widget_t *widgets;
 widget_t *last_widget;
 widget_t *top_widget;
 mat4_t gui_projection_matrix;
+
+static char formated_str[8192];
+
+
+extern font_t *gui_font;
 
 void gui_Init()
 {
@@ -95,13 +103,14 @@ button_t *gui_AddButton(widget_t *widget, char *name, short x, short y, short w,
 		button->widget.y = y;
 		button->widget.w = w / 2;
 		button->widget.h = h / 2;
-		button->widget.bm_flags = 0;
+		button->widget.bm_flags = WIDGET_RENDER_TEXT;
 		button->widget.type = WIDGET_BUTTON;
 		button->widget.name = strdup(name);
 		button->widget.parent = widget;
 		button->widget.widget_callback = button_callback;
 			
 		button->bm_button_flags = bm_flags & (~BUTTON_PRESSED);
+		button->rendered_text = NULL;
 		
 		if(!widget->nestled)
 		{
@@ -140,7 +149,7 @@ checkbox_t *gui_AddCheckBox(widget_t *widget, short x, short y, short w, short h
 		checkbox->widget.y = y;
 		checkbox->widget.w = w / 2;
 		checkbox->widget.h = h / 2;
-		checkbox->widget.bm_flags = 0;
+		checkbox->widget.bm_flags = WIDGET_RENDER_TEXT;
 		checkbox->widget.type = WIDGET_CHECKBOX;
 		//checkbox->widget.name = strdup(name);
 		checkbox->widget.parent = widget;
@@ -166,18 +175,18 @@ checkbox_t *gui_AddCheckBox(widget_t *widget, short x, short y, short w, short h
 
 
 
-dropdown_t *gui_AddDropDown(widget_t *widget, char *name, short x, short y, short w, short bm_flags, void (*dropdown_callback)(widget_t *widget))
+dropdown_t *gui_AddDropDown(widget_t *widget, char *name, char *text, short x, short y, short w, short bm_flags, void (*dropdown_callback)(widget_t *widget))
 {
-	dropdown_t *dropdown;
+	dropdown_t *dropdown = NULL;
 	widget_t *wdgt;
 	if(widget)
 	{
 		dropdown = malloc(sizeof(dropdown_t));
 		
-		dropdown->widget.bm_flags = 0;
+		dropdown->widget.bm_flags = WIDGET_RENDER_TEXT;
 		dropdown->widget.x = x;
 		dropdown->widget.y = y;
-		dropdown->widget.h = DROPDOWN_HEIGHT;
+		dropdown->widget.h = DROPDOWN_HEIGHT / 2.0;
 		
 		if(w < WIDGET_MIN_SIZE)
 			w = WIDGET_MIN_SIZE;
@@ -188,23 +197,34 @@ dropdown_t *gui_AddDropDown(widget_t *widget, char *name, short x, short y, shor
 		dropdown->widget.parent = widget;
 		dropdown->widget.next = NULL;
 		dropdown->widget.prev = NULL;
+		dropdown->widget.nestled = NULL;
+		dropdown->widget.last_nestled = NULL;
 		dropdown->widget.widget_callback = dropdown_callback;
 		
-		dropdown->max_options = 4;
-		dropdown->options = malloc(sizeof(dropdown_option_t) * dropdown->max_options);
+
 		
-		dropdown->option_count = 0;
+		//dropdown->max_options = 4;
+		//dropdown->options = malloc(sizeof(dropdown_option_t) * dropdown->max_options);
+		
+		//dropdown->option_count = 0;
 		dropdown->bm_dropdown_flags = bm_flags;
 		
-		dropdown->x_closed = x;
+		if(text)
+			dropdown->dropdown_text = strdup(text);
+		else 
+			dropdown->dropdown_text = NULL;
+			
+		dropdown->rendered_text = NULL;	
+		
+	/*	dropdownT_->x_closed = x;
 		dropdown->y_closed = y;
 		dropdown->w_closed = w / 2;
-		dropdown->h_closed = DROPDOWN_HEIGHT;
+		dropdown->h_closed = DROPDOWN_HEIGHT / 2.0;
 		
 		dropdown->x_dropped = x;
 		dropdown->y_dropped = y; 
 		dropdown->w_dropped = w / 2;
-		dropdown->h_dropped = DROPDOWN_HEIGHT;
+		dropdown->h_dropped = DROPDOWN_HEIGHT / 2.0;*/
 		
 		
 		if(!widget->nestled)
@@ -219,11 +239,100 @@ dropdown_t *gui_AddDropDown(widget_t *widget, char *name, short x, short y, shor
 			widget->last_nestled = (widget_t *)dropdown;
 		}
 	}
+	
+	return dropdown;
 }
 
 
-int gui_AddOption(dropdown_t *dropdown, char *name)
+void gui_AddOption(dropdown_t *dropdown, char *name, char *text)
 {
+	
+	option_list_t *options;
+	option_t *option;
+	
+	short x;
+	short y;
+	if(dropdown)
+	{
+		if(!dropdown->widget.nestled)
+		{
+			options = malloc(sizeof(option_list_t));
+			options->widget.next = NULL;
+			options->widget.prev = NULL;
+			options->widget.nestled = NULL;
+			options->widget.last_nestled = NULL;
+			options->widget.parent = (widget_t *)dropdown;
+			options->widget.type = WIDGET_OPTION_LIST;
+			options->widget.w = dropdown->widget.w;	
+			options->widget.x = 0;
+			options->option_count = 0;
+			options->active_option_index = -1;
+			options->active_option = NULL;
+			options->widget.bm_flags = WIDGET_INVISIBLE;
+			options->widget.w = options->widget.w;
+			options->bm_option_list_flags = OPTION_LIST_UPDATE_EXTENTS;
+			options->widget.widget_callback = dropdown->widget.widget_callback;
+			
+			dropdown->widget.nestled = (widget_t *)options;
+			dropdown->widget.last_nestled = (widget_t *)options;
+		}
+		
+		options = (option_list_t *)dropdown->widget.nestled;
+		
+		
+		option = malloc(sizeof(option_t));
+		option->widget.name = strdup(name);
+		option->widget.w = options->widget.w;
+		option->widget.h = OPTION_HEIGHT / 2.0;
+		option->widget.x = 0;
+		option->widget.bm_flags = WIDGET_RENDER_TEXT;
+		option->widget.next = NULL;
+		option->widget.prev = NULL;
+		option->widget.nestled = NULL;
+		option->widget.last_nestled = NULL;
+		option->widget.parent = (widget_t *)options;
+		option->widget.type = WIDGET_OPTION;
+		option->index = options->option_count;
+		option->widget.widget_callback = options->widget.widget_callback;
+		
+		if(text)
+			option->option_text = strdup(text);
+		else
+			option->option_text = NULL;
+		
+		if(!options->widget.nestled)
+		{
+			options->widget.nestled = (widget_t *)option;
+		}
+		else
+		{
+			options->widget.last_nestled->next = (widget_t *)option;
+			option->widget.prev = options->widget.last_nestled;
+		}
+		
+		options->widget.last_nestled = (widget_t *)option;
+		options->bm_option_list_flags |= OPTION_LIST_UPDATE_EXTENTS;
+		options->option_count++;
+	}
+}
+
+
+void gui_NestleOption(option_list_t *option_list, int option_index, char *name, char *text)
+{
+	option_t *option;
+	widget_t *wdg;
+	int i;
+	int w;
+
+	for(i = 0, wdg = option_list->widget.nestled; i < option_index && wdg; i++, wdg = wdg->next);
+		
+	gui_AddOption((dropdown_t *)wdg, name, text);
+	
+	w = wdg->w;
+	wdg = wdg->nestled;
+	
+	wdg->x = w * 2.0;
+	wdg->y += OPTION_HEIGHT;
 	
 }
 
@@ -274,6 +383,53 @@ void gui_SetAsTop(widget_t *widget)
 	}
 }
 
+
+void gui_RenderText(widget_t *widget)
+{
+	option_t *option;
+	dropdown_t *dropdown;
+	SDL_Color foreground = {255, 255, 255, 255};
+	SDL_Color background = {0, 0, 0, 0};
+	
+	if(!gui_font)
+		return;
+	
+	switch(widget->type)
+	{
+		case WIDGET_OPTION:
+			option = (option_t *)widget;
+			
+			if(!option->option_text)
+				return;
+			
+			if(option->rendered_text)
+			{
+				SDL_FreeSurface(option->rendered_text);
+			}
+			
+			sprintf(formated_str, option->option_text);
+			
+			option->rendered_text = TTF_RenderUTF8_Blended_Wrapped(gui_font->font, formated_str, foreground, option->widget.w * 2.0);
+		break;
+		
+		case WIDGET_DROPDOWN:
+			dropdown = (dropdown_t *)widget;
+			if(!dropdown->dropdown_text)
+				return;
+				
+			if(dropdown->rendered_text)
+				SDL_FreeSurface(dropdown->rendered_text);
+			
+			sprintf(formated_str, dropdown->dropdown_text);
+			
+			dropdown->rendered_text = TTF_RenderUTF8_Blended_Wrapped(gui_font->font, formated_str, foreground, dropdown->widget.w * 2.0);
+					
+		break;
+	}
+	
+	
+	widget->bm_flags &= ~WIDGET_RENDER_TEXT;
+}
 
 
 #if 0
@@ -343,6 +499,8 @@ void gui_ProcessGUI()
 	button_t *button;
 	dropdown_t *dropdown;
 	checkbox_t *checkbox;
+	option_list_t *option_list;
+	option_t *option;
 	
 	int widget_stack_top = -1;
 	widget_t *widget_stack[WIDGET_STACK_SIZE];
@@ -362,6 +520,10 @@ void gui_ProcessGUI()
 	int call_callback;
 	int mouse_over_top;
 	
+	short top_y;
+	short y_increment;
+	short bottom_y;
+	
 	new_top = NULL;
 	
 	//w = top_widget;
@@ -377,6 +539,9 @@ void gui_ProcessGUI()
 		w->relative_mouse_x = relative_screen_mouse_x / (float)w->w;
 		w->relative_mouse_y = relative_screen_mouse_y / (float)w->h;
 		
+		/* ignore invisible widgets... */
+		if(w->bm_flags & WIDGET_INVISIBLE)
+			goto _advance_widget;
 		
 		if(w->parent)
 		{
@@ -426,7 +591,7 @@ void gui_ProcessGUI()
 				{
 					w->bm_flags |= WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON;
 					
-					top->bm_flags &= ~(WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON | WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_HAS_RIGHT_MOUSE_BUTTON);
+					//top->bm_flags &= ~(WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON | WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_HAS_RIGHT_MOUSE_BUTTON);
 					
 					gui_SetAsTop(w);
 				}
@@ -435,6 +600,13 @@ void gui_ProcessGUI()
 		}
 		
 		call_callback = 0;
+		
+		
+		if(w->bm_flags & WIDGET_RENDER_TEXT)
+		{
+			gui_RenderText(w);
+		}
+		
 		
 		switch(w->type)
 		{
@@ -522,33 +694,162 @@ void gui_ProcessGUI()
 				
 				dropdown = (dropdown_t *)w;
 				
-				if(dropdown->bm_dropdown_flags & DROPDOWN_DROPPED)
-				{
-					
-				}
-				
 				if(w->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
 				{
 					if(dropdown->bm_dropdown_flags & DROPDOWN_DROPPED)
 					{
 						dropdown->bm_dropdown_flags &= ~DROPDOWN_DROPPED;
-						
-						w->x = dropdown->x_closed;
-						w->y = dropdown->y_closed;
-						w->w = dropdown->w_closed;
-						w->h = dropdown->h_closed;
+					
+						if(w->nestled)
+						{
+							w->nestled->bm_flags |= WIDGET_INVISIBLE;
+						}
 					}
 					else
 					{
 						dropdown->bm_dropdown_flags |= DROPDOWN_DROPPED;
 						
-						w->x = dropdown->x_dropped;
-						w->y = dropdown->y_dropped;
-						w->w = dropdown->w_dropped;
-						w->h = dropdown->h_dropped;
+						if(w->nestled)
+						{
+							w->nestled->bm_flags &= ~WIDGET_INVISIBLE;
+						}
 					}
 				}
 				
+				#if 0
+				/* if the user clicks somewhere else, close this dropdown
+				box... */
+				if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
+				{
+					if(!(w->bm_flags & WIDGET_MOUSE_OVER))
+					{
+						dropdown->bm_dropdown_flags &= ~DROPDOWN_DROPPED;
+						if(w->nestled)
+						{
+							w->nestled->bm_flags |= WIDGET_INVISIBLE;
+						}
+					}
+				}
+				#endif
+				
+				
+				if(w->nestled)
+				{
+					if(!(w->nestled->bm_flags & WIDGET_INVISIBLE))
+					{
+						x += w->x;
+						y += w->y;
+						widget_stack_top++;		
+						widget_stack[widget_stack_top] = w;
+						w = w->nestled;
+						continue;
+					}		
+				}			
+			break;
+			
+			case WIDGET_OPTION_LIST:
+				
+				option_list = (option_list_t *)w;
+				
+				if(option_list->bm_option_list_flags & OPTION_LIST_UPDATE_EXTENTS)
+				{
+					top_y = (OPTION_HEIGHT * option_list->option_count) * 0.5;
+					
+					
+					w->h = top_y;
+					w->y = -top_y;
+					
+					/* if this option list is nestled within a option, 
+					make it align correctly... */
+					if(option_list->widget.parent->type == WIDGET_OPTION)
+					{
+						w->y += OPTION_HEIGHT * 0.5;
+					}
+					else
+					{
+						w->y -= OPTION_HEIGHT * 0.5;
+					}
+					
+					/* - OPTION_HEIGHT * 0.5;*/
+					
+					
+					top_y -=  OPTION_HEIGHT * 0.5;
+					r = w->nestled;
+					
+					while(r)
+					{
+						r->y = top_y;
+						top_y -= OPTION_HEIGHT;
+						r = r->next;
+					}
+					
+					option_list->bm_option_list_flags &= ~OPTION_LIST_UPDATE_EXTENTS;
+				}
+				
+				if(w->nestled)
+				{
+					x += w->x;
+					y += w->y;
+					widget_stack_top++;		
+					widget_stack[widget_stack_top] = w;
+					w = w->nestled;
+					continue;
+				}
+			break;
+			
+			case WIDGET_OPTION:
+				
+				option = (option_t *)w;
+				option_list = (option_list_t *)w->parent;
+				
+				if(w->bm_flags & WIDGET_MOUSE_OVER)
+				{
+					/* if this option has the mouse over it, make
+					it the active option of this option list... */
+					option_list->active_option_index = option->index;
+					option_list->active_option = (struct option_t *)option;	
+					
+					if(w->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
+					{
+						call_callback = 1;
+					}
+					
+				}
+				else
+				{
+					if((option_t *)option_list->active_option == option)
+					{
+						/* only keep the option as active when the mouse
+						is away only if this option has any nestled options... */
+						if(!option->widget.nestled)
+						{
+							option_list->active_option_index = -1;
+							option_list->active_option = NULL;
+						}
+					}
+					
+				}
+				
+				if(w->nestled)
+				{
+					//if(w->bm_flags & WIDGET_MOUSE_OVER)
+					/* only recurse down if this option is the active one... */
+					if(option == (option_t *)option_list->active_option)
+					{
+						w->nestled->bm_flags &= ~WIDGET_INVISIBLE;
+						
+						x += w->x;
+						y += w->y;
+						widget_stack_top++;		
+						widget_stack[widget_stack_top] = w;
+						w = w->nestled;
+						continue;
+					}
+					else
+					{
+						w->nestled->bm_flags |= WIDGET_INVISIBLE;
+					}
+				}
 			break;
 		}
 		

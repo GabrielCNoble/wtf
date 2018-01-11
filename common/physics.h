@@ -4,7 +4,7 @@
 #include "vector_types.h"
 #include "mesh.h"
 #include "player.h"
-#include "projectile.h"
+//#include "projectile.h"
 
 #define GRAVITY 0.0098
 

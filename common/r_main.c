@@ -3,6 +3,7 @@
 
 #include "r_common.h"
 #include "r_main.h"
+#include "r_text.h"
 
 
 #include "camera.h"
@@ -15,8 +16,8 @@
 #include "texture.h"
 #include "l_main.h"
 #include "l_cache.h"
-#include "brush.h"
-#include "editor.h"
+//#include "brush.h"
+//#include "editor.h"
 #include "gui.h"
 #include "bsp.h"
 
@@ -89,7 +90,7 @@ extern unsigned int shared_shadow_map;
 
 /* from brush.c */
 extern int brush_count;
-extern brush_t *brushes;
+//extern brush_t *brushes;
 
 
 /* from gui.c */
@@ -824,6 +825,8 @@ void renderer_DrawGUI()
 	button_t *button;
 	checkbox_t *checkbox;
 	dropdown_t *dropdown;
+	option_list_t *options;
+	option_t *option;
 	
 	short x = 0;
 	short y = 0;
@@ -855,17 +858,21 @@ void renderer_DrawGUI()
 			}
 		}*/
 		
+		if(w->bm_flags & WIDGET_INVISIBLE)
+			goto _advance_widget;
+		
+		
 		switch(w->type)
 		{
 			case WIDGET_NONE:
 				glBegin(GL_QUADS);
 				if(w->bm_flags & WIDGET_MOUSE_OVER)
 				{
-					glColor3f(0.35, 0.35, 0.35);
+					glColor3f(0.5, 0.5, 0.5);
 				}
 				else
 				{
-					glColor3f(0.3, 0.3, 0.3);
+					glColor3f(0.4, 0.4, 0.4);
 				}
 						
 				//glRectf(w->x + w->w, w->y - w->h, w->x - w->w, w->y + w->h);
@@ -909,11 +916,24 @@ void renderer_DrawGUI()
 				}
 				
 				//glRectf(w->x + w->w, w->y - w->h, w->x - w->w, w->y + w->h);
+				
 				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
 				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
 				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
 				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
 				glEnd();
+				
+				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+				glColor3f(0.0, 0.0 ,0.0);
+				glBegin(GL_QUADS);
+				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+				glEnd();
+				
+				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+				
 			break;
 			
 			case WIDGET_CHECKBOX:
@@ -950,22 +970,150 @@ void renderer_DrawGUI()
 			case WIDGET_DROPDOWN:
 				dropdown = (dropdown_t *)w;
 				
+				
 				if(dropdown->bm_dropdown_flags & DROPDOWN_DROPPED)
 				{
+					glColor3f(0.35, 0.35, 0.35);
+				}
+				else
+				{
+					if(w->bm_flags & WIDGET_MOUSE_OVER)
+					{
+						glColor3f(0.5, 0.5, 0.5);
+					}
+					else
+					{
+						glColor3f(0.4, 0.4, 0.4);
+					}
 					
+				}
+				
+				glBegin(GL_QUADS);
+				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+				glEnd();
+				
+				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+				glColor3f(0.0, 0.0, 0.0);
+				
+				glBegin(GL_QUADS);
+				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+				glEnd();
+				
+				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+				
+				renderer_BlitSurface(dropdown->rendered_text, w->x + x - w->w + r_window_width * 0.5 + 1, w->y + y + w->h + r_window_height * 0.5 - 2);
+				
+				if(w->nestled)
+				{
+					x += w->x;
+					y += w->y;
+					
+					widget_stack_top++;
+					widget_stack[widget_stack_top] = w;
+					w = w->last_nestled;
+					continue;
+				}
+				
+			break;	
+			
+			case WIDGET_OPTION_LIST:
+				if(w->nestled)
+				{
+					x += w->x;
+					y += w->y;
+					
+					widget_stack_top++;
+					widget_stack[widget_stack_top] = w;
+					w = w->last_nestled;
+					continue;
+				}
+				
+				/*options = (option_list_t *)w;
+				
+				if(w->bm_flags & WIDGET_MOUSE_OVER)
+				{
+					glColor3f(0.5, 0.5, 0.5);
 				}
 				else
 				{
 					glColor3f(0.4, 0.4, 0.4);
-					glBegin(GL_QUADS);
-					glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-					glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-					glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-					glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-					glEnd();
 				}
 				
-			break;	
+				
+				glBegin(GL_QUADS);
+				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+				glEnd();*/
+			break;
+			
+			case WIDGET_OPTION:
+				option = (option_t *)w;
+				options = (option_list_t *)w->parent;
+				
+				//if(w->bm_flags & WIDGET_MOUSE_OVER)
+				if(option == (option_t *)options->active_option)
+				{
+					glColor3f(0.5, 0.5, 0.5);
+				}
+				else
+				{
+					glColor3f(0.4, 0.4, 0.4);
+				}
+				
+				
+				glBegin(GL_QUADS);
+				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+				glEnd();
+				
+				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+				glColor3f(0.0, 0.0, 0.0);
+				glBegin(GL_QUADS);
+				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+				glEnd();
+				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+				
+				renderer_BlitSurface(option->rendered_text, w->x + x - w->w + r_window_width * 0.5 + 1, w->y + y + w->h + r_window_height * 0.5 - 2);
+				//draw_DrawString(ui_font, 16, (button->swidget.x + x - hw) + renderer.screen_width * 0.5 + 1,  (button->swidget.y + y + hh) + renderer.screen_height * 0.5 + 1, 500, vec3(1.0, 1.0, 1.0), button->swidget.name);
+				
+				if(w->nestled)
+				{
+					glColor3f(0.0, 0.0 ,0.0);
+					
+					glBegin(GL_TRIANGLES);
+					glVertex3f(w->x + w->w + x, w->y + y, 0.0);
+					glVertex3f(w->x + w->w + x - 15.0, w->y + w->h + y - 5.0, 0.0);
+					glVertex3f(w->x + w->w + x - 15.0, w->y - w->h + y + 5.0, 0.0);
+					glEnd();
+					
+					//if(w->bm_flags & WIDGET_MOUSE_OVER)
+					if(option == (option_t *)options->active_option)
+					{
+						x += w->x;
+						y += w->y;
+						
+						widget_stack_top++;
+						widget_stack[widget_stack_top] = w;
+						w = w->last_nestled;
+						continue;
+					}
+				
+				}
+				
+			break;
 		}
 		
 		
