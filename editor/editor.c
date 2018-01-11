@@ -149,12 +149,12 @@ void editor_Init()
 	input_RegisterKey(SDL_SCANCODE_P);
 	
 	
-	renderer_RegisterCallback(bsp_DrawPortals, POST_SHADING_STAGE_CALLBACK);
+	//renderer_RegisterCallback(bsp_DrawPortals, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterFunction(indirect_DrawVolumes);
-	renderer_RegisterCallback(renderer_DrawBrushes, PRE_SHADING_STAGE_CALLBACK);
+	//renderer_RegisterCallback(renderer_DrawBrushes, PRE_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterCallback(bsp_DrawExpandedBrushes, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterCallback(bsp_DrawBevelEdges, POST_SHADING_STAGE_CALLBACK);
-	renderer_RegisterCallback(renderer_DrawLeaves, POST_SHADING_STAGE_CALLBACK);
+	//renderer_RegisterCallback(renderer_DrawLeaves, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterFunction(renderer_DrawLightBoxes);
 	//renderer_RegisterFunction(renderer_DrawSelectedLightLeaves);
 	renderer_RegisterCallback(renderer_DrawGrid, POST_SHADING_STAGE_CALLBACK);
@@ -285,7 +285,7 @@ void editor_Init()
 	}*/
 	
 	
-	#if 0
+	#if 1
 	
 	light_CreateLight("light0", &r, vec3(6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
 	light_CreateLight("light0", &r, vec3(-6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
@@ -349,7 +349,7 @@ void editor_Init()
 	
 	player_CreatePlayer("player", vec3(0.0, 5.0 ,0.0), &r);
 	
-	#if 1
+	#if 0
 	
 	light_CreateLight("light0", &r, vec3(16.0, 0.0, 8.0), vec3(1.0, 0.0, 1.0), 35.0, 20.0);
 	//light_CreateLight("light0", &r, vec3(16.0, 0.0, -8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
