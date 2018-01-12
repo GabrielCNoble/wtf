@@ -66,6 +66,7 @@ enum WIDGET_BAR_FLAGS
 	WIDGET_BAR_JUSTIFY_LEFT = 1,
 	WIDGET_BAR_JUSTIFY_RIGHT = 1 << 1,
 	WIDGET_BAR_ADJUST_WIDGETS = 1 << 2,
+	WIDGET_BAR_FIXED_SIZE = 1 << 3,
 };
 
 typedef struct widget_t
@@ -139,6 +140,7 @@ typedef struct
 typedef struct
 {
 	widget_t widget;
+	widget_t *active_widget;
 	short type;
 	short bm_flags;
 	void (*process_fn)(widget_t *);

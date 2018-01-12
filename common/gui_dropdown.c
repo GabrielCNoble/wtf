@@ -48,6 +48,7 @@ dropdown_t *gui_AddDropdown(widget_t *widget, char *name, char *text, short x, s
 	{
 		dropdown = gui_CreateDropdown(name, text, x, y, w, bm_flags, dropdown_callback);
 		
+		dropdown->widget.parent = widget;
 		
 		if(!widget->nestled)
 		{
@@ -88,7 +89,7 @@ void gui_AddOption(dropdown_t *dropdown, char *name, char *text)
 			options->option_count = 0;
 			options->active_option_index = -1;
 			options->active_option = NULL;
-			options->widget.bm_flags = WIDGET_INVISIBLE;
+			options->widget.bm_flags = 0;
 			options->widget.w = options->widget.w;
 			options->bm_option_list_flags = OPTION_LIST_UPDATE_EXTENTS;
 			options->widget.widget_callback = dropdown->widget.widget_callback;
@@ -137,7 +138,7 @@ void gui_AddOption(dropdown_t *dropdown, char *name, char *text)
 	}
 }
 
-void gui_UpdateDropDown(widget_t *widget)
+void gui_UpdateDropdown(widget_t *widget)
 {
 	dropdown_t *dropdown = (dropdown_t *)widget;
 				
@@ -147,22 +148,81 @@ void gui_UpdateDropDown(widget_t *widget)
 		{
 			dropdown->bm_dropdown_flags &= ~DROPDOWN_DROPPED;
 					
-			if(widget->nestled)
+			/*if(widget->nestled)
 			{
 				widget->nestled->bm_flags |= WIDGET_INVISIBLE;
-			}
+			}*/
 		}
 		else
 		{
 			dropdown->bm_dropdown_flags |= DROPDOWN_DROPPED;
 			
-			if(widget->nestled)
+			/*if(widget->nestled)
 			{
 				widget->nestled->bm_flags &= ~WIDGET_INVISIBLE;
-			}
+			}*/
 		}
 	}
 }
+
+void gui_UpdateDropdownBar(widget_t *bar)
+{
+	widget_t *w;
+	widget_t *active;
+	widget_bar_t *wbar;
+	dropdown_t *dropdown;
+	dropdown_t *active_dropdown;
+	
+	w = bar->nestled;
+	wbar = (widget_bar_t *)bar;
+	
+	if(wbar->active_widget)
+	{
+		if(wbar->active_widget->bm_flags & WIDGET_MOUSE_OVER)
+		{
+			return;
+		}
+	}
+	
+	
+	
+	while(w)
+	{
+		
+		if(w->bm_flags & WIDGET_MOUSE_OVER)
+		{
+			
+			if(wbar->active_widget)
+			{
+				dropdown = (dropdown_t *)w;
+				active_dropdown = (dropdown_t *)wbar->active_widget;
+				
+				dropdown->bm_dropdown_flags |= active_dropdown->bm_dropdown_flags & DROPDOWN_DROPPED;
+				
+				active_dropdown->bm_dropdown_flags &= ~DROPDOWN_DROPPED;
+			}
+			
+			wbar->active_widget = w;
+		}
+		
+		w = w->next;
+	}
+	
+	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

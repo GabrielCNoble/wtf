@@ -9,9 +9,9 @@ dropdown_t *gui_AddDropdown(widget_t *widget, char *name, char *text, short x, s
 
 void gui_AddOption(dropdown_t *dropdown, char *name, char *text);
 
-void gui_UpdateDropDown(widget_t *widget);
+void gui_UpdateDropdown(widget_t *widget);
 
-void gui_DropDownBarUpdate(widget_t *bar);
+void gui_UpdateDropdownBar(widget_t *bar);
 
 
 #endif

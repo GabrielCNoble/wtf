@@ -137,6 +137,14 @@ void engine_SetEngineState(int state)
 		case ENGINE_PLAYING:
 		case ENGINE_EDITING:
 			
+			
+			/* once the engine is set to quit, nothing should stop it... */
+			//if(state == ENGINE_QUIT && engine_state == ENGINE_QUIT)
+			//	return;
+			
+			if(engine_state == ENGINE_QUIT)
+				return;	
+				
 			/*if(engine_state == ENGINE_PLAYING && state == ENGINE_PAUSED)
 			{
 				engine_state |= ENGINE_JUST_PAUSED;

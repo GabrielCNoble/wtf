@@ -15,8 +15,8 @@ void gui_UpdateOption(widget_t *widget)
 					
 		if(widget->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
 		{
-			widget->widget_callback(widget);
-			//call_callback = 1;
+			if(widget->widget_callback)
+				widget->widget_callback(widget);
 		}
 					
 	}

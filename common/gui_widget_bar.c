@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "gui_widget_bar.h"
+#include "gui_dropdown.h"
 
 
 widget_bar_t *gui_AddWidgetBar(widget_t *widget, char *name, short x, short y, short w, short h, short bm_flags)
@@ -29,6 +30,7 @@ widget_bar_t *gui_AddWidgetBar(widget_t *widget, char *name, short x, short y, s
 	bar->type = WIDGET_NONE;
 	bar->process_fn = NULL;
 	bar->bm_flags = bm_flags;
+	bar->active_widget = NULL;
 	
 	if(!widget->nestled)
 	{
@@ -68,7 +70,7 @@ void gui_AddWidgetToBar(widget_t *widget, widget_bar_t *bar)
 					break;
 					
 					case WIDGET_DROPDOWN:
-					
+						bar->process_fn = gui_UpdateDropdownBar;
 					break;
 				}
 				
@@ -117,7 +119,9 @@ void gui_AdjustBar(widget_t *widget)
 	}
 	
 	bar->widget.h = height;
-	bar->widget.w = width;
+	
+	if(!(bar->bm_flags & WIDGET_BAR_FIXED_SIZE))	
+		bar->widget.w = width;
 	
 	r = widget->nestled;
 	
@@ -140,6 +144,9 @@ void gui_AdjustBar(widget_t *widget)
 void gui_UpdateWidgetBar(widget_t *widget)
 {
 	widget_bar_t *bar;
+	widget_t *w;
+	widget_t *active;
+	
 	bar = (widget_bar_t *)widget;
 	
 	if(bar->bm_flags & WIDGET_BAR_ADJUST_WIDGETS)
@@ -147,6 +154,18 @@ void gui_UpdateWidgetBar(widget_t *widget)
 		gui_AdjustBar(widget);
 	}
 	
+	
+	
+	/*w = bar->widget.nestled;
+	
+	while(w)
+	{
+		if(w->bm_flags & WIDGET_MOUSE_OVER)
+		{
+			bar->active_widget = w;
+		}
+		w = w->next;
+	}*/
 
 }
 

@@ -159,14 +159,18 @@ void renderer_Init(int width, int height, int init_mode)
 	
 	int r;
 	
-	if(init_mode == INIT_FULLSCREEN)
+	if(init_mode == INIT_FULLSCREEN_DESKTOP || init_mode == INIT_FULLSCREEN)
 	{
 		SDL_GetDisplayMode(0, 0, &display_mode);
 		r_width = display_mode.w;
 		r_height = display_mode.h;
 		r_window_width = r_width;
 		r_window_height = r_height;
-		r_window_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+		if(init_mode == INIT_FULLSCREEN_DESKTOP)
+			r_window_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+		
+		else
+			r_window_flags |= SDL_WINDOW_MAXIMIZED;	
 	}
 	else
 	{
@@ -1012,13 +1016,17 @@ void renderer_DrawGUI()
 				
 				if(w->nestled)
 				{
-					x += w->x;
-					y += w->y;
+					if(dropdown->bm_dropdown_flags & DROPDOWN_DROPPED)
+					{
+						x += w->x;
+						y += w->y;
+						
+						widget_stack_top++;
+						widget_stack[widget_stack_top] = w;
+						w = w->last_nestled;
+						continue;
+					}
 					
-					widget_stack_top++;
-					widget_stack[widget_stack_top] = w;
-					w = w->last_nestled;
-					continue;
 				}
 				
 			break;	

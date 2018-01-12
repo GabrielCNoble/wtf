@@ -351,54 +351,7 @@ void gui_ProcessGUI()
 			break;
 			
 			case WIDGET_BUTTON:
-				
-				//gui_UpdateButton(w);
-				
-				button = (button_t *)w;
-				
-				//printf("%d\n", w->bm_flags & WIDGET_MOUSE_OVER);
-				
-				if(button->bm_button_flags & BUTTON_TOGGLE)
-				{
-					if(w->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
-					{
-						if(button->bm_button_flags & BUTTON_PRESSED)
-						{
-							button->bm_button_flags &= ~BUTTON_PRESSED;
-						}
-						else
-						{
-							button->bm_button_flags |= BUTTON_PRESSED;
-							
-							if(w->widget_callback)
-							{
-								w->widget_callback(w);
-								//call_callback = 1;
-							}
-								
-						}
-					}
-				}
-				else
-				{
-					if(w->bm_flags & WIDGET_HAS_LEFT_MOUSE_BUTTON)
-					{
-						if(w->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
-						{
-							if(w->widget_callback)
-							{
-								w->widget_callback(w);
-								//call_callback = 1;
-							}		
-						}
-							
-						button->bm_button_flags |= BUTTON_PRESSED;
-					}
-					else
-					{
-						button->bm_button_flags &= ~BUTTON_PRESSED;
-					}
-				}
+				gui_UpdateButton(w);
 			break;
 			
 			case WIDGET_CHECKBOX:
@@ -427,11 +380,14 @@ void gui_ProcessGUI()
 			
 			case WIDGET_DROPDOWN:
 				
-				gui_UpdateDropDown(w);
+				gui_UpdateDropdown(w);
 				
+				dropdown = (dropdown_t *)w;
+					
 				if(w->nestled)
 				{
-					if(!(w->nestled->bm_flags & WIDGET_INVISIBLE))
+					//if(!(w->nestled->bm_flags & WIDGET_INVISIBLE))
+					if(dropdown->bm_dropdown_flags & DROPDOWN_DROPPED)
 					{
 						x += w->x;
 						y += w->y;

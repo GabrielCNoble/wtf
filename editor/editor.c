@@ -601,14 +601,25 @@ void editor_Init()
 	#endif 
 	
 	/*widget_t *w = gui_CreateWidget("menu", 0, 0, 200, 50);
-	widget_bar_t *bar = gui_AddWidgetBar(w, "bar", 0, 0, 100, 20, WIDGET_BAR_JUSTIFY_LEFT);*/
+	widget_bar_t *bar = gui_AddWidgetBar(w, "bar", 0, 0, 300, 20, WIDGET_BAR_FIXED_SIZE);
 	
-	/*dropdown_t *dropdown = gui_CreateDropdown("dropdown", "wow", 0, 0, 80, 0, NULL);
+	dropdown_t *dropdown = gui_CreateDropdown("dropdown", "wow", 0, 0, 80, 0, NULL);
+	gui_AddOption(dropdown, "option0", "option0");
+	gui_AddOption(dropdown, "option1", "option1");
+	gui_AddOption(dropdown, "option2", "option2");
 	gui_AddWidgetToBar((widget_t *)dropdown, bar);
 	
 	dropdown = gui_CreateDropdown("dropdown", "wow1", 0, 0, 80, 0, NULL);
+	gui_AddOption(dropdown, "option0", "option0");
+	gui_AddOption(dropdown, "option1", "option1");
+	gui_AddOption(dropdown, "option2", "option2");
+	gui_AddOption(dropdown, "option3", "option3");
 	gui_AddWidgetToBar((widget_t *)dropdown, bar);
+	
 	dropdown = gui_CreateDropdown("dropdown", "wow2", 0, 0, 80, 0, NULL);
+	gui_AddOption(dropdown, "option0", "option0");
+	gui_AddOption(dropdown, "option1", "option1");
+	gui_AddOption(dropdown, "option2", "option2");
 	gui_AddWidgetToBar((widget_t *)dropdown, bar);*/
 	
 	/*button_t *button = gui_CreateButton("button0", 0, 0, 30, 30, BUTTON_TOGGLE, NULL);
@@ -740,11 +751,11 @@ void editor_Main(float delta_time)
 	pick_record_t record;
 	
 
-	if(input_GetKeyStatus(SDL_SCANCODE_ESCAPE) & KEY_PRESSED)
+	/*if(input_GetKeyStatus(SDL_SCANCODE_ESCAPE) & KEY_PRESSED)
 	{
 		engine_SetEngineState(ENGINE_QUIT);
 		return;
-	}
+	}*/
  	
  	translation = vec3(0.0, 0.0, 0.0);
 	
@@ -930,7 +941,6 @@ void editor_Main(float delta_time)
 			}
 		}
 		
-		
 		if(input_GetKeyStatus(SDL_SCANCODE_P) & KEY_PRESSED)
 		{
 			player_SetPlayerAsActive(player_GetPlayer("player"));
@@ -939,17 +949,6 @@ void editor_Main(float delta_time)
 		}
 			
 	}
-	
-	
-	/*else
-	{
-		printf("nope!\n");
-	}*/
-	
-	
-	//bsp_BuildBspFromBrushes();
-	
-	//bsp_Draw(editor_camera->world_position);
 }
 
 void editor_ProcessMouse()
@@ -1233,6 +1232,8 @@ int editor_Pick(pick_record_t *record)
 	shader_UseShader(brush_pick_shader);	
 	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
 	
+	glViewport(0, 0, r_window_width, r_window_height);
+	
 	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, pick_framebuffer_id);
 	//glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	
@@ -1284,8 +1285,8 @@ int editor_Pick(pick_record_t *record)
 	glDisable(GL_POINT_SMOOTH);
 	glPointSize(1.0);
 	
-	x = r_width * (normalized_mouse_x * 0.5 + 0.5);
-	y = r_height * (normalized_mouse_y * 0.5 + 0.5);
+	x = r_window_width * (normalized_mouse_x * 0.5 + 0.5);
+	y = r_window_height * (normalized_mouse_y * 0.5 + 0.5);
 	glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, q);
 	
 	//printf("[%d %d %d %d]\n", *(int *)&q[0], *(int *)&q[1], *(int *)&q[2], *(int *)&q[3]);

@@ -23,6 +23,7 @@ extern int handle_3d_mode;
 
 
 widget_t *menu_bar;
+widget_bar_t *menu_dropdown_bar;
 dropdown_t *file_dropdown;
 dropdown_t *world_dropdown;
 //dropdown_t *wow;
@@ -107,20 +108,25 @@ void editor_InitUI()
 {
 	menu_bar = gui_CreateWidget("menu_bar", 0, r_window_height * 0.5 - MENU_BAR_HEIGHT * 0.5, r_window_width, MENU_BAR_HEIGHT);	
 	
-	/*gui_AddButton(menu_bar, "button", 100, 0, 20, 20, BUTTON_TOGGLE, NULL);
-	gui_AddButton(menu_bar, "button", 140, 0, 20, 20, BUTTON_TOGGLE, NULL);
-	gui_AddButton(menu_bar, "button", 180, 0, 20, 20, BUTTON_TOGGLE, NULL);*/
+	menu_dropdown_bar = gui_AddWidgetBar(menu_bar, "menu widget bar", 0, 0, r_window_width, MENU_BAR_HEIGHT, WIDGET_BAR_FIXED_SIZE);
 	
-	file_dropdown = gui_AddDropdown(menu_bar, "file", "file", -r_window_width * 0.5 + FILE_DROPDOWN_WIDTH * 0.5, 0, FILE_DROPDOWN_WIDTH, 0, file_dropdown_callback);
+	//file_dropdown = gui_AddDropdown(menu_bar, "file", "file", -r_window_width * 0.5 + FILE_DROPDOWN_WIDTH * 0.5, 0, FILE_DROPDOWN_WIDTH, 0, file_dropdown_callback);
+	file_dropdown = gui_CreateDropdown("file", "file", 0, 0, FILE_DROPDOWN_WIDTH, 0, file_dropdown_callback);
 	gui_AddOption(file_dropdown, "new_file", "new...");
 	gui_AddOption(file_dropdown, "save", "save");
 	gui_AddOption(file_dropdown, "load", "load");
 	gui_AddOption(file_dropdown, "exit", "exit");
 	
-	world_dropdown = gui_AddDropdown(menu_bar, "world", "world", -r_window_width * 0.5 + FILE_DROPDOWN_WIDTH + WORLD_DROPDOWN_WIDTH * 0.5, 0, WORLD_DROPDOWN_WIDTH, 0, world_dropdown_callback);
+	gui_AddWidgetToBar((widget_t *) file_dropdown, menu_dropdown_bar);
+	
+	//world_dropdown = gui_AddDropdown(menu_bar, "world", "world", -r_window_width * 0.5 + FILE_DROPDOWN_WIDTH + WORLD_DROPDOWN_WIDTH * 0.5, 0, WORLD_DROPDOWN_WIDTH, 0, world_dropdown_callback);
+	world_dropdown = gui_CreateDropdown("world", "world", 0, 0, WORLD_DROPDOWN_WIDTH, 0, world_dropdown_callback);
 	gui_AddOption(world_dropdown, "compile bsp", "compile bsp");
 	gui_AddOption(world_dropdown, "export bsp", "export bsp");
 	gui_AddOption(world_dropdown, "visualize portals", "visualize portals");
+	
+	gui_AddWidgetToBar((widget_t *) world_dropdown, menu_dropdown_bar);
+	
 	
 	/*wow = gui_AddDropDown(menu_bar, "wow", "wow", -r_window_width * 0.5 + FILE_DROPDOWN_WIDTH + WORLD_DROPDOWN_WIDTH + WOW_DROPDOWN_WIDTH * 0.5, 0, WOW_DROPDOWN_WIDTH, 0, wow_dropdown_callback);
 	gui_AddOption(wow, "translation", "translation");
