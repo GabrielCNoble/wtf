@@ -14,7 +14,7 @@
 #include "shader.h"
 #include "material.h"
 #include "texture.h"
-#include "collision.h"
+//#include "collision.h"
 #include "gui.h"
 #include "bsp_cmp.h"
 #include "bsp.h"
@@ -151,7 +151,7 @@ void editor_Init()
 	
 	//renderer_RegisterCallback(bsp_DrawPortals, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterFunction(indirect_DrawVolumes);
-	//renderer_RegisterCallback(renderer_DrawBrushes, PRE_SHADING_STAGE_CALLBACK);
+	renderer_RegisterCallback(renderer_DrawBrushes, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterCallback(bsp_DrawExpandedBrushes, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterCallback(bsp_DrawBevelEdges, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterCallback(renderer_DrawLeaves, POST_SHADING_STAGE_CALLBACK);
@@ -288,7 +288,7 @@ void editor_Init()
 	#if 1
 	
 	light_CreateLight("light0", &r, vec3(6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
-	light_CreateLight("light0", &r, vec3(-6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
+	//light_CreateLight("light0", &r, vec3(-6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
 	//light_CreateLight("light1", &r, vec3(4.0, 4.0, 4.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
 	//light_CreateLight("light2", &r, vec3(-4.0, 4.0, -4.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
 	/*light_CreateLight("light3", &r, vec3(-4.0, 4.0, 4.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);*/
@@ -508,10 +508,10 @@ void editor_Init()
 	brush_CreateBrush(vec3(-20.0, 10.0, -20.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
 	
 	
-	mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
+	/*mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
 	brush_CreateBrush(vec3(-40.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
 	brush_CreateBrush(vec3(-60.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
-	brush_CreateBrush(vec3(-80.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);
+	brush_CreateBrush(vec3(-80.0, 0.0, 0.0), &r, vec3(1.0, 50.0, 1.0), BRUSH_CYLINDER);*/
 	
 	
 	#endif
@@ -600,7 +600,33 @@ void editor_Init()
 	light_CreateLight("light15", &r, vec3(0.0, 100.0, 0.0), vec3(1.0, 1.0, 1.0), 10.0, 20.0);*/
 	#endif 
 	
-	//widget_t *w = gui_CreateWidget("menu", 0, r_window_height * 0.5 - 10, r_window_width, 20);
+	/*widget_t *w = gui_CreateWidget("menu", 0, 0, 200, 50);
+	widget_bar_t *bar = gui_AddWidgetBar(w, "bar", 0, 0, 100, 20, WIDGET_BAR_JUSTIFY_LEFT);*/
+	
+	/*dropdown_t *dropdown = gui_CreateDropdown("dropdown", "wow", 0, 0, 80, 0, NULL);
+	gui_AddWidgetToBar((widget_t *)dropdown, bar);
+	
+	dropdown = gui_CreateDropdown("dropdown", "wow1", 0, 0, 80, 0, NULL);
+	gui_AddWidgetToBar((widget_t *)dropdown, bar);
+	dropdown = gui_CreateDropdown("dropdown", "wow2", 0, 0, 80, 0, NULL);
+	gui_AddWidgetToBar((widget_t *)dropdown, bar);*/
+	
+	/*button_t *button = gui_CreateButton("button0", 0, 0, 30, 30, BUTTON_TOGGLE, NULL);
+	gui_AddWidgetToBar((widget_t *)button, bar);
+	
+	button = gui_CreateButton("button1", 0, 0, 30, 30, BUTTON_TOGGLE, NULL);
+	gui_AddWidgetToBar((widget_t *)button, bar);
+	
+	button = gui_CreateButton("button2", 0, 0, 30, 30, BUTTON_TOGGLE, NULL);
+	gui_AddWidgetToBar((widget_t *)button, bar);
+	
+	button = gui_CreateButton("button3", 0, 0, 30, 30, BUTTON_TOGGLE, NULL);
+	gui_AddWidgetToBar((widget_t *)button, bar);
+	
+	button = gui_CreateButton("button4", 0, 0, 60, 30, BUTTON_TOGGLE, NULL);
+	gui_AddWidgetToBar((widget_t *)button, bar);*/
+	
+	
 	//dropdown_t *dropdown = gui_AddDropDown(w, "dropdown0", 0, 0, 150, 0, NULL);
 	/*widget_t *w = gui_CreateWidget("widget0", 0, 0, 400, 200);
 	dropdown_t *dropdown = gui_AddDropDown(w, "dropdown0", 0, 0, 150, 0, NULL);
@@ -644,6 +670,7 @@ void editor_Init()
 	//gui_AddCheckBox(w, 0, 0, 16, 16, 0, checkbox_callback);
 	//gui_AddButton(w, "button1", 100, 0, 50, 50, 0, button1_callback);
 	//gui_CreateWidget("widget1", -100.0, 0.0, 400.0, 50.0);
+	
 		
 	bm_handle_3d_flags = 0;
 	handle_3d_position_mode = HANDLE_3D_MEDIAN_POINT;
@@ -1000,7 +1027,7 @@ void editor_ProcessMouse()
 			//direction = active_camera->world_to_camera_matrix.f_axis;
 		}
 		
-		
+		 
 		p.vec3 = direction;
 		p.w = 0.0;
 		
@@ -1023,7 +1050,7 @@ void editor_ProcessMouse()
 			break;
 			
 			case HANDLE_3D_ROTATION:
-				
+				//editor_RotateSelections()
 			break;
 		}
 

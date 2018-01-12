@@ -20,7 +20,9 @@
 /* from r_main.c */
 extern int z_pre_pass_shader;
 extern int forward_pass_shader;
+int forward_pass_brush_shader;
 extern int geometry_pass_shader;
+extern int stencil_lights_pass_shader;
 
 /* from editor.c */
 extern int max_selections;
@@ -49,25 +51,34 @@ extern bsp_dleaf_t *world_leaves;
 extern int world_leaves_count;
 
 
-/* from light.c */
+/* from l_main.c */
 extern light_position_t *visible_light_positions;
 extern light_params_t *visible_light_params;
 extern light_position_t *light_positions;
 extern light_params_t *light_params;
 extern int light_count;
+extern int visible_light_count;
+extern int visible_lights[];
 extern int light_cache_cursor;
 extern light_cache_slot_t light_cache[];
+extern unsigned int stencil_light_mesh_handle;
+extern unsigned int stencil_light_mesh_start;
+extern unsigned int stencil_light_mesh_vert_count;
+extern unsigned int cluster_texture;
+
 
 /* from editor.c */
-/* TODO: pull those initializations to this file, somehow... */
 extern unsigned int cursor_framebuffer_id;
 extern unsigned int cursor_color_texture_id;
 extern unsigned int cursor_depth_texture_id;
 
 
 /* from r_main.c */
+extern int r_frame;
 extern int r_width;
 extern int r_height;
+extern int r_window_width;
+extern int r_window_height;
 
 static float angles_lut[ROTATION_HANDLE_DIVS][2];
 
@@ -82,7 +93,7 @@ void renderer_DrawBrushes()
 	material_t *material;
 	int i;
 	int c = brush_count;
-	
+	int light_index;
 	int j;
 	int k;
 	
@@ -90,22 +101,85 @@ void renderer_DrawBrushes()
 
 	//gpu_BindGpuHeap();
 	
-	if(!b_draw_brushes) return;
+	if(!b_draw_brushes) 
+		return;
 		
-	//glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
+	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
 	
+	//glEnable(GL_STENCIL_TEST);
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	glDepthMask(GL_TRUE);
+	glEnable(GL_DEPTH_TEST);
+	//glEnable(GL_STENCIL_TEST);
+	glEnable(GL_CULL_FACE);
+	//glStencilFunc(GL_ALWAYS, 0x1, 0xff);
+	//glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
+	//glClearStencil(0);
+	glViewport(0, 0, r_window_width, r_window_height);
+	//glClear(GL_STENCIL_BUFFER_BIT);
 	
 	/* do a z-prepass for brushes... */
-	/*shader_UseShader(z_pre_pass_shader);
+	shader_UseShader(z_pre_pass_shader);
 	for(i = 0; i < c; i++)
 	{		
 		glDrawArrays(GL_TRIANGLES, brushes[i].start, brushes[i].vertex_count);
-	}*/
+	}
+	
+	
+	//glStencilFunc(GL_ALWAYS, 0x1, 0xff);
+	//glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);
+	//glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	//glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
+	//glStencilOpSeparate(GL_BACK, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
+	//glDepthMask(GL_FALSE);
+	//glDisable(GL_CULL_FACE);
+	//glEnable(GL_CULL_FACE);
+	//glCullFace(GL_BACK);
+	
+	
+	
+	//glBindBuffer(GL_ARRAY_BUFFER, stencil_meshes);
+//	shader_UseShader(stencil_lights_pass_shader);
+//	shader_SetCurrentShaderVertexAttribPointer(ATTRIB_VERTEX_POSITION, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	
+//	c = visible_light_count;
+	
+	//glLoadIdentity();
+	//glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
+
+
+	
+//	for(i = 0; i < c; i++)
+//	{
+//		light_index = visible_lights[i];
+//		light_SetLight(light_index);
+//		glDrawArrays(GL_TRIANGLES, stencil_light_mesh_start, stencil_light_mesh_vert_count);		
+//	}
 	
 	
 	//shader_UseShader(geometry_pass_shader);
 	//shader_SetCurrentShaderUniform1i(UNIFORM_LIGHT_COUNT, light_count);
 	//shader_SetCurrentShaderUniform1i(UNIFORM_TEXTURE_FLAGS, 0);
+	
+	shader_UseShader(forward_pass_brush_shader);
+	
+	
+	//glActiveTexture(GL_TEXTURE1);
+	//glBindTexture(GL_TEXTURE_2D, shared_shadow_map);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_3D, cluster_texture);
+	shader_SetCurrentShaderUniform1i(UNIFORM_CLUSTER_TEXTURE, 0);
+	shader_SetCurrentShaderUniform4fv(UNIFORM_ACTIVE_CAMERA_POSITION, &active_camera->world_position.floats[0]);
+	//shader_SetCurrentShaderUniform1i(UNIFORM_TEXTURE_SAMPLER2, 1);
+	shader_SetCurrentShaderUniform1i(UNIFORM_WIDTH, r_window_width);
+	shader_SetCurrentShaderUniform1i(UNIFORM_HEIGHT, r_window_height);
+	shader_SetCurrentShaderUniform1i(UNIFORM_FRAME, r_frame);
+	
+	glEnable(GL_CULL_FACE);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	
+	
+	c = brush_count;
 	
 	for(i = 0; i < c; i++)
 	{
@@ -131,6 +205,9 @@ void renderer_DrawBrushes()
 			glDrawElements(GL_TRIANGLES, triangle_group[j].next, GL_UNSIGNED_INT, (void *)(triangle_group[j].start * sizeof(int)));
 		}
 	}
+	
+	//glDepthMask(GL_TRUE);
+	//glDisable(GL_STENCIL_TEST);
 }
 
 

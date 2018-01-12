@@ -6,22 +6,27 @@
 #include "gui.h"
 #include "engine.h"
 #include "bsp_cmp.h"
+#include "editor.h"
 
 
 #define MENU_BAR_HEIGHT 20
 #define FILE_DROPDOWN_WIDTH 120
 #define WORLD_DROPDOWN_WIDTH 160
+#define WOW_DROPDOWN_WIDTH 120
 
 
 /* from r_main.c */
 extern int r_window_width;
 extern int r_window_height;
 
+extern int handle_3d_mode;
+
 
 widget_t *menu_bar;
 dropdown_t *file_dropdown;
-
 dropdown_t *world_dropdown;
+//dropdown_t *wow;
+
 
 /* from ed_proj.c */
 extern char current_project_name[];
@@ -73,19 +78,56 @@ void world_dropdown_callback(widget_t *widget)
 }
 
 
+/*void wow_dropdown_callback(widget_t *widget)
+{
+	option_t *option;
+	if(widget->type == WIDGET_OPTION)
+	{
+		option = (option_t *)widget;
+		
+		switch(option->index)
+		{
+			case 0:
+				handle_3d_mode = HANDLE_3D_TRANSLATION;
+			break;
+			
+			case 1:
+				handle_3d_mode = HANDLE_3D_ROTATION;
+			break;
+			
+			case 2:
+			
+			break;
+		}
+	}
+}*/
+
+
 void editor_InitUI()
 {
-	menu_bar = gui_CreateWidget("menu_bar", 0, r_window_height * 0.5 - MENU_BAR_HEIGHT * 0.5, r_window_width, MENU_BAR_HEIGHT);
-	file_dropdown = gui_AddDropDown(menu_bar, "file", "file", -r_window_width * 0.5 + FILE_DROPDOWN_WIDTH * 0.5, 0, FILE_DROPDOWN_WIDTH, 0, file_dropdown_callback);
+	menu_bar = gui_CreateWidget("menu_bar", 0, r_window_height * 0.5 - MENU_BAR_HEIGHT * 0.5, r_window_width, MENU_BAR_HEIGHT);	
+	
+	/*gui_AddButton(menu_bar, "button", 100, 0, 20, 20, BUTTON_TOGGLE, NULL);
+	gui_AddButton(menu_bar, "button", 140, 0, 20, 20, BUTTON_TOGGLE, NULL);
+	gui_AddButton(menu_bar, "button", 180, 0, 20, 20, BUTTON_TOGGLE, NULL);*/
+	
+	file_dropdown = gui_AddDropdown(menu_bar, "file", "file", -r_window_width * 0.5 + FILE_DROPDOWN_WIDTH * 0.5, 0, FILE_DROPDOWN_WIDTH, 0, file_dropdown_callback);
 	gui_AddOption(file_dropdown, "new_file", "new...");
 	gui_AddOption(file_dropdown, "save", "save");
 	gui_AddOption(file_dropdown, "load", "load");
 	gui_AddOption(file_dropdown, "exit", "exit");
 	
-	world_dropdown = gui_AddDropDown(menu_bar, "world", "world", -r_window_width * 0.5 + FILE_DROPDOWN_WIDTH + WORLD_DROPDOWN_WIDTH * 0.5, 0, WORLD_DROPDOWN_WIDTH, 0, world_dropdown_callback);
+	world_dropdown = gui_AddDropdown(menu_bar, "world", "world", -r_window_width * 0.5 + FILE_DROPDOWN_WIDTH + WORLD_DROPDOWN_WIDTH * 0.5, 0, WORLD_DROPDOWN_WIDTH, 0, world_dropdown_callback);
 	gui_AddOption(world_dropdown, "compile bsp", "compile bsp");
 	gui_AddOption(world_dropdown, "export bsp", "export bsp");
 	gui_AddOption(world_dropdown, "visualize portals", "visualize portals");
+	
+	/*wow = gui_AddDropDown(menu_bar, "wow", "wow", -r_window_width * 0.5 + FILE_DROPDOWN_WIDTH + WORLD_DROPDOWN_WIDTH + WOW_DROPDOWN_WIDTH * 0.5, 0, WOW_DROPDOWN_WIDTH, 0, wow_dropdown_callback);
+	gui_AddOption(wow, "translation", "translation");
+	gui_AddOption(wow, "rotation", "rotation");
+	gui_AddOption(wow, "scale", "scale");*/
+	
+	
 	
 }
 
@@ -93,3 +135,9 @@ void editor_FinishUI()
 {
 	
 }
+
+
+
+
+
+

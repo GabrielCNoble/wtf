@@ -827,6 +827,7 @@ void renderer_DrawGUI()
 	dropdown_t *dropdown;
 	option_list_t *options;
 	option_t *option;
+	widget_bar_t *bar;
 	
 	short x = 0;
 	short y = 0;
@@ -1033,25 +1034,7 @@ void renderer_DrawGUI()
 					w = w->last_nestled;
 					continue;
 				}
-				
-				/*options = (option_list_t *)w;
-				
-				if(w->bm_flags & WIDGET_MOUSE_OVER)
-				{
-					glColor3f(0.5, 0.5, 0.5);
-				}
-				else
-				{
-					glColor3f(0.4, 0.4, 0.4);
-				}
-				
-				
-				glBegin(GL_QUADS);
-				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-				glEnd();*/
+			
 			break;
 			
 			case WIDGET_OPTION:
@@ -1112,6 +1095,71 @@ void renderer_DrawGUI()
 					}
 				
 				}
+				
+			break;
+				
+			case WIDGET_BAR:
+				bar = (widget_bar_t *)w;
+					
+					
+				
+					/*if(button->bm_button_flags & BUTTON_PRESSED)
+					{
+						glColor3f(0.35, 0.35, 0.35);
+					}
+					else
+					{
+						if(w->bm_flags & WIDGET_MOUSE_OVER)
+						{
+							glColor3f(0.5, 0.5, 0.5);
+						}
+						else
+						{
+							glColor3f(0.4, 0.4, 0.4);
+						}
+					}*/
+					
+					//glRectf(w->x + w->w, w->y - w->h, w->x - w->w, w->y + w->h);
+					
+				if(w->bm_flags & WIDGET_MOUSE_OVER)
+				{
+					glColor3f(0.5, 0.5, 0.5);
+				}
+				else
+				{
+					glColor3f(0.4, 0.4, 0.4);
+				}
+					
+				glBegin(GL_QUADS);
+				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+				glEnd();
+				
+				if(w->nestled)
+				{
+					x += w->x;
+					y += w->y;
+					
+					widget_stack_top++;
+					widget_stack[widget_stack_top] = w;
+					w = w->last_nestled;
+					continue;
+				}
+					
+				/*glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+				glColor3f(0.0, 0.0 ,0.0);
+					glBegin(GL_QUADS);
+					glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+					glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+					glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+					glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+					glEnd();
+					
+					glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);*/
+					
+			
 				
 			break;
 		}
@@ -1401,50 +1449,38 @@ void renderer_DrawWorld()
 	
 	
 	glEnable(GL_STENCIL_TEST);
-	glStencilFunc(GL_ALWAYS, 0x1, 0xff);
+	//glStencilFunc(GL_ALWAYS, 0x1, 0xff);
 	//glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);
-	glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
-	glStencilOpSeparate(GL_BACK, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
+	//glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
+	//glStencilOpSeparate(GL_BACK, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
 	glViewport(0, 0, r_window_width, r_window_height);
 	//glClear(GL_STENCIL_BUFFER_BIT);
 	
 	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_BLEND);
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	glDepthMask(GL_FALSE);
-	glDisable(GL_CULL_FACE);
+	//glDisable(GL_BLEND);
+	//glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	//glDepthMask(GL_FALSE);
+	//glDisable(GL_CULL_FACE);
 	//glEnable(GL_CULL_FACE);
 	//glCullFace(GL_BACK);
 	
+	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
 	
-	//glBindBuffer(GL_ARRAY_BUFFER, stencil_meshes);
-	shader_UseShader(stencil_lights_pass_shader);
+	/*shader_UseShader(stencil_lights_pass_shader);
 	shader_SetCurrentShaderVertexAttribPointer(ATTRIB_VERTEX_POSITION, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	
 	c = visible_light_count;
-	
-	//glLoadIdentity();
-	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
-
-	
-	//glBeginQuery(GL_TIME_ELAPSED, query_object);
-	
+		
 	for(i = 0; i < c; i++)
 	{
 		light_index = visible_lights[i];
 		light_SetLight(light_index);
 		glDrawArrays(GL_TRIANGLES, stencil_light_mesh_start, stencil_light_mesh_vert_count);		
-	}
+	}*/
 	
+
 	
-	//glCullFace(GL_BACK);
-	
-	//glEndQuery(GL_TIME_ELAPSED);
-	//glGetQueryObjectuiv(query_object, GL_QUERY_RESULT, &elapsed);	
-	//ms_elapsed = (float)elapsed / 1000000.0;
-	
-	//printf("stecil mask: %f    ", ms_elapsed);
-	
+
 	
 	
 	
@@ -1468,10 +1504,10 @@ void renderer_DrawWorld()
 	glEnable(GL_CULL_FACE);
 	//glDisable(GL_BLEND);
 	//glEnable(GL_STENCIL_TEST);
-	glStencilFunc(GL_NOTEQUAL, 0x1, 0xff);
+	glStencilFunc(GL_EQUAL, 0x1, 0xff);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-	glDepthMask(GL_TRUE);
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	//glDepthMask(GL_TRUE);
+	//glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	//glBlendFunc(GL_ONE, GL_ONE);
 	
 	

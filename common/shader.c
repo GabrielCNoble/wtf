@@ -26,6 +26,9 @@ extern int shadow_pass_shader;
 extern int skybox_shader;
 
 
+extern int forward_pass_brush_shader;
+
+
 extern int draw_bsp_shader;
 
 
@@ -55,6 +58,7 @@ void shader_Init(char *shader_path)
 	
 	z_pre_pass_shader = shader_LoadShader("z_pre_pass");
 	forward_pass_shader = shader_LoadShader("forward_pass");
+	forward_pass_brush_shader = shader_LoadShader("forward_pass_brush");
 	geometry_pass_shader = shader_LoadShader("geometry_buffer");
 	shading_pass_shader = shader_LoadShader("shade_pass");
 	stencil_lights_pass_shader = shader_LoadShader("stencil_light_pass");
