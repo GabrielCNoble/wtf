@@ -35,6 +35,7 @@ extern int world_triangle_group_count;
 extern triangle_group_t *world_triangle_groups;
 extern int world_nodes_count;
 extern bsp_pnode_t *world_nodes;
+extern int collision_nodes_count;
 extern bsp_pnode_t *collision_nodes;
 //extern bsp_polygon_t *node_polygons;			/* necessary to quickly build portals... */
 extern int world_leaves_count;
@@ -2768,7 +2769,7 @@ void bsp_BuildCollisionBsp()
 	
 	bsp_BuildSolidLeaf(&root, polygons);
 	
-	bsp_LinearizeBsp(root, NULL, NULL, &collision_nodes, &c, NULL, NULL, NULL, 0, 0);
+	bsp_LinearizeBsp(root, NULL, NULL, &collision_nodes, &collision_nodes_count, NULL, NULL, NULL, 0, 0);
 	
 	
 }

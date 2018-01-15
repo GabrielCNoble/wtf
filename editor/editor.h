@@ -70,6 +70,7 @@ void editor_ClearSelection();
 
 void editor_ExportMap(char *file_name);
 
+void editor_WindowResizeCallback();
 
 
 #endif 

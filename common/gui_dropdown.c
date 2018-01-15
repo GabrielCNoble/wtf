@@ -40,7 +40,7 @@ dropdown_t *gui_CreateDropdown(char *name, char *text, short x, short y, short w
 	return dropdown;
 }
 
-dropdown_t *gui_AddDropdown(widget_t *widget, char *name, char *text, short x, short y, short w, short bm_flags, void (*dropdown_callback)(widget_t *widget))
+dropdown_t *gui_AddDropdown(widget_t *widget, char *name, char *text, short x, short y, short w, short bm_flags, void (*dropdown_callback)(widget_t *))
 {
 	dropdown_t *dropdown = NULL;
 	widget_t *wdgt;
@@ -141,6 +141,8 @@ void gui_AddOption(dropdown_t *dropdown, char *name, char *text)
 void gui_UpdateDropdown(widget_t *widget)
 {
 	dropdown_t *dropdown = (dropdown_t *)widget;
+	
+	dropdown->bm_dropdown_flags &= ~DROPDOWN_JUST_DROPPED;
 				
 	if(widget->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
 	{
@@ -155,7 +157,7 @@ void gui_UpdateDropdown(widget_t *widget)
 		}
 		else
 		{
-			dropdown->bm_dropdown_flags |= DROPDOWN_DROPPED;
+			dropdown->bm_dropdown_flags |= DROPDOWN_DROPPED | DROPDOWN_JUST_DROPPED;
 			
 			/*if(widget->nestled)
 			{
@@ -172,6 +174,7 @@ void gui_UpdateDropdownBar(widget_t *bar)
 	widget_bar_t *wbar;
 	dropdown_t *dropdown;
 	dropdown_t *active_dropdown;
+	widget_t *r;
 	
 	w = bar->nestled;
 	wbar = (widget_bar_t *)bar;
@@ -200,9 +203,23 @@ void gui_UpdateDropdownBar(widget_t *bar)
 				dropdown->bm_dropdown_flags |= active_dropdown->bm_dropdown_flags & DROPDOWN_DROPPED;
 				
 				active_dropdown->bm_dropdown_flags &= ~DROPDOWN_DROPPED;
+				/*r = wbar->active_widget;
+				
+				while(r)
+				{
+					r->bm_flags &= ~WIDGET_MOUSE_OVER;
+					r = r->parent;
+				}*/
+				
 			}
 			
 			wbar->active_widget = w;
+			/*r = w;
+			while(r)
+			{
+				r->bm_flags |= WIDGET_MOUSE_OVER;
+				r = r->parent;
+			}*/
 		}
 		
 		w = w->next;

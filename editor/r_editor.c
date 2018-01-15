@@ -675,8 +675,8 @@ void renderer_DrawCursors()
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	glDrawBuffer(GL_BACK);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, cursor_framebuffer_id);
-	glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_window_width, r_window_height, GL_STENCIL_BUFFER_BIT, GL_NEAREST);
-	glViewport(0, 0, r_window_width, r_window_height);
+	glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_width, r_height, GL_STENCIL_BUFFER_BIT, GL_NEAREST);
+	glViewport(0, 0, r_width, r_height);
 	
 	//glReadBuffer(GL_STENCIL_ATTACHMENT);
 	

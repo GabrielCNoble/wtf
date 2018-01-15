@@ -6,6 +6,12 @@ void editor_InitUI();
 
 void editor_FinishUI();
 
+void editor_OpenAddToWorldMenu(int x, int y);
+
+void editor_CloseAddToWorldMenu();
+
+void editor_UIWindowResizeCallback();
+
 
 
 #endif

@@ -20,6 +20,7 @@
 
 #include "bsp_common.h"
 #include "bsp.h"
+#include "bsp_file.h"
 
 //bsp_node_t *world_bsp = NULL;
 //int world_leaves_count = 0;
@@ -29,6 +30,7 @@ vertex_t *world_vertices = NULL;
 
 int world_nodes_count = 0;
 bsp_pnode_t *world_nodes = NULL;
+int collision_nodes_count = 0;
 bsp_pnode_t *collision_nodes = NULL;
 
 
@@ -252,7 +254,34 @@ void world_LoadWorldModel(char *file_name)
 
 void world_LoadBsp(char *file_name)
 {
+	FILE *file;
+	bsp_header_t header;
+	light_lump_t light_lump;
+	file = fopen(file_name, "rb");
 	
+	int i;
+	int light_count;
+	
+	fread(&header, sizeof(bsp_header_t), 1, file);
+	
+	for(i = 0; i < header.light_count; i++)
+	{	
+		fread(&light_lump, sizeof(light_lump_t), 1, file);
+		
+		light_CreateLight("light", &light_lump.orientation, light_lump.position, light_lump.color, light_lump.radius, light_lump.energy);
+	}
+	
+	world_nodes = malloc(sizeof(bsp_pnode_t) * header.world_nodes_count);
+	world_leaves = malloc(sizeof(bsp_dleaf_t) * header.world_leaves_count);
+	collision_nodes = malloc(sizeof(bsp_pnode_t) * header.collision_nodes_count);
+	
+	fread(world_nodes, sizeof(bsp_pnode_t), world_nodes_count, file);
+	fread(world_leaves, sizeof(bsp_dleaf_t), world_leaves_count, file);
+	fread(collision_nodes, sizeof(bsp_pnode_t), collision_nodes_count, file);
+	
+	
+	
+	fclose(file);
 }
 
 void world_BuildBatches()

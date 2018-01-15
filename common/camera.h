@@ -15,7 +15,7 @@ void camera_Finish();
 
 void camera_ResizeCameraArray(int new_size);
 
-int camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, float fovy, float width, float height, float znear, float zfar);
+int camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, float fovy, float width, float height, float znear, float zfar, int bm_flags);
 
 void camera_SetCameraByIndex(int camera_index);
 
@@ -36,6 +36,8 @@ camera_t *camera_GetActiveCamera();
 camera_t *camera_GetCamera(char *name);
 
 camera_t *camera_GetCameraByIndex(int camera_index);
+
+void camera_UpdateCamerasCallback();
 
 
 

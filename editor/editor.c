@@ -127,7 +127,7 @@ void checkbox_callback(widget_t *widget)
 void editor_Init()
 {
 	mat3_t r = mat3_t_id();
-	editor_camera_index = camera_CreateCamera("editor_camera", vec3(5.0, 10.0, 0.0), &r, 0.68, r_width, r_height, 0.1, 500.0);
+	editor_camera_index = camera_CreateCamera("editor_camera", vec3(5.0, 10.0, 0.0), &r, 0.68, r_width, r_height, 0.1, 500.0, CAMERA_UPDATE_ON_RESIZE);
 	editor_camera = camera_GetCameraByIndex(editor_camera_index);
 	
 	camera_SetCameraByIndex(editor_camera_index);
@@ -285,7 +285,7 @@ void editor_Init()
 	}*/
 	
 	
-	#if 1
+	#if 0
 	
 	light_CreateLight("light0", &r, vec3(6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
 	//light_CreateLight("light0", &r, vec3(-6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
@@ -349,7 +349,7 @@ void editor_Init()
 	
 	player_CreatePlayer("player", vec3(0.0, 5.0 ,0.0), &r);
 	
-	#if 0
+	#if 1
 	
 	light_CreateLight("light0", &r, vec3(16.0, 0.0, 8.0), vec3(1.0, 0.0, 1.0), 35.0, 20.0);
 	//light_CreateLight("light0", &r, vec3(16.0, 0.0, -8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
@@ -702,6 +702,9 @@ void editor_Init()
 					        "textures\\env\\cliffdn.bmp;"
 					        "textures\\env\\cliffbk.bmp;"
 					        "textures\\env\\cliffft.bmp;", "env");*/
+					        
+	
+	renderer_RegisterCallback(editor_WindowResizeCallback, RENDERER_RESOLUTION_CHANGE_CALLBACK);				        
 	
 }
 
@@ -930,13 +933,18 @@ void editor_Main(float delta_time)
 				}
 				else if(input_GetKeyStatus(SDL_SCANCODE_S) & KEY_JUST_PRESSED)
 				{
-					renderer_Fullscreen(1);
+					//renderer_Fullscreen(1);
+					//renderer_SetWindowSize(1920, 1080);
 					/* save project... */
 				}
-				else if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED)
+				else if(input_GetKeyStatus(SDL_SCANCODE_K) & KEY_JUST_PRESSED)
 				{
 					b_draw_brushes ^= 1;
 					//bsp_NextPortal();
+				}
+				else if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED)
+				{
+					editor_OpenAddToWorldMenu(r_window_width * normalized_mouse_x * 0.5, r_window_height * normalized_mouse_y * 0.5);
 				}
 			}
 		}
@@ -1798,6 +1806,69 @@ void editor_ExportMap(char *file_name)
 	
 }
 
+
+void editor_WindowResizeCallback()
+{
+	//glGenFramebuffers(1, &pick_framebuffer_id);
+	//glGenTextures(1, &pick_framebuffer_texture);
+	//glGenTextures(1, &pick_framebuffer_depth_texture);
+	
+	glBindTexture(GL_TEXTURE_2D, pick_framebuffer_texture);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, r_width, r_height, 0, GL_RGBA, GL_FLOAT, NULL);
+	
+	glBindTexture(GL_TEXTURE_2D, pick_framebuffer_depth_texture);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, r_width,r_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, pick_framebuffer_id);
+	glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pick_framebuffer_texture, 0);
+	glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, pick_framebuffer_depth_texture, 0);
+	
+	
+	
+	//glGenFramebuffers(1, &cursor_framebuffer_id);
+	//glGenTextures(1, &cursor_color_texture_id);
+	//glGenTextures(1, &cursor_depth_texture_id);
+	
+	
+	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cursor_framebuffer_id);
+	
+	glBindTexture(GL_TEXTURE_2D, cursor_color_texture_id);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, r_width, r_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	
+	glBindTexture(GL_TEXTURE_2D, cursor_depth_texture_id);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, r_width, r_height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+	
+	//glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, cursor_color_texture_id, 0);
+	//glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, cursor_depth_texture_id, 0);
+	//glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, cursor_depth_texture_id, 0);
+	
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+}
 
 
 

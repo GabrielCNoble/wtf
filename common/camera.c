@@ -5,6 +5,7 @@
 
 #include "matrix.h"
 #include "camera.h"
+#include "r_main.h"
 
 #include "GL\glew.h"
 //#include "draw.h"
@@ -19,6 +20,9 @@ static int camera_count;
 static camera_t *camera_list;
 
 static int active_camera_index;
+
+extern int r_window_width;
+extern int r_window_height;
 
 #define CLUSTER_WIDTH 32
 
@@ -37,6 +41,9 @@ void camera_Init()
 	camera_list_size = 64;
 	camera_count = 0;
 	camera_list = malloc(sizeof(camera_t ) * camera_list_size);	
+	
+	renderer_RegisterCallback(camera_UpdateCamerasCallback, RENDERER_RESOLUTION_CHANGE_CALLBACK);
+	
 	return;
 }
 
@@ -58,7 +65,7 @@ void camera_Finish()
 	return;
 }
 
-int camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, float fovy, float width, float height, float znear, float zfar)
+int camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, float fovy, float width, float height, float znear, float zfar, int bm_flags)
 {
 	int camera_index = camera_count++;
 	int name_len;
@@ -94,6 +101,7 @@ int camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, float 
 	camera->zoom = 1.0;
 	camera->fov_y = fovy;
 	camera->camera_index = camera_index;
+	camera->bm_flags = bm_flags;
 	//camera->assigned_node=scenegraph_AddNode(NODE_CAMERA, camera_index, -1, camera->name);
 	camera_ComputeWorldToCameraMatrix(camera);
 	
@@ -334,6 +342,24 @@ camera_t *camera_GetCameraByIndex(int camera_index)
 	}
 	
 	return NULL;
+}
+
+
+void camera_UpdateCamerasCallback()
+{
+	int i;
+	camera_t *camera;
+	
+	for(i = 0; i < camera_count; i++)
+	{
+		camera = &camera_list[i];
+		
+		if(camera->bm_flags & CAMERA_UPDATE_ON_RESIZE)
+		{
+			CreatePerspectiveMatrix(&camera->projection_matrix, camera->fov_y, (float)r_window_width/(float)r_window_height, camera->frustum.znear, camera->frustum.zfar, 0.0, 0.0, &camera->frustum);
+		}
+		
+	}
 }
 
 

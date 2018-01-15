@@ -26,6 +26,11 @@ typedef struct
 	cluster_aabb_t *aabbs;
 }cluster_list_t;*/
 
+enum CAMERA_FLAGS
+{
+	CAMERA_UPDATE_ON_RESIZE = 1,
+};
+
 typedef struct camera_t
 {
 	mat4_t projection_matrix;
@@ -44,6 +49,7 @@ typedef struct camera_t
 	int width;
 	int height;
 	int camera_index;
+	int bm_flags;
 	char *name;
 }camera_t;
 

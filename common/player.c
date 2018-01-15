@@ -126,7 +126,7 @@ void player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation)
 	
 	position.y = PLAYER_CAMERA_HEIGHT;
 	
-	camera_index = camera_CreateCamera(camera_name, position, orientation, 0.68, r_width, r_height, 0.1, 500.0);
+	camera_index = camera_CreateCamera(camera_name, position, orientation, 0.68, r_width, r_height, 0.1, 500.0, CAMERA_UPDATE_ON_RESIZE);
 	
 	player->player_camera = camera_GetCameraByIndex(camera_index);
 	

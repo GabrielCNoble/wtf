@@ -169,8 +169,8 @@ void renderer_Init(int width, int height, int init_mode)
 		if(init_mode == INIT_FULLSCREEN_DESKTOP)
 			r_window_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 		
-		else
-			r_window_flags |= SDL_WINDOW_MAXIMIZED;	
+	/*	else
+			r_window_flags |= SDL_WINDOW_MAXIMIZED;	*/
 	}
 	else
 	{
@@ -183,7 +183,7 @@ void renderer_Init(int width, int height, int init_mode)
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 	//SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 8);
 	
-	window = SDL_CreateWindow("wtf editor", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, r_width, r_height, r_window_flags);
+	window = SDL_CreateWindow("wtf editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, r_width, r_height, r_window_flags);
 	context = SDL_GL_CreateContext(window);
 	
 	SDL_GL_MakeCurrent(window, context);
@@ -328,12 +328,16 @@ void renderer_SetWindowSize(int width, int height)
 		SDL_SetWindowSize(window, r_window_width, r_window_height);
 		SDL_GetDisplayMode(0, 0, &display_mode);
 		
+		SDL_SetWindowPosition(window, 0, 0);
 		
-		if(r_window_width == display_mode.w && r_window_height == display_mode.h)
+		
+		/*if(r_window_width == display_mode.w && r_window_height == display_mode.h)
 		{
 			r_window_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 			SDL_SetWindowFullscreen(window, r_window_flags);
-		}
+		}*/
+		
+		renderer_SetRendererResolution(r_window_width, r_window_height);
 		
 		for(i = 0; i < window_resize_callback_count; i++)
 		{
@@ -403,9 +407,10 @@ void renderer_Fullscreen(int enable)
 		
 		r_window_width = display_mode.w;
 		r_window_height = display_mode.h;
-		r_window_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+		//r_window_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 		SDL_SetWindowSize(window, r_window_width, r_window_height);
-		SDL_SetWindowFullscreen(window, r_window_flags);		
+		//SDL_SetWindowFullscreen(window, r_window_flags);
+		renderer_SetRendererResolution(r_window_width, r_window_height);	
 	}
 	else
 	{
@@ -415,6 +420,8 @@ void renderer_Fullscreen(int enable)
 		r_window_flags &= ~SDL_WINDOW_FULLSCREEN_DESKTOP;
 		
 		SDL_SetWindowSize(window, r_width, r_height);
+		
+		renderer_SetRendererResolution(r_width, r_height);
 		
 		r_window_width = r_width;
 		r_window_height = r_height;
@@ -1032,6 +1039,14 @@ void renderer_DrawGUI()
 			break;	
 			
 			case WIDGET_OPTION_LIST:
+				
+				glBegin(GL_QUADS);
+				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+				glEnd();
+				
 				if(w->nestled)
 				{
 					x += w->x;

@@ -17,6 +17,8 @@
 /* from r_main.h */
 extern int r_width;
 extern int r_height;
+extern int r_window_width;
+extern int r_window_height;
 
 /* from input.c */
 extern float normalized_mouse_x;
@@ -85,6 +87,55 @@ widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h)
 	return widget;
 }
 
+void gui_DestroyWidget(widget_t *widget)
+{
+	#if 0
+	widget_t *w;
+	widget_t *r;
+	
+	w = widget->nestled;
+	
+	while(w)
+	{
+		r = w->next;
+		gui_DestroyWidget(w);
+		w = r;
+	}
+	
+	if(!widget->parent)
+	{
+		if(widget == widgets)
+		{
+			widgets = widget->next;
+			widgets->prev = NULL;
+		}
+		else
+		{
+			widget->prev->next = widget->next;
+				
+			if(widget->next)
+			{
+				widget->next->prev = widget->prev;
+			}
+		}
+	}
+	
+	free(widget);
+	
+	#endif
+	
+	/*switch(widget->type)
+	{
+		case WIDGET_NONE:
+			free(widget);
+		break;
+		
+		case WIDGET_OPTION:
+			free()
+		break;
+	}*/
+	
+}
 
 void gui_SetAsTop(widget_t *widget)
 {
@@ -130,6 +181,17 @@ void gui_SetAsTop(widget_t *widget)
 		(*first)->prev = widget;
 		*first = widget;		
 	}
+}
+
+
+void gui_SetVisible(widget_t *widget)
+{
+	widget->bm_flags &= ~WIDGET_INVISIBLE;
+}
+
+void gui_SetInvisible(widget_t *widget)
+{
+	widget->bm_flags |= WIDGET_INVISIBLE;
 }
 
 
@@ -204,7 +266,7 @@ void gui_ProcessGUI()
 {
 	widget_t *w;
 	widget_t *new_top;
-	widget_t *top = top_widget;
+	widget_t *top;
 	widget_t *r;
 	button_t *button;
 	dropdown_t *dropdown;
@@ -216,8 +278,8 @@ void gui_ProcessGUI()
 	int widget_stack_top = -1;
 	widget_t *widget_stack[WIDGET_STACK_SIZE];
 	
-	float screen_mouse_x = (r_width * 0.5) * normalized_mouse_x;
-	float screen_mouse_y = (r_height * 0.5) * normalized_mouse_y;
+	float screen_mouse_x = (r_window_width * 0.5) * normalized_mouse_x;
+	float screen_mouse_y = (r_window_height * 0.5) * normalized_mouse_y;
 
 	float relative_screen_mouse_x;
 	float relative_screen_mouse_y;
@@ -240,6 +302,8 @@ void gui_ProcessGUI()
 	//w = top_widget;
 	w = widgets;
 	
+	top = widgets;
+	
 	_do_rest:
 		
 	while(w)
@@ -248,7 +312,6 @@ void gui_ProcessGUI()
 		if(w->parent)
 		{
 			top = w->parent->nestled;
-			//top = w->parent->top;
 		}
 		else
 		{
@@ -294,8 +357,7 @@ void gui_ProcessGUI()
 			
 			
 		}*/
-		
-		
+			
 		if(w->relative_mouse_x >= -1.0 && w->relative_mouse_x <= 1.0 &&
 		   w->relative_mouse_y >= -1.0 && w->relative_mouse_y <= 1.0)
 		{
@@ -312,15 +374,21 @@ void gui_ProcessGUI()
 				
 				w->bm_flags |= WIDGET_MOUSE_OVER;
 				
+				
+				
 				if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
 				{
+					//printf("%s\n", w->name);
 					w->bm_flags |= WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON;
 					
-					//top->bm_flags &= ~(WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON | WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_HAS_RIGHT_MOUSE_BUTTON);
-					/*if(w->parent)
+					r = w->parent;
+					
+					while(r)
 					{
-						w->parent->top = w;
-					}*/
+						r->bm_flags |= WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON;
+						r = r->parent;
+					}
+					
 					gui_SetAsTop(w);
 				}
 				
@@ -335,6 +403,7 @@ void gui_ProcessGUI()
 			gui_RenderText(w);
 		}
 		
+	
 		
 		switch(w->type)
 		{
@@ -346,6 +415,7 @@ void gui_ProcessGUI()
 					widget_stack_top++;		
 					widget_stack[widget_stack_top] = w;
 					w = w->nestled;
+					//top = &(*top)->nestled;
 					continue;
 				}
 			break;
@@ -355,27 +425,7 @@ void gui_ProcessGUI()
 			break;
 			
 			case WIDGET_CHECKBOX:
-				gui_UpdateCheckbox(w);
-				/*checkbox = (checkbox_t *)w;
-				
-				if(w->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
-				{
-					if(checkbox->bm_checkbox_flags & CHECKBOX_CHECKED)
-					{
-						checkbox->bm_checkbox_flags &= ~CHECKBOX_CHECKED;
-					}
-					else
-					{
-						checkbox->bm_checkbox_flags |= CHECKBOX_CHECKED;
-					}
-					
-					if(w->widget_callback)
-					{
-						call_callback = 1;
-					}
-					
-				}*/
-				
+				gui_UpdateCheckbox(w);				
 			break;
 			
 			case WIDGET_DROPDOWN:
@@ -394,6 +444,7 @@ void gui_ProcessGUI()
 						widget_stack_top++;		
 						widget_stack[widget_stack_top] = w;
 						w = w->nestled;
+						//top = &(*top)->nestled;
 						continue;
 					}		
 				}			
@@ -410,6 +461,7 @@ void gui_ProcessGUI()
 					widget_stack_top++;		
 					widget_stack[widget_stack_top] = w;
 					w = w->nestled;
+					//top = &(*top)->nestled;
 					continue;
 				}
 			break;
@@ -417,6 +469,12 @@ void gui_ProcessGUI()
 			case WIDGET_OPTION:
 				
 				gui_UpdateOption(w);
+				
+				option_list = (option_list_t *)w->parent;
+				option = (option_t *)w;
+				
+				if(!option_list)
+					break;
 				
 				if(w->nestled)
 				{
@@ -430,6 +488,7 @@ void gui_ProcessGUI()
 						widget_stack_top++;		
 						widget_stack[widget_stack_top] = w;
 						w = w->nestled;
+						//top = &(*top)->nestled;
 						continue;
 					}
 					else
@@ -450,6 +509,7 @@ void gui_ProcessGUI()
 					widget_stack_top++;		
 					widget_stack[widget_stack_top] = w;
 					w = w->nestled;
+					//top = &(*top)->nestled;
 					continue;
 				}
 			break;
@@ -466,19 +526,44 @@ void gui_ProcessGUI()
 		/* we'll get here after recursing through all the
 		widgets contained within this bar, and so we have
 		all the information needed to properly decide things... */
-		if(w->type == WIDGET_BAR)
-		{
-			bar = (widget_bar_t *)w;
-			if(bar->process_fn)
-			{
-				bar->process_fn(w);
-			}
-		}
 		
+		switch(w->type)
+		{
+			case WIDGET_BAR:
+				bar = (widget_bar_t *)w;
+				if(bar->process_fn)
+				{
+					bar->process_fn(w);
+				}
+			break;
+			
+			case WIDGET_DROPDOWN:
+				
+				dropdown = (dropdown_t *)w;
+				if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
+				{
+					if(!(dropdown->bm_dropdown_flags & DROPDOWN_JUST_DROPPED))
+					{
+						dropdown->bm_dropdown_flags &= ~DROPDOWN_DROPPED;
+					}
+				}
+				
+			break;
+			
+			case WIDGET_OPTION_LIST:
+				if(w->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
+				{
+					if(!w->parent)
+					{
+						gui_SetInvisible(w);
+					}
+				}
+			break;
+		}
 		
 		w = w->next;
 		
-		/* this will keep poping from this stack until
+		/* this will keep popping from this stack until
 		something not null appears to be processed or 
 		until the stack is empty. The latter means
 		the work is done and we can go home... */
@@ -491,6 +576,7 @@ void gui_ProcessGUI()
 				
 				x -= w->x;
 				y -= w->y;
+				//top = &(*top)->parent;
 				
 				goto _advance_widget;
 			}
@@ -502,9 +588,9 @@ void gui_ProcessGUI()
 
 void gui_UpdateGUIProjectionMatrix()
 {
-	float right = r_width / 2;
+	float right = r_window_width / 2;
 	float left = -right;
-	float top = r_height / 2;
+	float top = r_window_height / 2;
 	float bottom = -top;
 	CreateOrthographicMatrix(&gui_projection_matrix, left, right, top, bottom, -10.0, 10.0, NULL);
 }

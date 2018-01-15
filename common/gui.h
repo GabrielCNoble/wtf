@@ -15,7 +15,13 @@ void gui_Finish();
 
 widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h);
 
+void gui_DestroyWidget(widget_t *widget);
+
 void gui_SetAsTop(widget_t *widget);
+
+void gui_SetVisible(widget_t *widget);
+
+void gui_SetInvisible(widget_t *widget);
 
 void gui_RenderText(widget_t *widget);
 
