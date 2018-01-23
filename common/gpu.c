@@ -39,7 +39,7 @@ void gpu_Defrag();
 void gpu_Sort(int left, int right);
 
 
-void gpu_Init()
+int gpu_Init()
 {
 	//while(glGetError() != GL_NO_ERROR);
 	glGenBuffers(1, &gpu_heap);
@@ -73,6 +73,8 @@ void gpu_Init()
 	/* the whole heap is free... */
 	free_list.list[0].start = 0;
 	free_list.list[0].size = GPU_HEAP_SIZE;
+	
+	return 1;
 	
 }
 

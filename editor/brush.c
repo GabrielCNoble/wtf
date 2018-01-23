@@ -114,6 +114,8 @@ vec3_t cube_bmodel_collision_normals[] =
 
 
 static int brush_list_size;
+int free_position_stack_top = -1;
+int *free_position_stack = NULL;
 int brush_count;
 brush_t *brushes;
 brush_t *expanded_brushes = NULL;
@@ -131,6 +133,7 @@ void brush_Init()
 	brush_list_size = 256;
 	brush_count = 0;
 	brushes = malloc(sizeof(brush_t ) * brush_list_size);
+	free_position_stack = malloc(sizeof(int*) * brush_list_size);
 	
 	glGenBuffers(1, &element_buffer);
 }
@@ -148,6 +151,7 @@ void brush_Finish()
 	}
 	
 	free(brushes);
+	free(free_position_stack);
 	
 	if(expanded_brushes)
 		free(expanded_brushes);
@@ -174,17 +178,28 @@ int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short 
 	vec3_t p;
 	vec3_t v;
 	
-	brush_index = brush_count++;
-	
-	if(brush_index >= brush_list_size)
+	if(free_position_stack_top > -1)
 	{
-		brush = malloc(sizeof(brush_t) * (brush_list_size + 64));
-		memcpy(brush, brushes, sizeof(brush_t) * brush_list_size);
-		free(brushes);
+		brush_index = free_position_stack[free_position_stack_top];
 		
-		brushes = brush;
-		brush_list_size += 64;
+		free_position_stack_top--;
 	}
+	else
+	{
+		brush_index = brush_count++;
+		
+		if(brush_index >= brush_list_size)
+		{
+			brush = malloc(sizeof(brush_t) * (brush_list_size + 64));
+			memcpy(brush, brushes, sizeof(brush_t) * brush_list_size);
+			free(brushes);
+			
+			brushes = brush;
+			brush_list_size += 64;
+		}
+		
+	}
+	
 	brush = &brushes[brush_index];
 	
 	
@@ -199,6 +214,7 @@ int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short 
 		
 		/*case BRUSH_CYLINDER:
 			brush_CreateCylinderBrush(8, &vertex_count, &vertex_positions, &vertex_normals);
+			brush->base_vertex_count = 8;
 		break;*/
 	}
 	
@@ -303,6 +319,104 @@ int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short 
 	
 }
 
+int brush_CreateEmptyBrush()
+{
+	brush_t *brush;
+	int brush_index;
+	int i;
+	int c;
+	int default_group;
+	float *vertex_positions;
+	float *vertex_normals;
+	int vertex_count;
+	int alloc_handle;
+	int *b;
+	
+	vec3_t p;
+	vec3_t v;
+		
+	if(free_position_stack_top > -1)
+	{
+		brush_index = free_position_stack[free_position_stack_top];
+		
+		free_position_stack_top--;
+	}
+	else
+	{
+		brush_index = brush_count++;
+		
+		if(brush_index >= brush_list_size)
+		{
+			brush = malloc(sizeof(brush_t) * (brush_list_size + 64));
+			memcpy(brush, brushes, sizeof(brush_t) * brush_list_size);
+			free(brushes);
+			
+			brushes = brush;
+			brush_list_size += 64;
+		}
+		
+	}
+	
+	brush = &brushes[brush_index];
+	
+	brush->type = BRUSH_EMPTY;
+	
+	return brush_index;
+	
+	
+}
+
+void brush_DestroyBrush(brush_t *brush)
+{
+	bsp_polygon_t *polygon;
+	bsp_polygon_t *next;
+	
+	int brush_index;
+	
+	if(brush->type == BRUSH_INVALID)
+		return;
+	
+	
+	free(brush->vertices);
+	free(brush->triangle_groups);
+	free(brush->triangles);
+	polygon = brush->polygons;
+	
+	while(polygon)
+	{
+		next = polygon->next;
+		free(polygon->vertices);
+		polygon = next;
+	}
+	gpu_Free(brush->handle);
+	glDeleteBuffers(1, &brush->element_buffer);
+	
+	brush->type = BRUSH_INVALID;
+	brush_index = brush - brushes;
+	
+	free_position_stack_top++;
+	
+	free_position_stack[free_position_stack_top] = brush_index;
+}
+
+void brush_DestroyBrushIndex(int brush_index)
+{
+	
+}
+
+void brush_DestroyAllBrushes()
+{
+	int i;
+	
+	for(i = 0; i < brush_count; i++)
+	{
+		brush_DestroyBrush(&brushes[i]);
+	}
+	
+	brush_count = 0;
+	free_position_stack_top = -1;
+}
+
 void brush_CreateCylinderBrush(int base_vertexes, int *vert_count, float **vertices, float **normals)
 {
 	float *verts;
@@ -334,6 +448,8 @@ void brush_CreateCylinderBrush(int base_vertexes, int *vert_count, float **verti
 	verts = *vertices;
 	norms = *normals;
 	a = 0.0;
+	
+	/* top cap... */
 	for(i = 0; i < base_vertexes * 3;)
 	{
 		
@@ -368,6 +484,8 @@ void brush_CreateCylinderBrush(int base_vertexes, int *vert_count, float **verti
 	
 	k = i;
 	a = 0.0;
+	
+	/* bottom cap... */
 	for(i = 0; i < base_vertexes * 3;)
 	{
 		verts[k * 3 + i * 3] = 0.0;
@@ -400,7 +518,7 @@ void brush_CreateCylinderBrush(int base_vertexes, int *vert_count, float **verti
 	
 	k += i;
 	a = 0.0;
-	
+	/* side... */
 	for(i = 0; i < base_vertexes * 6;)
 	{
 		verts[k * 3 + i * 3] = cos(a);

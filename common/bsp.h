@@ -4,7 +4,7 @@
 #include "bsp_common.h"
 
 
-void bsp_Init();
+int bsp_Init();
 
 void bsp_Finish();
 

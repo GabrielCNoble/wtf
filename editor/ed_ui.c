@@ -8,18 +8,22 @@
 #include "bsp_cmp.h"
 #include "editor.h"
 #include "r_main.h"
+#include "log.h"
+
 
 
 #define MENU_BAR_HEIGHT 20
 #define FILE_DROPDOWN_WIDTH 120
-#define WORLD_DROPDOWN_WIDTH 160
+#define WORLD_DROPDOWN_WIDTH 220
 #define WOW_DROPDOWN_WIDTH 120
+#define MISC_DROPDOWN_WIDTH 200
 
 
 /* from r_main.c */
 extern int r_window_width;
 extern int r_window_height;
-
+extern int r_z_prepass;
+extern int r_draw_shadow_maps;
 extern int handle_3d_mode;
 
 
@@ -31,11 +35,34 @@ dropdown_t *world_dropdown = NULL;
 option_list_t *option_list;
 
 option_list_t *add_to_world_menu;
+option_list_t *brush_types_option_list;
+
+
+dropdown_t *misc_dropdown = NULL;
+
 //dropdown_t *wow;
 
 
 /* from ed_proj.c */
 extern char current_project_name[];
+
+/* from editor.c */
+extern vec3_t cursor_3d_position;
+extern vec3_t handle_3d_position;
+extern int bm_handle_3d_flags;
+extern int handle_3d_position_mode;
+extern int handle_3d_mode;
+
+extern b_draw_brushes;
+extern b_draw_leaves;
+extern b_draw_light_leaves;
+
+int add_light_unique_index;
+int add_brush_unique_index;
+int add_cube_brush_unique_index;
+int add_cylinder_brush_unique_index;
+
+
 
 void file_dropdown_callback(widget_t *widget)
 {
@@ -54,7 +81,7 @@ void file_dropdown_callback(widget_t *widget)
 			break;	
 			
 			case 2:
-			
+				editor_OpenProject(current_project_name);
 			break;
 			
 			case 3:
@@ -82,6 +109,46 @@ void world_dropdown_callback(widget_t *widget)
 			
 			case 1:
 				editor_ExportBsp("test.bsp");
+			break;
+			
+			case 3:
+				b_draw_brushes ^= 1;
+			break;
+			
+			case 4:
+				b_draw_leaves ^= 1;
+			break;
+			
+			case 5:
+				b_draw_light_leaves ^= 1;
+			break;
+		}
+	}
+}
+
+void misc_dropdown_callback(widget_t *widget)
+{
+	option_t *option;
+	
+	if(widget->type == WIDGET_OPTION)
+	{
+		option = (option_t *) widget;
+		switch(option->index)
+		{
+			case 0:
+				shader_HotReload();
+			break;
+			
+			case 1:
+				r_z_prepass ^= 1;
+			break;
+			
+			case 2:
+				r_draw_shadow_maps ^= 1;
+			break;
+			
+			case 3:
+				log_FlushLog();
 			break;
 		}
 	}
@@ -116,11 +183,48 @@ void add_to_world_menu_callback(widget_t *widget)
 {
 	option_t *option;
 	mat3_t r = mat3_t_id();
+	pick_record_t record;
+	int light_index;
+	int brush_index;
+	
 	if(widget->type == WIDGET_OPTION)
 	{
 		option = (option_t *)widget;
 		
-		switch(option->index)
+		if(option->unique_index == add_light_unique_index)
+		{
+			
+			light_index = light_CreateLight("light", &r, cursor_3d_position, vec3(1.0, 1.0, 1.0), 25.0, 20.0, 0);
+			
+			record.type = PICK_LIGHT;
+			record.index0 = light_index;
+		
+			editor_ClearSelection();
+			editor_AddSelection(&record);
+			
+			handle_3d_position = cursor_3d_position;		
+		}
+		else if(option->unique_index == add_cube_brush_unique_index)
+		{
+			
+			brush_index = brush_CreateBrush(cursor_3d_position, &r, vec3(1.0, 1.0, 1.0), BRUSH_CUBE);
+			
+			
+			record.type = PICK_BRUSH;
+			record.index0 = brush_index;
+			
+			editor_ClearSelection();
+			editor_AddSelection(&record);
+			
+			handle_3d_position = cursor_3d_position;
+		}
+		else if(option->unique_index == add_cylinder_brush_unique_index)
+		{
+			
+		}
+		
+		
+		/*switch(option->index)
 		{
 			case 0:
 				light_CreateLight("light", &r, vec3(0.0, 5.0, 0.0), vec3(1.0, 1.0, 1.0), 25.0, 20.0);
@@ -133,13 +237,16 @@ void add_to_world_menu_callback(widget_t *widget)
 			case 2:
 				
 			break;
-		}
+		}*/
 	}
 }
 
 
 void editor_InitUI()
 {
+	
+	option_list_t *o;
+	
 	menu_bar = gui_CreateWidget("menu_bar", 0, r_window_height * 0.5 - MENU_BAR_HEIGHT * 0.5, r_window_width, MENU_BAR_HEIGHT);	
 	
 	menu_dropdown_bar = gui_AddWidgetBar(menu_bar, "menu widget bar", 0, 0, r_window_width, MENU_BAR_HEIGHT, WIDGET_BAR_FIXED_SIZE);
@@ -156,37 +263,41 @@ void editor_InitUI()
 	gui_AddOption(world_dropdown, "compile bsp", "compile bsp");
 	gui_AddOption(world_dropdown, "export bsp", "export bsp");
 	gui_AddOption(world_dropdown, "visualize portals", "visualize portals");
+	gui_AddOption(world_dropdown, "visualize brushes", "visualize brushes");
+	gui_AddOption(world_dropdown, "visualize leaves", "visualize leaves");
+	gui_AddOption(world_dropdown, "visualize light leaves", "visualize light leaves");
 	
 	gui_AddWidgetToBar((widget_t *) world_dropdown, menu_dropdown_bar);
+	
+	misc_dropdown = gui_CreateDropdown("misc", "misc", 0, 0, MISC_DROPDOWN_WIDTH, 0, misc_dropdown_callback);
+	gui_AddOption(misc_dropdown, "hot reload shaders", "hot reload shaders");
+	gui_AddOption(misc_dropdown, "enable z prepass", "enable z prepass");
+	gui_AddOption(misc_dropdown, "enable shadow mapping", "enable shadow mapping");
+	gui_AddOption(misc_dropdown, "flush log", "flush log");
+	
+	gui_AddWidgetToBar((widget_t *)misc_dropdown, menu_dropdown_bar);
+	
 	
 	
 	add_to_world_menu = gui_CreateOptionList("add to world", 0, 0, 100, 0, add_to_world_menu_callback);
 	gui_AddOptionToList(add_to_world_menu, "add light", "add light");
+	gui_AddOptionToList(add_to_world_menu, "add brush", "add brush");
 	
+	add_light_unique_index = gui_GetOptionUniqueIndex(add_to_world_menu, 0);
+	//add_brush_unique_index = gui_GetOptionUniqueIndex(add_to_world_menu, 1);
+	
+	brush_types_option_list = gui_NestleOptionList(add_to_world_menu, 1, "brush type options");
+	gui_AddOptionToList(brush_types_option_list, "cube brush", "cube brush");
+	gui_AddOptionToList(brush_types_option_list, "cylinder brush", "cylinder brush");
+	
+	
+	add_cube_brush_unique_index = gui_GetOptionUniqueIndex(brush_types_option_list, 0);
+	add_cylinder_brush_unique_index = gui_GetOptionUniqueIndex(brush_types_option_list, 1);
+		
 	gui_SetInvisible((widget_t *)add_to_world_menu);
-	
-	/*option_list = gui_CreateOptionList("option_list", 0, 0, 100, 0, NULL);
-	gui_AddOptionToList(option_list, "option0", "option0");
-	gui_AddOptionToList(option_list, "option1", "option1");
-	gui_AddOptionToList(option_list, "option2", "option2");
-	
-	gui_NestleOption(option_list, 1, "sub_option0", "sub_option0");
-	gui_NestleOption(option_list, 1, "sub_option1", "sub_option1");
-	gui_NestleOption(option_list, 1, "sub_option2", "sub_option2");
-	gui_NestleOption(option_list, 1, "sub_option3", "sub_option3");
-	
-	gui_NestleOption(option_list, 2, "sub_option0", "sub_option0");
-	gui_NestleOption(option_list, 2, "sub_option1", "sub_option1");
-	gui_NestleOption(option_list, 2, "sub_option2", "sub_option2");
-	gui_NestleOption(option_list, 2, "sub_option3", "sub_option3");
-	gui_NestleOption(option_list, 2, "sub_option4", "sub_option4");
-	gui_NestleOption(option_list, 2, "sub_option5", "sub_option5");
-	gui_NestleOption(option_list, 2, "sub_option6", "sub_option6");
-	gui_NestleOption(option_list, 2, "sub_option7", "sub_option7");*/
-	/*wow = gui_AddDropDown(menu_bar, "wow", "wow", -r_window_width * 0.5 + FILE_DROPDOWN_WIDTH + WORLD_DROPDOWN_WIDTH + WOW_DROPDOWN_WIDTH * 0.5, 0, WOW_DROPDOWN_WIDTH, 0, wow_dropdown_callback);
-	gui_AddOption(wow, "translation", "translation");
-	gui_AddOption(wow, "rotation", "rotation");
-	gui_AddOption(wow, "scale", "scale");*/
+
+
+	//gui_AddTextField(NULL, "text field", 0, 0, 150, 0, NULL);
 	
 	
 	//renderer_RegisterCallback(editor_UIWindowResizeCallback, RENDERER_RESOLUTION_CHANGE_CALLBACK);
@@ -240,6 +351,7 @@ void editor_UIWindowResizeCallback()
 	gui_AddOption(world_dropdown, "compile bsp", "compile bsp");
 	gui_AddOption(world_dropdown, "export bsp", "export bsp");
 	gui_AddOption(world_dropdown, "visualize portals", "visualize portals");
+	gui_AddOption(world_dropdown, "visualize brushes", "visualize brushes");
 	
 	gui_AddWidgetToBar((widget_t *) world_dropdown, menu_dropdown_bar);
 	

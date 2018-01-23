@@ -105,10 +105,14 @@ bsp_polygon_t *bsp_DeepCopyPolygon(bsp_polygon_t *src);
 
 bsp_polygon_t *bsp_DeepCopyPolygons(bsp_polygon_t *src);
 
+void bsp_DeletePolygons(bsp_polygon_t *polygons);
+
 
 bsp_triangle_t *bsp_FindSplittingTriangle(bsp_triangle_t *triangles, int ignore_used);
 
 bsp_polygon_t *bsp_FindSplitter(bsp_polygon_t *polygons, int ignore_used);
+
+void bsp_QuickHull(vec2_t *in_verts, int in_vert_count, vec2_t **hull_verts, int *hull_vert_count);
 
 bsp_polygon_t *bsp_BuildPolygonsFromBrush(brush_t *brush);
 
@@ -164,6 +168,8 @@ int bsp_CompileBspAsync(void *param);
 void bsp_DrawExpandedBrushes();
 
 void bsp_DrawBevelEdges();
+
+void bsp_DrawPolygons();
 
 
 

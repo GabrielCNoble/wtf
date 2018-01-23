@@ -30,15 +30,19 @@ widget_t *last_widget;
 widget_t *top_widget;
 mat4_t gui_projection_matrix;
 
+gui_var_t *gui_vars = NULL;
+gui_var_t *last_gui_var = NULL;
+
 static char formated_str[8192];
-
-
 extern font_t *gui_font;
 
-void gui_Init()
+
+
+int gui_Init()
 {
 	widgets = NULL;
 	gui_UpdateGUIProjectionMatrix();
+	return 1;
 }
 
 void gui_Finish()
@@ -71,7 +75,10 @@ widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h)
 	
 	widget->name = strdup(name);
 	
-	if(!widgets)
+	
+	gui_NestleWidget(NULL, widget);
+	
+	/*if(!widgets)
 	{
 		widgets = widget;
 		last_widget = widget;
@@ -82,9 +89,46 @@ widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h)
 		last_widget->next = widget;
 		widget->prev = last_widget;
 		last_widget = widget;
-	}
+	}*/
 	
 	return widget;
+}
+
+void gui_NestleWidget(widget_t *parent, widget_t *widget)
+{
+	widget_t **first;
+	widget_t **last;
+	
+	
+	if(!parent)
+	{
+		first = &widgets;
+		last = &last_widget;
+	}
+	else
+	{
+		first = &parent->nestled;
+		last = &parent->last_nestled;
+	}
+	
+	
+	if(!(*first))
+	{
+		if(!parent)
+		{
+			top_widget = widget;
+		}
+		*first = widget;
+	}
+	else
+	{
+		(*last)->next = widget;
+		widget->prev = *last;
+	}
+	
+	
+	*last = widget;
+	
 }
 
 void gui_DestroyWidget(widget_t *widget)
@@ -233,13 +277,88 @@ void gui_RenderText(widget_t *widget)
 			
 			sprintf(formated_str, dropdown->dropdown_text);
 			
-			dropdown->rendered_text = TTF_RenderUTF8_Blended_Wrapped(gui_font->font, formated_str, foreground, dropdown->widget.w * 2.0);
-					
+			dropdown->rendered_text = TTF_RenderUTF8_Blended_Wrapped(gui_font->font, formated_str, foreground, dropdown->widget.w * 2.0);	
+		break;
+		
+		case WIDGET_TEXT_FIELD:
+		
 		break;
 	}
 	
 	
 	widget->bm_flags &= ~WIDGET_RENDER_TEXT;
+}
+
+
+gui_var_t *gui_CreateGUIVar(char *name, short type, void *addr)
+{
+	gui_var_t *var = NULL;
+	
+	switch(type)
+	{
+		case GUI_VAR_MAT4_T:
+		case GUI_VAR_MAT3_T:
+		case GUI_VAR_VEC4_T:
+		case GUI_VAR_VEC3_T:
+		case GUI_VAR_VEC2_T:
+		case GUI_VAR_DOUBLE:
+		case GUI_VAR_FLOAT:
+		case GUI_VAR_INT:
+		case GUI_VAR_SHORT:
+		case GUI_VAR_CHAR:
+		case GUI_VAR_STRING:
+			var = malloc(sizeof(gui_var_t));
+			var->name = strdup(name);
+			var->type = type;
+			var->addr = addr;
+			var->bm_flags = GUI_VAR_VALUE_HAS_CHANGED;
+			
+			var->prev_var_value.str_var = NULL;
+			
+			if(!gui_vars)
+			{
+				gui_vars = var;
+			}
+			else
+			{
+				last_gui_var->next = var;
+			}
+			
+			last_gui_var = var;
+		break;
+	}
+	
+	
+	
+	
+	return var;
+}
+
+void gui_DeleteGUIVar(gui_var_t *var)
+{
+	gui_var_t *r = gui_vars;
+	
+	while(r)
+	{
+		if(r->next == var)
+			break;
+		
+		r = r->next;
+	}
+	
+	if(r)
+	{
+		r->next = var->next;
+		
+		free(var->name);
+		
+		if(var->type == GUI_VAR_STRING)
+			if(var->prev_var_value.str_var)
+				free(var->prev_var_value.str_var);
+				
+		
+		free(var);
+	}
 }
 
 
@@ -259,7 +378,48 @@ void gui_RenderText(widget_t *widget)
 					   }
 
 
-
+void gui_UpdateGUIVars()
+{
+	gui_var_t *v = gui_vars;
+	
+	
+	while(v)
+	{
+		switch(v->type)
+		{
+			case GUI_VAR_INT:
+				if(v->prev_var_value.int_var != *((int *)v->addr))
+				{
+					v->prev_var_value.int_var = *((int *)v->addr);
+					v->bm_flags |= GUI_VAR_VALUE_HAS_CHANGED;
+				}
+			break;
+			
+			case GUI_VAR_FLOAT:
+				if(v->prev_var_value.float_var != *((float *)v->addr))
+				{
+					v->prev_var_value.float_var = *((float *)v->addr);
+					v->bm_flags |= GUI_VAR_VALUE_HAS_CHANGED;
+				}
+			break;
+			
+			case GUI_VAR_STRING:
+				if(strcmp(v->prev_var_value.str_var, (char *)v->addr))
+				{
+					if(v->prev_var_value.str_var)
+					{
+						free(v->prev_var_value.str_var);
+					}
+					
+					v->prev_var_value.str_var = strdup((char *)v->addr);
+					v->bm_flags |= GUI_VAR_VALUE_HAS_CHANGED;
+				}
+			break;
+		}
+		
+		v = v->next;
+	}
+}
 
 
 void gui_ProcessGUI()
@@ -274,6 +434,7 @@ void gui_ProcessGUI()
 	option_list_t *option_list;
 	option_t *option;
 	widget_bar_t *bar;
+	text_field_t *field;
 	
 	int widget_stack_top = -1;
 	widget_t *widget_stack[WIDGET_STACK_SIZE];
@@ -297,6 +458,8 @@ void gui_ProcessGUI()
 	short y_increment;
 	short bottom_y;
 	
+	int b_keep_text_input = 0;
+	
 	new_top = NULL;
 	
 	//w = top_widget;
@@ -305,6 +468,8 @@ void gui_ProcessGUI()
 	top = widgets;
 	
 	_do_rest:
+		
+	//bm_mouse &= ~MOUSE_OVER_WIDGET;
 		
 	while(w)
 	{
@@ -348,49 +513,65 @@ void gui_ProcessGUI()
 			w->bm_flags &= ~(WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_HAS_RIGHT_MOUSE_BUTTON);
 		}
 		
-		
-		
-		
-		/*if(w->type == WIDGET_BUTTON)
-		{
-			printf("%f %f\n", w->relative_mouse_x, w->relative_mouse_y);
 			
-			
-		}*/
-			
-		if(w->relative_mouse_x >= -1.0 && w->relative_mouse_x <= 1.0 &&
-		   w->relative_mouse_y >= -1.0 && w->relative_mouse_y <= 1.0)
+		if(w->relative_mouse_x >= -1.0 && w->relative_mouse_x <= 1.0 && w->relative_mouse_y >= -1.0 && w->relative_mouse_y <= 1.0)
 		{
 			if(!(top->bm_flags & WIDGET_MOUSE_OVER))
 			{
-							
-				r = top->parent;
-				/* propagate the flag upwards... */
-				while(r)
+				//printf("%s %d\n", w->name, w->bm_flags & WIDGET_IGNORE_EDGE_CLIPPING);
+				
+				if(w->bm_flags & WIDGET_IGNORE_EDGE_CLIPPING)
 				{
-					r->bm_flags |= WIDGET_MOUSE_OVER;
-					r = r->parent;
-				}
-				
-				w->bm_flags |= WIDGET_MOUSE_OVER;
-				
-				
-				
-				if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
-				{
-					//printf("%s\n", w->name);
-					w->bm_flags |= WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON;
+					_do_flag_business:
 					
-					r = w->parent;
-					
+					r = top->parent;
+						
+					/* propagate the flag upwards... */
 					while(r)
 					{
-						r->bm_flags |= WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON;
+						r->bm_flags |= WIDGET_MOUSE_OVER;
 						r = r->parent;
 					}
 					
-					gui_SetAsTop(w);
+					w->bm_flags |= WIDGET_MOUSE_OVER;
 				}
+				else
+				{
+					if(w->parent)
+					{
+						if(w->parent->bm_flags & WIDGET_MOUSE_OVER)
+						{
+							goto _do_flag_business;
+						}
+					}
+					else
+					{
+						goto _do_flag_business;
+					}
+				}
+							
+				
+				
+				if(w->bm_flags & WIDGET_MOUSE_OVER)
+				{
+					bm_mouse |= MOUSE_OVER_WIDGET;
+					
+					if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
+					{
+						w->bm_flags |= WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON;
+						
+						r = w->parent;
+						
+						while(r)
+						{
+							r->bm_flags |= WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON;
+							r = r->parent;
+						}
+						
+						gui_SetAsTop(w);
+					}
+				}
+				
 				
 			}
 		}
@@ -513,6 +694,10 @@ void gui_ProcessGUI()
 					continue;
 				}
 			break;
+			
+			case WIDGET_TEXT_FIELD:
+				gui_UpdateTextField(w);
+			break;
 		}
 		
 		/*if(call_callback)
@@ -530,33 +715,25 @@ void gui_ProcessGUI()
 		switch(w->type)
 		{
 			case WIDGET_BAR:
-				bar = (widget_bar_t *)w;
-				if(bar->process_fn)
-				{
-					bar->process_fn(w);
-				}
+				gui_PostUpdateWidgetBar(w);
 			break;
 			
 			case WIDGET_DROPDOWN:
-				
-				dropdown = (dropdown_t *)w;
-				if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
-				{
-					if(!(dropdown->bm_dropdown_flags & DROPDOWN_JUST_DROPPED))
-					{
-						dropdown->bm_dropdown_flags &= ~DROPDOWN_DROPPED;
-					}
-				}
-				
+				gui_PostUpdateDropdown(w);				
 			break;
 			
 			case WIDGET_OPTION_LIST:
-				if(w->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
+				gui_PostUpdateOptionList(w);
+			break;
+			
+			case WIDGET_TEXT_FIELD:
+				gui_PostUpdateTextField(w);
+				
+				field = (text_field_t *)w;
+				
+				if(field->bm_text_field_flags & TEXT_FIELD_RECEIVING_TEXT)
 				{
-					if(!w->parent)
-					{
-						gui_SetInvisible(w);
-					}
+					b_keep_text_input = 1;
 				}
 			break;
 		}
@@ -583,6 +760,11 @@ void gui_ProcessGUI()
 		}
 		
 	}
+	
+	if(!b_keep_text_input)
+	{
+		input_EnableTextInput(0);
+	}
 		
 }
 
@@ -594,6 +776,41 @@ void gui_UpdateGUIProjectionMatrix()
 	float bottom = -top;
 	CreateOrthographicMatrix(&gui_projection_matrix, left, right, top, bottom, -10.0, 10.0, NULL);
 }
+
+gui_var_t gui_MakeIntVar(int value)
+{
+	gui_var_t var;
+	var.prev_var_value.int_var = value;
+	return var;
+}
+
+gui_var_t gui_MakeFloatVar(float value)
+{
+	gui_var_t var;
+	var.prev_var_value.float_var = value;
+	return var;
+}
+
+gui_var_t gui_MakeDoubleVar(double value)
+{
+	
+}
+
+gui_var_t gui_MakeVec2Var(vec2_t value)
+{
+	
+}
+
+gui_var_t gui_MakeVec3Var(vec3_t value)
+{
+	
+}
+
+
+
+
+
+
 
 
 

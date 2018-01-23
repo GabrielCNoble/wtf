@@ -21,7 +21,7 @@ extern int forward_pass_shader;
 
 int default_material;
 
-void material_Init()
+int material_Init()
 {
 	material_list_size = 16;
 	material_count = 0;
@@ -31,6 +31,8 @@ void material_Init()
 	free_position_stack = malloc(sizeof(int) * material_list_size);
 	
 	default_material = material_CreateMaterial("default_material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);	
+	
+	return 1;
 }
 
 void material_Finish()
@@ -111,6 +113,7 @@ int material_CreateMaterial(char *name, vec4_t base_color, float glossiness, flo
 	material->diffuse_texture = diffuse_texture;
 	material->normal_texture = normal_texture;
 	material->shader_index = shader_index;
+	material->material_index = material_index;
 	
 	*material_name = strdup(name);
 	
@@ -226,9 +229,40 @@ int material_LoadMaterial(char *file_name)
 	
 }
 
-void material_DeleteMaterialByIndex(int material_index)
+
+int material_GetMaterialIndex(char *material_name)
 {
+	int i;
 	
+	for(i = 0; i < material_count; i++)
+	{
+		if(materials[i].material_index < 0)
+			continue;
+			
+		if(!strcmp(material_names[i], material_name))
+		{
+			return i;
+		}	
+	}
+	
+	return -1;
+	
+}
+
+void material_DestroyMaterialIndex(int material_index)
+{
+	if(material_index >= 0 && material_index < material_count)
+	{
+		if(materials[material_index].material_index > 0)
+		{
+			free(material_names[material_index]);
+			materials[material_index].material_index = -1;
+			
+			free_position_stack_top++;
+			
+			free_position_stack[free_position_stack_top] = material_index;
+		}
+	}
 }
 
 void material_SetMaterial(int material_index)
@@ -236,7 +270,23 @@ void material_SetMaterial(int material_index)
 	//glMaterialf(GL_FRONT_AND_BACK, )
 }
 
-
+void material_DestroyAllMaterials()
+{
+	
+	int i;
+	
+	for(i = 0; i < material_count; i++)
+	{
+		if(materials[i].material_index > -1)
+		{
+			free(material_names[i]);
+			materials[i].material_index = -1;
+		}
+	}
+	
+	material_count = 0;
+	free_position_stack_top = -1;
+}
 
 
 

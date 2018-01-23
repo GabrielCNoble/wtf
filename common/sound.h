@@ -66,7 +66,7 @@ typedef union
 }sound_param_buffer_t;
 
 
-void sound_Init();
+int sound_Init();
 
 void sound_Finish();
 

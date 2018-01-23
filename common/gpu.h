@@ -28,7 +28,7 @@ typedef struct
 }gpu_heap_list_t;
 
 
-void gpu_Init();
+int gpu_Init();
 
 void gpu_Finish();
 

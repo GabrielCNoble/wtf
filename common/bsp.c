@@ -59,9 +59,9 @@ float color_table[][3] = {0.0, 0.8, 0.0,
 
 
 
-void bsp_Init()
+int bsp_Init()
 {
-
+	return 1;
 }
 
 void bsp_Finish()

@@ -1,9 +1,11 @@
-varying int face_index;
+#version 400 compatibility
+
+//flat varying int face_index;
 
 
 
 void main()
 {
     gl_FragData[0] = gl_FrontMaterial.diffuse.rgba;
-    gl_FragData[0].b -= face_index;
+    //gl_FragData[0].b -= face_index;
 }

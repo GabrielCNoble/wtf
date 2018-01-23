@@ -15,7 +15,10 @@ enum BRUSH_TYPE
 	BRUSH_CYLINDER,
 	BRUSH_BOUNDS,
 	BRUSH_COLLISION,
+	BRUSH_EMPTY,
+	BRUSH_INVALID,
 };
+
 
 
 
@@ -55,6 +58,7 @@ typedef struct
 	
 	int max_vertexes;								/* max number before a gpu realloc is needed... */
 	int vertex_count;
+	int base_vertex_count;
 	int start;
 	int handle;
 	int type;
@@ -69,6 +73,14 @@ void brush_Init();
 void brush_Finish();
 
 int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short type);
+
+int brush_CreateEmptyBrush();
+
+void brush_DestroyBrush(brush_t *brush);
+
+void brush_DestroyBrushIndex(int brush_index);
+
+void brush_DestroyAllBrushes();
 
 void brush_CreateCylinderBrush(int base_vertexes, int *vert_count, float **vertices, float **normals);
 

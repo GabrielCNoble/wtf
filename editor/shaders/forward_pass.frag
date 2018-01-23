@@ -1,6 +1,8 @@
-#version 130
-#extension GL_EXT_gpu_shader4 : enable
-#extension GL_ARB_uniform_buffer_object : enable
+#version 400 compatibility
+
+#extension GL_EXT_gpu_shader4 : require
+//#extension GL_ARB_uniform_buffer_object : require
+//#extension GL_EXT_uniform_buffer_object : enable
 
 
 uniform int r_width;
@@ -94,7 +96,8 @@ float sample_cube_map(vec3 frag_pos, int light_index, out vec3 debug_color)
 	float y = float((light_params[light_index].x_y >> 16) & uint(0x0000ffff)) / float(SHARED_SHADOW_MAP_HEIGHT);
 	float w = float(SHADOW_MAP_RESOLUTION) / float(SHARED_SHADOW_MAP_WIDTH);
 	float h = float(SHADOW_MAP_RESOLUTION) / float(SHARED_SHADOW_MAP_HEIGHT);
-
+	//float w = 0.0625;
+	//float h = 0.0625;
 	
 	float dist;
 	float largest;
@@ -191,10 +194,14 @@ int cluster_index(float x, float y, float view_z, float znear, float zfar, float
 	int cluster;
 	int row;
 	int layer;
+
+	//3.6989700043360188047862611052755
 	
 	cluster = min(int((x / width) * float(CLUSTERS_PER_ROW)), CLUSTERS_PER_ROW);
 	row = min(int((y / height) * float(CLUSTER_ROWS)), CLUSTER_ROWS);
 	layer = int((log(-view_z / znear) / log(zfar / znear)) * float(CLUSTER_LAYERS));
+
+	//layer = int((log(-view_z / znear) / 3.6989700043360188047862611052755) * float(CLUSTER_LAYERS));
 	
 	layer = max(min(layer, CLUSTER_LAYERS), 0);
 	
@@ -237,14 +244,14 @@ void main()
 	vec3 eye_vec;
 	vec3 half_vec;
 	
-	/*if(bool(texture_flags & USE_DIFFUSE_TEXTURE) == true)
+	/*if(bool(texture_flags & USE_DIFFUSE_TEXTURE) == false)
 	{
 		color = texture2D(texture_sampler0, uv);
 	}
-	else
-	{*/
+	else*/
+	{
 		color = vec4(gl_FrontMaterial.diffuse.rgb, 1.0);
-	//}
+	}
 
 	
 	cluster_index(gl_FragCoord.x, gl_FragCoord.y, eye_space_position.z, 1.0, 500.0, r_width, r_height, cluster);
@@ -269,20 +276,23 @@ void main()
 			light_color = light_params[i].color_energy.rgb;
 			
 			distance = length(light_vec);
+			///distance = dot(light_vec, light_vec);
 			energy = light_params[i].color_energy.a;
 			radius = light_params[i].position_radius.w;
 			
 			shadow = 1.0;
 			
-			if((light_params[i].bm_flags & LIGHT_GENERATE_SHADOWS) == LIGHT_GENERATE_SHADOWS)
-			{
-				shadow = sample_cube_map(world_space_position, i, debug);
-			}
+			//if((light_params[i].bm_flags & LIGHT_GENERATE_SHADOWS) == LIGHT_GENERATE_SHADOWS)
+			//{
+			shadow = sample_cube_map(world_space_position, i, debug);
+			//}
 			
+			/*shadow = 1.0;*/
 			
 			
 			
 			light_vec /= distance;
+			//half_vec = normalize(eye_vec + light_vec);
 			half_vec = normalize(eye_vec + light_vec);
 
 			attenuation = (1.0 / (distance)) * max(1.0 - (distance / radius), 0.0);

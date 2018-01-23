@@ -12,13 +12,28 @@
 #include "texture.h"
 
 
+static char texture_path[256];
+
+
 static int texture_list_size;
 static int texture_count;
 texture_t *textures;
-static char **texture_names;
+texture_reg_t *texture_names;
+//char **texture_names;
+
 
 static int free_position_stack_top;
 static int *free_position_stack;
+
+static char *suffixes[] = 
+{
+	".cubemap_pos_x",
+	".cubemap_neg_x",
+	".cubemap_pos_y",
+	".cubemap_neg_y",
+	".cubemap_pos_z",
+	".cubemap_neg_z"
+};
 
 void texture_Init()
 {
@@ -27,7 +42,7 @@ void texture_Init()
 	texture_list_size = 64;
 	texture_count = 0;
 	textures = malloc(sizeof(texture_t) * texture_list_size);
-	texture_names = malloc(sizeof(char *) * texture_list_size);
+	texture_names = malloc(sizeof(texture_reg_t ) * texture_list_size);
 	free_position_stack = malloc(sizeof(int) * texture_list_size);
 }
 
@@ -36,7 +51,9 @@ void texture_Finish()
 	int i;
 	for(i = 0; i < texture_count; i++)
 	{
-		free(texture_names[i]);
+		//free(texture_names[i]);
+		free(texture_names[i].name);
+		free(texture_names[i].file_name);
 		glDeleteTextures(1, &textures[i].gl_handle);
 	}
 	
@@ -47,16 +64,23 @@ void texture_Finish()
 	//ilShutdown();
 }
 
+void texture_SetPath(char *path)
+{
+	strcpy(texture_path, path);
+}
+
 int texture_LoadTexture(char *file_name, char *name)
 {
 	//unsigned int il_tex_handle;
 	unsigned int gl_tex_handle;
 	int texture_index;
 	texture_t *texture;
+	texture_reg_t *texture_name;
 	
 	void *tex_data;
 	char **c_temp;
 	char tex_name[128];
+	char full_path[256];
 	int tex_name_len;
 	
 	int channels;
@@ -83,13 +107,20 @@ int texture_LoadTexture(char *file_name, char *name)
 	if(texture_index != -1)
 	{
 		/* this texture was already loaded, so 
-		just return the existent texture instead... */
+		just return the existing texture instead... */
 		return texture_index;
 	}
 	
+	strcpy(full_path, texture_path);
+	strcat(full_path, "/");
+	strcat(full_path, file_name);
+	
+	
 	//printf("%s\n", file_name);
 	
-	tex_data = SOIL_load_image(file_name, &width, &height, &channels, SOIL_LOAD_AUTO);
+	//tex_data = SOIL_load_image(file_name, &width, &height, &channels, SOIL_LOAD_AUTO);
+	
+	tex_data = SOIL_load_image(full_path, &width, &height, &channels, SOIL_LOAD_AUTO);
 	
 	/*if(!ilLoadImage(file_name))*/
 	if(!tex_data)
@@ -159,24 +190,27 @@ int texture_LoadTexture(char *file_name, char *name)
 			free(free_position_stack);
 			
 			texture = malloc(sizeof(texture_t) * (texture_list_size + 16));
-			c_temp = malloc(sizeof(char *) * (texture_list_size + 16));
+			texture_name = malloc(sizeof(texture_reg_t) * (texture_list_size + 16));
+			//c_temp = malloc(sizeof(char *) * (texture_list_size + 16));
 			free_position_stack = malloc(sizeof(int) * (texture_list_size + 16));
 			
 			memcpy(texture, textures, sizeof(texture_t) * texture_list_size);
-			memcpy(c_temp, texture_names, sizeof(char *) * texture_list_size);
+			memcpy(texture_name, texture_names, sizeof(texture_reg_t) * texture_list_size);
+		
 			
 			free(textures);
 			free(texture_names);
 			
 			textures = texture;
-			texture_names = c_temp;
+			texture_names = texture_name;
 		}
 	}
 	
 	
 	
 	texture = &textures[texture_index];
-	texture_names[texture_index] = strdup(tex_name);
+	texture_names[texture_index].name = strdup(tex_name);
+	texture_names[texture_index].file_name = strdup(file_name);
 	
 	texture->gl_handle = gl_tex_handle;
 	texture->tex_type = GL_TEXTURE_2D;
@@ -188,7 +222,7 @@ int texture_LoadTexture(char *file_name, char *name)
 }
 
 
-int texture_LoadCubeTexture(char *files, char *name)
+int texture_LoadCubeTexture(char *file_name, char *name)
 {
 	int i;
 	int c;
@@ -202,11 +236,51 @@ int texture_LoadCubeTexture(char *files, char *name)
 	texture_t *texture;
 	unsigned int gl_tex_handle;
 	char tex_names[6][64];
+	char tex_name[64];
+	char ext[6];
+	//static char suffixes
+	char full_path[256];
 	unsigned char *pixel_data[6];
 	
 	i = 0;
 	c = 0;
-	while(files[i] != '\0')
+	
+	/*for(i = 0; i < 6; i++)
+	{
+		strcpy(tex_names[i], file_name);
+		strcat
+	}*/
+	
+	while(file_name[i] != '.')
+	{
+		tex_name[i] = file_name[i];
+		
+		i++;
+	}
+	
+	tex_name[i] = '\0';
+	
+	while(file_name[i])
+	{
+		ext[c++] = file_name[i++];	
+	}
+	
+	ext[c] = '\0';
+	
+	for(i = 0; i < 6; i++)
+	{
+		//strcpy(full_path, texture_path);
+		//strcat(full_path, "/");
+		strcpy(tex_names[i], tex_name);
+		strcat(tex_names[i], suffixes[i]);
+		strcat(tex_names[i], ext);
+		
+		printf("%s\n", tex_names[i]);
+	}
+	
+	
+	
+	/*while(files[i] != '\0')
 	{
 		while(files[i] == ' ') i++;
 		
@@ -224,14 +298,14 @@ int texture_LoadCubeTexture(char *files, char *name)
 		tex_names[c][k] = '\0';
 		//printf("%s\n", tex_names[c]);
 		c++;
-	}
+	}*/
+	//return;
 	
-	
-	if(c < 6)
+	/*if(c < 6)
 	{
 		printf("not enough files to form a cube texture!\n");
 		return -1;
-	}
+	}*/
 	
 
 	
@@ -242,7 +316,13 @@ int texture_LoadCubeTexture(char *files, char *name)
 	
 	for(i = 0; i < 6; i++)
 	{
-		pixel_data[i] = SOIL_load_image(tex_names[i], &width, &height, &channels, SOIL_LOAD_AUTO);
+		
+		strcpy(full_path, texture_path);
+		strcat(full_path, "/");
+		strcat(full_path, tex_names[i]);
+		
+		//pixel_data[i] = SOIL_load_image(tex_names[i], &width, &height, &channels, SOIL_LOAD_AUTO);
+		pixel_data[i] = SOIL_load_image(full_path, &width, &height, &channels, SOIL_LOAD_AUTO);
 		
 		if(!pixel_data[i])
 		{
@@ -332,7 +412,8 @@ int texture_LoadCubeTexture(char *files, char *name)
 	
 	
 	texture = &textures[texture_index];
-	texture_names[texture_index] = strdup(name);
+	texture_names[texture_index].name = strdup(name);
+	texture_names[texture_index].file_name = strdup(file_name);
 	
 	texture->gl_handle = gl_tex_handle;
 	texture->tex_type = GL_TEXTURE_CUBE_MAP;
@@ -369,7 +450,7 @@ int texture_GetTexture(char *name)
 	
 	for(i = 0; i < texture_count; i++)
 	{
-		if(!strcmp(name, texture_names[i]))
+		if(!strcmp(name, texture_names[i].name))
 		{
 			return i;
 		}

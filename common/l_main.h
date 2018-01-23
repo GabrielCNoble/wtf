@@ -68,8 +68,6 @@ typedef struct
 
 typedef struct
 {
-	//mat4_t projection_matrix;
-	//mat4_t world_to_light_matrix;
 	
 	vec4_t forward_axis;
 	vec4_t position_radius;
@@ -98,12 +96,17 @@ typedef struct
 }shadow_map_t;
 
 
-void light_Init();
+int light_Init();
 
 void light_Finish();
 
-int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t color, float radius, float energy);
+int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t color, float radius, float energy, int bm_flags);
 
+int light_DestroyLight(char *name);
+
+int light_DestroyLightIndex(int light_index);
+
+void light_DestroyAllLights();
 /* updates which leaves contains which lights... */
 void light_UpdateLights();
 

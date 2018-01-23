@@ -11,5 +11,7 @@ void gui_AdjustBar(widget_t *widget);
 
 void gui_UpdateWidgetBar(widget_t *widget);
 
+void gui_PostUpdateWidgetBar(widget_t *widget);
+
 
 #endif

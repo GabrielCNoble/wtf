@@ -5,15 +5,16 @@
 #include "shader.h"
 #include "mesh.h"
 #include "l_common.h"
+#include "log.h"
 #include "GL\glew.h"
 
 
 
 static int shader_list_size;
-static int shader_count;
+int shader_count;
 static int free_position_stack_top;
 static int *free_position_stack;
-static shader_t *shaders;
+shader_t *shaders;
 static int active_shader;
 
 /* from r_main.c */
@@ -35,10 +36,11 @@ extern int draw_bsp_shader;
 /* from editor.c */
 extern int brush_pick_shader;
 extern int light_pick_shader;
+extern int brush_dist_shader;
 
 static char shader_base_path[512];
 
-void shader_Init(char *shader_path)
+int shader_Init(char *shader_path)
 {
 	int i;
 	int c;
@@ -58,6 +60,7 @@ void shader_Init(char *shader_path)
 	
 	z_pre_pass_shader = shader_LoadShader("z_pre_pass");
 	forward_pass_shader = shader_LoadShader("forward_pass");
+	
 	forward_pass_brush_shader = shader_LoadShader("forward_pass_brush");
 	geometry_pass_shader = shader_LoadShader("geometry_buffer");
 	shading_pass_shader = shader_LoadShader("shade_pass");
@@ -66,7 +69,11 @@ void shader_Init(char *shader_path)
 	skybox_shader = shader_LoadShader("skybox");
 	brush_pick_shader = shader_LoadShader("brush_pick");
 	light_pick_shader = shader_LoadShader("light_pick");
+	brush_dist_shader = shader_LoadShader("brush_dist");
 	draw_bsp_shader = shader_LoadShader("draw_bsp");
+	
+	return 1;
+	
 }
 
 void shader_Finish()
@@ -117,7 +124,8 @@ int shader_LoadShader(char *file_name)
 	
 	if(!(f = fopen(shader_file_full_path, "r")))
 	{
-		printf("couldn't load vertex shader file for shader %s!!\n", file_name);
+		printf("shader_LoadShader: couldn't load vertex shader file for shader %s!!\n", file_name);
+		log_LogMessage(LOG_MESSAGE_ERROR, "shader_LoadShader: couldn't load vertex shader file for shader %s!!\n", file_name);
 		return -1;
 	}
 	
@@ -152,6 +160,7 @@ int shader_LoadShader(char *file_name)
 	if(!status)
 	{
 		glDeleteShader(vertex_shader_object);
+		log_LogMessage(LOG_MESSAGE_ERROR, "********************************************\n[%s] shader vertex shader compilation stage info log:\n%s\n", file_name, error_log);
 		return -1;
 	}
 	
@@ -165,7 +174,8 @@ int shader_LoadShader(char *file_name)
 	
 	if(!(f = fopen(shader_file_full_path, "r")))
 	{
-		printf("couldn't load fragment shader file for shader %s!!\n", file_name);
+		printf("shader_LoadShadear: couldn't load fragment shader file for shader %s!!\n", file_name);
+		log_LogMessage(LOG_MESSAGE_ERROR, "shader_LoadShader: couldn't load fragment shader file for shader %s!!\n", file_name);
 		return -1;
 	}
 	
@@ -206,6 +216,7 @@ int shader_LoadShader(char *file_name)
 		//free(error_log);
 		glDeleteShader(vertex_shader_object);
 		glDeleteShader(fragment_shader_object);
+		log_LogMessage(LOG_MESSAGE_ERROR, "********************************************\n[%s] shader fragment shader compilation stage info log:\n%s\n", file_name, error_log);
 		return -1;
 	}
 
@@ -216,6 +227,9 @@ int shader_LoadShader(char *file_name)
 	glAttachShader(shader_program, fragment_shader_object);
 	glLinkProgram(shader_program);
 	
+	/* flag those shaders for deletion, so they
+	get deleted once the shader program object gets
+	deleted... */
 	glDeleteShader(vertex_shader_object);
 	glDeleteShader(fragment_shader_object);
 	
@@ -237,6 +251,7 @@ int shader_LoadShader(char *file_name)
 		glDeleteShader(vertex_shader_object);
 		glDeleteShader(fragment_shader_object);
 		glDeleteProgram(shader_program);
+		log_LogMessage(LOG_MESSAGE_ERROR, "********************************************\n[%s] shader link stage info log:\n%s\n", file_name, error_log);
 		return -1;
 	}
 	
@@ -268,6 +283,7 @@ int shader_LoadShader(char *file_name)
 	shader = &shaders[shader_index];
 	shader->shader_program = shader_program;
 	shader->name = strdup(file_name);	
+	shader->file_name = strdup(file_name);
 	
 	shader->vertex_position = glGetAttribLocation(shader->shader_program, "vertex_position");
 	shader->vertex_normal = glGetAttribLocation(shader->shader_program, "vertex_normal");
@@ -286,10 +302,11 @@ int shader_LoadShader(char *file_name)
 	shader->cluster_texture = glGetUniformLocation(shader->shader_program, "cluster_texture");
 	shader->texture_flags = glGetUniformLocation(shader->shader_program, "texture_flags");
 	shader->active_camera_position = glGetUniformLocation(shader->shader_program, "active_camera_position");
-	//shader->light_count = glGetUniformLocation(shader->shader_program, "light_count");
 	shader->light_index = glGetUniformLocation(shader->shader_program, "light_index");
 	
-	printf("%s: %d %d %d\n", file_name, shader->width, shader->height, shader->cluster_texture);
+	shader->bm_flags = 0;
+	
+	//printf("%s: %d %d %d\n", file_name, shader->width, shader->height, shader->cluster_texture);
 	
 	/*if((i = glGetUniformBlockIndex(shader->shader_program, "camera_params_uniform_block")) != GL_INVALID_INDEX)
 	{
@@ -299,6 +316,13 @@ int shader_LoadShader(char *file_name)
 	if((i = glGetUniformBlockIndex(shader->shader_program, "light_params_uniform_block")) != GL_INVALID_INDEX)
 	{
 		glUniformBlockBinding(shader->shader_program, i, LIGHT_PARAMS_UNIFORM_BUFFER_BINDING);
+		//printf("found light_params_uniform_block! %d\n", i);
+	}
+	
+	if((i = glGetUniformBlockIndex(shader->shader_program, "test_block")) != GL_INVALID_INDEX)
+	{
+		glUniformBlockBinding(shader->shader_program, i, TEST_UNIFORM_BUFFER_BINDING);
+		//printf("found test_block! %d\n", i);
 	}
 	
 	/*if((i = glGetUniformBlockIndex(shader->shader_program, "cluster_uniform_block")) != GL_INVALID_INDEX)
@@ -314,6 +338,323 @@ int shader_LoadShader(char *file_name)
 
 
 	return shader_index;
+	
+}
+
+
+void shader_ReloadShader(int shader_index)
+{
+	FILE *f;
+	shader_t *shader;
+	int *itemp;
+	
+	unsigned int vertex_shader_object;
+	unsigned int fragment_shader_object;
+	unsigned int shader_program;
+	
+	int status;
+	int error_log_len;
+	int i;
+	
+	unsigned long file_size;
+	
+	char *vertex_shader_source;
+	char *fragment_shader_source;
+	char *error_log;
+		
+	char vertex_shader_file_name[128];
+	char fragment_shader_file_name[128];
+	char shader_file_full_path[512];
+	
+	
+	if(shader_index < 0 || shader_index >= shader_count)
+	{
+		printf("shader_ReloadShader: bad shader index [%d]\n", shader_index);
+		log_LogMessage(LOG_MESSAGE_ERROR, "shader_ReloadShader: bad shader index [%d]\n", shader_index);
+		return;
+	}
+	
+	shader = &shaders[shader_index];
+	
+	if(shader->bm_flags & SHADER_INVALID)
+	{
+		printf("shader_ReloadShader: invalid shader [%d]\n", shader_index);
+		log_LogMessage(LOG_MESSAGE_ERROR, "shader_ReloadShader: invalid shader [%d]\n", shader_index);
+		return;
+	}	
+		
+	strcpy(vertex_shader_file_name, shader->file_name);
+	strcat(vertex_shader_file_name, ".vert");
+	
+	strcpy(shader_file_full_path, shader_base_path);
+	strcat(shader_file_full_path, "\\");
+	strcat(shader_file_full_path, vertex_shader_file_name);
+	
+	if(!(f = fopen(shader_file_full_path, "r")))
+	{
+		printf("shader_ReloadShader: couldn't load vertex shader file [%s] for shader [%s]\n", shader->file_name, shader->name);
+		log_LogMessage(LOG_MESSAGE_ERROR, "shader_ReloadShader: couldn't load vertex shader file [%s] for shader [%s]\n", shader->file_name, shader->name);
+		return;
+	}
+	
+	fseek(f, 0, SEEK_END);
+	file_size = ftell(f);
+	rewind(f);
+	
+	vertex_shader_source = calloc(file_size + 2, 1);
+	fread(vertex_shader_source, 1, file_size, f);
+	vertex_shader_source[file_size - 1] = '\0';
+	vertex_shader_source[file_size] = '\0';
+	
+	fclose(f);
+	
+	vertex_shader_object = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertex_shader_object, 1, (const GLchar **)&vertex_shader_source, NULL);
+	glCompileShader(vertex_shader_object);
+	glGetShaderiv(vertex_shader_object, GL_COMPILE_STATUS, &status);
+	free(vertex_shader_source);
+	
+	glGetShaderiv(vertex_shader_object, GL_INFO_LOG_LENGTH, &error_log_len);
+	
+	if(error_log_len > 0)
+	{
+		error_log = malloc(error_log_len);
+		glGetShaderInfoLog(vertex_shader_object, error_log_len, NULL, error_log);
+		printf("********************************************\n[%s] shader vertex shader compilation stage info log:\n%s\n", shader->file_name, error_log);
+		free(error_log);	
+	}
+		
+	
+	if(!status)
+	{
+		glDeleteShader(vertex_shader_object);
+		return;
+	}
+	
+	
+	strcpy(fragment_shader_file_name, shader->file_name);
+	strcat(fragment_shader_file_name, ".frag");
+
+	strcpy(shader_file_full_path, shader_base_path);
+	strcat(shader_file_full_path, "\\");
+	strcat(shader_file_full_path, fragment_shader_file_name);
+	
+	if(!(f = fopen(shader_file_full_path, "r")))
+	{
+		printf("shader_ReloadShader: couldn't load fragment shader file [%s] for shader [%s]\n", shader->file_name, shader->name);
+		return;
+	}
+	
+	fseek(f, 0, SEEK_END);
+	file_size = ftell(f);
+	rewind(f);
+	
+	fragment_shader_source = calloc(file_size + 2, 1);
+	fread(fragment_shader_source, 1, file_size, f);
+	fragment_shader_source[file_size - 1] = '\0';
+	fragment_shader_source[file_size] = '\0';
+	
+	fclose(f);
+	
+	fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragment_shader_object, 1, (const GLchar **)&fragment_shader_source, NULL);
+	glCompileShader(fragment_shader_object);
+	glGetShaderiv(fragment_shader_object, GL_COMPILE_STATUS, &status);
+	free(fragment_shader_source);
+	
+	glGetShaderiv(fragment_shader_object, GL_INFO_LOG_LENGTH, &error_log_len);
+	
+	if(error_log_len > 0)
+	{
+		error_log = malloc(error_log_len);
+		glGetShaderInfoLog(fragment_shader_object, error_log_len, NULL, error_log);
+		printf("********************************************\n[%s] shader fragment shader compilation stage info log:\n%s\n", shader->file_name, error_log);
+		free(error_log);
+	}
+	
+	
+	if(!status)
+	{
+		glDeleteShader(vertex_shader_object);
+		glDeleteShader(fragment_shader_object);
+		return;
+	}
+
+	
+	shader_program = glCreateProgram();
+	
+	glAttachShader(shader_program, vertex_shader_object);
+	glAttachShader(shader_program, fragment_shader_object);
+	glLinkProgram(shader_program);
+	
+	/* flag those shaders for deletion, so they
+	get deleted once the shader program object gets
+	deleted... */
+	glDeleteShader(vertex_shader_object);
+	glDeleteShader(fragment_shader_object);
+	
+	glGetProgramiv(shader_program, GL_LINK_STATUS, &status);
+	
+	glGetProgramiv(shader_program, GL_INFO_LOG_LENGTH, &error_log_len);
+	
+	if(error_log_len > 0)
+	{
+		error_log = malloc(error_log_len);
+		glGetProgramInfoLog(shader_program, error_log_len, NULL, error_log);
+		printf("********************************************\n[%s] shader link stage info log:\n%s\n", shader->file_name, error_log);
+		free(error_log);
+	}
+	
+
+	if(!status)
+	{
+		glDeleteShader(vertex_shader_object);
+		glDeleteShader(fragment_shader_object);
+		glDeleteProgram(shader_program);
+		return;
+	}
+	
+	
+	glDeleteProgram(shader->shader_program);
+	
+	
+	
+	/*if(free_position_stack_top >= 0)
+	{
+		shader_index = free_position_stack[free_position_stack_top--];
+	}
+	else
+	{
+		shader_index = shader_count++;
+		if(shader_index >= shader_list_size)
+		{
+			shader = malloc(sizeof(shader_t ) * (shader_list_size + 16));
+			memcpy(shader, shaders, sizeof(shader_t) * shader_list_size);
+			free(shaders);
+			
+			shaders = shader;
+			shader_list_size += 16;
+		}
+	}*/
+	
+	
+	
+	
+	
+	//shader = &shaders[shader_index];
+	shader->shader_program = shader_program;
+	//shader->name = strdup(file_name);	
+	
+	shader->vertex_position = glGetAttribLocation(shader->shader_program, "vertex_position");
+	shader->vertex_normal = glGetAttribLocation(shader->shader_program, "vertex_normal");
+	shader->vertex_tangent = glGetAttribLocation(shader->shader_program, "vertex_tangent");
+	shader->vertex_tex_coords = glGetAttribLocation(shader->shader_program, "vertex_tex_coords");	
+	
+	shader->texture_sampler0 = glGetUniformLocation(shader->shader_program, "texture_sampler0");
+	shader->texture_sampler1 = glGetUniformLocation(shader->shader_program, "texture_sampler1");
+	shader->texture_sampler2 = glGetUniformLocation(shader->shader_program, "texture_sampler2");
+	shader->texture_cube_sampler0 = glGetUniformLocation(shader->shader_program, "texture_cube_sampler0");
+	shader->shadow_sampler = glGetUniformLocation(shader->shader_program, "shadow_sampler");
+	shader->camera_to_light_matrix = glGetUniformLocation(shader->shader_program, "camera_to_light_matrix");
+	shader->frame = glGetUniformLocation(shader->shader_program, "r_frame");
+	shader->width = glGetUniformLocation(shader->shader_program, "r_width");
+	shader->height = glGetUniformLocation(shader->shader_program, "r_height");
+	shader->cluster_texture = glGetUniformLocation(shader->shader_program, "cluster_texture");
+	shader->texture_flags = glGetUniformLocation(shader->shader_program, "texture_flags");
+	shader->active_camera_position = glGetUniformLocation(shader->shader_program, "active_camera_position");
+	shader->light_index = glGetUniformLocation(shader->shader_program, "light_index");
+	
+	shader->bm_flags = 0;
+	
+	//printf("%s: %d %d %d\n", file_name, shader->width, shader->height, shader->cluster_texture);
+	
+	/*if((i = glGetUniformBlockIndex(shader->shader_program, "camera_params_uniform_block")) != GL_INVALID_INDEX)
+	{
+		glUniformBlockBinding(shader->shader_program, i, 0);
+	}*/
+	
+	if((i = glGetUniformBlockIndex(shader->shader_program, "light_params_uniform_block")) != GL_INVALID_INDEX)
+	{
+		glUniformBlockBinding(shader->shader_program, i, LIGHT_PARAMS_UNIFORM_BUFFER_BINDING);
+		printf("found light_params_uniform_block! %d\n", i);
+	}
+	
+	if((i = glGetUniformBlockIndex(shader->shader_program, "test_block")) != GL_INVALID_INDEX)
+	{
+		glUniformBlockBinding(shader->shader_program, i, TEST_UNIFORM_BUFFER_BINDING);
+		printf("found test_block! %d\n", i);
+	}
+	
+	/*if((i = glGetUniformBlockIndex(shader->shader_program, "cluster_uniform_block")) != GL_INVALID_INDEX)
+	{
+		glUniformBlockBinding(shader->shader_program, i, LIGHT_CLUSTER_UNIFORM_BUFFER_BINDING);
+		printf("found cluster_uniform_block! %d\n", i);
+	}*/
+	
+	/*if((i = glGetUniformBlockIndex(shader->shader_program, "material_params_uniform_block")) != GL_INVALID_INDEX)
+	{
+		glUniformBlockBinding(shader->shader_program, i, 2);
+	}*/
+
+
+	return;
+}
+
+
+int shader_GetShaderIndex(char *shader_name)
+{
+	int i;
+	
+	for(i = 0; i < shader_count; i++)
+	{
+		if(shaders[i].bm_flags & SHADER_INVALID)
+			continue;
+			
+		if(!strcmp(shader_name, shaders[i].name))
+		{
+			return i;
+		}	
+	}
+	
+	return -1;
+	
+}
+
+
+void shader_DeleteShaderIndex(int shader_index)
+{
+	shader_t *shader;
+	if(shader_index >= 0 && shader_index < shader_count)
+	{
+		shader = &shaders[shader_index];
+		
+		if(!(shader->bm_flags & SHADER_INVALID))
+		{
+			glDeleteProgram(shader->shader_program);
+			free(shader->name);
+			free(shader->file_name);
+			
+			shaders->bm_flags |= SHADER_INVALID;
+			
+			free_position_stack_top++;
+			free_position_stack[free_position_stack_top] = shader_index;
+		}
+	}
+}
+
+
+void shader_HotReload()
+{
+	int i;
+	
+	printf("****************** SHADER HOT RELOAD ******************\n");
+	
+	for(i = 0; i < shader_count; i++)
+	{
+		shader_ReloadShader(i);
+	}
+	
+	printf("****************** SHADER HOT RELOAD ******************\n\n");
 	
 }
 

@@ -13,7 +13,7 @@ typedef struct
 
 
 
-void font_Init();
+int font_Init();
 
 void font_Finish();
 

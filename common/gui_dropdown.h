@@ -11,7 +11,10 @@ void gui_AddOption(dropdown_t *dropdown, char *name, char *text);
 
 void gui_UpdateDropdown(widget_t *widget);
 
+void gui_PostUpdateDropdown(widget_t *widget);
+
 void gui_UpdateDropdownBar(widget_t *bar);
+
 
 
 #endif

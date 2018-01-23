@@ -45,7 +45,7 @@ int *triangle_group_buffer;
 
 unsigned int index_buffer;*/
 
-void mesh_Init()
+int mesh_Init()
 {
 	mesh_data_list_size = 64;
 	mesh_data_count = 0;
@@ -66,6 +66,8 @@ void mesh_Init()
 	triangle_group_buffer = malloc(sizeof(int) * triangle_group_list_size);
 	
 	glGenBuffers(1, &index_buffer);*/
+	
+	return 1;
 }
 
 void mesh_Finish()

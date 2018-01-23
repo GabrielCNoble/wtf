@@ -13,9 +13,14 @@
 
 int player_list_size;
 int player_count;
-player_t *players;
-player_t *active_player;
+static int free_positions_stack_top = -1;
+static int *free_positions_stack = NULL;
+player_t *players = NULL;
+player_t *active_player = NULL;
 
+
+int spawn_point_count = 0;
+spawn_point_t *spawn_points = NULL;
 
 mesh_t *weapon_mesh;
 mesh_t *body_mesh;
@@ -44,6 +49,7 @@ void player_Init()
 	player_list_size = 64;
 	player_count = 0;
 	players = malloc(sizeof(player_t) * player_list_size);
+	free_positions_stack = malloc(sizeof(int) * player_list_size);
 	active_player = NULL;
 	
 	//mesh_LoadModel("weapon.obj", "weapon");
@@ -66,6 +72,7 @@ void player_Finish()
 		free(players[i].player_name);
 	}
 	free(players);
+	free(free_positions_stack);
 	free(visible_players_body_transforms);
 	free(visible_players_weapon_transforms);
 	free(visible_players_indexes);
@@ -74,22 +81,31 @@ void player_Finish()
 void player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation)
 {
 	player_t *player;
-	int player_index = player_count++;
+	int player_index;
 	int name_len;
 	int camera_index;
 	char camera_name[128];
 	int w;
 	int h;
 	
-	if(player_index >= player_list_size)
+	if(free_positions_stack_top > -1)
 	{
-		player = malloc(sizeof(player_t) * (player_list_size + 16));
-		memcpy(player, players, sizeof(player_t) * player_list_size);
-		free(players);
-		players = player;
-		player_list_size += 16;
+		player_index = free_positions_stack[free_positions_stack_top];
+		free_positions_stack_top--;
 	}
-	
+	else
+	{
+		player_index = player_count++;
+		
+		if(player_index >= player_list_size)
+		{
+			player = malloc(sizeof(player_t) * (player_list_size + 16));
+			memcpy(player, players, sizeof(player_t) * player_list_size);
+			free(players);
+			players = player;
+			player_list_size += 16;
+		}
+	}
 	
 	player = &players[player_index];
 	name_len = strlen(name) + 1;
@@ -106,10 +122,8 @@ void player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation)
 	player->player_position = position;
 	player->collision_box_position = position;
 	player->player_orientation = *orientation;
+	player->bm_flags = 0;
 	
-	/*printf("[%f %f %f]\n[%f %f %f]\n[%f %f %f]\n\n", player->player_orientation.floats[0][0], player->player_orientation.floats[0][1], player->player_orientation.floats[0][2],
-													 player->player_orientation.floats[1][0], player->player_orientation.floats[1][1], player->player_orientation.floats[1][2],
-													 player->player_orientation.floats[2][0], player->player_orientation.floats[2][1], player->player_orientation.floats[2][2]);*/
 	
 	//player->weapon_start = weapon_mesh->start;
 	//player->weapon_count = weapon_mesh->vert_count;
@@ -131,6 +145,37 @@ void player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation)
 	player->player_camera = camera_GetCameraByIndex(camera_index);
 	
 	player->player_type = PLAYER_NPC;
+}
+
+void player_DestroyPlayer(char *name)
+{
+	
+}
+
+void player_DestroyPlayerIndex(int player_index)
+{
+	
+}
+
+void player_SpawnPlayer(int player_index, int spawn_point_index)
+{
+	spawn_point_t *spawn_point;
+	
+	if(player_index >= 0 && player_index < player_count)
+	{
+		if(!(players[player_index].bm_flags & PLAYER_INVALID))
+		{
+			
+			if(!spawn_point_count)
+				return;
+			
+			if(spawn_point_index < 0)
+			{
+				
+			}
+			
+		}
+	}
 }
 
 player_t *player_GetPlayer(char *name)
@@ -177,6 +222,9 @@ void player_ProcessActivePlayer(float delta_time)
 
 	if(active_player)
 	{
+		if(!(active_player->bm_flags & PLAYER_IN_WORLD))
+			return;
+
 		//printf("active player\n");
 		active_player->bm_movement &= ~(MOVE_FORWARD|MOVE_BACKWARD|MOVE_STRAFE_LEFT|MOVE_STRAFE_RIGHT|MOVE_JUMP);
 		
@@ -280,7 +328,11 @@ void player_ProcessAI(float delta_time)
 	{
 		for(i = 0; i < c; i++)
 		{
-			if(&players[i] == active_player) continue;
+			if(&players[i] == active_player) 
+				continue;
+			
+			if(!(players[i].bm_flags & PLAYER_IN_WORLD))
+				continue;
 			
 			players[i].bm_movement = PLAYER_FIRED;
 			
@@ -335,6 +387,10 @@ void player_UpdatePlayers(double delta_time)
 	
 	for(i = 0; i < player_count; i++)
 	{	
+	
+		if(!(players[i].bm_flags & PLAYER_IN_WORLD))
+			continue;
+	
 		s = sin(players[i].yaw * 3.14159265);
 		c = cos(players[i].yaw * 3.14159265);
 		
@@ -497,6 +553,11 @@ void player_Move(player_t *player)
 	
 	vec3_t end;
 	vec3_t new_velocity = player->delta;
+	
+	
+	if(!(player->bm_flags & PLAYER_IN_WORLD))
+		return;
+	
 	
 	//end.x = position->x + velocity.x;
 	//end.y = position->y + velocity.y;

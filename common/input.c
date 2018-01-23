@@ -25,6 +25,14 @@ float normalized_mouse_y;
 float mouse_dx;
 float mouse_dy;
 
+#define TEXT_BUFFER_SIZE 64
+
+int text_buffer_in = 0;
+int text_buffer_out = 0;
+char text_buffer[TEXT_BUFFER_SIZE];
+
+int b_text_input = 0;
+
 
 float last_mouse_x = 0.0;
 float last_mouse_y = 0.0;
@@ -51,7 +59,7 @@ short key_pos_map[SDL_NUM_SCANCODES];
 input_Init
 =============
 */
-void input_Init()
+int input_Init()
 {
 	int i;
 	
@@ -78,7 +86,7 @@ void input_Init()
 	
 	
 	input_GetInput();
-	return;
+	return 1;
 }
 
 /*
@@ -104,65 +112,82 @@ void input_GetInput()
 	int q;
 	//SDL_Cursor *cursor;
 	
-	bm_mouse &= ~(MOUSE_WHEEL_UP | MOUSE_WHEEL_DOWN);
-	
-	while(SDL_PollEvent(kb_event))
-	{		
-		switch(kb_event->type)
+	bm_mouse &= ~(MOUSE_WHEEL_UP | MOUSE_WHEEL_DOWN | MOUSE_OVER_WIDGET);
+		
+	if(!b_text_input)
+	{
+		while(SDL_PollEvent(kb_event))
+		{		
+			switch(kb_event->type)
+			{
+				case SDL_WINDOWEVENT:
+					if(kb_event->window.event == SDL_WINDOWEVENT_CLOSE)
+					{
+						engine_SetEngineState(ENGINE_QUIT);
+					}
+				break;
+				
+				case SDL_MOUSEWHEEL:
+					if(kb_event->wheel.y == 1)
+					{
+						bm_mouse |= MOUSE_WHEEL_UP;
+					}
+					else if(kb_event->wheel.y == -1)
+					{
+						bm_mouse |= MOUSE_WHEEL_DOWN;
+					}
+				break;
+			}
+		}
+		
+		kb_keys = (Uint8 *)SDL_GetKeyboardState(NULL);
+		
+		for(i = 0; i < registered_keys_count; i++)
 		{
-			case SDL_WINDOWEVENT:
-				if(kb_event->window.event == SDL_WINDOWEVENT_CLOSE)
-				{
-					engine_SetEngineState(ENGINE_QUIT);
-				}
-			break;
+			q = kb_keys[registered_keys[i].key];
+					
+			registered_keys[i].bm_flags &= ~(KEY_JUST_RELEASED | KEY_JUST_PRESSED);
 			
-			case SDL_MOUSEWHEEL:
-				if(kb_event->wheel.y == 1)
+			if(q)
+			{
+				if(!(registered_keys[i].bm_flags & KEY_PRESSED))
 				{
-					bm_mouse |= MOUSE_WHEEL_UP;
+					registered_keys[i].bm_flags |= KEY_JUST_PRESSED;
 				}
-				else if(kb_event->wheel.y == -1)
+				registered_keys[i].bm_flags |= KEY_PRESSED;
+			}
+			else
+			{
+				if(registered_keys[i].bm_flags & KEY_PRESSED)
 				{
-					bm_mouse |= MOUSE_WHEEL_DOWN;
+					registered_keys[i].bm_flags |= KEY_JUST_RELEASED;
 				}
-			break;
+				
+				registered_keys[i].bm_flags &= ~KEY_PRESSED;
+			}
 		}
 	}
-	kb_keys = (Uint8 *)SDL_GetKeyboardState(NULL);
+	else
+	{
+		for(i = 0; i < registered_keys_count; i++)
+		{
+			q = kb_keys[registered_keys[i].key];
+			registered_keys[i].bm_flags &= ~(KEY_JUST_RELEASED | KEY_JUST_PRESSED | KEY_PRESSED);
+		}
+		
+		input_BufferTextInput();
+	}
+	
+	
+	
 	bm = SDL_GetMouseState(&mouse_x, &mouse_y);
-
+		
 	mouse_y = r_window_height - mouse_y;
 	
-	if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
-	{
-		bm_mouse &= ~MOUSE_LEFT_BUTTON_JUST_CLICKED;
-	}
-	
-	if(bm_mouse & MOUSE_RIGHT_BUTTON_JUST_CLICKED)
-	{
-		bm_mouse &= ~MOUSE_RIGHT_BUTTON_JUST_CLICKED;
-	}
-	
-	if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_RELEASED)
-	{
-		bm_mouse &= ~MOUSE_LEFT_BUTTON_JUST_RELEASED;
-	}
-	
-	if(bm_mouse & MOUSE_RIGHT_BUTTON_JUST_RELEASED)
-	{
-		bm_mouse &= ~MOUSE_RIGHT_BUTTON_JUST_RELEASED;
-	}
-	
-	if(bm_mouse & MOUSE_MIDDLE_BUTTON_JUST_RELEASED)
-	{
-		bm_mouse &= ~MOUSE_MIDDLE_BUTTON_JUST_RELEASED;
-	}
-	
-	if(bm_mouse & MOUSE_MIDDLE_BUTTON_JUST_RELEASED)
-	{
-		bm_mouse &= ~MOUSE_MIDDLE_BUTTON_JUST_RELEASED;
-	}
+	bm_mouse &= ~(MOUSE_LEFT_BUTTON_JUST_CLICKED | MOUSE_RIGHT_BUTTON_JUST_CLICKED |
+				  MOUSE_LEFT_BUTTON_JUST_RELEASED | MOUSE_RIGHT_BUTTON_JUST_RELEASED |
+				  MOUSE_MIDDLE_BUTTON_JUST_CLICKED | MOUSE_MIDDLE_BUTTON_JUST_RELEASED);
+
 	
 	if(bm & 1)
 	{
@@ -170,7 +195,6 @@ void input_GetInput()
 		{
 			bm_mouse |= MOUSE_LEFT_BUTTON_JUST_CLICKED;
 		}
-		
 		bm_mouse |= MOUSE_LEFT_BUTTON_CLICKED;
 	}
 	else
@@ -188,7 +212,6 @@ void input_GetInput()
 		{
 			bm_mouse |= MOUSE_MIDDLE_BUTTON_JUST_CLICKED;
 		}
-		
 		bm_mouse |= MOUSE_MIDDLE_BUTTON_CLICKED;
 	}
 	else
@@ -217,39 +240,7 @@ void input_GetInput()
 		bm_mouse &= ~MOUSE_RIGHT_BUTTON_CLICKED;
 	}
 	
-	for(i = 0; i < registered_keys_count; i++)
-	{
-		q = kb_keys[registered_keys[i].key];
 		
-		if(registered_keys[i].bm_flags & KEY_JUST_PRESSED)
-		{
-			registered_keys[i].bm_flags &= ~KEY_JUST_PRESSED;
-		}
-		else if(registered_keys[i].bm_flags & KEY_JUST_RELEASED)
-		{
-			registered_keys[i].bm_flags &= ~KEY_JUST_RELEASED;
-		}
-		
-		if(q)
-		{
-			if(!(registered_keys[i].bm_flags & KEY_PRESSED))
-			{
-				registered_keys[i].bm_flags |= KEY_JUST_PRESSED;
-			}
-			registered_keys[i].bm_flags |= KEY_PRESSED;
-		}
-		else
-		{
-			if(registered_keys[i].bm_flags & KEY_PRESSED)
-			{
-				registered_keys[i].bm_flags |= KEY_JUST_RELEASED;
-			}
-			
-			registered_keys[i].bm_flags &= ~KEY_PRESSED;
-		}
-	}
-	
-	
 	normalized_mouse_x=(float)mouse_x/(float)r_window_width;
 	normalized_mouse_y=(float)mouse_y/(float)r_window_height;
 	
@@ -259,32 +250,25 @@ void input_GetInput()
 	normalized_mouse_y*=2.0;
 	normalized_mouse_y-=1.0;
 	
-	//input.bm_mouse &= ~MOUSE_OVER_WIDGET;
-	
-	//if(!pew.b_console)
 	if(engine_state == ENGINE_PLAYING || engine_state == ENGINE_EDITING)
 	{
 		
 		if(last_mouse_x || last_mouse_y)
 		{
 			normalized_mouse_x = 0.0;
-			normalized_mouse_y = 0.0;
-			
-			//printf("last mouse\n");
+			normalized_mouse_y = 0.0;			
 		}
 		
 		SDL_ShowCursor(0);
 		SDL_WarpMouseInWindow(window, r_window_width/2, r_window_height/2);
-		mouse_dx=normalized_mouse_x;
-		mouse_dy=normalized_mouse_y;
+		mouse_dx = normalized_mouse_x;
+		mouse_dy = normalized_mouse_y;
 		last_mouse_x = 0.0;
 		last_mouse_y = 0.0;
 	}
 	else
 	{
 		SDL_ShowCursor(1);
-		//cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
-		//SDL_SetCursor(h_arrows);
 		
 		mouse_dx = normalized_mouse_x - last_mouse_x;
 		mouse_dy = normalized_mouse_y - last_mouse_y;
@@ -342,6 +326,53 @@ void input_SetCursor(int cursor)
 	}
 }
 
+void input_EnableTextInput(int enable)
+{
+	b_text_input = enable;
+}
+
+void input_BufferTextInput()
+{
+	if(!b_text_input)
+		return;
+	
+	int i;
+	int c;	
+	
+	//printf("buffer\n");
+	
+	while(SDL_PollEvent(kb_event))
+	{
+		
+		if(kb_event->key.type == SDL_KEYDOWN)
+		{
+			text_buffer[text_buffer_in] = kb_event->key.keysym.sym;
+			text_buffer_in = (text_buffer_in + 1) % TEXT_BUFFER_SIZE;
+		}
+		
+		/* buffer is full, bail out... */
+		if(text_buffer_in == (text_buffer_out + 1) % TEXT_BUFFER_SIZE)
+			break;
+		
+	}
+	
+	
+	
+	/*i = text_buffer_out;
+	c = text_buffer_in;*/
+	
+	
+	while(text_buffer_out != text_buffer_in)
+	{
+		printf("%c", text_buffer[text_buffer_out]);
+		text_buffer_out = (text_buffer_out + 1) % TEXT_BUFFER_SIZE;
+	}
+	
+	//printf("\n");
+	
+	
+		
+}
 
 int input_GetKeyPressed(int key)
 {

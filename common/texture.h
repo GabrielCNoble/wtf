@@ -10,6 +10,12 @@ typedef struct
 	unsigned short tex_type;
 }texture_t;
 
+typedef struct
+{
+	char *name;
+	char *file_name;
+}texture_reg_t;
+
 
 typedef struct
 {
@@ -23,6 +29,8 @@ typedef struct
 void texture_Init();
 
 void texture_Finish();
+
+void texture_SetPath(char *path);
 
 int texture_LoadTexture(char *file_name, char *name);
 

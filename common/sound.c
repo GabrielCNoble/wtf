@@ -51,8 +51,11 @@ static int last_used_sound_param_buffer;
 static int last_released_sound_param_buffer;
 static sound_param_buffer_t *sound_param_buffers;
 
-void sound_Init()
+int sound_Init()
 {
+	
+	#if 0
+	
 	sound_device = alcOpenDevice(NULL);
 	int i;
 	
@@ -101,12 +104,16 @@ void sound_Init()
 		sound_source_free_stack[sound_source_free_stack_top] = i;
 	}
 	
+	#endif
 	
+	return 1;
 	
 }
 
 void sound_Finish()
 {
+	
+	#if 0
 	int i;
 	alcDestroyContext(sound_context);
 	alcCloseDevice(sound_device);
@@ -140,6 +147,9 @@ void sound_Finish()
 	for it here will hang engine... */
 	
 	//SDL_WaitThread(sound_thread, NULL);
+	
+	#endif
+	
 }
 
 int sound_LoadSound(char *file_name, char *name)
@@ -157,6 +167,8 @@ int sound_LoadSound(char *file_name, char *name)
 
 sound_t *sound_LoadWAV(char *file_name)
 {
+	
+	#if 0
 	FILE *f;
 	unsigned long long file_size;
 	char *file_data;
@@ -292,10 +304,14 @@ sound_t *sound_LoadWAV(char *file_name)
 	
 	return sound;
 	
+	#endif
+	
 }
 
 int sound_PlaySound(int sound_index, vec3_t position, float gain)
 {
+	
+	#if 0
 	int source_index;
 	int sound_param_buffer_index;
 	int sound_command_index;
@@ -361,11 +377,15 @@ int sound_PlaySound(int sound_index, vec3_t position, float gain)
 		
 	}
 	
+	#endif
+	
 	return -1;
 }
 
 void sound_ProcessSound()
 {
+	
+	#if 0
 //	mat3_t orientation;
 	camera_t *active_camera = camera_GetActiveCamera();
 	
@@ -386,7 +406,9 @@ void sound_ProcessSound()
 	
 	alListener3f(AL_POSITION, active_camera->world_position.x, active_camera->world_position.y, active_camera->world_position.z);
 	alListenerfv(AL_ORIENTATION, &orientation[0].floats[0]);
-	
+
+	#endif
+		
 }
 
 void sound_SuspendSoundBackend()
@@ -402,6 +424,8 @@ void sound_ResumeSoundBackend()
 
 int sound_SoundThread(void *param)
 {
+	
+	#if 0
 	vec3_t source_position;
 	unsigned int source_handle;
 	unsigned int source_index;
@@ -486,6 +510,9 @@ int sound_SoundThread(void *param)
 		
 		
 	}
+	
+	#endif
+	
 }
 
 

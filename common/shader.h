@@ -1,7 +1,8 @@
 #ifndef SHADER_H
 #define SHADER_H
 
-#define LIGHT_PARAMS_UNIFORM_BUFFER_BINDING 1
+#define LIGHT_PARAMS_UNIFORM_BUFFER_BINDING 0
+#define TEST_UNIFORM_BUFFER_BINDING 1
 
 enum SHADER_UNIFORMS
 {
@@ -29,10 +30,16 @@ enum SHADER_ATTRIBS
 	ATTRIB_VERTEX_TEX_COORDS,
 };
 
+enum SHADER_FLAGS
+{
+	SHADER_INVALID = 1,
+};
+
 typedef struct
 {
 	
 	char *name;
+	char *file_name;
 	
 	unsigned int shader_program;
 	
@@ -58,6 +65,8 @@ typedef struct
 	//unsigned short light_count;
 	unsigned short shader_index;
 	unsigned short light_index;
+	
+	unsigned short bm_flags;
 	//unsigned short align0;
 	
 
@@ -66,11 +75,19 @@ typedef struct
 
 
 
-void shader_Init(char *shader_path);
+int shader_Init(char *shader_path);
 
 void shader_Finish();
 
 int shader_LoadShader(char *file_name);
+
+void shader_ReloadShader(int shader_index);
+
+int shader_GetShaderIndex(char *shader_name);
+
+void shader_DeleteShaderIndex(int shader_index);
+
+void shader_HotReload();
 
 void shader_DeleteShaderByIndex(int shader_index);
 

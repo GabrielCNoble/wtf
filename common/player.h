@@ -32,6 +32,13 @@ enum PLAYER_MOVEMENT
 };
 
 
+enum PLAYER_FLAGS
+{
+	PLAYER_IN_WORLD = 1,
+	PLAYER_DEAD = 1 << 1,
+	PLAYER_INVALID = 1 << 2,
+};
+
 
 typedef struct
 {
@@ -56,10 +63,18 @@ typedef struct
 	float max_slope;						/* max slope angle cosine */
 	float health;
 	
-	int bm_movement;
+	short bm_movement;
+	short bm_flags;
 	int fire_timer;
 	int player_type;
 }player_t;
+
+
+typedef struct
+{
+	vec3_t position;
+	char *name;
+}spawn_point_t;
 
 
 void player_Init();
@@ -67,6 +82,12 @@ void player_Init();
 void player_Finish();
 
 void player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation);
+
+void player_DestroyPlayer(char *name);
+
+void player_DestroyPlayerIndex(int player_index);
+
+void player_SpawnPlayer(int player_index, int spawn_point_index);
 
 player_t *player_GetPlayer(char *name);
 

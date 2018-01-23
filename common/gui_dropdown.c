@@ -2,6 +2,10 @@
 #include <string.h>
 
 #include "gui_dropdown.h"
+#include "input.h"
+
+/* from input.c */
+extern int bm_mouse;
 
 dropdown_t *gui_CreateDropdown(char *name, char *text, short x, short y, short w, short bm_flags, void (*dropdown_callback)(widget_t *widget))
 {
@@ -89,7 +93,7 @@ void gui_AddOption(dropdown_t *dropdown, char *name, char *text)
 			options->option_count = 0;
 			options->active_option_index = -1;
 			options->active_option = NULL;
-			options->widget.bm_flags = 0;
+			options->widget.bm_flags = WIDGET_IGNORE_EDGE_CLIPPING;
 			options->widget.w = options->widget.w;
 			options->bm_option_list_flags = OPTION_LIST_UPDATE_EXTENTS;
 			options->widget.widget_callback = dropdown->widget.widget_callback;
@@ -106,7 +110,7 @@ void gui_AddOption(dropdown_t *dropdown, char *name, char *text)
 		option->widget.w = options->widget.w;
 		option->widget.h = OPTION_HEIGHT / 2.0;
 		option->widget.x = 0;
-		option->widget.bm_flags = WIDGET_RENDER_TEXT;
+		option->widget.bm_flags = WIDGET_RENDER_TEXT | WIDGET_IGNORE_EDGE_CLIPPING;
 		option->widget.next = NULL;
 		option->widget.prev = NULL;
 		option->widget.nestled = NULL;
@@ -149,20 +153,22 @@ void gui_UpdateDropdown(widget_t *widget)
 		if(dropdown->bm_dropdown_flags & DROPDOWN_DROPPED)
 		{
 			dropdown->bm_dropdown_flags &= ~DROPDOWN_DROPPED;
-					
-			/*if(widget->nestled)
-			{
-				widget->nestled->bm_flags |= WIDGET_INVISIBLE;
-			}*/
 		}
 		else
 		{
 			dropdown->bm_dropdown_flags |= DROPDOWN_DROPPED | DROPDOWN_JUST_DROPPED;
-			
-			/*if(widget->nestled)
-			{
-				widget->nestled->bm_flags &= ~WIDGET_INVISIBLE;
-			}*/
+		}
+	}
+}
+
+void gui_PostUpdateDropdown(widget_t *widget)
+{
+	dropdown_t *dropdown = (dropdown_t *)widget;
+	if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
+	{
+		if(!(dropdown->bm_dropdown_flags & DROPDOWN_JUST_DROPPED))
+		{
+			dropdown->bm_dropdown_flags &= ~DROPDOWN_DROPPED;
 		}
 	}
 }

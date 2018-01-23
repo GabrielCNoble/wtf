@@ -17,6 +17,8 @@
 #include "shader.h"
 #include "gpu.h"
 
+#include "engine.h"
+
 
 static int light_list_size;
 int light_count;
@@ -49,8 +51,10 @@ static unsigned char *light_indexes = NULL;
 static cluster_t *clusters;
 
 /* from r_main.c */
-extern int window_width;
-extern int window_height;
+extern int r_window_width;
+extern int r_window_height;
+extern int r_width;
+extern int r_height;
 extern int r_frame;
 
 /* from world.c */
@@ -104,7 +108,10 @@ SDL_mutex *cluster_thread1_in_lock;
 SDL_mutex *cluster_thread0_out_lock;
 SDL_mutex *cluster_thread1_out_lock;
 
-void light_Init()
+int free_shadow_map_x;
+int free_shadow_map_y;
+
+int light_Init()
 {
 	int i;
 	int c;
@@ -197,7 +204,6 @@ void light_Init()
 	
 //	printf("wow:: %x\n", glGetError());
 	
-	
 	glGenTextures(1, &shared_shadow_map);
 	glBindTexture(GL_TEXTURE_2D, shared_shadow_map);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -209,12 +215,31 @@ void light_Init()
 	
 	while(glGetError() != GL_NO_ERROR);
 	/* ~100MB for shadow maps... */
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE16F_ARB, SHARED_SHADOW_MAP_WIDTH, SHARED_SHADOW_MAP_HEIGHT, 0, GL_LUMINANCE, GL_FLOAT, NULL);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE16F_ARB, /*SHARED_SHADOW_MAP_WIDTH*/ 64, /*SHARED_SHADOW_MAP_HEIGHT*/ 64, 0, GL_LUMINANCE, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, SHARED_SHADOW_MAP_WIDTH, SHARED_SHADOW_MAP_HEIGHT, 0, GL_RED, GL_FLOAT, NULL);
 	if(glGetError() == GL_OUT_OF_MEMORY)
 	{
-		printf("ERROR: out of graphics memory!\n");
-		abort();
+		//printf("ERROR: out of graphics memory!\n");
+		log_LogMessage(LOG_MESSAGE_ERROR, "light_Init: out of graphics memory!");
+		return 0;
+		//engine_SetEngineState(ENGINE_QUIT);	
 	}
+	//printf("%x\n", glGetError());
+	
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, shadow_map_frame_buffer);
+	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, shared_shadow_map, 0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+	
+	glViewport(0, 0, SHARED_SHADOW_MAP_WIDTH, SHARED_SHADOW_MAP_HEIGHT);
+	
+	glClearColor(LIGHT_MAX_RADIUS, LIGHT_MAX_RADIUS, LIGHT_MAX_RADIUS, LIGHT_MAX_RADIUS);
+	glClear(GL_COLOR_BUFFER_BIT);
+	
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glDrawBuffer(GL_BACK);
+	
+	glViewport(0, 0, r_width, r_height);
+	
 	
 	/*glGenBuffers(1, &cluster_uniform_buffer);
 	glBindBuffer(GL_UNIFORM_BUFFER, cluster_uniform_buffer);
@@ -288,6 +313,11 @@ void light_Init()
 		}
 	}
 	
+	free_shadow_map_x = shadow_maps[r - 1].x;
+	free_shadow_map_y = shadow_maps[r - 1].y;
+	
+	/*free_shadow_map_x = 0;
+	free_shadow_map_y = 0;*/
 	
 	
 	
@@ -305,7 +335,7 @@ void light_Init()
 	//cluster_thread0 = SDL_CreateThread(light_ClusterThread0, "cluster_thread0", NULL);
 	//cluster_thread1 = SDL_CreateThread(light_ClusterThread1, "cluster_thread1", NULL);
 	
-	
+	return 1;	
 
 }
 
@@ -342,7 +372,7 @@ void light_Finish()
 	//glDeleteTextures(1, &light_indexes_texture);
 }
 
-int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t color, float radius, float energy)
+int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t color, float radius, float energy, int bm_flags)
 {
 	int light_index;
 	int i;
@@ -414,7 +444,14 @@ int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t c
 	light_param->g = 0xff * color.g;
 	light_param->b = 0xff * color.b;
 	light_param->cache = -1;
-	light_param->bm_flags = LIGHT_MOVED | LIGHT_GENERATE_SHADOWS;
+	light_param->bm_flags = LIGHT_MOVED | bm_flags;
+	
+	if(!(bm_flags & LIGHT_GENERATE_SHADOWS))
+	{
+		light_param->x = free_shadow_map_x;
+		light_param->y = free_shadow_map_y;
+	}
+	
 	light_param->leaf = NULL;
 	light_param->shadow_map = -1;
 	light_param->box_max.x = -999999999999.9;
@@ -423,29 +460,7 @@ int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t c
 	light_param->box_min.x = 999999999999.9;
 	light_param->box_min.y = 999999999999.9;
 	light_param->box_min.z = 999999999999.9;
-	
-	
-	
-	/*glGenTextures(1, &light_param->shadow_map);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, light_param->shadow_map);
-	
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	
-	for(i = 0; i < 6; i++)
-	{
-		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT, 512, 512, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);	
-	}
-	
-	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);*/
-	
-	
-	
+		
 
 	/* TODO: pad name strings to a multiple of 4
 	so fast 4 byte comparisions can be done... */
@@ -457,6 +472,73 @@ int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t c
 	
 }
 
+
+int light_DestroyLight(char *name)
+{
+	int light_index;
+	int i;
+	
+	
+	for(i = 0; i < light_count; i++)
+	{
+		if(!strcmp(name, light_names[i]))
+		{
+			break;
+		}
+	}
+	
+	return light_DestroyLightIndex(light_index);
+	
+}
+
+int light_DestroyLightIndex(int light_index)
+{
+	if(light_index >= 0 && light_index < light_count)
+	{
+		if(!(light_params[light_index].bm_flags & LIGHT_INVALID))
+		{
+			/* drop the light from the cache if it's
+			cached... */
+			light_DropLight(light_index);
+			
+			/* free its shadow map if there's any...*/
+			if(light_params[light_index].bm_flags & LIGHT_GENERATE_SHADOWS)
+				light_FreeShadowMap(light_index);
+		
+			light_params[light_index].bm_flags |= LIGHT_INVALID;
+			
+			free_position_stack_top++;
+			free_position_stack[free_position_stack_top] = light_index;
+			
+			return 1;
+		}
+	
+	}
+	
+	return 0;
+}
+
+
+void light_DestroyAllLights()
+{
+	int i;
+	
+	for(i = 0; i < light_count; i++)
+	{
+		if(!(light_params[i].bm_flags & LIGHT_INVALID))
+		{
+			light_DropLight(i);
+			
+			if(light_params[i].bm_flags & LIGHT_GENERATE_SHADOWS)
+			{
+				light_FreeShadowMap(i);
+			}
+		}
+	}
+	
+	light_count = 0;
+	free_position_stack_top = -1;
+}
 
 
 void light_UpdateLights()
@@ -537,7 +619,8 @@ void light_UpdateLights()
 				}	
 			}
 			
-			
+			/* check to see which leaves from its current
+			leaf's pvs this light touch... */
 			leaf_index = light_leaf - world_leaves;
 			leaf_lights[leaf_index].lights[int_index] |= 1 << bit_index;
 			
@@ -1234,8 +1317,18 @@ void light_VisibleLights()
 	
 	float d;
 	float radius;
+	float s;
+	float e;
+	
+	//s = engine_GetDeltaTime();
+	
 	light_EvictOld();
 	
+	//e = engine_GetDeltaTime();
+	
+	//printf("%f\n", e - s);
+	
+	s = engine_GetDeltaTime();
 	
 	for(i = 0; i < MAX_WORLD_LIGHTS >> 5; i++)
 	{
@@ -1263,19 +1356,43 @@ void light_VisibleLights()
 	}
 	
 	_clusterize:
+		
+	//e = engine_GetDeltaTime();
+	
+	//printf("%f\n", e - s);
+	
+	//s = engine_GetDeltaTime();
 	
 	light_LightBounds();
 	
+	//e = engine_GetDeltaTime();
+	
+	//printf("%f\n", e - s);
+	
 	//light_AllocShadowMaps();
+	
+	s = engine_GetDeltaTime();
 	
 	for(i = 0; i < visible_light_count; i++)
 	{
 		light_CacheLight(visible_lights[i]);
 	}
 	
+	//e = engine_GetDeltaTime();
+	
+	//printf("%f\n", e - s);
+	
+	
 	light_UpdateClusters();
 	
+	
+	//s = engine_GetDeltaTime();
 	light_UploadCache();
+	//e = engine_GetDeltaTime();
+	
+	
+	
+	//printf("%f\n", e - s);
 }
 
 void light_VisibleTriangles(int light_index)
@@ -1427,7 +1544,7 @@ void light_AllocShadowMap(int light_index)
 {
 	light_params_t *parms;
 	
-	if(allocd_shadow_map_count >= max_shadow_maps)
+	if(allocd_shadow_map_count >= MAX_VISIBLE_LIGHTS)
 		return;
 			
 	if(light_index >= 0 && light_index < light_count)

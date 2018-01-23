@@ -19,7 +19,7 @@ typedef struct
 }material_t;
 
 
-void material_Init();
+int material_Init();
 
 void material_Finish();
 
@@ -27,9 +27,13 @@ int material_CreateMaterial(char *name, vec4_t base_color, float glossiness, flo
 
 int material_LoadMaterial(char *file_name);
 
-void material_DeleteMaterialByIndex(int material_index);
+int material_GetMaterialIndex(char *material_name);
+
+void material_DestroyMaterialIndex(int material_index);
 
 void material_SetMaterial(int material_index);
+
+void material_DestroyAllMaterials();
 
 
 

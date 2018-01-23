@@ -1,6 +1,6 @@
-#version 130
-#extension GL_EXT_gpu_shader4 : enable
-#extension GL_ARB_uniform_buffer_object : enable
+#version 400 compatibility
+#extension GL_EXT_gpu_shader4 : require
+#extension GL_ARB_uniform_buffer_object : require
 
 
 uniform int r_width;
@@ -28,26 +28,36 @@ uniform usampler3D cluster_texture;
 #define LIGHT_INVALID (1 << 4)
 
 
-#define vec4_t vec4
-
-
 struct light_params_fields
 {
-	vec4_t forward_axis;
-	vec4_t position_radius;
-	vec4_t color_energy;
+	vec4 forward_axis;
+	vec4 position_radius;
+	vec4 color_energy;
 	int bm_flags;
-	unsigned int x_y;
+	int x_y;
 	int align0;
 	int align1;
 };
 
 
+/*struct test_t
+{
+	vec4 color;
+};
+
+
+layout(std140) uniform test_block
+{
+	test_t ints[8];
+};*/
 
 layout(std140) uniform light_params_uniform_block
 {
 	light_params_fields light_params[LIGHT_CACHE_SIZE];
 };
+
+
+
 
 uniform sampler2D texture_sampler0;
 uniform sampler2D texture_sampler1;
@@ -78,6 +88,7 @@ in vec3 camera_position;
 
 
 
+#if 0
 
 float sample_cube_map(vec3 frag_pos, int light_index, out vec3 debug_color)
 {
@@ -184,6 +195,7 @@ float sample_cube_map(vec3 frag_pos, int light_index, out vec3 debug_color)
 
 
 
+#endif
 
 
 int cluster_index(float x, float y, float view_z, float znear, float zfar, float width, float height, out ivec3 debug)
@@ -209,10 +221,10 @@ int cluster_index(float x, float y, float view_z, float znear, float zfar, float
 void main()
 {
 	
-	vec4 color;
 	vec4 accum = vec4(0.0);
 	vec3 light_vec;
-	vec3 light_color;
+	vec3 color;
+	vec3 light_color = vec3(0.0);
 	vec3 debug;
 	vec3 v;
 	
@@ -243,7 +255,8 @@ void main()
 	}
 	else
 	{*/
-		color = vec4(gl_FrontMaterial.diffuse.rgb, 1.0);
+		color = gl_FrontMaterial.diffuse.rgb;
+		//color = vec3(1.0, 0.0, 0.0);
 	//}
 
 	
@@ -261,25 +274,22 @@ void main()
 	{
 		
 		if((bm & uint(1)) == uint(1))
-		//if(bm != uint(0))
 		{
 			
 			
 			light_vec = light_params[i].position_radius.xyz - world_space_position;
+			
+			//light_vec = vec3(0.0, 5.0, 0.0) - world_space_position;
+			
 			light_color = light_params[i].color_energy.rgb;
+		
+			//light_color = vec3(0.3, 0.0, 0.0);
 			
 			distance = length(light_vec);
 			energy = light_params[i].color_energy.a;
 			radius = light_params[i].position_radius.w;
 			
 			shadow = 1.0;
-			
-			/*if((light_params[i].bm_flags & LIGHT_GENERATE_SHADOWS) == LIGHT_GENERATE_SHADOWS)
-			{
-				shadow = sample_cube_map(world_space_position, i, debug);
-			}*/
-			
-			
 			
 			
 			light_vec /= distance;
@@ -288,11 +298,19 @@ void main()
 			attenuation = (1.0 / (distance)) * max(1.0 - (distance / radius), 0.0);
 			diffuse = ((color.rgb / 3.14159265) * max(dot(light_vec, world_space_normal), 0.0)) * attenuation * energy;
 			specular = light_color * pow(max(dot(half_vec, world_space_normal), 0.0), 32.0) * attenuation * energy * 0.1;
-			accum += (vec4(diffuse * light_color, 1.0) + vec4(specular, 1.0)) * shadow;
-			//accum = vec4(color.rgb, 0.0);
+			accum += (vec4(diffuse * light_color, 1.0) + vec4(specular, 1.0));
+			//accum.rgb = light_color;
+			//accum.rgb = light_params[0].color_energy.rgb;
 			//accum = vec4(1.0);
+			//accum = vec4(dot(world_space_normal, light_vec));		
+			
+			//accum.rgb = ints[0].color.rgb;
+			
+		
 			
 		}
+		
+		//break;
 		
 		bm >>= 1;
 	}
@@ -300,9 +318,6 @@ void main()
 	
 	
 	gl_FragColor = accum;
-	//gl_FragColor = vec4(1.0);
-	
-
 
 }
 

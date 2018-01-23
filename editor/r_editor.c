@@ -83,8 +83,66 @@ extern int r_window_height;
 static float angles_lut[ROTATION_HANDLE_DIVS][2];
 
 
+int b_draw_editor = 1;
+
 
 int b_draw_brushes = 1;
+int b_draw_lights = 1;
+int b_draw_grid = 1;
+int b_draw_spawn_points = 1;
+int b_draw_cursors = 1;
+int b_draw_selected = 1;
+int b_draw_leaves = 0;
+int b_draw_light_leaves = 0;
+
+void renderer_EditorDraw()
+{
+	
+	if(b_draw_editor)
+	{
+		if(b_draw_brushes)
+		{
+			renderer_DrawBrushes();
+		}
+		
+		if(b_draw_lights)
+		{
+			renderer_DrawLights();
+		}
+		
+		if(b_draw_grid)
+		{
+			renderer_DrawGrid();
+		}
+		
+		if(b_draw_spawn_points)
+		{
+			renderer_DrawSpawnPoints();
+		}
+		
+		if(b_draw_cursors)
+		{
+			renderer_DrawCursors();	
+		}
+		
+		if(b_draw_selected)
+		{
+			renderer_DrawSelected();
+		}
+		
+		if(b_draw_light_leaves)
+		{
+			renderer_DrawLightLeaves();
+		}
+		
+		if(b_draw_leaves)
+		{
+			renderer_DrawLeaves();
+		}
+	}
+	
+	
+}
 
 void renderer_DrawBrushes()
 {
@@ -507,15 +565,7 @@ void renderer_DrawCursors()
 			d *= 0.2;		
 					
 			right_vector.x *= d;
-			//right_vector.y *= d;
-			//right_vector.z *= d;
-			
-			//up_vector.x *= d;
 			up_vector.y *= d;
-			//up_vector.z *= d;
-					
-			//forward_vector.x *= d;
-			//forward_vector.y *= d;
 			forward_vector.z *= d;
 			
 				
@@ -637,7 +687,7 @@ void renderer_DrawCursors()
 		}
 	}	
 	
-	glDisable(GL_STENCIL_TEST);
+	//glDisable(GL_STENCIL_TEST);
 	
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
@@ -756,6 +806,11 @@ void renderer_DrawLights()
 }
 
 
+void renderer_DrawSpawnPoints()
+{
+	
+}
+
 void renderer_DrawLeaves()
 {
 	int i;
@@ -826,15 +881,13 @@ void renderer_DrawLeaves()
 }
 
 
-void renderer_DrawSelectedLightLeaves()
+void renderer_DrawLightLeaves()
 {
 	int i;
 	int c = world_leaves_count;
 	
 	int j;
-	
-	
-	int k;
+	int k = light_count;
 	
 	int light_index;
 	vec3_t center;
@@ -856,6 +909,8 @@ void renderer_DrawSelectedLightLeaves()
 	glDisable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	
+	glLineWidth(2.0);
+	
 	glBegin(GL_TRIANGLES);
 	glColor3f(1.0, 1.0, 1.0);
 		
@@ -863,7 +918,7 @@ void renderer_DrawSelectedLightLeaves()
 	{
 		//leaf = visible_leaves[i];		
 		
-		for(k = 0; k < selection_count; k++)
+		/*for(k = 0; k < selection_count; k++)
 		{
 			if(selections[k].type == PICK_LIGHT)
 			{
@@ -874,6 +929,15 @@ void renderer_DrawSelectedLightLeaves()
 		}
 		
 		if(k >= selection_count)
+			continue;*/
+			
+		for(j = 0; j < k; j++)
+		{
+			if(leaf_lights[i].lights[j >> 5] & (1 << (j % 32)))
+				break;
+		}	
+		
+		if(j >= k)
 			continue;
 		
 		
@@ -892,6 +956,8 @@ void renderer_DrawSelectedLightLeaves()
 		
 	}
 	glEnd();
+	
+	glLineWidth(1.0);
 		
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);

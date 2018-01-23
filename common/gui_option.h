@@ -4,7 +4,6 @@
 
 #include "gui_common.h"
 
-
 void gui_UpdateOption(widget_t *widget);
 
 

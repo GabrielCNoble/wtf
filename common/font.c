@@ -11,7 +11,7 @@ font_t *fonts;
 
 font_t *gui_font = NULL;
 
-void font_Init()
+int font_Init()
 {
 	if(TTF_Init() < 0)
 	{
@@ -27,6 +27,8 @@ void font_Init()
 	font_LoadFont("..\\common\\fonts\\consola.ttf", "gui", 16);
 	
 	gui_font = &fonts[0];
+	
+	return 1;
 	
 }
 

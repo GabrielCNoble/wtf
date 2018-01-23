@@ -17,6 +17,7 @@
 #include "gui.h"
 #include "bsp.h"
 #include "font.h"
+#include "log.h"
 
 enum ENGINE_STATE
 {
@@ -25,7 +26,7 @@ enum ENGINE_STATE
 	ENGINE_PLAYING = 1 << 1,
 	ENGINE_EDITING = 1 << 2,
 	ENGINE_JUST_PAUSED = 1 << 3,
-	ENGINE_JUST_RESUMED = 1 << 4
+	ENGINE_JUST_RESUMED = 1 << 4,
 };
 
 

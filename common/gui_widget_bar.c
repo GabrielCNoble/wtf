@@ -24,7 +24,7 @@ widget_bar_t *gui_AddWidgetBar(widget_t *widget, char *name, short x, short y, s
 	bar->widget.h = h / 2;
 	bar->widget.bm_flags = 0;
 	bar->widget.type = WIDGET_BAR;
-	bar->widget.parent = NULL;
+	bar->widget.parent = widget;
 	bar->widget.widget_callback = NULL;
 	bar->widget.name = strdup(name);
 	bar->type = WIDGET_NONE;
@@ -153,20 +153,16 @@ void gui_UpdateWidgetBar(widget_t *widget)
 	{
 		gui_AdjustBar(widget);
 	}
-	
-	
-	
-	/*w = bar->widget.nestled;
-	
-	while(w)
-	{
-		if(w->bm_flags & WIDGET_MOUSE_OVER)
-		{
-			bar->active_widget = w;
-		}
-		w = w->next;
-	}*/
+}
 
+
+void gui_PostUpdateWidgetBar(widget_t *widget)
+{
+	widget_bar_t *bar = (widget_bar_t *)widget;
+	if(bar->process_fn)
+	{
+		bar->process_fn(widget);
+	}
 }
 
 

@@ -57,6 +57,13 @@ typedef struct
 }bsp_batch_t;
 
 
+typedef struct
+{
+	vec3_t normal;
+	vec3_t point;
+}bsp_clipplane_t;
+
+
 
 /* if this node has both child == 0, it means
 it points to a empty leaf, child == 0xffff points

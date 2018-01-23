@@ -23,7 +23,7 @@ enum MOUSE_FLAGS
 	MOUSE_WHEEL_UP = 1 << 9,
 	MOUSE_WHEEL_DOWN = 1 << 10,
 	
-	//MOUSE_OVER_WIDGET = 1 << 9,
+	MOUSE_OVER_WIDGET = 1 << 11,
 };
 
 enum CURSOR
@@ -70,13 +70,17 @@ extern "C"
 {
 #endif
 
-void input_Init();
+int input_Init();
 
 void input_Finish();
 
 void input_GetInput();
 
 void input_SetCursor(int cursor);
+
+void input_EnableTextInput(int enable);
+
+void input_BufferTextInput();
 
 int input_GetKeyPressed(int key);
 

@@ -6,6 +6,8 @@
 extern widget_t *widgets;
 extern widget_t *last_widget;
 
+int gui_option_unique_index = 0;
+
 option_list_t *gui_CreateOptionList(char *name, short x, short y, short w, short bm_flags, void (*option_list_callback)(widget_t *))
 {
 	option_list_t *options;
@@ -24,7 +26,7 @@ option_list_t *gui_CreateOptionList(char *name, short x, short y, short w, short
 	options->option_count = 0;
 	options->active_option_index = -1;
 	options->active_option = NULL;
-	options->widget.bm_flags = 0;
+	options->widget.bm_flags = WIDGET_IGNORE_EDGE_CLIPPING;
 	options->bm_option_list_flags = OPTION_LIST_UPDATE_EXTENTS;
 	options->widget.widget_callback = option_list_callback;
 	
@@ -53,7 +55,7 @@ void gui_AddOptionToList(option_list_t *option_list, char *name, char *text)
 	option->widget.w = option_list->widget.w;
 	option->widget.h = OPTION_HEIGHT / 2.0;
 	option->widget.x = 0;
-	option->widget.bm_flags = WIDGET_RENDER_TEXT;
+	option->widget.bm_flags = WIDGET_RENDER_TEXT | WIDGET_IGNORE_EDGE_CLIPPING;
 	option->widget.next = NULL;
 	option->widget.prev = NULL;
 	option->widget.nestled = NULL;
@@ -61,6 +63,7 @@ void gui_AddOptionToList(option_list_t *option_list, char *name, char *text)
 	option->widget.parent = (widget_t *)option_list;
 	option->widget.type = WIDGET_OPTION;
 	option->index = option_list->option_count;
+	option->unique_index = gui_option_unique_index++;
 	option->widget.widget_callback = option_list->widget.widget_callback;
 	option->rendered_text = NULL;
 		
@@ -80,12 +83,14 @@ void gui_AddOptionToList(option_list_t *option_list, char *name, char *text)
 		option_list->widget.last_nestled->next = (widget_t *)option;
 	}
 	
+	option_list->bm_option_list_flags |= OPTION_LIST_UPDATE_EXTENTS;
+	
 	option_list->widget.last_nestled = (widget_t *)option;
 	option_list->option_count++;
 		
 }
 
-void gui_NestleOption(option_list_t *option_list, int option_index, char *name, char *text)
+/*void gui_NestleOption(option_list_t *option_list, int option_index, char *name, char *text)
 {
 	option_t *option;
 	widget_t *wdg;
@@ -101,6 +106,75 @@ void gui_NestleOption(option_list_t *option_list, int option_index, char *name, 
 	
 	wdg->x = w * 2.0;
 	wdg->y += OPTION_HEIGHT;
+}*/
+
+option_list_t *gui_NestleOptionList(option_list_t *option_list, int option_index, char *name)
+{
+	int i;
+	widget_t *wdg;
+	option_t *option;
+	option_list_t *options = NULL;
+	
+	for(i = 0, wdg = option_list->widget.nestled; i < option_index && wdg; i++, wdg = wdg->next);
+	
+	if(wdg)
+	{
+		/* only nestle this option list if the option doesn't has any already nestled option list... */
+		if(!wdg->nestled)
+		{	
+			options = malloc(sizeof(option_list_t));
+			options->widget.name = strdup(name);
+			options->widget.next = NULL;
+			options->widget.prev = NULL;
+			options->widget.nestled = NULL;
+			options->widget.last_nestled = NULL;
+			options->widget.parent = NULL;
+			options->widget.type = WIDGET_OPTION_LIST;
+			options->widget.w = wdg->w;	
+			options->widget.x = wdg->w * 2.0;
+			options->widget.y = 0;
+			options->option_count = 0;
+			options->active_option_index = -1;
+			options->active_option = NULL;
+			options->widget.bm_flags = WIDGET_IGNORE_EDGE_CLIPPING;
+			options->bm_option_list_flags = OPTION_LIST_UPDATE_EXTENTS;
+			options->widget.widget_callback = wdg->widget_callback;
+			
+			wdg->nestled = (widget_t *)options;
+			wdg->last_nestled = (widget_t *)options;
+			options->widget.parent = wdg;
+		}
+		
+	}
+		
+	return options;
+}
+
+option_list_t *gui_GetNestledOptionList(option_list_t *option_list, int option_index)
+{
+	int i;
+	widget_t *r;
+	
+	for(r = option_list->widget.nestled, i = 0; r && i < option_index; r = r->next, i++);
+	return (option_list_t *)r;
+}
+
+int gui_GetOptionUniqueIndex(option_list_t *option_list, int option_index)
+{
+	int i;
+	widget_t *r;
+	option_t *option;
+	
+	for(r = option_list->widget.nestled, i = 0; r && i < option_index; r = r->next, i++);
+	
+	if(r)
+	{
+		option = (option_t *)r;
+		return option->unique_index;
+	}
+	
+	return -1;
+	
 }
 
 void gui_UpdateOptionList(widget_t *widget)
@@ -117,24 +191,32 @@ void gui_UpdateOptionList(widget_t *widget)
 		widget->h = top_y;
 		widget->y = -top_y;
 		
-		if(option_list->widget.parent)
+		if(widget->parent)
 		{
 			/* if this option list is nestled within a option, 
 			make it align correctly... */
-			if(option_list->widget.parent->type == WIDGET_OPTION)
+			if(widget->parent->type == WIDGET_OPTION)
 			{
 				widget->y += OPTION_HEIGHT * 0.5;
 			}
 			else
 			{
-				widget->y -= OPTION_HEIGHT * 0.5;
+				if(widget->parent->type == WIDGET_NONE)
+				{
+					
+				}
+				else
+				{
+					widget->y -= OPTION_HEIGHT * 0.5;
+				}
+				
 			}
 		}
 					
 		/* - OPTION_HEIGHT * 0.5;*/
 					
 					
-		top_y -=  OPTION_HEIGHT * 0.5;
+		top_y -= OPTION_HEIGHT * 0.5;
 		r = widget->nestled;
 					
 		while(r)
@@ -161,6 +243,22 @@ void gui_UpdateOptionList(widget_t *widget)
 	}
 }
 
+
+void gui_PostUpdateOptionList(widget_t *widget)
+{
+	if(widget->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
+	{
+		/* pop-up menu... */
+		if(!widget->parent)
+		{
+			gui_SetInvisible(widget);
+		}
+		else
+		{
+		
+		}
+	}
+}
 
 
 

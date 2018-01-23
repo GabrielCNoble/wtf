@@ -18,81 +18,116 @@ void (*engine_StartUp)();
 
 void (*engine_GameMain)(float );
 
+
+int b_init_properly = 0;
+
 void engine_Init(int width, int height, int init_mode)
 {
 	mat3_t r;
 	int camera_index;
 	
-	renderer_Init(width, height, init_mode);
-	shader_Init("shaders");
-	input_Init();
-	gpu_Init();
-	mesh_Init();
-	light_Init();
-	world_Init();
-	camera_Init();
-	player_Init();
-	sound_Init();
-	//collision_Init();
-	gui_Init();
-	physics_Init();
-	//projectile_Init();
-	brush_Init();
-	material_Init();
-	texture_Init();
-	font_Init();
-	bsp_Init();
-	//editor_Init();
+	log_Init("log");
 	
-	engine_state = ENGINE_PLAYING;
+	log_LogMessage(LOG_MESSAGE_NOTIFY, "ENGINE START");
 	
-	performance_frequency = SDL_GetPerformanceFrequency();
+	if(renderer_Init(width, height, init_mode) &&
+	   shader_Init("shaders") &&
+	   input_Init() &&
+	   gpu_Init() &&
+	   mesh_Init() &&
+	   light_Init() &&
+	   world_Init() &&
+	   camera_Init() &&
+	   player_Init() &&
+	   sound_Init() &&
+	   gui_Init() && 
+	   physics_Init() &&
+	   material_Init() &&
+	   texture_Init() && 
+	   font_Init() &&
+	   bsp_Init()
+	   )
+	{
+		b_init_properly = 1;
+	}
 	
-	start_delta = 0;
-	end_delta = 0;
-	delta_time = 0.0;
+	
+	if(b_init_properly)
+	{		
+		engine_state = ENGINE_PLAYING;
+		
+		performance_frequency = SDL_GetPerformanceFrequency();
+		
+		start_delta = 0;
+		end_delta = 0;
+		delta_time = 0.0;
+		
+		log_LogMessage(LOG_MESSAGE_NOTIFY, "Massacre engine started properly!");
+	}
+	else
+	{
+		log_LogMessage(LOG_MESSAGE_NOTIFY, "Massacre engine has found problems during initialization...");
+	}
+	
+	
 }
 
 void engine_Finish()
 {
-	editor_Finish();
-	shader_Finish();
-	material_Finish();
-	input_Finish();
-	mesh_Finish();
-	world_Finish();
-	camera_Finish();
-	light_Finish();
-	texture_Finish();
-	sound_Finish();
-	//collision_Finish();
-	gui_Finish();
-	bsp_Finish();
-	player_Finish();
-	font_Finish();
-	//projectile_Finish();
-	physics_Finish();
-	brush_Finish();
-	gpu_Finish();
-	renderer_Finish();
+	if(b_init_properly)
+	{
+		editor_Finish();
+		shader_Finish();
+		material_Finish();
+		input_Finish();
+		mesh_Finish();
+		world_Finish();
+		camera_Finish();
+		light_Finish();
+		texture_Finish();
+		sound_Finish();
+		//collision_Finish();
+		gui_Finish();
+		bsp_Finish();
+		player_Finish();
+		font_Finish();
+		//projectile_Finish();
+		physics_Finish();
+		brush_Finish();
+		gpu_Finish();
+		renderer_Finish();
+		log_LogMessage(LOG_MESSAGE_NOTIFY, "Massacre engine finished properly!");
+	}
+
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, "ENGINE FINISH");
+	
+	log_Finish();
 }
 
 void engine_MainLoop()
 {
+	
+	if(!b_init_properly)
+		return;
+	
 	if(engine_StartUp)
 	{
 		engine_StartUp();
 	}
 	
-	
+	float s;
+	float e;
 	
 	while(engine_state)
 	{
 		engine_UpdateDeltaTime();
+		
 		renderer_OpenFrame();
 		input_GetInput();
-		engine_GameMain(delta_time);
 		gui_ProcessGUI();
+		engine_GameMain(delta_time);
+		
 
 		if(engine_state == ENGINE_PLAYING)
 		{
@@ -103,17 +138,24 @@ void engine_MainLoop()
 			//projectile_UpdateProjectiles();
 		}
 		
+		
 		sound_ProcessSound();
+		//s = engine_GetDeltaTime();
 		light_UpdateLights();	
 		world_VisibleWorld();
 		light_VisibleLights();
 		
+		//e = engine_GetDeltaTime();
 		
-		//light_CullLights();
-		//light_VisibleLights();
-		//light_UpdateLightCache();
+		
+		//s = engine_GetDeltaTime();
 		renderer_DrawFrame();
+		//e = engine_GetDeltaTime();
 		renderer_CloseFrame();
+		
+		
+		
+		//printf("CPU: %f\n", e - s);
 	}
 }
 
@@ -167,7 +209,8 @@ void engine_UpdateDeltaTime()
 
 float engine_GetDeltaTime()
 {
-	
+	unsigned long long cur = SDL_GetPerformanceCounter();
+	return (float)((cur - start_delta) * 1000) / (float)performance_frequency;
 }
 
 

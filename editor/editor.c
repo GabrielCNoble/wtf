@@ -5,6 +5,7 @@
 #include "matrix.h"
 #include "vector.h"
 
+#include "brush.h"
 #include "editor.h"
 #include "camera.h"
 #include "input.h"
@@ -86,6 +87,7 @@ unsigned int cursor_depth_texture_id;
 
 int brush_pick_shader;
 int light_pick_shader;
+int brush_dist_shader;
 int max_selections;
 int selection_count;
 pick_record_t *selections;
@@ -94,6 +96,13 @@ vec3_t handle_3d_position;
 int bm_handle_3d_flags;
 int handle_3d_position_mode;
 int handle_3d_mode;
+
+char *handle_3d_mode_str[] = 
+{
+	"Translation",
+	"Rotation",
+	"Scale",
+};
 
 
 void button0_callback(widget_t *widget)
@@ -132,6 +141,9 @@ void editor_Init()
 	
 	camera_SetCameraByIndex(editor_camera_index);
 	
+	brush_Init();
+	
+	
 	input_RegisterKey(SDL_SCANCODE_ESCAPE);
 	input_RegisterKey(SDL_SCANCODE_W);
 	input_RegisterKey(SDL_SCANCODE_S);
@@ -147,21 +159,25 @@ void editor_Init()
 	input_RegisterKey(SDL_SCANCODE_J);
 	input_RegisterKey(SDL_SCANCODE_L);
 	input_RegisterKey(SDL_SCANCODE_P);
+	input_RegisterKey(SDL_SCANCODE_R);
+	input_RegisterKey(SDL_SCANCODE_G);
 	
 	
 	//renderer_RegisterCallback(bsp_DrawPortals, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterFunction(indirect_DrawVolumes);
-	renderer_RegisterCallback(renderer_DrawBrushes, POST_SHADING_STAGE_CALLBACK);
+	//renderer_RegisterCallback(renderer_DrawBrushes, POST_SHADING_STAGE_CALLBACK);
+	//renderer_RegisterCallback(bsp_DrawPolygons, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterCallback(bsp_DrawExpandedBrushes, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterCallback(bsp_DrawBevelEdges, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterCallback(renderer_DrawLeaves, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterFunction(renderer_DrawLightBoxes);
 	//renderer_RegisterFunction(renderer_DrawSelectedLightLeaves);
-	renderer_RegisterCallback(renderer_DrawGrid, POST_SHADING_STAGE_CALLBACK);
-	renderer_RegisterCallback(renderer_DrawLights, POST_SHADING_STAGE_CALLBACK);
-	renderer_RegisterCallback(renderer_DrawSelected, POST_SHADING_STAGE_CALLBACK);
-	renderer_RegisterCallback(renderer_DrawCursors, POST_SHADING_STAGE_CALLBACK);
+	//renderer_RegisterCallback(renderer_DrawGrid, POST_SHADING_STAGE_CALLBACK);
+	//renderer_RegisterCallback(renderer_DrawLights, POST_SHADING_STAGE_CALLBACK);
+	//renderer_RegisterCallback(renderer_DrawSelected, POST_SHADING_STAGE_CALLBACK);
+	//renderer_RegisterCallback(renderer_DrawCursors, POST_SHADING_STAGE_CALLBACK);
 	
+	renderer_RegisterCallback(renderer_EditorDraw, POST_SHADING_STAGE_CALLBACK);
 	
 	
 	
@@ -236,9 +252,9 @@ void editor_Init()
 	selections = malloc(sizeof(pick_record_t ) * max_selections);
 	
 	
-	cursor_3d_position = vec3(0.0, 0.0, 0.0);
+	cursor_3d_position = vec3(0.0, 8.0, 0.0);
 	handle_3d_position = vec3(0.0, 0.0, 0.0);
-	mat3_t_rotate(&r, vec3(1.0, 0.0, 0.0), 0.0, 1);
+//	mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
 	//brush_CreateBrush(vec3(0.0, 6.0, 0.0), &r, vec3(1.0, 2.0, 1.0), BRUSH_CYLINDER);
 	
 	int i;
@@ -252,7 +268,13 @@ void editor_Init()
 
 	//brush_CreateBrush(vec3(0.0, 0.0, 0.0), &r, vec3(10.0, 2.0, 10.0), BRUSH_CUBE);
 	
+	//light_CreateLight("light0", &r, vec3(0.0, 12.0, 0.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
+	//brush_CreateBrush(vec3(0.0, 0.0, 0.0), &r, vec3(1.0, 1.0, 1.0), BRUSH_CUBE);
+/*	brush_CreateBrush(vec3(0.0, 0.0, 0.0), &r, vec3(25.0, 0.25, 25.0), BRUSH_CUBE);*/
 	
+	
+	
+	 
 	#if 0
 	
 	brush_CreateBrush(vec3(0.0, 10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
@@ -287,7 +309,7 @@ void editor_Init()
 	
 	#if 0
 	
-	light_CreateLight("light0", &r, vec3(6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
+	light_CreateLight("light0", &r, vec3(6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0, LIGHT_GENERATE_SHADOWS);
 	//light_CreateLight("light0", &r, vec3(-6.0, 12.0, -4.0), vec3(1.0, 1.0, 1.0), 35.0, 20.0);
 	//light_CreateLight("light1", &r, vec3(4.0, 4.0, 4.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
 	//light_CreateLight("light2", &r, vec3(-4.0, 4.0, -4.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
@@ -297,6 +319,9 @@ void editor_Init()
 	
 	
 	brush_CreateBrush(vec3(0.0, 0.0, 0.0), &r, vec3(25.0, 1.0, 25.0), BRUSH_CUBE);
+	//mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
+	//brush_CreateBrush(vec3(0.0, 0.0, 0.0), &r, vec3(1.0, 20.0, 1.0), BRUSH_CUBE);
+	//brush_CreateBrush(vec3(0.0, 0.0, 0.0), &r, vec3(1.0, 20.0, 1.0), BRUSH_CYLINDER);
 	brush_CreateBrush(vec3(0.0, 1.0, 1.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
 	brush_CreateBrush(vec3(0.0, 2.0, 2.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
 	brush_CreateBrush(vec3(0.0, 3.0, 3.0), &r, vec3(5.0, 1.0, 5.0), BRUSH_CUBE);
@@ -347,35 +372,35 @@ void editor_Init()
 	
 	brush_CreateBrush(vec3(0.0, 10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);*/
 	
-	player_CreatePlayer("player", vec3(0.0, 5.0 ,0.0), &r);
+	//player_CreatePlayer("player", vec3(0.0, 5.0 ,0.0), &r);
 	
-	#if 1
+	#if 0
 	
 	light_CreateLight("light0", &r, vec3(16.0, 0.0, 8.0), vec3(1.0, 0.0, 1.0), 35.0, 20.0);
 	//light_CreateLight("light0", &r, vec3(16.0, 0.0, -8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
 	light_CreateLight("light0", &r, vec3(16.0, 0.0, 20.0), vec3(1.0, 1.0, 0.0), 35.0, 20.0);
-	//light_CreateLight("light0", &r, vec3(16.0, 0.0, -20.0), vec3(0.5, 0.5, 1.0), 35.0, 80.0);
+	light_CreateLight("light0", &r, vec3(16.0, 0.0, -20.0), vec3(0.5, 0.5, 1.0), 35.0, 80.0);
 	
-	//light_CreateLight("light0", &r, vec3(4.0, 0.0, 8.0), vec3(1.0, 0.63, 0.24), 35.0, 80.0);	
+	light_CreateLight("light0", &r, vec3(4.0, 0.0, 8.0), vec3(1.0, 0.63, 0.24), 35.0, 80.0);	
 	light_CreateLight("light0", &r, vec3(4.0, 0.0, -8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
-	//light_CreateLight("light0", &r, vec3(4.0, 0.0, 20.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	light_CreateLight("light0", &r, vec3(4.0, 0.0, 20.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
 	light_CreateLight("light0", &r, vec3(4.0, 0.0, -20.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
 	
 	light_CreateLight("light0", &r, vec3(-8.0, 0.0, 8.0), vec3(0.3, 0.4, 1.0), 35.0, 20.0);	
-	//light_CreateLight("light0", &r, vec3(-8.0, 0.0, -8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);	
+	light_CreateLight("light0", &r, vec3(-8.0, 0.0, -8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);	
 	light_CreateLight("light0", &r, vec3(-8.0, 0.0, 20.0), vec3(0.2, 1.0, 0.3), 35.0, 20.0);
-	//light_CreateLight("light0", &r, vec3(-8.0, 0.0, -20.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	light_CreateLight("light0", &r, vec3(-8.0, 0.0, -20.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
 	
-	//light_CreateLight("light0", &r, vec3(-20.0, 0.0, 8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);	
+	light_CreateLight("light0", &r, vec3(-20.0, 0.0, 8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);	
 	light_CreateLight("light0", &r, vec3(-20.0, 0.0, -8.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);	
-	//light_CreateLight("light0", &r, vec3(-20.0, 0.0, 20.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	light_CreateLight("light0", &r, vec3(-20.0, 0.0, 20.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
 	light_CreateLight("light0", &r, vec3(-20.0, 0.0, -20.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
 	
 	
 	light_CreateLight("light0", &r, vec3(16.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);	
-	//light_CreateLight("light0", &r, vec3(4.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);	
+	light_CreateLight("light0", &r, vec3(4.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);	
 	light_CreateLight("light0", &r, vec3(-8.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
-	//light_CreateLight("light0", &r, vec3(-20.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
+	light_CreateLight("light0", &r, vec3(-20.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 15.0, 20.0);
 	
 	
 	/*light_CreateLight("light0", &r, vec3(-55.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), 20.0, 20.0);
@@ -387,12 +412,11 @@ void editor_Init()
 	
 	/* walls */
 	
-	brush_CreateBrush(vec3(-40.0, 0.0, 10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	/*brush_CreateBrush(vec3(-40.0, 0.0, 10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
 	brush_CreateBrush(vec3(-40.0, 0.0, -10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
 	brush_CreateBrush(vec3(-60.0, 0.0, 10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
 	brush_CreateBrush(vec3(-60.0, 0.0, -10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
 	brush_CreateBrush(vec3(-80.0, 0.0, 10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
-	//brush_CreateBrush(vec3(-80.0, 0.0, -10.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
 	
 	brush_CreateBrush(vec3(-40.0, 10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
 	brush_CreateBrush(vec3(-40.0, -10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
@@ -402,7 +426,6 @@ void editor_Init()
 	brush_CreateBrush(vec3(-80.0, -10.0, 0.0), &r, vec3(10.0, 0.25, 10.0), BRUSH_CUBE);
 	
 	
-	//brush_CreateBrush(vec3(-90.0, 0.0, 0.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
 	
 	brush_CreateBrush(vec3(-90.0, 0.0, 0.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
 	brush_CreateBrush(vec3(-90.0, 0.0, -20.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
@@ -454,7 +477,7 @@ void editor_Init()
 	brush_CreateBrush(vec3(-60.0, -20.0, -90.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
 	
 	brush_CreateBrush(vec3(-80.0, 0.0, -90.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
-	brush_CreateBrush(vec3(-60.0, 0.0, -90.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-60.0, 0.0, -90.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);*/
 	
 	//light_CreateLight("light0", &r, vec3(-70.0, -10.0, -70.0), vec3(1.0, 1.0, 1.0), 60.0, 20.0);
 	
@@ -468,8 +491,7 @@ void editor_Init()
 	brush_CreateBrush(vec3(-30.0, 0.0, 20.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
 	brush_CreateBrush(vec3(30.0, 0.0, -20.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
 	brush_CreateBrush(vec3(-30.0, 0.0, -20.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
-	
-	//brush_CreateBrush(vec3(-30.0, 0.0, 0.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
+	brush_CreateBrush(vec3(-30.0, 0.0, 0.0), &r, vec3(0.25, 10.0, 10.0), BRUSH_CUBE);
 	
 	
 	brush_CreateBrush(vec3(0.0, 0.0, 30.0), &r, vec3(10.0, 10.0, 0.25), BRUSH_CUBE);
@@ -687,13 +709,16 @@ void editor_Init()
 	handle_3d_position_mode = HANDLE_3D_MEDIAN_POINT;
 	handle_3d_mode = HANDLE_3D_TRANSLATION;
 	
+	texture_SetPath("textures/env");
 		
-	texture_LoadCubeTexture("textures\\env\\aliencube_pos_x.jpg;"
+	/*texture_LoadCubeTexture("textures\\env\\aliencube_pos_x.jpg;"
 					        "textures\\env\\aliencube_neg_x.jpg;"
 					        "textures\\env\\aliencube_pos_y.jpg;"
 					        "textures\\env\\aliencube_neg_y.jpg;"
 					        "textures\\env\\aliencube_pos_z.jpg;"
-					        "textures\\env\\aliencube_neg_z.jpg;", "env");
+					        "textures\\env\\aliencube_neg_z.jpg;", "env");*/
+	
+	//texture_LoadCubeTexture("aliencube.jpg", "env");				        
 	
 	
 	/*texture_LoadCubeTexture("textures\\env\\cliffrt.bmp;"
@@ -790,28 +815,7 @@ void editor_Main(float delta_time)
 		
 		forward_vector = editor_camera->world_orientation.f_axis;
 		right_vector = editor_camera->world_orientation.r_axis;
-		
-		//translation = vec3(0.0, 0.0, 0.0);
-		
-		
-		/*if(input_GetKeyStatus(SDL_SCANCODE_H) & KEY_JUST_PRESSED)
-		{
-			brush_CreateBrush(vec3(0.0, 0.0, 0.0), &rot, vec3(10.0, 0.5, 10.0), BRUSH_CUBE);
-		}
-		
-		if(input_GetKeyStatus(SDL_SCANCODE_J) & KEY_JUST_PRESSED)
-		{
-			brush_CreateBrush(vec3(0.0, 0.0, 0.0), &rot, vec3(10.0, 10.0, 0.5), BRUSH_CUBE);
-		}
-		
-		if(input_GetKeyStatus(SDL_SCANCODE_K) & KEY_JUST_PRESSED)
-		{
-			brush_CreateBrush(vec3(0.0, 0.0, 0.0), &rot, vec3(0.5, 10.0, 10.0), BRUSH_CUBE);
-		}*/
-		
-		
-		
-		
+				
 		if(input_GetKeyStatus(SDL_SCANCODE_W) & KEY_PRESSED)
 		{
 			translation.x -= forward_vector.x;
@@ -882,7 +886,7 @@ void editor_Main(float delta_time)
 		
 		//bsp_Collide(&editor_camera->world_position, translation);
 		
-		bsp_Move(&editor_camera->world_position, &velocity);
+		//bsp_Move(&editor_camera->world_position, &velocity);
 		
 		//position = vec3(22.0, 5.0, -12.0);
 		//velocity = vec3(0.0, -10.0, 0.0);
@@ -906,25 +910,26 @@ void editor_Main(float delta_time)
 			editor_camera->world_position.y += translation.y * intersection;
 			editor_camera->world_position.z += translation.z * intersection;*/
 		//}
-		
-		//camera_TranslateCamera(editor_camera, translation, 1.0, 0);
+		 
+		camera_TranslateCamera(editor_camera, velocity, 1.0, 0);
 		
 		
 		//editor_camera->world_position.y += 1.5;
 		
-		camera_ComputeWorldToCameraMatrix(editor_camera);
+		//camera_ComputeWorldToCameraMatrix(editor_camera);
 		
 		//editor_camera->world_position.y -= 1.5;
 		
 	}
 	else
 	{
-		if(!playing)
-		{
-			engine_SetEngineState(ENGINE_PAUSED);
-			editor_ProcessMouse();
+		//if(!playing)
+		//{
+		engine_SetEngineState(ENGINE_PAUSED);
+		editor_ProcessMouse(delta_time);
+		editor_ProcessKeyboard(delta_time);
 			
-			if(input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED)
+			/*if(input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED)
 			{
 				if(input_GetKeyStatus(SDL_SCANCODE_C) & KEY_JUST_PRESSED)
 				{
@@ -935,7 +940,7 @@ void editor_Main(float delta_time)
 				{
 					//renderer_Fullscreen(1);
 					//renderer_SetWindowSize(1920, 1080);
-					/* save project... */
+				
 				}
 				else if(input_GetKeyStatus(SDL_SCANCODE_K) & KEY_JUST_PRESSED)
 				{
@@ -946,216 +951,20 @@ void editor_Main(float delta_time)
 				{
 					editor_OpenAddToWorldMenu(r_window_width * normalized_mouse_x * 0.5, r_window_height * normalized_mouse_y * 0.5);
 				}
-			}
-		}
+			}*/
+		//}
 		
-		if(input_GetKeyStatus(SDL_SCANCODE_P) & KEY_PRESSED)
+		/*if(input_GetKeyStatus(SDL_SCANCODE_P) & KEY_PRESSED)
 		{
 			player_SetPlayerAsActive(player_GetPlayer("player"));
 			engine_SetEngineState(ENGINE_PLAYING);
 			playing = 1;
-		}
+		}*/
 			
 	}
 }
 
-void editor_ProcessMouse()
-{
-	pick_record_t record; 
-	camera_t *active_camera = camera_GetActiveCamera();
-	mat4_t model_view_projection_matrix;
-	vec4_t p;
-	vec3_t direction;
-	int i;
-	
-	/*float handle_3d_screen_x;
-	float handle_3d_screen_y;
-	
-	float mouse_screen_x;
-	float mouse_screen_y;*/
-	
-	float screen_x;
-	float screen_y;
-	
-	float screen_dx;
-	float screen_dy;
-	
-	static float grab_screen_offset_x;
-	static float grab_screen_offset_y;
-	
-	float amount;
-	float z;
-	
-	if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
-	{
-		editor_Check3dHandle();		
-	}
-	
-	if(!(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED))
-	{
-		bm_handle_3d_flags = 0;
-	}
-	else if(bm_handle_3d_flags)
-	{
-		p.vec3 = handle_3d_position;
-		p.w = 1.0;
-		mat4_t_mult_fast(&model_view_projection_matrix, &active_camera->world_to_camera_matrix, &active_camera->projection_matrix);
-		mat4_t_vec4_t_mult(&model_view_projection_matrix, &p);
-			
-		p.x /= p.w;
-		p.y /= p.w;
-		z = p.z;
-			
-		if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
-		{
-			grab_screen_offset_x = normalized_mouse_x - p.x;
-			grab_screen_offset_y = normalized_mouse_y - p.y;
-		}
-			
-		screen_dx = normalized_mouse_x - p.x - grab_screen_offset_x;
-		screen_dy = normalized_mouse_y - p.y - grab_screen_offset_y;
-		
-		//amount = sqrt(screen_dx * screen_dx + screen_dy * screen_dy);
-		
-		if(bm_handle_3d_flags & HANDLE_3D_GRABBED_X_AXIS)
-		{
-			
-			direction = vec3(1.0, 0.0, 0.0);
-			//direction = active_camera->world_to_camera_matrix.r_axis;
-		}
-		else if(bm_handle_3d_flags & HANDLE_3D_GRABBED_Y_AXIS)
-		{
-			direction = vec3(0.0, 1.0, 0.0);
-			//direction = active_camera->world_to_camera_matrix.u_axis;
-		}
-		else if(bm_handle_3d_flags & HANDLE_3D_GRABBED_Z_AXIS)
-		{
-			direction = vec3(0.0, 0.0, 1.0);
-			//direction = active_camera->world_to_camera_matrix.f_axis;
-		}
-		
-		 
-		p.vec3 = direction;
-		p.w = 0.0;
-		
-		mat4_t_vec4_t_mult(&active_camera->world_to_camera_matrix, &p);
-		
-		screen_x = p.x;
-		screen_y = p.y;
-		
-		amount = sqrt(screen_x * screen_x + screen_y * screen_y);
-		
-		screen_x /= amount;
-		screen_y /= amount;
-		
-		amount = (screen_dx * screen_x + screen_dy * screen_y) * z;
-		
-		switch(handle_3d_mode)
-		{
-			case HANDLE_3D_TRANSLATION:			
-				editor_TranslateSelections(direction, amount);
-			break;
-			
-			case HANDLE_3D_ROTATION:
-				//editor_RotateSelections()
-			break;
-		}
 
-	}
-		
-	
-		
-	if(bm_mouse & MOUSE_RIGHT_BUTTON_JUST_CLICKED)
-	{
-		
-		if(editor_Pick(&record))
-		{	
-		
-				
-			if(record.type == selections[selection_count - 1].type)
-			{
-				/* if the just picked thing is the same as the last picked thing... */	
-				if(record.index0 == selections[selection_count - 1].index0)
-				{
-						
-					/* if this selection is the last in the list (meaning
-					this object is the active object), drop it, set
-					whatever comes before it as the active object and then jump
-					to the code that sets the 3d handle position... */
-						
-					editor_DropSelection(&record);
-					if(selection_count)
-					{
-						record = selections[selection_count - 1];
-						goto _set_handle_3d_position;
-					}
-					
-				}
-				else/* if(input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED)*/
-				{
-					/* if this record  is not equal to the last in the list,
-					append it to the list or set it as the only active object... */
-					goto _add_new_selection;
-				}
-				
-			}
-			else
-			{
-				_add_new_selection:
-				/* holding shift enables selecting multiple objects... */			
-				if(!(input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED))
-				{
-					editor_ClearSelection();
-				}
-									
-				editor_AddSelection(&record);
-						
-				_set_handle_3d_position:
-				
-				if(handle_3d_position_mode == HANDLE_3D_MEDIAN_POINT)
-				{
-					handle_3d_position = vec3(0.0, 0.0, 0.0);
-					for(i = 0; i < selection_count; i++)
-					{
-						switch(selections[i].type)
-						{
-							case PICK_BRUSH:
-								handle_3d_position.x += brushes[selections[i].index0].position.x;
-								handle_3d_position.y += brushes[selections[i].index0].position.y;
-								handle_3d_position.z += brushes[selections[i].index0].position.z;
-							break;
-									
-							case PICK_LIGHT:
-								handle_3d_position.x += light_positions[selections[i].index0].position.x;
-								handle_3d_position.y += light_positions[selections[i].index0].position.y;
-								handle_3d_position.z += light_positions[selections[i].index0].position.z;
-							break;
-						}
-					}
-					
-					handle_3d_position.x /= selection_count;
-					handle_3d_position.y /= selection_count;
-					handle_3d_position.z /= selection_count;
-				}
-				else
-				{
-					switch(record.type)
-					{
-						case PICK_BRUSH:
-							handle_3d_position = brushes[record.index0].position;	
-						break;
-									
-						case PICK_LIGHT:
-							handle_3d_position = light_positions[record.index0].position;
-						break;
-					}
-				}
-					
-			}
-		}
-			
-	}
-}
 
 void editor_TranslateSelections(vec3_t direction, float amount)
 {
@@ -1196,6 +1005,55 @@ void editor_RotateSelections(vec3_t axis, float amount, int individual_origins)
 	for(i = 0; i < c; i++)
 	{
 		
+	}
+}
+
+void editor_DeleteSelections()
+{
+	int i;
+	
+	if(!selection_count)
+		return;
+		
+	
+	for(i = 0; i < selection_count; i++)
+	{
+		switch(selections[i].type)
+		{
+			case PICK_LIGHT:
+				light_DestroyLightIndex(selections[i].index0);
+			break;
+			
+			case PICK_BRUSH:
+				
+			break;
+		}
+	}
+		
+}
+
+
+void editor_AddToWorld(int type, vec3_t position, mat3_t *orientation)
+{
+	
+	/* when adding to the world, previous
+	selections will be lost and the 3d handle
+	will be set to the current selection... */
+	editor_ClearSelection();
+	
+	switch(type)
+	{
+		case PICK_BRUSH:
+		
+		break;
+		
+		case PICK_LIGHT:
+			light_CreateLight("light", orientation, position, vec3(1.0, 1.0, 1.0), 25.0, 20.0, LIGHT_GENERATE_SHADOWS);
+		break;
+		
+		case PICK_SPAWN_POINT:
+		
+		break;
 	}
 }
 
@@ -1527,10 +1385,151 @@ int editor_Check3dHandle()
 		
 		
 	}
+	editor_DisablePicking();
+}
+
+void editor_Position3dCursor()
+{
+	int i;
+	int c;
+	int j;
+	int k;
+	int x;
+	int y;
 	
+	int pick_type;
+	int pick_index0;
+	int pick_index1;
+	int pick_index2;
 	
+	camera_t *active_camera = camera_GetActiveCamera();
+	triangle_group_t *triangle_group;
+	material_t *material;
+	
+	mat4_t camera_to_world_matrix;
+	
+	vec4_t pos;
+	
+	float q[4];
+	float z;
+	float qr;
+	float qt;
+	
+	gpu_BindGpuHeap();
+	shader_UseShader(brush_dist_shader);	
+	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
+	
+	glViewport(0, 0, r_window_width, r_window_height);
+	
+	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, pick_framebuffer_id);
+	//glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	
+	editor_EnablePicking();
+	glClearColor(active_camera->frustum.zfar, active_camera->frustum.zfar, active_camera->frustum.zfar, active_camera->frustum.zfar);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glClearColor(0.0, 0.0, 0.0, 1.0);
+	
+	c = brush_count;
+		
+	for(i = 0; i < c; i++)
+	{
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brushes[i].element_buffer);
+		k = brushes[i].triangle_group_count;
+		
+		triangle_group = brushes[i].triangle_groups;
+		
+		for(j = 0; j < k; j++)
+		{		
+			*(int *)&q[0] = PICK_BRUSH;
+			*(int *)&q[1] = i + 1;
+			q[2] = 0.0;
+			q[3] = 0.0;
+			
+			glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, q);
+			glDrawElements(GL_TRIANGLES, triangle_group[j].next, GL_UNSIGNED_INT, (void *)(triangle_group[j].start * sizeof(int)));
+		}
+		
+	}
+	
+	gpu_UnbindGpuHeap();
+	
+	/*shader_UseShader(light_pick_shader);
+	
+	c = light_count;
+	glPointSize(24.0);
+	glEnable(GL_POINT_SMOOTH);
+	
+	for(i = 0; i < c; i++)
+	{
+		*(int *)&q[0] = PICK_LIGHT;
+		*(int *)&q[1] = i + 1;
+		q[2] = 0.0;
+		q[3] = 0.0;	
+		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, q);
+		
+		glBegin(GL_POINTS);
+		glVertex3f(light_positions[i].position.x, light_positions[i].position.y, light_positions[i].position.z);
+		glEnd();
+	}
+	
+	glDisable(GL_POINT_SMOOTH);
+	glPointSize(1.0);*/
+	
+	x = r_window_width * (normalized_mouse_x * 0.5 + 0.5);
+	y = r_window_height * (normalized_mouse_y * 0.5 + 0.5);
+	glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, q);
+	
+	//printf("dist: %f\n", q[0]);
+	
+	//printf("[%d %d %d %d]\n", *(int *)&q[0], *(int *)&q[1], *(int *)&q[2], *(int *)&q[3]);
 	
 	editor_DisablePicking();
+	
+	mat4_t_compose(&camera_to_world_matrix, &active_camera->world_orientation, active_camera->world_position);
+	
+	
+	qr = active_camera->frustum.znear / active_camera->frustum.right;
+	qt = active_camera->frustum.znear / active_camera->frustum.top;
+	
+	if(q[0] == active_camera->frustum.zfar)
+	{
+		z = -10.0;
+	}
+	else
+	{
+		z = -q[0];
+	}
+	
+	pos.x = (normalized_mouse_x / qr) * (-z);
+	pos.y = (normalized_mouse_y / qt) * (-z);
+	pos.z = z;
+	pos.w = 1.0;
+		
+	mat4_t_vec4_t_mult(&camera_to_world_matrix, &pos);
+	
+	
+	cursor_3d_position = pos.vec3;
+	
+	
+	/*pick_type = (*(int *)&q[0]);
+	
+	switch(pick_type)
+	{
+		case PICK_BRUSH:
+		case PICK_LIGHT:
+			record->type = pick_type;
+			record->index0 = (*(int *)&q[1]) - 1;
+			record->index1 = (*(int *)&q[2]);
+			record->index2 = (*(int *)&q[3]);
+			return 1;
+		break;
+		
+		case PICK_NONE:
+			return 0;
+		break;
+	}*/
+	
+	//if(pick_type == PICK_LIGHT) printf("light!\n");
 }
 
 void editor_AddSelection(pick_record_t *record)

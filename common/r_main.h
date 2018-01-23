@@ -22,7 +22,20 @@ enum RENDERER_CALLBACK_TYPE
 	WINDOW_RESIZE_CALLBACK,
 };
 
-void renderer_Init(int width, int height, int init_mode);
+enum RENDERER_STAGE
+{
+	RENDERER_DRAW_SHADOW_MAPS_STAGE = 0,
+	RENDERER_Z_PREPASS_STAGE,
+	RENDERER_DRAW_WORLD_STAGE,
+	RENDERER_SWAP_BUFFERS_STAGE,
+	RENDERER_BIND_LIGHT_CACHE,
+	RENDERER_BIND_GPU_CACHE,
+	RENDERER_DRAW_FRAME,
+	RENDERER_DRAW_GUI,
+	RENDERER_STAGE_COUNT
+};
+
+int renderer_Init(int width, int height, int init_mode);
 
 void renderer_Finish();
 
@@ -54,9 +67,17 @@ void renderer_DrawWorld();
 
 void renderer_DrawSkyBox();
 
+void renderer_DrawParticles();
+
 //void renderer_Shade();
 
 void renderer_CloseFrame();
+
+void renderer_BeginTimeElapsedQuery();
+
+void renderer_EndTimeElapsedQuery(int stage_index);
+
+void renderer_ReportQueryResults();
 
 
 

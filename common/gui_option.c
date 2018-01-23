@@ -24,7 +24,7 @@ void gui_UpdateOption(widget_t *widget)
 	{
 		if((option_t *)option_list->active_option == option)
 		{
-			/* only keep the option as active when the mouse
+			/* keep the option as active when the mouse
 			is away only if this option has any nestled options... */
 			if(!option->widget.nestled)
 			{

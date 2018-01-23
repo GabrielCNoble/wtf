@@ -51,10 +51,13 @@ static SDL_Thread *bsp_build_thread;
 bsp_polygon_t *beveled_polygons = NULL;
 bsp_edge_t *bevel_edges = NULL;
 
+bsp_polygon_t *world_polygons_debug = NULL;
+
 
 
 #define DRAW_EXPANDED_BRUSHES
 #define DRAW_BEVEL_EDGES
+#define DRAW_WORLD_POLYGONS
 
 
 /*
@@ -921,6 +924,21 @@ bsp_polygon_t *bsp_DeepCopyPolygons(bsp_polygon_t *src)
 }
 
 
+void bsp_DeletePolygons(bsp_polygon_t *polygons)
+{
+	bsp_polygon_t *next;
+	
+	while(polygons)
+	{
+		next = polygons->next;
+		free(polygons->vertices);
+		free(polygons);
+		polygons = next;
+	}
+	
+}
+
+
 /*
 ==============
 bsp_FindSplitter
@@ -1285,6 +1303,494 @@ bsp_polygon_t *bsp_BuildPolygonsFromBrush(brush_t *brush)
 }
 #endif
 
+
+void bsp_RecursiveQuickHull(vec2_t *in_verts, int in_vert_count, vec2_t *hull_verts, int *hull_vert_count, vec2_t edge_a, vec2_t edge_b, vec2_t edge_dir)
+{
+	
+	int i;
+	
+	int max_index = -1;
+	float max_d = -999999.9;
+	float d;
+	
+	vec2_t out_a;
+	vec2_t out_b;
+	vec2_t out_dir;
+	
+	int out_count = 0;
+	vec2_t *out;
+	
+	vec2_t v;
+	
+	
+	if(in_vert_count < 2)
+	{
+		if(in_vert_count)
+		{
+			hull_verts[*hull_vert_count] = in_verts[0];
+			(*hull_vert_count)++;	
+		}
+		
+		return;
+	}
+	
+	
+	out = malloc(sizeof(vec2_t ) * in_vert_count);
+	
+	
+	/* get farthest vertex from the current edge... */	
+	for(i = 0; i < in_vert_count; i++)
+	{
+		v.x = in_verts[i].x - edge_a.x;
+		v.y = in_verts[i].y - edge_a.y;
+		
+		d = dot2(v, edge_dir);
+		
+		if(d > max_d)
+		{
+			if(in_verts[i].x != edge_a.x || in_verts[i].y != edge_a.y)
+			{
+				max_d = d;
+				max_index = i;
+		    }
+		}
+	}
+	
+	assert(max_index != -1);
+	
+	out_a = edge_a;
+	out_b = in_verts[max_index];
+	
+	out_dir.x = out_b.x - out_a.x;
+	out_dir.y = out_b.y - out_a.y;
+	
+	
+	d = out_dir.x;
+	out_dir.x = out_dir.y;
+	out_dir.y = -d;
+	
+	out_dir = normalize2(out_dir);
+	
+	out_count = 0;
+	
+	/* edge_a, in_verts[max_index] and edge_b
+	define two edges. Get the vertices that are
+	in front of the first edge... */
+	for(i = 0; i < in_vert_count; i++)
+	{
+		v.x = in_verts[i].x - out_a.x;
+		v.y = in_verts[i].y - out_a.y;
+		
+		d = dot2(v, out_dir);
+		
+		if(d > FUZZY_ZERO)
+		{
+			out[out_count++] = in_verts[i];
+		}
+	}
+	
+	bsp_RecursiveQuickHull(out, out_count, hull_verts, hull_vert_count, out_a, out_b, out_dir);
+	
+	hull_verts[*hull_vert_count] = out_b;
+
+	(*hull_vert_count)++;
+	
+	out_count = 0;
+	out_a = in_verts[max_index];
+	out_b = edge_b;
+	
+	out_dir.x = out_b.x - out_a.x;
+	out_dir.y = out_b.y - out_a.y;
+	
+	
+	d = out_dir.x;
+	out_dir.x = out_dir.y;
+	out_dir.y = -d;
+	
+	out_dir = normalize2(out_dir);
+	
+	for(i = 0; i < in_vert_count; i++)
+	{
+		v.x = in_verts[i].x - out_a.x;
+		v.y = in_verts[i].y - out_a.y;
+		
+		d = dot2(v, out_dir);
+		
+		if(d > 0.0)
+		{
+			out[out_count++] = in_verts[i];
+		}
+		
+	}
+	
+	bsp_RecursiveQuickHull(out, out_count, hull_verts, hull_vert_count, out_a, out_b, out_dir);
+	
+	free(out);
+	
+}
+
+
+void bsp_QuickHull(vec2_t *in_verts, int in_vert_count, vec2_t **hull_verts, int *hull_vert_count)
+{
+	float x_max = -99999999.9;
+	float x_min = 99999999.9;
+	
+	int x_max_index;
+	int x_min_index;
+	
+	int i;
+	//int c = *vert_count;
+	
+	//int pos_index;
+	//float pos_d = -99999999.9;
+	//int neg_index;
+	//float neg_d = 99999999.9;
+	float d;
+	float p;
+	
+	vec2_t a;
+	vec2_t b;
+	vec2_t ab;
+	
+	int out_count = 0;
+	vec2_t *out;
+	int hull_count = 0;
+	vec2_t *hull;
+	vec2_t *t;
+	
+	vec2_t v;
+	
+	
+	if(in_vert_count == 3)
+	{
+		*hull_verts = malloc(sizeof(vec2_t) * 3);
+		(*hull_verts)[0] = in_verts[0];
+		(*hull_verts)[1] = in_verts[1];
+		(*hull_verts)[2] = in_verts[2];
+		
+		*hull_vert_count = 3;
+		
+		return;
+	}
+	else if(in_vert_count < 3)
+	{
+		*hull_verts = NULL;
+		*hull_vert_count = 0;
+		return;
+	}
+		
+	
+	
+	out = malloc(sizeof(vec2_t ) * in_vert_count);
+	hull = malloc(sizeof(vec2_t ) * in_vert_count * 2);
+	
+	for(i = 0; i < in_vert_count; i++)
+	{
+		if(in_verts[i].x > x_max)
+		{
+			x_max = in_verts[i].x;
+			x_max_index = i;
+		}
+		if(in_verts[i].x < x_min)
+		{
+			x_min = in_verts[i].x;
+			x_min_index = i;
+		}
+	}
+	
+	/* first edge... */
+	a = in_verts[x_min_index];
+	b = in_verts[x_max_index];
+	
+	
+	ab.x = b.x - a.x;
+	ab.y = b.y - a.y;
+	
+	d = ab.x;
+	ab.x = ab.y;
+	ab.y = -d;
+	
+	ab = normalize2(ab);
+	
+	/* first hull index... */
+	hull[hull_count++] = a;
+	
+	for(i = 0; i < in_vert_count; i++)
+	{
+		if(i == x_min_index)
+			continue;
+		
+		if(i == x_max_index)
+			continue;	
+					
+		v.x = in_verts[i].x - a.x;
+		v.y = in_verts[i].y - a.y;
+		
+		d = dot2(v, ab);
+		
+		
+		if(d > FUZZY_ZERO)
+		{
+			if(in_verts[i].x != a.x || in_verts[i].y != a.y)
+			{
+				if(in_verts[i].x != b.x || in_verts[i].y != b.y)
+				{
+					out[out_count++] = in_verts[i];
+				}
+			}
+			
+		}
+		
+	}
+	
+	/* first half of the hull... */
+	bsp_RecursiveQuickHull(out, out_count, hull, &hull_count, a, b, ab);
+	
+	hull[hull_count++] = b;
+	
+	out_count = 0;
+	
+	ab.x = -ab.x;
+	ab.y = -ab.y;
+	
+	for(i = 0; i < in_vert_count; i++)
+	{
+		if(i == x_min_index)
+			continue;
+		
+		if(i == x_max_index)
+			continue;	
+					
+		v.x = in_verts[i].x - a.x;
+		v.y = in_verts[i].y - a.y;
+		
+		d = dot2(v, ab);
+		
+		
+		if(d >= 0.0)
+		{
+			if(in_verts[i].x != a.x || in_verts[i].y != a.y)
+			{
+				if(in_verts[i].x != b.x || in_verts[i].y != b.y)
+				{
+					out[out_count++] = in_verts[i];
+				}
+			}
+		}
+	}
+	
+	bsp_RecursiveQuickHull(out, out_count, hull, &hull_count, b, a, ab);
+	
+	
+	
+	*hull_verts = malloc(sizeof(vec2_t ) * hull_count);
+	*hull_vert_count = hull_count;
+	
+	t = *hull_verts;
+	
+	for(i = 0; i < hull_count; i++)
+	{
+		t[i] = hull[i];
+	}
+	
+	
+	
+	free(hull);
+	free(out);
+	
+	
+	
+	
+	
+}
+
+
+#if 0
+
+bsp_polygon_t *bsp_BuildPolygonsFromBrush(brush_t *brush)
+{
+	int i;
+	int c;
+	int j;
+	int k;
+	
+	int vert_count = 0;
+	int hull_vert_count = 0;
+	
+	int plane_count = 0;
+	
+	float d;
+	
+	bsp_clipplane_t *planes;
+	bsp_clipplane_t temp;
+	vec3_t *verts = NULL;
+	vec2_t *proj_verts = NULL;
+	vec2_t *proj_hull = NULL;
+	vec3_t basis0;
+	vec3_t basis1;
+	vec3_t basis2;
+	
+	bsp_polygon_t *polygons = NULL;
+	bsp_polygon_t *polygon = NULL;
+	
+	vec3_t edge0;
+	vec3_t edge1; 
+	vec3_t triangle_normal;
+	
+	plane_count = brush->vertex_count / 3;
+	planes = malloc(sizeof(bsp_clipplane_t ) * plane_count);
+	verts = malloc(sizeof(vec3_t ) * brush->vertex_count);
+	proj_verts = malloc(sizeof(vec3_t) * brush->vertex_count);
+	
+	
+	c = brush->vertex_count;
+	
+	
+	for(i = 0; i < c; i += 3)
+	{
+		edge0.x = brush->vertices[i + 1].position.x - brush->vertices[i].position.x;
+		edge0.y = brush->vertices[i + 1].position.y - brush->vertices[i].position.y;
+		edge0.z = brush->vertices[i + 1].position.z - brush->vertices[i].position.z;
+		
+		
+		edge1.x = brush->vertices[i + 2].position.x - brush->vertices[i + 1].position.x;
+		edge1.y = brush->vertices[i + 2].position.y - brush->vertices[i + 1].position.y;
+		edge1.z = brush->vertices[i + 2].position.z - brush->vertices[i + 1].position.z;
+		
+		/* actual normal direction doesn't matter that much as
+		long it's being calculated consistently... */
+		
+		/* NOTE: shouldn't allow brushes to have zero volume,
+		as a zero area triangle will mess stuff up here... */
+		triangle_normal = normalize3(cross(edge0, edge1));
+		
+		
+		planes[i / 3].point = brush->vertices[i].position;
+		planes[i / 3].normal = triangle_normal;
+	}
+	
+	
+	for(i = 0; i < plane_count; i++)
+	{
+		for(j = i + 1; j < plane_count; j++)
+		{
+			if(planes[i].normal.x == planes[j].normal.x &&
+			   planes[i].normal.y == planes[j].normal.y &&
+			   planes[i].normal.z == planes[j].normal.z)
+			{
+				if(j < plane_count - 1)
+				{
+					planes[j] = planes[plane_count - 1];
+				}
+				
+				plane_count--;
+				j--;
+			}
+		}
+	}
+	
+	for(i = 0; i < plane_count; i++)
+	{
+		printf("[%f %f %f]\n", planes[i].normal.x, planes[i].normal.y, planes[i].normal.z);
+	}
+	
+	
+	for(i = 0; i < plane_count; i++)
+	{
+		vert_count = 0;
+		
+		c = brush->vertex_count;
+		
+		for(j = 0; j < c; j++)
+		{
+			edge0.x = brush->vertices[j].position.x - planes[i].point.x;
+			edge0.y = brush->vertices[j].position.y - planes[i].point.y;
+			edge0.z = brush->vertices[j].position.z - planes[i].point.z;
+			
+			d = dot3(planes[i].normal, edge0);
+				
+			/* vertex on plane... */
+			if(d <= FUZZY_ZERO && d >= -FUZZY_ZERO)
+			{
+				verts[vert_count] = brush->vertices[j].position;
+				
+				vert_count++;
+			}
+				
+		}
+		
+		for(j = 0; j < vert_count; j++)
+		{
+			edge0.x = verts[j].x - planes[i].point.x;
+			edge0.y = verts[j].y - planes[i].point.y;
+			edge0.z = verts[j].z - planes[i].point.z; 
+				
+			/* this is a valid edge... */
+			if(edge0.x != 0.0 || edge0.y != 0.0 || edge0.z != 0.0)
+			{
+				break;
+			}
+		}
+			
+		basis0 = normalize3(edge0);
+		basis1 = cross(planes[i].normal, basis0);
+			//basis2 = cross(basis1, basis0);
+			
+			
+		for(j = 0; j < vert_count; j++)
+		{
+			proj_verts[j].x = dot3(verts[j], basis0);
+			proj_verts[j].y = dot3(verts[j], basis1);
+		}
+		
+		hull_vert_count = 0;
+		
+		bsp_QuickHull(proj_verts, vert_count, &proj_hull, &hull_vert_count);
+			
+		/* quick hull here... */
+		
+		d = dot3(planes[i].point, planes[i].normal);
+
+		for(j = 0; j < hull_vert_count; j++)
+		{
+			verts[j].x = proj_hull[j].x * basis0.x + proj_hull[j].y * basis1.x + planes[i].normal.x * d;
+			verts[j].y = proj_hull[j].x * basis0.y + proj_hull[j].y * basis1.y + planes[i].normal.y * d;
+			verts[j].z = proj_hull[j].x * basis0.z + proj_hull[j].y * basis1.z + planes[i].normal.z * d;
+		}
+			
+			
+		polygon = malloc(sizeof(bsp_polygon_t));
+		polygon->vert_count = hull_vert_count;
+		polygon->normal = planes[i].normal;
+		polygon->vertices = malloc(sizeof(vec3_t) * hull_vert_count);
+		polygon->b_used = 0;
+			
+		for(j = 0; j < hull_vert_count; j++)
+		{
+			polygon->vertices[j] = verts[j];
+		}
+			
+		polygon->next = polygons;
+		polygons = polygon;
+		 
+	}
+	
+	
+	free(verts);
+	free(proj_verts);
+	free(proj_hull);
+	free(planes);
+	
+	return polygons;
+	
+}
+
+
+#endif
+
+
+
+#if 1
 /*
 ==============
 bsp_BuildPolygonsFromBrush
@@ -1314,110 +1820,139 @@ bsp_polygon_t *bsp_BuildPolygonsFromBrush(brush_t *brush)
 	vec3_t p;
 	
 	
-	
-	for(i = 0; i < 6; i++)
+	switch(brush->type)
 	{
-		
-		triangles = NULL;
-		
-		polygon = malloc(sizeof(bsp_polygon_t));
-		v = cube_bmodel_collision_normals[i];
-			
-			
-			
-		p.x = v.x * brush->orientation.floats[0][0] + 
-		      v.y * brush->orientation.floats[1][0] +
-			  v.z * brush->orientation.floats[2][0];
-				  
-				  
-		p.y = v.x * brush->orientation.floats[0][1] + 
-		      v.y * brush->orientation.floats[1][1] +
-			  v.z * brush->orientation.floats[2][1];
-				  
-				  
-		p.z = v.x * brush->orientation.floats[0][2] + 
-		      v.y * brush->orientation.floats[1][2] +
-			  v.z * brush->orientation.floats[2][2];
-		
-		
-		polygon->normal = p;
-		
-		polygon->vertices = malloc(sizeof(vec3_t) * 4);
-		polygon->vert_count = 4;
-		
-		
-		for(c = 0; c < 4; c++)
-		{
-			v = cube_bmodel_collision_verts[i * 4 + c];
-			
-			v.x *= brush->scale.x;
-			v.y *= brush->scale.y;
-			v.z *= brush->scale.z;
-			
-			
-			p.x = v.x * brush->orientation.floats[0][0] + 
-			      v.y * brush->orientation.floats[1][0] +
-				  v.z * brush->orientation.floats[2][0] + brush->position.x;
-				  
-				  
-			p.y = v.x * brush->orientation.floats[0][1] + 
-			      v.y * brush->orientation.floats[1][1] +
-				  v.z * brush->orientation.floats[2][1] + brush->position.y;
-				  
-				  
-			p.z = v.x * brush->orientation.floats[0][2] + 
-			      v.y * brush->orientation.floats[1][2] +
-				  v.z * brush->orientation.floats[2][2] + brush->position.z;	  	  
-			
-			
-			polygon->vertices[c] = p;
-		}
-		
-		#if 0
-		
-		k = brush->vertex_count;
-		
-		for(j = 0; j < k;)
-		{
-			for(l = 0; l < 3; l++)
-				tri_verts[l] = brush->vertices[j++];
-							
-			/* test to see if this triangle is contained in the polygon's plane... */				
-			for(l = 0; l < 3; l++)
-				if(bsp_ClassifyPoint(tri_verts[l].position, polygon->vertices[0], polygon->normal) != POINT_CONTAINED) break;
-				
-				
-			/* it is, so append this triangle to the triangle list of this polygon... */	
-			if(l >= 3)
+		case BRUSH_CUBE:
+		case BRUSH_CYLINDER:
+			for(i = 0; i < 6; i++)
 			{
-				triangle = malloc(sizeof(bsp_triangle_t));
-				triangle->a = tri_verts[0];
-				triangle->b = tri_verts[1];
-				triangle->c = tri_verts[2];
-				triangle->plane_normal = polygon->normal;
-				triangle->b_used = 0;
 				
-				triangle->next = triangles;
-				triangles = triangle;
-			}	
+				triangles = NULL;
+				
+				polygon = malloc(sizeof(bsp_polygon_t));
+				v = cube_bmodel_collision_normals[i];
+					
+					
+					
+				p.x = v.x * brush->orientation.floats[0][0] + 
+				      v.y * brush->orientation.floats[1][0] +
+					  v.z * brush->orientation.floats[2][0];
+						  
+						  
+				p.y = v.x * brush->orientation.floats[0][1] + 
+				      v.y * brush->orientation.floats[1][1] +
+					  v.z * brush->orientation.floats[2][1];
+						  
+						  
+				p.z = v.x * brush->orientation.floats[0][2] + 
+				      v.y * brush->orientation.floats[1][2] +
+					  v.z * brush->orientation.floats[2][2];
+				
+				
+				polygon->normal = p;
+				
+				polygon->vertices = malloc(sizeof(vec3_t) * 4);
+				polygon->vert_count = 4;
+				
+				
+				for(c = 0; c < 4; c++)
+				{
+					v = cube_bmodel_collision_verts[i * 4 + c];
+					
+					v.x *= brush->scale.x;
+					v.y *= brush->scale.y;
+					v.z *= brush->scale.z;
+					
+					
+					p.x = v.x * brush->orientation.floats[0][0] + 
+					      v.y * brush->orientation.floats[1][0] +
+						  v.z * brush->orientation.floats[2][0] + brush->position.x;
+						  
+						  
+					p.y = v.x * brush->orientation.floats[0][1] + 
+					      v.y * brush->orientation.floats[1][1] +
+						  v.z * brush->orientation.floats[2][1] + brush->position.y;
+						  
+						  
+					p.z = v.x * brush->orientation.floats[0][2] + 
+					      v.y * brush->orientation.floats[1][2] +
+						  v.z * brush->orientation.floats[2][2] + brush->position.z;	  	  
+					
+					
+					polygon->vertices[c] = p;
+				}
+				
+		
+				polygon->b_used = 0;
+				polygon->next = polygons;
+				polygons = polygon;
+			}
+		break;
 			
+		/*case BRUSH_CYLINDER:
+			polygon = malloc(sizeof(bsp_polygon_t));
+			polygon->vert_count = brush->base_vertex_count;
+			polygon->vertices = malloc(sizeof(vec3_t) * polygon->vert_count);
 			
+			k = brush->base_vertex_count;
 			
-		}
+			for(i = 0, j = 0; i < k;)
+			{
+				polygon->vertices[j] = brush->vertices[i * 3].position;
+				i++;
+				j++;
+			}
+			
+			v.x = polygon->vertices[1].x - polygon->vertices[0].x;
+			v.y = polygon->vertices[1].y - polygon->vertices[0].y;
+			v.z = polygon->vertices[1].z - polygon->vertices[0].z;
+			
+			p.x = polygon->vertices[2].x - polygon->vertices[0].x;
+			p.y = polygon->vertices[2].y - polygon->vertices[0].y;
+			p.z = polygon->vertices[2].z - polygon->vertices[0].z;
+			
+			polygon->normal = cross(v, p);
+			polygon->next = polygons;
+			polygon->b_used = 0;
+			polygons = polygon;
+			
+			polygon = malloc(sizeof(bsp_polygon_t));
+			polygon->vert_count = brush->base_vertex_count;
+			polygon->vertices = malloc(sizeof(vec3_t) * polygon->vert_count);
+			
+			k += brush->base_vertex_count;
 		
-		
-		polygon->triangles = triangles;
-		
-		#endif
-		
-		polygon->b_used = 0;
-		polygon->next = polygons;
-		polygons = polygon;
+			for(j = 0; i < k;)
+			{
+				polygon->vertices[j] = brush->vertices[i * 3].position;
+				i++;
+				j++;
+			}
+			
+			v.x = polygon->vertices[1].x - polygon->vertices[0].x;
+			v.y = polygon->vertices[1].y - polygon->vertices[0].y;
+			v.z = polygon->vertices[1].z - polygon->vertices[0].z;
+			
+			p.x = polygon->vertices[2].x - polygon->vertices[0].x;
+			p.y = polygon->vertices[2].y - polygon->vertices[0].y;
+			p.z = polygon->vertices[2].z - polygon->vertices[0].z;
+			
+			polygon->normal = cross(v, p);
+			polygon->next = polygons;
+			polygon->b_used = 0;
+			polygons = polygon;
+						
+		break;*/
 	}
 	
-	return polygon;
+	
+	
+	
+	return polygons;
 	
 }
+
+#endif
 
 
 bsp_polygon_t *bsp_BuildPolygonsFromTriangles(bsp_triangle_t *triangles)
@@ -1738,19 +2273,23 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brushes, int brush_count)
 	{
 		
 		
-		/* build the polygon list for the first brush in the list
-		(brush A in the first iteration of the loop below)... */
-	
-		/* HACK!! */
-		if(!brushes[0].polygons)
-			polygons_a = bsp_BuildPolygonsFromBrush(&brushes[0]);
-		else
-			
-			#ifdef DRAW_EXPANDED_BRUSHES
-			polygons_a = bsp_DeepCopyPolygons(brushes[0].polygons);
-			#else
-			polygons_a = brushes[0].polygons;
-			#endif
+		do
+		{
+			/* build the polygon list for the first brush in the list
+			(brush A in the first iteration of the loop below)... */
+		
+			/* HACK!! */
+			if(!brushes[0].polygons)
+				polygons_a = bsp_BuildPolygonsFromBrush(&brushes[0]);
+			else
+				
+				#ifdef DRAW_EXPANDED_BRUSHES
+				polygons_a = bsp_DeepCopyPolygons(brushes[0].polygons);
+				#else
+				polygons_a = brushes[0].polygons;
+				#endif
+		}while(!polygons_a);
+		
 		
 		for(i = 1; i < c; i++)
 		{
@@ -1765,6 +2304,9 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brushes, int brush_count)
 				#else
 				polygons_b = brushes[i].polygons;
 				#endif
+			
+			if(!polygons_b)
+				continue;
 			
 			bsp_a = NULL;
 			/* build the bsp for the polygons of brush A... */
@@ -2585,6 +3127,10 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 	//	#if 0
 		
 		polygons = bsp_BuildPolygonsFromBrush(&brushes[i]);
+		
+		if(!polygons)
+			continue;
+		
 		edges = bsp_BuildBevelEdges(polygons);
 		
 		expanded_brushes[i].polygons = polygons;
@@ -2766,6 +3312,9 @@ void bsp_BuildCollisionBsp()
 	bsp_ExpandBrushes(vec3(0.5, 2.0, 0.5));
 	
 	polygons = bsp_ClipBrushes(expanded_brushes, brush_count);
+	
+	if(!polygons)
+		return;
 	
 	bsp_BuildSolidLeaf(&root, polygons);
 	
@@ -3499,6 +4048,14 @@ void bsp_CompileBsp(int remove_outside)
 	polygons = bsp_ClipBrushes(brushes, brush_count); 
 	printf("done\n");
 	
+	#ifdef DRAW_WORLD_POLYGONS
+	
+	bsp_DeletePolygons(world_polygons_debug);
+	
+	world_polygons_debug = bsp_DeepCopyPolygons(polygons);
+	#endif
+	
+	
 	printf("bsp_CompileBsp: bsp_SolidLeafBsp... ");
 	bsp = bsp_SolidLeafBsp(polygons);
 	printf("done\n");
@@ -3696,7 +4253,88 @@ void bsp_DrawBevelEdges()
 
 
 
-
+void bsp_DrawPolygons()
+{	
+	#ifdef DRAW_WORLD_POLYGONS
+	
+	bsp_polygon_t *polygon;
+	camera_t *active_camera = camera_GetActiveCamera();
+	vec3_t center;
+	vec3_t v;
+	int i;
+	int vert_count;
+	
+	if(!world_polygons_debug)
+		return;
+		
+	
+	
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
+	glUseProgram(0);	
+		
+	
+	polygon = world_polygons_debug;
+	
+	glLineWidth(4.0);
+	glBegin(GL_LINES);
+	
+	while(polygon)
+	{
+		
+		vert_count = polygon->vert_count;
+		
+		center.x = 0.0;
+		center.y = 0.0;
+		center.z = 0.0;
+		
+		for(i = 0; i < vert_count; i++)
+		{
+			center.x += polygon->vertices[i].x;
+			center.y += polygon->vertices[i].y;
+			center.z += polygon->vertices[i].z;
+		}
+		
+		center.x /= vert_count;
+		center.y /= vert_count;
+		center.z /= vert_count;
+		
+		#define SCALE 0.9
+		
+		glColor3f(1.0, 1.0, 1.0);
+		for(i = 0; i < vert_count;)
+		{
+			v.x = polygon->vertices[i % vert_count].x - center.x;
+			v.y = polygon->vertices[i % vert_count].y - center.y;
+			v.z = polygon->vertices[i % vert_count].z - center.z;
+			
+			glVertex3f(center.x + v.x * SCALE, center.y + v.y * SCALE, center.z + v.z * SCALE);
+			i++;
+			
+			v.x = polygon->vertices[i % vert_count].x - center.x;
+			v.y = polygon->vertices[i % vert_count].y - center.y;
+			v.z = polygon->vertices[i % vert_count].z - center.z;
+			
+			glVertex3f(center.x + v.x * SCALE, center.y + v.y * SCALE, center.z + v.z * SCALE);
+					
+			/*glVertex3f(polygon->vertices[i % vert_count].x, polygon->vertices[i % vert_count].y, polygon->vertices[i % vert_count].z);
+			i++;
+			glVertex3f(polygon->vertices[i % vert_count].x, polygon->vertices[i % vert_count].y, polygon->vertices[i % vert_count].z);*/
+		}
+		
+		glColor3f(fabs(polygon->normal.x), fabs(polygon->normal.y), fabs(polygon->normal.z));
+		glVertex3f(center.x, center.y, center.z);
+		glVertex3f(center.x + polygon->normal.x, center.y + polygon->normal.y, center.z + polygon->normal.z);
+		
+		
+		polygon = polygon->next;
+	}
+	
+	glEnd();
+	glLineWidth(1.0);
+	#endif	
+		
+}
 
 
 

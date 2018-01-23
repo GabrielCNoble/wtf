@@ -19,6 +19,11 @@ typedef struct
 	short h;
 }ks_chunk_t;
 
+typedef struct
+{
+	vec4_t color;
+}test_t;
+
 void light_InitCache();
 
 void light_FinishCache();

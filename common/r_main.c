@@ -20,6 +20,9 @@
 //#include "editor.h"
 #include "gui.h"
 #include "bsp.h"
+#include "log.h"
+
+#include "engine.h"
 
 
 
@@ -127,6 +130,7 @@ extern player_t *active_player;
 //extern bsp_node_t *world_bsp;
 
 
+//#define QUERY_STAGES
 
 
 #define MAX_RENDER_FUNCTIONS 16
@@ -143,15 +147,41 @@ unsigned int r_frame = 0;
 
 unsigned int query_object;
 
-void renderer_Init(int width, int height, int init_mode)
+unsigned int renderer_DrawWorldQueryObject;
+unsigned int renderer_ZPrePassQueryObject;
+unsigned int renderer_DrawShadowMapsQueryObject;
+
+
+int r_draw_shadow_maps = 0;
+int r_z_prepass = 0;
+int r_query_stages = 1;
+
+
+
+#ifdef QUERY_STAGES
+char *stage_str[RENDERER_STAGE_COUNT];
+float query_results[RENDERER_STAGE_COUNT];
+#endif
+
+
+
+
+int renderer_Init(int width, int height, int init_mode)
 {
 	char *ext_str;
 	char *sub_str;
 	
+	int i;
+	
+	int w;
+	int h;
+	
 	if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
 	{
-		printf("oh shit...\n");
-		exit(1);
+		log_LogMessage(LOG_MESSAGE_ERROR, "renderer_Init: SDL didn't init!");
+		return 0;
+		//printf("oh shit...\n");
+		//exit(1);
 	}
 	
 	r_window_flags = SDL_WINDOW_OPENGL;
@@ -181,6 +211,9 @@ void renderer_Init(int width, int height, int init_mode)
 	}
 	
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
 	//SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 8);
 	
 	window = SDL_CreateWindow("wtf editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, r_width, r_height, r_window_flags);
@@ -192,11 +225,15 @@ void renderer_Init(int width, int height, int init_mode)
 	
 	if(glewInit() != GLEW_NO_ERROR)
 	{
-		printf("oh shit...\n");
-		exit(2);
+		log_LogMessage(LOG_MESSAGE_ERROR, "renderer_Init: glew didn't init!");
+		return 0;
+		//printf("oh shit...\n");
+		//exit(2);
 	}
 	
-
+	log_LogMessage(LOG_MESSAGE_NONE, "Window resolution: %d x %d", r_width, r_height);
+	
+	
 	
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	glClearStencil(0);
@@ -209,54 +246,56 @@ void renderer_Init(int width, int height, int init_mode)
 	
 	
 	
-	ext_str = (char *)glGetString(GL_EXTENSIONS);
+	/*ext_str = (char *)glGetString(GL_SHADING_LANGUAGE_VERSION);
+	printf("%s\n", ext_str);
+	
+	ext_str = (char *)glGetString(GL_VERSION);
+	printf("%s\n", ext_str);
+	
+	ext_str = (char *)glGetString(GL_VENDOR);
+	printf("%s\n", ext_str);*/
+	
+	//printf("GLSL version: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+	//printf("OpenGL version: %s\n", glGetString(GL_VERSION));
+	//printf("Vendor: %s\n", glGetString(GL_VENDOR));
+	//printf("Renderer: %s\n", glGetString(GL_RENDERER));
+	
+	log_LogMessage(LOG_MESSAGE_NONE, "GLSL version: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
+	log_LogMessage(LOG_MESSAGE_NONE, "OpenGL version: %s", glGetString(GL_VERSION));
+	log_LogMessage(LOG_MESSAGE_NONE, "Vendor: %s", glGetString(GL_VENDOR));
+	log_LogMessage(LOG_MESSAGE_NONE, "Renderer: %s", glGetString(GL_RENDERER));
+	
+	
+	
+	
+	//ext_str = (char *)glGetString(GL_EXTENSIONS);
 	
 	sub_str = strstr(ext_str, "GL_ARB_seamless_cube_map");
 	if(sub_str)
 	{
-		//bm_extensions |= EXT_TEXTURE_CUBE_MAP_SEAMLESS;
 		glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	}
 	
-	/*sub_str = strstr(ext_str, "GL_EXT_packed_depth_stencil");
-	if(sub_str)
-	{
-		bm_extensions |= EXT_PACKED_DEPTH_STENCIL;
-	}*/
 	
-	/*sub_str = strstr(ext_str, "GL_EXT_transform_feedback");
-	if(sub_str)
+	if(!SDL_GL_ExtensionSupported("GL_ARB_uniform_buffer_object"))
 	{
-		bm_extensions |= EXT_TRANSFORM_FEEDBACK;
-	}*/
-	
-	sub_str = strstr(ext_str, "GL_ARB_uniform_buffer_object");
-	if(!sub_str)
-	{
-		printf("ERROR: extension GL_ARB_uniform_buffer_object not supported by current driver! Try to update it and then run the application again.\n");
-		exit(3);
+		if(!SDL_GL_ExtensionSupported("GL_EXT_uniform_buffer_object"))
+		{
+			log_LogMessage(LOG_MESSAGE_ERROR, "renderer_Init: extension GL_ARB_uniform_buffer_object not supported by current driver! Try to update it and then run the application again.");
+			return 0;
+		}
 	}
 	
-	/*sub_str = strstr(ext_str, "GL_ARB_multi_draw");
-	if(!sub_str)
-	{
-		printf("ERROR: extension GL_ARB_multi_draw not supported by current driver!\n Try to update it and then run the application again.\n");
-		exit(3);
-	}*/
 	
-	/*sub_str = strstr(ext_str, "GL_ARB_multi_draw_indirect");
-	if(sub_str)
-	{
-		bm_extensions |= EXT_MULTI_DRAW_INDIRECT;
-	}*/
+	/*glGenQueries(1, &renderer_DrawWorldQueryObject);
+	glGenQueries(1, &renderer_ZPrePassQueryObject);
+	glGenqueries(1, &renderer_DrawShadowMapsQueryObject);*/
 	
-	/*sub_str = strstr(ext_str, "GL_ARB_shader_draw_parameters");
-	if(sub_str)
-	{
-		bm_extensions |= EXT_SHADER_DRAW_PARAMETERS;
-	}*/
+	glGenQueries(1, &query_object);
 	
-	glGenTextures(1, &albedo_buffer);
+	
+		
+	/*glGenTextures(1, &albedo_buffer);
 	glBindTexture(GL_TEXTURE_2D, albedo_buffer);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -297,7 +336,22 @@ void renderer_Init(int width, int height, int init_mode)
 	
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	
-	glGenQueries(1, &query_object);
+	glGenQueries(1, &query_object);*/
+	
+	
+	#ifdef QUERY_STAGES
+	stage_str[RENDERER_DRAW_SHADOW_MAPS_STAGE] = "Shadow maps";
+	stage_str[RENDERER_Z_PREPASS_STAGE] = "Z prepass";
+	stage_str[RENDERER_DRAW_WORLD_STAGE] = "World";
+	stage_str[RENDERER_SWAP_BUFFERS_STAGE] = "Swap";
+	stage_str[RENDERER_BIND_LIGHT_CACHE] = "Light cache";
+	stage_str[RENDERER_DRAW_FRAME] = "Draw frame";
+	stage_str[RENDERER_DRAW_GUI] = "GUI";
+	#endif
+	
+	return 1;
+	
+	
 	
 }
 
@@ -461,14 +515,35 @@ void renderer_OpenFrame()
 
 void renderer_DrawFrame()
 {
+	
+	
+	#ifdef QUERY_STAGES
+	renderer_BeginTimeElapsedQuery();
+	#endif
+	
 	int i;
+	
+	float s;
+	float e;
+	
+	
+	s = engine_GetDeltaTime();
+	
 	light_BindCache();
 	gpu_BindGpuHeap();
-	renderer_DrawShadowMaps();
-	renderer_ZPrePass();
-	renderer_DrawSkyBox();
+
+	
+	if(r_draw_shadow_maps)
+		renderer_DrawShadowMaps();
+		
+	if(r_z_prepass)
+		renderer_ZPrePass();
+	//renderer_DrawSkyBox();
 	renderer_DrawWorld();
 	renderer_DrawPlayers();
+	renderer_DrawParticles();
+	
+	
 	//renderer_DrawActivePlayer();
 	//renderer_DrawPlayers();
 	/*renderer_DrawWorldDeferred();	
@@ -487,12 +562,33 @@ void renderer_DrawFrame()
 	{
 		renderer_PostShadingRegisteredFunction[i]();
 	}
-	
-	//renderer_DrawGrid();
-	//renderer_DrawLights();
+		
 	renderer_DrawGUI();
 	gpu_UnbindGpuHeap();
 	light_UnbindCache();
+	
+	#ifdef QUERY_STAGES
+	renderer_EndTimeElapsedQuery(RENDERER_DRAW_FRAME);
+	#endif
+	
+	
+	e = engine_GetDeltaTime();
+	
+	
+	//printf("%f\n", e - s);
+	
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 }
 
 void renderer_ZPrePass()
@@ -515,6 +611,18 @@ void renderer_ZPrePass()
 	triangle_group_t *triangle_group;
 	
 	float color[4];
+	
+	
+	
+	/*#ifdef QUERY_STAGES
+	unsigned int elapsed;
+	glBeginQuery(GL_TIME_ELAPSED, renderer_ZPrePassQueryObject);
+	#endif*/
+	
+	/*#ifdef QUERY_STAGES
+	renderer_BeginTimeElapsedQuery();
+	#endif*/
+	
 	
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	glDrawBuffer(GL_BACK);
@@ -629,6 +737,18 @@ void renderer_ZPrePass()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glDisable(GL_STENCIL_TEST);
+	
+/*	#ifdef QUERY_STAGES
+	renderer_EndTimeElapsedQuery(RENDERER_Z_PREPASS_STAGE);
+	#endif*/
+	
+	/*#ifdef QUERY_STAGES
+	glEndQuery(GL_TIME_ELAPSED);
+	glGetQueryObjectuiv(query0, GL_QUERY_RESULT, &elapsed);	
+	query_results[0] = (float)elapsed / 1000000.0;
+	#endif*/
+	
+	
 }
 
 void renderer_DrawShadowMaps()
@@ -666,7 +786,13 @@ void renderer_DrawShadowMaps()
 	
 	if(!world_leaves)
 		return;
-
+	
+	
+	/*#ifdef QUERY_STAGE
+	renderer_BeginTimeElapsedQuery();
+	#endif*/
+	
+	
 	//gpu_BindGpuHeap();
 	shader_UseShader(shadow_pass_shader);
 	//shader_SetCurrentShaderUniform1i(UNIFORM_LIGHT_COUNT, visible_light_count);
@@ -681,7 +807,7 @@ void renderer_DrawShadowMaps()
 	//while(glGetError() != GL_NO_ERROR);	
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, shadow_map_frame_buffer);
 	//printf("==%x\n", glGetError());
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, shared_shadow_map, 0);
+	//glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, shared_shadow_map, 0);
 
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, light_cache_shadow_element_buffer);
@@ -780,9 +906,9 @@ void renderer_DrawShadowMaps()
 				break;
 			}
 		
-			
+			//while(glGetError() != GL_NO_ERROR);
 			//printf("1:%x\n", glGetError());
-			glViewport(x, y, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
+            glViewport(x, y, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
 			//printf("2:%x\n", glGetError());
 			glScissor(x, y, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
 			//printf("3:%x\n", glGetError());
@@ -822,6 +948,11 @@ void renderer_DrawShadowMaps()
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
 	
+/*	
+	#ifdef QUERY_STAGES
+	renderer_EndTimeElapsedQuery(RENDERER_DRAW_SHADOW_MAPS_STAGE);
+	#endif*/
+	
 }
 
 
@@ -839,9 +970,16 @@ void renderer_DrawGUI()
 	option_list_t *options;
 	option_t *option;
 	widget_bar_t *bar;
+	text_field_t *field;
 	
 	short x = 0;
 	short y = 0;
+	
+	
+/*	#ifdef QUERY_STAGES
+	renderer_BeginTimeElapsedQuery();
+	#endif*/
+	
 	
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
@@ -852,27 +990,23 @@ void renderer_DrawGUI()
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_DEPTH_TEST);
 	
+	
+	
+	
 	w = last_widget;
 	
 	_do_top:
 	
 	while(w)
 	{
-		
-		/* Ignore the top widget if it isn't its
-		turn to be rendered... */
-		/*if(w == top_widget)
-		{
-			if(!b_do_top)
-			{
-				w = w->next;
-				continue;
-			}
-		}*/
-		
+				
 		if(w->bm_flags & WIDGET_INVISIBLE)
 			goto _advance_widget;
 		
+		/*if(w->bm_flags & WIDGET_IGNORE_EDGE_CLIPPING)
+			glDisable(GL_STENCIL_TEST);
+		else
+			glEnable(GL_STENCIL_TEST);*/
 		
 		switch(w->type)
 		{
@@ -1097,7 +1231,15 @@ void renderer_DrawGUI()
 				
 				if(w->nestled)
 				{
-					glColor3f(0.0, 0.0 ,0.0);
+					if(option == (option_t *)options->active_option)
+					{
+						glColor3f(1.0, 1.0, 1.0);
+					}
+					else
+					{
+						glColor3f(0.2, 0.2 ,0.2);
+					}
+					
 					
 					glBegin(GL_TRIANGLES);
 					glVertex3f(w->x + w->w + x, w->y + y, 0.0);
@@ -1185,6 +1327,42 @@ void renderer_DrawGUI()
 			
 				
 			break;
+			
+			case WIDGET_TEXT_FIELD:
+				
+				field = (text_field_t *)w;
+				
+				if(w->bm_flags & WIDGET_MOUSE_OVER)
+				{
+					glColor3f(0.5, 0.5, 0.5);
+				}
+				else
+				{
+					glColor3f(0.4, 0.4, 0.4);
+				}
+				
+				
+				
+				glBegin(GL_QUADS);
+				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+				glEnd();
+				
+				if(field->bm_text_field_flags & TEXT_FIELD_CURSOR_VISIBLE)
+				{
+					glColor3f(1.0, 1.0, 1.0);
+					glBegin(GL_QUADS);
+					glVertex3f(w->x - w->w + x, w->y + w->h + y - 1.0, 0.0);
+					glVertex3f(w->x - w->w + x, w->y - w->h + y + 1.0, 0.0);
+					glVertex3f(w->x - w->w + x + 2.0, w->y - w->h + y + 1.0, 0.0);
+					glVertex3f(w->x - w->w + x + 2.0, w->y + w->h + y - 1.0, 0.0);
+					glEnd();
+			
+				}
+				
+			break;
 		}
 		
 		
@@ -1231,6 +1409,13 @@ void renderer_DrawGUI()
 	
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
+	
+	
+	
+/*	#ifdef QUERY_STAGES
+	renderer_EndTimeElapsedQuery(RENDERER_DRAW_GUI);
+	#endif*/
+	
 	
 }
 
@@ -1455,9 +1640,18 @@ void renderer_DrawWorld()
 	int i;
 	int c = brush_count;
 	
+	static unsigned int query0;
+	static unsigned int query0_state = 0;
+	
+	static unsigned int query1;
+	static unsigned int query1_state = 0;
+	
 	int j;
 	int k;
 	int light_index;
+	
+	unsigned int elapsed;
+	float ms_elapsed;
 	
 	int l;
 	int m;
@@ -1471,7 +1665,24 @@ void renderer_DrawWorld()
 	float color[] = {1.0, 1.0, 1.0, 1.0};
 	
 	
-	glEnable(GL_STENCIL_TEST);
+/*	if(!query0_state)
+	{
+		query0_state = 1;
+		glGenQueries(1, &query0);
+	}
+	
+	if(!query1_state)
+	{
+		query1_state = 1;
+		glGenQueries(1, &query1);
+	}*/
+	
+	
+	/*#ifdef QUERY_STAGES
+	renderer_BeginTimeElapsedQuery();
+	#endif*/
+	
+	//glEnable(GL_STENCIL_TEST);
 	//glStencilFunc(GL_ALWAYS, 0x1, 0xff);
 	//glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);
 	//glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
@@ -1565,6 +1776,9 @@ void renderer_DrawWorld()
 			glActiveTexture(GL_TEXTURE0);
 		}	*/
 	
+	
+	//glBeginQuery(GL_TIME_ELAPSED, query1);
+	
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, shared_shadow_map);
 	glActiveTexture(GL_TEXTURE0);
@@ -1575,6 +1789,15 @@ void renderer_DrawWorld()
 	shader_SetCurrentShaderUniform1i(UNIFORM_HEIGHT, r_window_height);
 	shader_SetCurrentShaderUniform1i(UNIFORM_FRAME, r_frame);
 		
+	/*glEndQuery(GL_TIME_ELAPSED);
+	glGetQueryObjectuiv(query1, GL_QUERY_RESULT, &elapsed);
+	ms_elapsed = (float)elapsed / 1000000.0;	
+	printf("%f		", ms_elapsed);*/	
+	//if(query0_state == 1)
+	//{
+	//glBeginQuery(GL_TIME_ELAPSED, query0);
+	//query0_state = 2;
+	//}	
 		
 	for(i = 0; i < c; i++)
 	{	
@@ -1589,6 +1812,25 @@ void renderer_DrawWorld()
 		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
 		glDrawElements(GL_TRIANGLES, triangle_group->next, GL_UNSIGNED_INT, (void *)(triangle_group->start * sizeof(int)));
 	}
+	
+	//if(query0_state == 2)
+	//{
+	/*glEndQuery(GL_TIME_ELAPSED);
+	glGetQueryObjectuiv(query0, GL_QUERY_RESULT, &elapsed);	
+	ms_elapsed = (float)elapsed / 1000000.0;
+		
+	printf("%f\n", ms_elapsed);*/
+	//	query0_state = 1;
+		//query0_state = 3;
+	//}
+	
+	
+	
+	
+	
+	
+	
+	
 	//}
 	
 	//printf("%x\n", glGetError());
@@ -1597,6 +1839,11 @@ void renderer_DrawWorld()
 	glDisable(GL_STENCIL_TEST);
 	
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	
+	
+/*	#ifdef QUERY_STAGES
+	renderer_EndTimeElapsedQuery(RENDERER_DRAW_WORLD_STAGE);
+	#endif*/
 	
 }
 
@@ -1788,8 +2035,13 @@ void renderer_DrawSkyBox()
 	
 }
 
-#if 0
+void renderer_DrawParticles()
+{
+	
+}
 
+#if 0
+/* old deferred path... */
 void renderer_Shade()
 {
 	int i;
@@ -1975,10 +2227,68 @@ void renderer_Shade()
 
 void renderer_CloseFrame()
 {
+	/*#ifdef QUERY_STAGES
+	renderer_BeginTimeElapsedQuery();
+	#endif*/
+	
+	float s;
+	float e;
+	
+	//s = engine_GetDeltaTime();
+	
 	SDL_GL_SwapWindow(window);
 	r_frame++;
+	
+	#ifdef QUERY_STAGES
+	//renderer_EndTimeElapsedQuery(RENDERER_SWAP_BUFFERS_STAGE);
+	renderer_ReportQueryResults();
+	#endif
+	
+	
+	//e = engine_GetDeltaTime();
+	
+	//printf("%f\n", e - s);
 }
 
+
+void renderer_BeginTimeElapsedQuery()
+{
+	#ifdef QUERY_STAGES
+	glBeginQuery(GL_TIME_ELAPSED, query_object);
+	#endif
+}
+
+void renderer_EndTimeElapsedQuery(int stage_index)
+{
+	#ifdef QUERY_STAGES
+	unsigned int elapsed;
+	glEndQuery(GL_TIME_ELAPSED);
+	glGetQueryObjectuiv(query_object, GL_QUERY_RESULT, &elapsed);
+	query_results[stage_index] = (float)elapsed / 1000000.0;
+	#endif
+}
+
+
+void renderer_ReportQueryResults()
+{
+	#ifdef QUERY_STAGES
+	int i;
+	
+	for(i = 0; i < RENDERER_STAGE_COUNT; i++)
+	{
+		if(query_results[i] >= 0.0)
+		{
+			printf("%s: %f	", stage_str[i], query_results[i]);
+		}
+		query_results[i] = -1.0;
+		
+	}
+	
+	printf("\n");
+	
+	#endif
+	
+}
 
 
 void renderer_GetWindowSize(int *w, int *h)

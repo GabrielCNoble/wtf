@@ -22,6 +22,8 @@
 #include "bsp.h"
 #include "bsp_file.h"
 
+#include "engine.h"
+
 //bsp_node_t *world_bsp = NULL;
 //int world_leaves_count = 0;
 //bsp_sleaf_t *world_leaves = NULL;
@@ -65,6 +67,7 @@ static unsigned int *index_buffer = NULL;
 unsigned int world_element_buffer;
 
 extern int forward_pass_shader;
+
 
 
 
@@ -268,7 +271,7 @@ void world_LoadBsp(char *file_name)
 	{	
 		fread(&light_lump, sizeof(light_lump_t), 1, file);
 		
-		light_CreateLight("light", &light_lump.orientation, light_lump.position, light_lump.color, light_lump.radius, light_lump.energy);
+		light_CreateLight("light", &light_lump.orientation, light_lump.position, light_lump.color, light_lump.radius, light_lump.energy, light_lump.bm_flags);
 	}
 	
 	world_nodes = malloc(sizeof(bsp_pnode_t) * header.world_nodes_count);
@@ -334,6 +337,7 @@ void world_VisibleLeaves()
 	
 }
 
+/* BOTTLENECK: */
 void world_VisibleWorld()
 {
 	
@@ -359,6 +363,9 @@ void world_VisibleWorld()
 	float y_max;
 	float y_min;
 	
+	float s;
+	float e;
+	
 	bsp_dleaf_t *leaf;
 	triangle_group_t *group;
 	bsp_striangle_t *triangle;
@@ -371,9 +378,16 @@ void world_VisibleWorld()
 	if(!world_nodes)
 		return;
 	
+	
+	//s = engine_GetDeltaTime();
+	
 	//visible_leaves_count = 0;
 	//leaf = bsp_GetCurrentLeaf(world_nodes, active_camera->world_position);
 	visible_leaves = bsp_PotentiallyVisibleLeaves(&visible_leaves_count, active_camera->world_position);
+	
+	/*e = engine_GetDeltaTime();
+	
+	printf("%f\n", e - s);*/
 		
 	if(visible_leaves)
 	{
@@ -381,8 +395,21 @@ void world_VisibleWorld()
 		//printf("camera in leaf %d\n", visible_leaves[0]->leaf_index);
 		//light_VisibleLights(visible_leaves, visited_leaves_count);
 		
+		
+		
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_element_buffer);
-		indexes = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
+		
+		//s = engine_GetDeltaTime();
+		
+		/* BOTTLENECK: this call is taking between 2 and 6 ms, with brief sparks of 10
+		ms... holy shit... */
+		//indexes = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
+		indexes = index_buffer;
+		//e = engine_GetDeltaTime();
+		
+		
+		//printf("%f\n", e - s);
+		
 		
 		/* zero out the next index of every triangle group... */
 		for(i = 0; i < world_triangle_group_count; i++)
@@ -394,6 +421,7 @@ void world_VisibleWorld()
 		
 		for(j = 0; j < visible_leaves_count; j++)
 		{
+			break;
 			leaf = visible_leaves[j];
 			
 			corners[0].x = leaf->center.x - leaf->extents.x;
@@ -545,6 +573,8 @@ void world_VisibleWorld()
 			}
 		}*/
 		
+		
+		
 		/* for each leaf on the list... */
 		for(j = 0; j < visible_leaves_count; j++)
 		{
@@ -572,8 +602,14 @@ void world_VisibleWorld()
 			}
 		}
 
-		glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+		//glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(int) * world_vertices_count, index_buffer);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		
+		e = engine_GetDeltaTime();
+		
+		//printf("%f\n", e - s);
+		
 		
 		
 	}	
@@ -597,6 +633,7 @@ void world_Update()
 	if(world_handle != -1)
 	{
 		gpu_Free(world_handle);
+		free(index_buffer);
 		//free(leaf_batches);
 		//free(leaf_batches_indexes);
 		
@@ -607,6 +644,7 @@ void world_Update()
 	}
 	
 	leaf_lights = malloc(sizeof(bsp_lights_t ) * world_leaves_count);
+	index_buffer = malloc(sizeof(unsigned int ) * world_vertices_count);
 	
 	for(i = 0; i < world_leaves_count; i++)
 	{

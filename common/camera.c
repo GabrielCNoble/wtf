@@ -16,8 +16,8 @@
 //camera_list_t camera_list;
 
 static int camera_list_size;
-static int camera_count;
-static camera_t *camera_list;
+int camera_count;
+camera_t *camera_list;
 
 static int active_camera_index;
 
@@ -36,7 +36,7 @@ extern "C"
 camera_Init
 =============
 */
-void camera_Init()
+int camera_Init()
 {	
 	camera_list_size = 64;
 	camera_count = 0;
@@ -44,7 +44,7 @@ void camera_Init()
 	
 	renderer_RegisterCallback(camera_UpdateCamerasCallback, RENDERER_RESOLUTION_CHANGE_CALLBACK);
 	
-	return;
+	return 1;
 }
 
 
@@ -106,6 +106,11 @@ int camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, float 
 	camera_ComputeWorldToCameraMatrix(camera);
 	
 	return camera_index;
+}
+
+void camera_DestroyAllCameras()
+{
+	
 }
 
 void camera_SetCameraProjectionMatrix(camera_t *camera, float width, float height, float znear, float zfar, float fovy)

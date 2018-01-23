@@ -2,6 +2,8 @@
 #define R_EDITOR_H
 
 
+void renderer_EditorDraw();
+
 void renderer_DrawBrushes();
 
 void renderer_DrawGrid();
@@ -12,9 +14,11 @@ void renderer_DrawCursors();
 
 void renderer_DrawLights();
 
+void renderer_DrawSpawnPoints();
+
 void renderer_DrawLeaves();
 
-void renderer_DrawSelectedLightLeaves();
+void renderer_DrawLightLeaves();
 
 void renderer_DrawLightBoxes();
 

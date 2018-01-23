@@ -22,7 +22,7 @@ typedef struct
 
 
 
-void mesh_Init();
+int mesh_Init();
 
 void mesh_Finish();
 

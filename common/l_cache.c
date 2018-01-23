@@ -9,6 +9,8 @@
 #include "l_main.h"
 #include "l_cache.h"
 
+#include "engine.h"
+
 /* from l_main.c */
 extern int light_count;
 extern light_position_t *light_positions;
@@ -44,8 +46,9 @@ int *light_cache_frustum_counts;
 int *light_cache_index_buffers[LIGHT_CACHE_SIZE];
 light_cache_slot_t light_cache[LIGHT_CACHE_SIZE];
 
+gpu_lamp_t *lamp_buffer;
 
-
+unsigned int test_uniform_buffer;
 
 
 /* 360 frames (~6 seconds) before
@@ -65,10 +68,19 @@ void light_InitCache()
 	int *p;
 	
 	
-	
+	//while(glGetError() != GL_NO_ERROR);
 	glGenBuffers(1, &light_cache_uniform_buffer);
 	glBindBuffer(GL_UNIFORM_BUFFER, light_cache_uniform_buffer);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(gpu_lamp_t) * LIGHT_CACHE_SIZE, NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	
+	//printf("%d\n", glGetError());
+	
+	lamp_buffer = malloc(sizeof(gpu_lamp_t) * LIGHT_CACHE_SIZE);
+	
+	glGenBuffers(1, &test_uniform_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, test_uniform_buffer);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(test_t) * 8, NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 		
 	glGenBuffers(1, &light_cache_shadow_element_buffer);	
@@ -114,6 +126,7 @@ void light_InitCache()
 void light_FinishCache()
 {
 	free(light_cache_frustum_counts);
+	free(lamp_buffer);
 	glDeleteBuffers(1, &light_cache_uniform_buffer);
 	glDeleteBuffers(1, &light_cache_shadow_element_buffer);
 }
@@ -296,6 +309,11 @@ void light_UploadCache()
 	int light_index;
 	int uniform_index = 0;
 	
+	float s;
+	float e;
+	
+	test_t *p;
+	
 	vec4_t light_position;
 	light_position_t *pos;
 	light_params_t *parms;
@@ -305,8 +323,50 @@ void light_UploadCache()
 	if(!light_cache_uniform_buffer)
 		return;
 	
+	//while(glGetError() != GL_NO_ERROR);	
+	
 	glBindBuffer(GL_UNIFORM_BUFFER, light_cache_uniform_buffer);
-	lamp = (gpu_lamp_t *) glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+	
+	//s = engine_GetDeltaTime();
+	
+	/* BOTTLENECK: this call is taking between 3 and 6 ms... */
+	//lamp = (gpu_lamp_t *) glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+	lamp = lamp_buffer;
+	//e = engine_GetDeltaTime();
+		
+	
+	/*lamp[0].color_energy.r = 1.0;
+	lamp[0].color_energy.g = 0.0;
+	lamp[0].color_energy.b = 0.0;
+	lamp[0].color_energy.a = 0.0;
+	
+	
+	glUnmapBuffer(GL_UNIFORM_BUFFER);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	
+	
+	glBindBuffer(GL_UNIFORM_BUFFER, test_uniform_buffer);
+	p = (test_t *)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+	
+	p[0].color.r = 1.0;
+	p[0].color.g = 0.0;
+	p[0].color.b = 1.0;
+	p[0].color.a = 0.0;*/
+	
+	/*p[0].a0 = 0xffffffff;
+	p[0].a1 = 0xffffffff;
+	p[0].a2 = 0;
+	p[0].a3 = 0xffffffff;*/
+	
+	//glUnmapBuffer(GL_UNIFORM_BUFFER);	
+	//printf("%x\n", glGetError());
+	
+		
+	
+	
+	
+	
+//	printf("%x\n", glGetError());
 	
 	for(i = 0; i < light_cache_cursor; i++)
 	{
@@ -318,47 +378,33 @@ void light_UploadCache()
 		
 		if(light_cache[i].last_touched != r_frame) 
 			continue;
+		
+		//printf("update\n");
 			
 		if(parms->bm_flags & LIGHT_NEEDS_REUPLOAD)
 			light_UploadIndexes(light_index);
 			
-				
-		
-		/*light_position.x = pos->position.x;
-		light_position.y = pos->position.y;
-		light_position.z = pos->position.z;
-		light_position.w = 1.0;*/
-				
-		/*mat4_t_vec4_t_mult(&active_camera->world_to_camera_matrix, &light_position);*/
 		
 		pos->world_to_light_matrix.floats[3][0] = -pos->position.x;
 		pos->world_to_light_matrix.floats[3][1] = -pos->position.y;
 		pos->world_to_light_matrix.floats[3][2] = -pos->position.z;
-	
-		//light_cache[i].gpu_index = uniform_index;
 		
 		uniform_index = light_cache[i].offset;
 			
-		/*lamp[uniform_index].position_radius.x = light_position.x;
-		lamp[uniform_index].position_radius.y = light_position.y;
-		lamp[uniform_index].position_radius.z = light_position.z;*/
 		
 		lamp[uniform_index].position_radius.x = pos->position.x;
 		lamp[uniform_index].position_radius.y = pos->position.y;
 		lamp[uniform_index].position_radius.z = pos->position.z;
-		
 		lamp[uniform_index].position_radius.w = LIGHT_RADIUS(parms->radius);
 			
 		lamp[uniform_index].color_energy.r = (float)parms->r / 255.0;
 		lamp[uniform_index].color_energy.g = (float)parms->g / 255.0;
 		lamp[uniform_index].color_energy.b = (float)parms->b / 255.0;
 		lamp[uniform_index].color_energy.a = LIGHT_ENERGY(parms->energy);
-			
-		//lamp[uniform_index].radius = LIGHT_MAX_RADIUS * ((float)parms->radius / 0xffff);
-		//lamp[uniform_index].energy = LIGHT_MAX_ENERGY * ((float)parms->energy / 0xffff);
+
 		lamp[uniform_index].bm_flags = parms->bm_flags;
 		lamp[uniform_index].x_y = (parms->y << 16) | parms->x;
-		
+		lamp[uniform_index].bm_flags = parms->bm_flags & LIGHT_GENERATE_SHADOWS;
 		/*if(parms->bm_flags & LIGHT_GENERATE_SHADOWS)
 			lamp[uniform_index].bm_flags = 1;
 		else
@@ -370,20 +416,41 @@ void light_UploadCache()
 		
 	}
 	
-	glUnmapBuffer(GL_UNIFORM_BUFFER);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(gpu_lamp_t) * LIGHT_CACHE_SIZE, lamp_buffer);
+	
+	//glUnmapBuffer(GL_UNIFORM_BUFFER);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	
+	//e = engine_GetDeltaTime();
+	
+	//printf("%f\n", e - s);
 	
 }
 
 void light_BindCache()
 {
+	//glBindBuffer(GL_UNIFORM_BUFFER, test_uniform_buffer);
 	glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_PARAMS_UNIFORM_BUFFER_BINDING, light_cache_uniform_buffer);
+	//glBindBufferBase(GL_UNIFORM_BUFFER, TEST_UNIFORM_BUFFER_BINDING, test_uniform_buffer);
+	
 	//glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_CLUSTER_UNIFORM_BUFFER_BINDING, cluster_uniform_buffer);
 }
 
 void light_UnbindCache()
 {
-	glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_PARAMS_UNIFORM_BUFFER_BINDING, 0);
+	//glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	
+	/*=========================================================================*/
+	/*=========================================================================*/
+	/*=========================================================================*/
+	//glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_PARAMS_UNIFORM_BUFFER_BINDING, 0);
+	/*=========================================================================*/
+	/*=========================================================================*/
+	/*=========================================================================*/
+	
+	
+	
+	//glBindBufferBase(GL_UNIFORM_BUFFER, TEST_UNIFORM_BUFFER_BINDING, 0);
 	//glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_CLUSTER_UNIFORM_BUFFER_BINDING, 0);
 }
 
@@ -577,7 +644,7 @@ void light_UploadIndexes(int light_index)
 					{
 						first_vertex = &world_vertices[visible_triangles[i].first_vertex];
 						
-						
+						/* TODO: FIX THIS! */
 						for(j = 0; j < 6; j++)
 						{
 							start_index = block_index + j * MAX_INDEXES_PER_FRUSTUM;

@@ -17,12 +17,6 @@ typedef struct bsp_portal_t
 	short go_through;
 }bsp_portal_t;
 
-typedef struct
-{
-	vec3_t normal;
-	vec3_t point;
-}bsp_clipplane_t;
-
 enum PORTAL_PLANE
 {
 	PORTAL_FRONT,

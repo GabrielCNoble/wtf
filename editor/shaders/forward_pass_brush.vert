@@ -1,4 +1,4 @@
-#version 130
+#version 400 compatibility
 in vec4 vertex_position;
 in vec4 vertex_normal;
 in vec4 vertex_tangent;
