@@ -762,6 +762,17 @@ void mat3_t_compose(mat3_t *result, vec3_t vec)
 	return;
 }
 
+__fastcall void mat3_t_vec3_t_mult(mat3_t *mat, vec3_t *vec)
+{
+	vec3_t temp;
+	
+	temp.x = vec->x * mat->floats[0][0] + vec->y * mat->floats[1][0] + vec->z * mat->floats[2][0];
+	temp.y = vec->x * mat->floats[0][1] + vec->y * mat->floats[1][1] + vec->z * mat->floats[2][1];
+	temp.z = vec->x * mat->floats[0][2] + vec->y * mat->floats[1][2] + vec->z * mat->floats[2][2];
+	
+	*vec = temp; 
+}
+
 
 vec3_t MultiplyVector3(mat3_t *mat, vec3_t vec)
 {

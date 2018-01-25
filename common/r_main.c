@@ -1501,6 +1501,9 @@ void renderer_DrawPlayers()
 	
 	for(i = 0; i < c; i++)
 	{
+		if(&players[i] == active_player)
+			continue;
+			
 		glVertex3f(players[i].player_position.x, players[i].player_position.y, players[i].player_position.z);
 	}
 	

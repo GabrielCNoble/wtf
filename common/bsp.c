@@ -284,10 +284,37 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 		trace->position = mid;
 		trace->frac = midf;
 		
+		/*if(d0 < DIST_EPSILON)
+		{
+			printf("fuck...\n");
+		}*/
+		
+		//if(d0 < DIST_EPSILON)
+		//{
+		//	trace->position = *start;
+		//	trace->frac = 0.0;
+		//}
+		
+		
+		if(bsp_SolidPoint(collision_nodes, mid) == BSP_SOLID_LEAF)
+		{
+			trace->bm_flags |= TRACE_MID_SOLID;
+		//	editor_StopPIE();
+		//	//assert(0);
+			
+			//printf("oh shit... %f... ", d0);
+		}
+		
+		//printf("[%f %f %f]\n", trace->normal.x, trace->normal.y, trace->normal.z);
+		
+		
 		//frac = trace->frac;
 		
 		/*while(bsp_SolidPoint(collision_nodes, mid) == BSP_SOLID_LEAF)
 		{
+			
+			
+			
 			frac -= 0.1;
 			
 			if(frac < 0.0)

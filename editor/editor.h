@@ -19,9 +19,13 @@ void editor_ProcessKeyboard(float delta_time);*/
 
 void editor_TranslateSelections(vec3_t direction, float amount);
 
-void editor_RotateSelections(vec3_t axis, float amount, int individual_origins);
+void editor_RotateSelections(vec3_t axis, float amount);
 
-void editor_DeleteSelections();
+void editor_ScaleSelections(vec3_t axis, float amount);
+
+void editor_CopySelections();
+
+void editor_DeleteSelection();
 
 void editor_AddToWorld(int type, vec3_t position, mat3_t *orientation);
 
@@ -42,6 +46,10 @@ void editor_DropSelection(pick_record_t *record);
 void editor_ClearSelection();
 
 void editor_ExportMap(char *file_name);
+
+void editor_StartPIE();
+
+void editor_StopPIE();
 
 void editor_WindowResizeCallback();
 

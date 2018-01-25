@@ -71,6 +71,8 @@ static inline void MultiplyVector4(mat4_t *mat, vec4_t *vec);
 
 __fastcall void mat4_t_vec4_t_mult(mat4_t *mat, vec4_t *vec);
 
+__fastcall void mat3_t_vec3_t_mult(mat3_t *mat, vec3_t *vec);
+
 vec3_t MultiplyVector3(mat3_t *mat, vec3_t vec);
 
 //PEWAPI static inline void mat3_t_vec3_t_mult(mat3_t *mat, avec3_t *vec);

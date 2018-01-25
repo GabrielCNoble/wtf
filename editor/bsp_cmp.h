@@ -58,6 +58,9 @@ typedef struct bsp_leaf_t
 	int triangle_count;
 	bsp_triangle_t *triangles;
 	
+	
+	vec3_t center;
+	
 	int leaf_index;
 	
 	int portal_count;

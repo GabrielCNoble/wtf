@@ -76,6 +76,10 @@ int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short 
 
 int brush_CreateEmptyBrush();
 
+void brush_BuildTriangleGroups(brush_t *brush);
+
+int brush_CopyBrush(brush_t *src);
+
 void brush_DestroyBrush(brush_t *brush);
 
 void brush_DestroyBrushIndex(int brush_index);

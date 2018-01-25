@@ -1155,11 +1155,11 @@ void bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp
 				v0.z = point.z - dst_portal_polygon->vertices[k].z;
 				
 				
-				if(v0.x <= 0.000001 && v0.x >= -0.000001)
+				if(v0.x <= 0.0001 && v0.x >= -0.0001)
 				{
-					if(v0.y <= 0.000001 && v0.y >= -0.000001)
+					if(v0.y <= 0.0001 && v0.y >= -0.0001)
 					{
-						if(v0.z <= 0.000001 && v0.z >= -0.000001)
+						if(v0.z <= 0.0001 && v0.z >= -0.0001)
 						{
 							/* src and dst portals share this vertex, 
 							so skip it... */
@@ -1192,7 +1192,14 @@ void bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp
 				{
 					case POLYGON_FRONT | POLYGON_BACK:
 					//case POLYGON_FRONT | POLYGON_STRADDLING:
-					//case POLYGON_BACK | POLYGON_STRADDLING:
+					//case POLYGON_BACK  | POLYGON_STRADDLING:
+						
+					/*	if(cls == (POLYGON_FRONT | POLYGON_STRADDLING) || cls == (POLYGON_BACK | POLYGON_STRADDLING))
+						{
+							if(dst_side == POLYGON_STRADDLING)
+								break;
+						}*/
+						
 						clipplanes[clipplane_count].point = point;
 						clipplanes[clipplane_count].normal = normal;
 						clipplane_count++;
@@ -1201,6 +1208,10 @@ void bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp
 				}
 			}
 		}
+		
+		/*if(clipplane_count < dst_portal_polygon->vert_count)
+			continue;*/
+		
 		
 		/*if(!clipplane_count)
 			printf("no clip planes!\n");
@@ -1346,13 +1357,17 @@ void bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp
 		
 	}
 	
+	dst_leaf->pvs[dst_leaf->leaf_index >> 3] &= ~(1 << (dst_leaf->leaf_index % 8));
+	
+	_bail:
+	
 	free(valid_portals);
 	free(out_valid_dst_portals);
 	free(clipplanes);	
 	
 	/* clear this leaf's bit from it's own pvs, to signal we're done recursing
 	through this leaf, and it's safe to go through it again if so is needed... */
-	dst_leaf->pvs[dst_leaf->leaf_index >> 3] &= ~(1 << (dst_leaf->leaf_index % 8));
+	
 	//printf("<<<leaf %d\n", dst_leaf->leaf_index);
 	
 }
@@ -1410,7 +1425,12 @@ void bsp_PvsForLeaf(bsp_leaf_t *leaf)
 		{
 			if(dst_leaf->portals[j] != portals[i])
 			{
-				in_dst_portals[in_dst_portal_count++] = dst_leaf->portals[j];
+				in_dst_portals[in_dst_portal_count] = dst_leaf->portals[j];
+				
+				//printf("%x\n", in_dst_portals[in_dst_portal_count]);
+				
+				in_dst_portal_count++;
+				
 			}
 		}
 		

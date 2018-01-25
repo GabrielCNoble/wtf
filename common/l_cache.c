@@ -202,8 +202,11 @@ void light_DropLight(int light_index)
 	int i;
 	light_cache_slot_t t;
 	
-	if(light_index >= 0 && light_index < light_cache_cursor)
+	if(light_index >= 0 && light_index < light_count)
 	{
+		if(light_params[light_index].bm_flags & LIGHT_INVALID)
+			return;
+		
 		cache = light_params[light_index].cache;
 		light_params[light_index].cache = -1;
 	
@@ -211,18 +214,25 @@ void light_DropLight(int light_index)
 		
 		if(cache > -1)
 		{
-			t = light_cache[cache];
-			light_cache[cache] = light_cache[light_cache_cursor - 1];
-			light_cache[light_cache_cursor - 1] = t;
+			light_cache[cache].light_index = -1;
 			
-			i = light_cache[cache].light_index;
-			light_params[i].cache = cache;
-		
+			if(cache < light_cache_cursor - 1)
+			{	
+				/* swap cache slots, as it keeps 
+				offsets for shadow map elements buffers... */
+				t = light_cache[cache];
+				light_cache[cache] = light_cache[light_cache_cursor - 1];
+				light_cache[light_cache_cursor - 1] = t;
+				
+				i = light_cache[cache].light_index;
+				light_params[i].cache = cache;
+			}
+					
+			light_FreeShadowMap(light_index);
+			light_cache_cursor--;
 		}
 		
-		light_FreeShadowMap(light_index);
 		
-		light_cache_cursor--;
 		
 		/* try not to put indexes in the
 		free stack whenever possible... */
@@ -270,8 +280,11 @@ void light_EvictOld()
 			
 			//l_cache[i].light_index = 0xffff;
 			
+			light_cache[i].light_index = -1;
+			
 			if(i < light_cache_cursor - 1)
 			{
+				
 				t = light_cache[i];
 				light_cache[i] = light_cache[light_cache_cursor - 1];
 				light_cache[light_cache_cursor - 1] = t;

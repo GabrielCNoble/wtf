@@ -36,9 +36,10 @@ option_list_t *option_list;
 
 option_list_t *add_to_world_menu;
 option_list_t *brush_types_option_list;
-
-
 dropdown_t *misc_dropdown = NULL;
+
+
+option_list_t *delete_menu;
 
 //dropdown_t *wow;
 
@@ -61,6 +62,7 @@ int add_light_unique_index;
 int add_brush_unique_index;
 int add_cube_brush_unique_index;
 int add_cylinder_brush_unique_index;
+int add_spawn_point_unique_index;
 
 
 
@@ -186,6 +188,7 @@ void add_to_world_menu_callback(widget_t *widget)
 	pick_record_t record;
 	int light_index;
 	int brush_index;
+	int index;
 	
 	if(widget->type == WIDGET_OPTION)
 	{
@@ -194,7 +197,7 @@ void add_to_world_menu_callback(widget_t *widget)
 		if(option->unique_index == add_light_unique_index)
 		{
 			
-			light_index = light_CreateLight("light", &r, cursor_3d_position, vec3(1.0, 1.0, 1.0), 25.0, 20.0, 0);
+			light_index = light_CreateLight("light", &r, cursor_3d_position, vec3(1.0, 1.0, 1.0), 25.0, 20.0, LIGHT_GENERATE_SHADOWS);
 			
 			record.type = PICK_LIGHT;
 			record.index0 = light_index;
@@ -220,6 +223,28 @@ void add_to_world_menu_callback(widget_t *widget)
 		}
 		else if(option->unique_index == add_cylinder_brush_unique_index)
 		{
+			brush_index = brush_CreateBrush(cursor_3d_position, &r, vec3(1.0, 1.0, 1.0), BRUSH_CYLINDER);
+			
+			
+			record.type = PICK_BRUSH;
+			record.index0 = brush_index;
+			
+			editor_ClearSelection();
+			editor_AddSelection(&record);
+			
+			handle_3d_position = cursor_3d_position;
+		}
+		else if(option->unique_index == add_spawn_point_unique_index)
+		{
+			index = player_CreateSpawnPoint(cursor_3d_position, "spawn point");
+			
+			/*
+			record.type = PICK_SPAWN_POINT;
+			record.index0 = index;
+			editor_ClearSelection();
+			editor_AddSelection(&record);*/
+			
+			handle_3d_position = cursor_3d_position;
 			
 		}
 		
@@ -238,6 +263,19 @@ void add_to_world_menu_callback(widget_t *widget)
 				
 			break;
 		}*/
+	}
+}
+
+
+void delete_selection_menu_callback(widget_t *widget)
+{
+	option_t *option;
+	
+	switch(widget->type)
+	{
+		case WIDGET_OPTION:
+			editor_DeleteSelection();
+		break;
 	}
 }
 
@@ -282,8 +320,10 @@ void editor_InitUI()
 	add_to_world_menu = gui_CreateOptionList("add to world", 0, 0, 100, 0, add_to_world_menu_callback);
 	gui_AddOptionToList(add_to_world_menu, "add light", "add light");
 	gui_AddOptionToList(add_to_world_menu, "add brush", "add brush");
+	gui_AddOptionToList(add_to_world_menu, "add spawn point", "add spawn point");
 	
 	add_light_unique_index = gui_GetOptionUniqueIndex(add_to_world_menu, 0);
+	add_spawn_point_unique_index = gui_GetOptionUniqueIndex(add_to_world_menu, 2);
 	//add_brush_unique_index = gui_GetOptionUniqueIndex(add_to_world_menu, 1);
 	
 	brush_types_option_list = gui_NestleOptionList(add_to_world_menu, 1, "brush type options");
@@ -295,6 +335,13 @@ void editor_InitUI()
 	add_cylinder_brush_unique_index = gui_GetOptionUniqueIndex(brush_types_option_list, 1);
 		
 	gui_SetInvisible((widget_t *)add_to_world_menu);
+	
+	
+	delete_menu = gui_CreateOptionList("delete", 0, 0, 100, 0, delete_selection_menu_callback);
+	gui_AddOptionToList(delete_menu, "delete", "delete?");
+	
+	gui_SetInvisible((widget_t *)delete_menu);
+	
 
 
 	//gui_AddTextField(NULL, "text field", 0, 0, 150, 0, NULL);
@@ -326,6 +373,16 @@ void editor_CloseAddToWorldMenu()
 	if(add_to_world_menu)
 	{
 		gui_SetInvisible((widget_t *)add_to_world_menu);
+	}
+}
+
+void editor_OpenDeleteSelectionMenu(int x, int y)
+{
+	if(delete_menu)
+	{
+		gui_SetVisible((widget_t *)delete_menu);
+		delete_menu->widget.x = x;
+		delete_menu->widget.y = y;
 	}
 }
 

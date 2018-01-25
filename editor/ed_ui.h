@@ -10,6 +10,8 @@ void editor_OpenAddToWorldMenu(int x, int y);
 
 void editor_CloseAddToWorldMenu();
 
+void editor_OpenDeleteSelectionMenu(int x, int y);
+
 void editor_UIWindowResizeCallback();
 
 

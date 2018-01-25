@@ -164,7 +164,7 @@ void gui_UpdateDropdown(widget_t *widget)
 void gui_PostUpdateDropdown(widget_t *widget)
 {
 	dropdown_t *dropdown = (dropdown_t *)widget;
-	if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
+	if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED || (input_GetKeyStatus(SDL_SCANCODE_ESCAPE) & KEY_JUST_PRESSED))
 	{
 		if(!(dropdown->bm_dropdown_flags & DROPDOWN_JUST_DROPPED))
 		{

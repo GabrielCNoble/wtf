@@ -5,6 +5,7 @@
 #include "pvs.h"
 #include "world.h"
 #include "camera.h"
+#include "player.h"
 
 #include <float.h>
 
@@ -18,7 +19,10 @@
 /* from brush.c */
 extern int brush_count;
 extern brush_t *brushes;
+extern int expanded_brush_count;
 extern brush_t *expanded_brushes;
+
+bsp_polygon_t *expanded_polygons = NULL;
 
 /* from light.c */
 extern int visible_light_count;
@@ -56,7 +60,7 @@ bsp_polygon_t *world_polygons_debug = NULL;
 
 
 #define DRAW_EXPANDED_BRUSHES
-#define DRAW_BEVEL_EDGES
+//#define DRAW_BEVEL_EDGES
 #define DRAW_WORLD_POLYGONS
 
 
@@ -1824,6 +1828,7 @@ bsp_polygon_t *bsp_BuildPolygonsFromBrush(brush_t *brush)
 	{
 		case BRUSH_CUBE:
 		case BRUSH_CYLINDER:
+		case BRUSH_BOUNDS:
 			for(i = 0; i < 6; i++)
 			{
 				
@@ -1990,6 +1995,12 @@ bsp_triangle_t *bsp_BuildTrianglesFromBrushes()
 	{
 		
 		brush = &brushes[i];
+		
+		if(brush->type == BRUSH_INVALID)
+			continue;
+		
+		if(brush->type == BRUSH_BOUNDS)
+			continue;	
 		
 		k = brush->vertex_count;
 		
@@ -2243,7 +2254,7 @@ bsp_polygon_t *bsp_ClipBspToBsp(bsp_node_t *bsp, bsp_node_t *input)
 bsp_ClipBrushes
 ==============
 */
-bsp_polygon_t *bsp_ClipBrushes(brush_t *brushes, int brush_count)
+bsp_polygon_t *bsp_ClipBrushes(brush_t *brush_list, int brush_list_count)
 {
 	
 	int i;
@@ -2260,7 +2271,7 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brushes, int brush_count)
 	bsp_polygon_t *r;
 	bsp_polygon_t *s;
 	
-	c = brush_count;
+	c = brush_list_count;
 		
 	
 	/* to do the union operation between two brushes, it's necessary
@@ -2272,6 +2283,7 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brushes, int brush_count)
 	if(c)
 	{
 		
+		i = 0;
 		
 		do
 		{
@@ -2279,30 +2291,32 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brushes, int brush_count)
 			(brush A in the first iteration of the loop below)... */
 		
 			/* HACK!! */
-			if(!brushes[0].polygons)
-				polygons_a = bsp_BuildPolygonsFromBrush(&brushes[0]);
+			if(!brush_list[i].polygons)
+				polygons_a = bsp_BuildPolygonsFromBrush(&brush_list[i]);
 			else
 				
 				#ifdef DRAW_EXPANDED_BRUSHES
-				polygons_a = bsp_DeepCopyPolygons(brushes[0].polygons);
+				polygons_a = bsp_DeepCopyPolygons(brush_list[i].polygons);
 				#else
-				polygons_a = brushes[0].polygons;
+				polygons_a = brush_list[i].polygons;
 				#endif
+				
+				i++;
 		}while(!polygons_a);
 		
 		
-		for(i = 1; i < c; i++)
+		for(; i < c; i++)
 		{
 			
 			/* build the polygon list for this brush... */	
 			/* HACK! HACK! HACK! */
-			if(!brushes[i].polygons)
-				polygons_b = bsp_BuildPolygonsFromBrush(&brushes[i]);
+			if(!brush_list[i].polygons)
+				polygons_b = bsp_BuildPolygonsFromBrush(&brush_list[i]);
 			else
 				#ifdef DRAW_EXPANDED_BRUSHES
-				polygons_b = bsp_DeepCopyPolygons(brushes[i].polygons);
+				polygons_b = bsp_DeepCopyPolygons(brush_list[i].polygons);
 				#else
-				polygons_b = brushes[i].polygons;
+				polygons_b = brush_list[i].polygons;
 				#endif
 			
 			if(!polygons_b)
@@ -3057,6 +3071,7 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 {
 	int i;
 	int j;
+	int c;
 	int vert_count;
 	float d;
 	bsp_edge_t *edges;
@@ -3082,7 +3097,7 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 		expanded_brushes = malloc(sizeof(brush_t) * brush_count);
 	else
 	{
-		for(i = 0; i < brush_count; i++)
+		for(i = 0; i < expanded_brush_count; i++)
 		{
 			polygons = expanded_brushes[i].polygons;
 			
@@ -3118,11 +3133,15 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 	
 	
 		
-	for(i = 0; i < brush_count; i++)
+	for(i = 0, c = 0; i < brush_count; i++)
 	{
 		//edges = bsp_BuildEdgesFromBrush(&brushes[i]);
 		
-		expanded_brushes[i] = brushes[i];
+		if(brushes[i].type == BRUSH_INVALID)
+			continue;
+		
+		
+		
 		
 	//	#if 0
 		
@@ -3133,7 +3152,8 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 		
 		edges = bsp_BuildBevelEdges(polygons);
 		
-		expanded_brushes[i].polygons = polygons;
+		expanded_brushes[c] = brushes[i];
+		expanded_brushes[c].polygons = polygons;
 		
 		
 		
@@ -3199,6 +3219,8 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 			
 			polygon = polygon->next;
 		}
+		
+		#if 0
 		
 		edge = edges;
 		prev = NULL;
@@ -3267,6 +3289,9 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 			edge = edge->next;
 		} 
 		
+		#endif
+		
+		
 		#ifdef DRAW_BEVEL_EDGES
 			
 		if(prev)
@@ -3286,19 +3311,12 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 		
 		#endif
 		
-		
-		
-		
-	//	#endif
-		
-		
-		
-		
-		
-		//expanded_brushes[i].
-		
-		
+		c++;
+
+			
 	}
+	
+	expanded_brush_count = c;
 	
 }
 
@@ -3306,20 +3324,41 @@ void bsp_BuildCollisionBsp()
 {
 	
 	bsp_polygon_t *polygons;
+	bsp_polygon_t *p;
+	bsp_polygon_t *r;
 	bsp_node_t *root = NULL;
 	int c;
 	
-	bsp_ExpandBrushes(vec3(0.5, 2.0, 0.5));
+	bsp_ExpandBrushes(vec3(PLAYER_X_EXTENT, PLAYER_Y_EXTENT, PLAYER_Z_EXTENT));
+	printf("bsp_ExpandBrushes\n");
 	
-	polygons = bsp_ClipBrushes(expanded_brushes, brush_count);
-	
+	polygons = bsp_ClipBrushes(expanded_brushes, expanded_brush_count);
+	printf("bsp_ClipBrushes\n");
+		
 	if(!polygons)
 		return;
 	
+	#ifdef DRAW_EXPANDED_BRUSHES
+	p = expanded_polygons;
+	
+	while(p)
+	{
+		r = p->next;
+		free(p->vertices);
+		free(p);
+		p = r;
+	}
+	
+	expanded_polygons = bsp_DeepCopyPolygons(polygons);
+	#endif	
+		
+	
 	bsp_BuildSolidLeaf(&root, polygons);
+	//bsp_BuildSolid(&root, polygons);
+	printf("bsp_BuildSolidLeaf\n");
 	
 	bsp_LinearizeBsp(root, NULL, NULL, &collision_nodes, &collision_nodes_count, NULL, NULL, NULL, 0, 0);
-	
+	printf("bsp_LinearizeBsp\n");
 	
 }
 
@@ -3789,6 +3828,8 @@ void bsp_BuildSolidLeaf(bsp_node_t **root, bsp_polygon_t *polygons)
 	
 	vec3_t v;
 	
+	vec3_t center;
+	
 	int i;
 	int c;
 	
@@ -3912,6 +3953,33 @@ void bsp_BuildSolidLeaf(bsp_node_t **root, bsp_polygon_t *polygons)
 		{
 			leaf->bm_flags |= BSP_SOLID;
 		}
+		else
+		{
+			center.x = 0.0;
+			center.y = 0.0;
+			center.z = 0.0;
+			
+			c = 0;
+			while(polygons)
+			{
+				for(i = 0; i < polygons->vert_count; i++)
+				{
+					center.x += polygons->vertices[i].x;
+					center.y += polygons->vertices[i].y;
+					center.z += polygons->vertices[i].z;
+					
+					c++;
+				}
+				
+				polygons = polygons->next;
+			}
+			
+			center.x /= c;
+			center.y /= c;
+			center.z /= c;
+			
+			leaf->center = center;
+		}
 		
 		//root->back = NULL;
 		//root->front = NULL;
@@ -4014,6 +4082,18 @@ void bsp_CompileBsp(int remove_outside)
 	bsp_polygon_t *polygons = NULL;
 	bsp_node_t *bsp;
 	
+	mat3_t r = mat3_t_id();
+	
+	vec3_t maxs = {-9999999999.9, -9999999999.9, -9999999999.9};
+	vec3_t mins = {9999999999.9, 9999999999.9, 9999999999.9};
+	vec3_t center;
+	
+	int pos_x_bounds;
+	int neg_x_bounds;
+	int pos_y_bounds;
+	int neg_y_bounds;
+	int pos_z_bounds;
+	int neg_z_bounds;
 	
 	if(world_triangle_groups)
 	{
@@ -4043,6 +4123,44 @@ void bsp_CompileBsp(int remove_outside)
 	//bsp_polygon_t *polygons = NULL;
 	bsp_triangle_t *triangles;
 	
+/*	
+	
+	
+	for(i = 0; i < k; i++)
+	{
+		for(j = 0; j < brushes[i].vertex_count; j++)
+		{
+			if(brushes[i].vertices[j].position.x > maxs.x) maxs.x = brushes[i].vertices[j].position.x;
+			if(brushes[i].vertices[j].position.y > maxs.y) maxs.y = brushes[i].vertices[j].position.y;
+			if(brushes[i].vertices[j].position.z > maxs.z) maxs.z = brushes[i].vertices[j].position.z;
+			
+			if(brushes[i].vertices[j].position.x < mins.x) mins.x = brushes[i].vertices[j].position.x;
+			if(brushes[i].vertices[j].position.y < mins.y) mins.y = brushes[i].vertices[j].position.y;
+			if(brushes[i].vertices[j].position.z < mins.z) mins.z = brushes[i].vertices[j].position.z;
+		}
+	}
+	
+	
+	maxs.x += 50.0;
+	maxs.y += 50.0;
+	maxs.z += 50.0;
+	
+	mins.x -= 50.0;
+	mins.y -= 50.0;
+	mins.z -= 50.0;
+	
+	
+	// HACK - create six brushes around the map, so the pvs calculation become faster and correct... 
+	pos_x_bounds = brush_CreateBrush(vec3(maxs.x, 0.0, 0.0), &r, vec3(1.0, 500.0, 500.0), BRUSH_BOUNDS);
+	neg_x_bounds = brush_CreateBrush(vec3(mins.x, 0.0, 0.0), &r, vec3(1.0, 500.0, 500.0), BRUSH_BOUNDS);
+	
+	pos_y_bounds = brush_CreateBrush(vec3(0.0, maxs.y, 0.0), &r, vec3(500.0, 1.0, 500.0), BRUSH_BOUNDS);
+	neg_y_bounds = brush_CreateBrush(vec3(0.0, mins.y, 0.0), &r, vec3(500.0, 1.0, 500.0), BRUSH_BOUNDS);
+	
+	pos_z_bounds = brush_CreateBrush(vec3(0.0, 0.0, maxs.z), &r, vec3(500.0, 500.0, 1.0), BRUSH_BOUNDS);
+	neg_z_bounds = brush_CreateBrush(vec3(0.0, 0.0, mins.z), &r, vec3(500.0, 500.0, 1.0), BRUSH_BOUNDS);
+	*/
+	
 	
 	printf("bsp_CompileBsp: bsp_ClipBrushes... ");		
 	polygons = bsp_ClipBrushes(brushes, brush_count); 
@@ -4054,6 +4172,7 @@ void bsp_CompileBsp(int remove_outside)
 	
 	world_polygons_debug = bsp_DeepCopyPolygons(polygons);
 	#endif
+	
 	
 	
 	printf("bsp_CompileBsp: bsp_SolidLeafBsp... ");
@@ -4098,6 +4217,14 @@ void bsp_CompileBsp(int remove_outside)
 	
 	
 	world_Update();
+	
+	/* get rid of'em... */
+	/*brush_DestroyBrushIndex(pos_x_bounds);
+	brush_DestroyBrushIndex(neg_x_bounds);
+	brush_DestroyBrushIndex(pos_y_bounds);
+	brush_DestroyBrushIndex(neg_y_bounds);
+	brush_DestroyBrushIndex(pos_z_bounds);
+	brush_DestroyBrushIndex(neg_z_bounds);*/
 	
 	
 	//bsp_BuildEdgesFromBrush(&brushes[0]);
@@ -4179,8 +4306,25 @@ void bsp_DrawExpandedBrushes()
 	glLineWidth(2.0);
 	glBegin(GL_LINES);
 	glColor3f(1.0, 1.0 ,1.0);	
+	
+	polygon = expanded_polygons;
+	
+	while(polygon)
+	{
+		c = polygon->vert_count;
 		
-	for(i = 0; i < brush_count; i++)
+		for(j = 0; j < c;)
+		{
+			glVertex3f(polygon->vertices[j % c].x, polygon->vertices[j % c].y, polygon->vertices[j % c].z);
+			j++;
+			glVertex3f(polygon->vertices[j % c].x, polygon->vertices[j % c].y, polygon->vertices[j % c].z);
+		}	
+		
+		polygon = polygon->next;
+	}
+	
+		
+	/*for(i = 0; i < brush_count; i++)
 	{
 		polygon = expanded_brushes[i].polygons;
 		
@@ -4198,7 +4342,7 @@ void bsp_DrawExpandedBrushes()
 			polygon = polygon->next;
 		}
 		
-	}
+	}*/
 	
 	glEnd();	
 	

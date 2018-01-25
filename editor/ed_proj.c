@@ -81,10 +81,32 @@ void editor_SaveProject(char *file_name)
 	file = fopen(file_name, "wb");
 	
 	header.version = PROJ_VERSION;
-	header.brush_count = brush_count;
-	header.light_count = light_count;
+	header.brush_count = 0;
+	header.light_count = 0;
 	header.camera_count = camera_count;
 	header.material_count = material_count;
+	
+	
+	for(i = 0; i < brush_count; i++)
+	{
+		if(brushes[i].type == BRUSH_INVALID)
+			continue;
+		
+		if(brushes[i].type == BRUSH_BOUNDS)
+			continue;	
+			
+		header.brush_count++;
+	}
+	
+	for(i = 0; i < light_count; i++)
+	{
+		if(light_params[i].bm_flags & LIGHT_INVALID)
+			continue;
+		
+		header.light_count++;	
+	}
+	
+	
 	
 	fwrite(&header, sizeof(proj_header_t), 1, file);
 	
@@ -125,6 +147,13 @@ void editor_SaveProject(char *file_name)
 	for(i = 0; i < brush_count; i++)
 	{
 		brush = &brushes[i];	
+		
+		if(brush->type == BRUSH_INVALID)
+			continue;
+			
+		if(brush->type == BRUSH_BOUNDS)
+			continue;	
+		
 		brush_lump.orientation = brush->orientation;
 		brush_lump.position = brush->position;
 		brush_lump.scale = brush->scale;
@@ -155,6 +184,9 @@ void editor_SaveProject(char *file_name)
 	
 	for(i = 0; i < light_count; i++)
 	{
+		if(light_params[i].bm_flags & LIGHT_INVALID)
+			continue;
+			
 		light_lump.orientation = light_positions[i].orientation;
 		light_lump.position = light_positions[i].position;
 		light_lump.color.r = (float)light_params[i].r / 255.0;
@@ -182,7 +214,7 @@ void editor_SaveProject(char *file_name)
 		camera_lump.orientation = camera_list[i].world_orientation;
 		camera_lump.position = camera_list[i].world_position;
 		
-		for(j = 0; j < 32; j++)
+		for(j = 0; j < 32; j++) 
 		{
 			camera_lump.name[j] = '\0';
 		}
@@ -218,6 +250,7 @@ void editor_OpenProject(char *file_name)
 	int count;
 	char name[64];
 	
+	editor_ClearSelection();
 	
 	editor_CloseProject();
 	

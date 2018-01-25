@@ -34,6 +34,12 @@ enum HANDLE_3D_MODE
 	HANDLE_3D_SCALE,
 };
 
+enum EDITOR_STATE
+{
+	EDITOR_EDITING = 1,
+	EDITOR_PIE,
+};
+
 typedef struct
 {
 	int type;

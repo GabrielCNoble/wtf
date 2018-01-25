@@ -93,7 +93,7 @@ void engine_Finish()
 		font_Finish();
 		//projectile_Finish();
 		physics_Finish();
-		brush_Finish();
+		//brush_Finish();
 		gpu_Finish();
 		renderer_Finish();
 		log_LogMessage(LOG_MESSAGE_NOTIFY, "Massacre engine finished properly!");

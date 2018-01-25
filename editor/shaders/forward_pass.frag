@@ -282,11 +282,11 @@ void main()
 			
 			shadow = 1.0;
 			
-			//if((light_params[i].bm_flags & LIGHT_GENERATE_SHADOWS) == LIGHT_GENERATE_SHADOWS)
-			//{
-			shadow = sample_cube_map(world_space_position, i, debug);
-			//}
-			
+			if((light_params[i].bm_flags & LIGHT_GENERATE_SHADOWS) == LIGHT_GENERATE_SHADOWS)
+			{
+				shadow = sample_cube_map(world_space_position, i, debug);
+			}
+		
 			/*shadow = 1.0;*/
 			
 			

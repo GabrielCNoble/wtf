@@ -444,7 +444,7 @@ int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t c
 	light_param->g = 0xff * color.g;
 	light_param->b = 0xff * color.b;
 	light_param->cache = -1;
-	light_param->bm_flags = LIGHT_MOVED | bm_flags;
+	light_param->bm_flags = (LIGHT_MOVED | bm_flags) & (~LIGHT_INVALID);
 	
 	if(!(bm_flags & LIGHT_GENERATE_SHADOWS))
 	{
@@ -575,8 +575,11 @@ void light_UpdateLights()
 	
 	for(i = 0; i < light_count; i++)
 	{
-		if(!(light_params[i].bm_flags & LIGHT_MOVED))
+		if(light_params[i].bm_flags & LIGHT_INVALID)
 			continue;
+		
+		if(!(light_params[i].bm_flags & LIGHT_MOVED))
+			continue;	
 		
 		light_params[i].bm_flags &= ~LIGHT_MOVED;
 			

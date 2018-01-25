@@ -6,8 +6,13 @@
 #include "camera_types.h"
 #include "mesh.h"
 
-#define PLAYER_CAMERA_HEIGHT 0.0
+#define PLAYER_CAMERA_HEIGHT 0.75
+//#define PLAYER_CAMERA_HEIGHT 0.0
 #define PLAYER_MAX_SLOPE_ANGLE 0.707
+
+#define PLAYER_X_EXTENT 0.5
+#define PLAYER_Y_EXTENT 1.0
+#define PLAYER_Z_EXTENT 0.5
 
 enum PLAYER_TYPE
 {
@@ -81,19 +86,25 @@ void player_Init();
 
 void player_Finish();
 
-void player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation);
+int player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation);
 
 void player_DestroyPlayer(char *name);
 
 void player_DestroyPlayerIndex(int player_index);
 
+int player_CreateSpawnPoint(vec3_t position, char *name);
+
 void player_SpawnPlayer(int player_index, int spawn_point_index);
+
+void player_RemovePlayer(int player_index);
 
 player_t *player_GetPlayer(char *name);
 
 player_t *player_GetActivePlayer();
 
 void player_SetPlayerAsActive(player_t *player);
+
+void player_SetPlayerAsActiveIndex(int player_index);
 
 void player_ProcessActivePlayer(float delta_time);
 

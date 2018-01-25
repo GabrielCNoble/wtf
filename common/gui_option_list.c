@@ -2,12 +2,16 @@
 #include <string.h>
 
 #include "gui_option_list.h"
+#include "input.h"
 
+/* from gui.c */
 extern widget_t *widgets;
 extern widget_t *last_widget;
 
 int gui_option_unique_index = 0;
 
+/* from input.c */
+extern int bm_mouse;
 option_list_t *gui_CreateOptionList(char *name, short x, short y, short w, short bm_flags, void (*option_list_callback)(widget_t *))
 {
 	option_list_t *options;
@@ -246,7 +250,8 @@ void gui_UpdateOptionList(widget_t *widget)
 
 void gui_PostUpdateOptionList(widget_t *widget)
 {
-	if(widget->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
+	//if(widget->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
+	if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED || (input_GetKeyStatus(SDL_SCANCODE_ESCAPE) & KEY_JUST_PRESSED))
 	{
 		/* pop-up menu... */
 		if(!widget->parent)
