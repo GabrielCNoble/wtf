@@ -57,6 +57,10 @@ bsp_edge_t *bevel_edges = NULL;
 
 bsp_polygon_t *world_polygons_debug = NULL;
 
+int b_compiling = 0;
+
+extern int b_calculating_pvs;
+
 
 
 #define DRAW_EXPANDED_BRUSHES
@@ -2345,8 +2349,8 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brush_list, int brush_list_count)
 			
 			/* get rid of those bsp's, they're 
 			useless now. Such useless motherfuckers... */
-			bsp_DeleteSolid(bsp_a);
-			bsp_DeleteSolid(bsp_b);
+			bsp_DeleteSolidBsp(bsp_a);
+			bsp_DeleteSolidBsp(bsp_b);
 
 			p = polygons_a;
 			
@@ -2633,7 +2637,7 @@ bsp_RecursiveLinearizeBsp
 
 //#define LEAK_FOR_FUN
 
-void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_count, bsp_pnode_t *lnodes, int *lnode_count, bsp_dleaf_t *lleaves, int *lleaves_count, triangle_group_t *groups, int tri_group_count, int create_leaves)
+void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_count, bsp_pnode_t *lnodes, int *lnode_count, bsp_dleaf_t *lleaves, int *lleaves_count, triangle_group_t *groups, int tri_group_count, int create_leaves, int pvs_size)
 {
 	bsp_leaf_t *leaf;
 	bsp_pnode_t *pnode;
@@ -2698,7 +2702,15 @@ void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_
 			
 			dleaf->tris_count = leaf->triangle_count;
 			dleaf->tris = malloc(sizeof(bsp_striangle_t ) * dleaf->tris_count);
-			dleaf->pvs = leaf->pvs;
+			//dleaf->pvs = leaf->pvs;
+			dleaf->pvs = malloc(pvs_size);
+			leaf->pvs = dleaf->pvs;
+			
+			for(i = 0; i < pvs_size; i++)
+			{
+				dleaf->pvs[i] = 0;
+			}
+			
 			dleaf->leaf_index = leaf->leaf_index;
 			
 			
@@ -2776,14 +2788,14 @@ void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_
 			
 			/* get rid of the polygons stored on this leaf,
 			since this pointer based bsp is useless now... */
-			polygon = leaf->polygons;
+			/*polygon = leaf->polygons;
 			while(polygon)
 			{
 				next_polygon = polygon->next;
 				free(polygon->vertices);
 				free(polygon);
 				polygon = next_polygon;
-			}
+			}*/
 			
 		}
 		else
@@ -2795,7 +2807,7 @@ void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_
 		}
 		
 		#ifndef LEAK_FOR_FUN
-		free(leaf);
+		//free(leaf);
 		#endif
 		
 	}
@@ -2818,13 +2830,13 @@ void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_
 		
 		/* relative displacement... */
 		pnode->child[0] = (*lnode_count) - node_index;
-		bsp_RecursiveLinearizeBsp(bsp->front, vertices, vertex_count, lnodes, lnode_count, lleaves, lleaves_count, groups, tri_group_count, create_leaves);
+		bsp_RecursiveLinearizeBsp(bsp->front, vertices, vertex_count, lnodes, lnode_count, lleaves, lleaves_count, groups, tri_group_count, create_leaves, pvs_size);
 		
 		pnode->child[1] = (*lnode_count) - node_index;
-		bsp_RecursiveLinearizeBsp(bsp->back, vertices, vertex_count, lnodes, lnode_count, lleaves, lleaves_count, groups, tri_group_count, create_leaves);
+		bsp_RecursiveLinearizeBsp(bsp->back, vertices, vertex_count, lnodes, lnode_count, lleaves, lleaves_count, groups, tri_group_count, create_leaves, pvs_size);
 		
 		#ifndef LEAK_FOR_FUN
-		free(bsp);
+		//free(bsp);
 		#endif
 		
 	}
@@ -2851,6 +2863,8 @@ void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, b
 	bsp_dleaf_t *leaves = NULL;
 	vertex_t *v;
 	
+	int pvs_size = 0;
+	
 	if(vertex_count)
 	{
 		*vertex_count = groups[tri_group_count - 1].start + groups[tri_group_count - 1].next;
@@ -2867,7 +2881,11 @@ void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, b
 	nodes = malloc(sizeof(bsp_pnode_t) * n);
 	
 	if(lleaves)
+	{
 		leaves = malloc(sizeof(bsp_dleaf_t) * (l + 200));
+		pvs_size = 4 + (l >> 3);
+	}
+		
 	
 	i = 0;
 	n = 0;
@@ -2879,7 +2897,7 @@ void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, b
 		groups[i].next = 0;
 	}
 	
-	bsp_RecursiveLinearizeBsp(bsp, v, &i, nodes, &n, leaves, &l, groups, tri_group_count, create_leaves);
+	bsp_RecursiveLinearizeBsp(bsp, v, &i, nodes, &n, leaves, &l, groups, tri_group_count, create_leaves, pvs_size);
 	
 	//visited_leaves = malloc(sizeof(bsp_dleaf_t *) * l);
 	
@@ -3330,10 +3348,10 @@ void bsp_BuildCollisionBsp()
 	int c;
 	
 	bsp_ExpandBrushes(vec3(PLAYER_X_EXTENT, PLAYER_Y_EXTENT, PLAYER_Z_EXTENT));
-	printf("bsp_ExpandBrushes\n");
+	//printf("bsp_ExpandBrushes\n");
 	
 	polygons = bsp_ClipBrushes(expanded_brushes, expanded_brush_count);
-	printf("bsp_ClipBrushes\n");
+	//printf("bsp_ClipBrushes\n");
 		
 	if(!polygons)
 		return;
@@ -3355,10 +3373,10 @@ void bsp_BuildCollisionBsp()
 	
 	bsp_BuildSolidLeaf(&root, polygons);
 	//bsp_BuildSolid(&root, polygons);
-	printf("bsp_BuildSolidLeaf\n");
+	//printf("bsp_BuildSolidLeaf\n");
 	
 	bsp_LinearizeBsp(root, NULL, NULL, &collision_nodes, &collision_nodes_count, NULL, NULL, NULL, 0, 0);
-	printf("bsp_LinearizeBsp\n");
+	//printf("bsp_LinearizeBsp\n");
 	
 }
 
@@ -4018,52 +4036,79 @@ bsp_node_t *bsp_SolidLeafBsp(bsp_polygon_t *polygons)
 }
 
 
-void bsp_DeleteSolid(bsp_node_t *root)
+void bsp_DeleteSolidBsp(bsp_node_t *bsp)
 {
-	
-	if(root)
-	{
-		if(root->type != BSP_LEAF)
-		{
-			bsp_DeleteSolid(root->front);
-			bsp_DeleteSolid(root->back);
-			free(root->splitter);
-		}
-		free(root);
-	}
-}
-
-
-void bsp_DeleteSolidLeaf(bsp_node_t *root)
-{
-	#if 0
-	bsp_polygon_t *r;
-	bsp_polygon_t *t;
-	bsp_triangle_t *tri;
-	bsp_triangle_t *n;
 	bsp_leaf_t *leaf;
 	
-	if(root)
+	if(!bsp)
+		return;
+	
+	if(bsp->type == BSP_NODE)
 	{
-		//if(root->bm_flags & BSP_NODE_LEAF && (!(root->bm_flags & BSP_NODE_SOLID)))
-		if(root->type == BSP_SHORT_LEAF)
+		free(bsp->splitter->vertices);
+		free(bsp->splitter);
+		
+		bsp_DeleteSolidBsp(bsp->front);
+		bsp_DeleteSolidBsp(bsp->back);
+		
+	}
+	free(bsp);
+}
+
+void bsp_DeleteSolidLeafBsp(bsp_node_t *bsp)
+{
+	bsp_leaf_t *leaf;
+	bsp_polygon_t *polygon;
+	bsp_portal_t *portal;
+	bsp_portal_t *next_portal;
+	bsp_polygon_t *next;
+	
+	bsp_triangle_t *triangle;
+	bsp_triangle_t *next_triangle;
+	
+	if(!bsp)
+		return;
+	
+	if(bsp->type == BSP_LEAF)
+	{
+		leaf = (bsp_leaf_t *)bsp;
+		polygon = leaf->polygons;
+		
+		while(polygon)
 		{
-			leaf = (bsp_leaf_t *)root;
-			
-			if(!(leaf->bm_flags & BSP_SOLID))
-			{
-				free(leaf->tris);			
-			}
-		}
-		else
-		{
-			bsp_DeleteSolidLeaf(root->front);
-			bsp_DeleteSolidLeaf(root->back);
+			next = polygon->next;
+			free(polygon->vertices);
+			free(polygon);
+			polygon = next;
 		}
 		
-		free(root);
+		/*portal = (bsp_portal_t *)leaf->portals;
+		
+		while(portal)
+		{
+			next_portal = portal->next;
+			free(portal->portal_polygon->vertices);
+			free(portal->portal_polygon);
+			free(portal);
+			portal = next_portal;
+		}
+		
+		triangle = leaf->triangles;
+		
+		while(triangle)
+		{
+			next_triangle = triangle->next;
+			free(triangle);
+			triangle = next_triangle;
+		}	*/
 	}
-	#endif
+	else
+	{
+		bsp_DeleteSolidLeafBsp(bsp->front);
+		bsp_DeleteSolidLeafBsp(bsp->back);
+	}
+	
+	free(bsp);
 }
 
 
@@ -4073,6 +4118,100 @@ bsp_BuildBsp
 ==============
 */
 void bsp_CompileBsp(int remove_outside)
+{
+	int i;
+	int c;
+	int j;
+	int k = brush_count;
+	int triangle_group_count = 0;
+	bsp_polygon_t *polygons = NULL;
+	bsp_node_t *bsp;
+	
+	
+	if(b_compiling || b_calculating_pvs)
+	{
+		printf("bsp_CompileBsp: busy!\n");
+		return;
+	}
+	
+	b_compiling = 1;	
+		
+	if(world_triangle_groups)
+	{
+		free(world_triangle_groups);
+		world_triangle_groups = NULL;
+		world_triangle_group_count = 0;
+	}
+	
+	if(world_vertices)
+	{
+		free(world_vertices);
+		world_vertices = NULL;
+	}
+	
+	if(world_nodes)
+	{
+		free(world_nodes);
+		free(collision_nodes);
+	}
+	
+	if(world_leaves)
+	{
+		free(world_leaves);
+	}
+		
+	bsp_triangle_t *triangles;
+		
+	
+	//printf("bsp_CompileBsp: bsp_BuildCollisionBsp...\n");
+	bsp_BuildCollisionBsp();
+	//printf("done\n\n");
+	
+	//printf("bsp_CompileBsp: bsp_ClipBrushes... ");		
+	polygons = bsp_ClipBrushes(brushes, brush_count); 
+	//printf("done\n");
+	
+	//printf("bsp_CompileBsp: bsp_SolidLeafBsp... ");
+	bsp = bsp_SolidLeafBsp(polygons);
+	//printf("done\n");
+	
+	//printf("bsp_CompileBsp: bsp_BuildTrianglesFromBrushes... ");
+	triangles = bsp_BuildTrianglesFromBrushes();
+	//printf("done\n");
+	
+	//printf("bsp_CompileBsp: bsp_ClipTrianglesToSolidLeaves... ");
+	bsp_ClipTrianglesToSolidLeaves(bsp, triangles);
+	//printf("done\n");
+	
+	//printf("bsp_CompileBsp: bsp_MergeLeafTriangles... ");
+	bsp_MergeLeafTriangles(bsp);
+	//printf("done\n");
+	
+	//printf("bsp_CompileBsp: bsp_BuildTriangleGroups... ");
+	bsp_BuildTriangleGroups(bsp, &world_triangle_groups, &world_triangle_group_count);
+	//printf("done\n");
+	
+	//printf("bsp_CompileBsp: bsp_LinearizeBsp... ");
+	bsp_LinearizeBsp(bsp, &world_vertices, &world_vertices_count, &world_nodes, &world_nodes_count, &world_leaves, &world_leaves_count, world_triangle_groups, world_triangle_group_count, 1);
+	//printf("done\n");
+	
+	world_Update();
+	
+	bsp_build_thread = SDL_CreateThread(bsp_CalculatePvsAssync, "calculate pvs thread", bsp);
+	SDL_DetachThread(bsp_build_thread);
+	
+	b_compiling = 0;
+	
+	
+	
+	//bsp_DeleteSolidLeafBsp(bsp);
+	
+
+	
+	
+}
+
+void bsp_CompileBsp2()
 {
 	int i;
 	int c;
@@ -4112,69 +4251,25 @@ void bsp_CompileBsp(int remove_outside)
 	{
 		free(world_nodes);
 		free(collision_nodes);
+		free(world_leaves);
+		
+		world_nodes = NULL;
+		collision_nodes = NULL;
+		world_leaves = NULL;
 	}
 	
-	if(world_leaves)
-	{
-		//free(visited_leaves);
-		free(world_leaves);
-	}
 		
 	//bsp_polygon_t *polygons = NULL;
 	bsp_triangle_t *triangles;
 	
-/*	
-	
-	
-	for(i = 0; i < k; i++)
-	{
-		for(j = 0; j < brushes[i].vertex_count; j++)
-		{
-			if(brushes[i].vertices[j].position.x > maxs.x) maxs.x = brushes[i].vertices[j].position.x;
-			if(brushes[i].vertices[j].position.y > maxs.y) maxs.y = brushes[i].vertices[j].position.y;
-			if(brushes[i].vertices[j].position.z > maxs.z) maxs.z = brushes[i].vertices[j].position.z;
-			
-			if(brushes[i].vertices[j].position.x < mins.x) mins.x = brushes[i].vertices[j].position.x;
-			if(brushes[i].vertices[j].position.y < mins.y) mins.y = brushes[i].vertices[j].position.y;
-			if(brushes[i].vertices[j].position.z < mins.z) mins.z = brushes[i].vertices[j].position.z;
-		}
-	}
-	
-	
-	maxs.x += 50.0;
-	maxs.y += 50.0;
-	maxs.z += 50.0;
-	
-	mins.x -= 50.0;
-	mins.y -= 50.0;
-	mins.z -= 50.0;
-	
-	
-	// HACK - create six brushes around the map, so the pvs calculation become faster and correct... 
-	pos_x_bounds = brush_CreateBrush(vec3(maxs.x, 0.0, 0.0), &r, vec3(1.0, 500.0, 500.0), BRUSH_BOUNDS);
-	neg_x_bounds = brush_CreateBrush(vec3(mins.x, 0.0, 0.0), &r, vec3(1.0, 500.0, 500.0), BRUSH_BOUNDS);
-	
-	pos_y_bounds = brush_CreateBrush(vec3(0.0, maxs.y, 0.0), &r, vec3(500.0, 1.0, 500.0), BRUSH_BOUNDS);
-	neg_y_bounds = brush_CreateBrush(vec3(0.0, mins.y, 0.0), &r, vec3(500.0, 1.0, 500.0), BRUSH_BOUNDS);
-	
-	pos_z_bounds = brush_CreateBrush(vec3(0.0, 0.0, maxs.z), &r, vec3(500.0, 500.0, 1.0), BRUSH_BOUNDS);
-	neg_z_bounds = brush_CreateBrush(vec3(0.0, 0.0, mins.z), &r, vec3(500.0, 500.0, 1.0), BRUSH_BOUNDS);
-	*/
-	
+	printf("bsp_CompileBsp: bsp_BuildCollisionBsp...\n");
+	bsp_BuildCollisionBsp();
+	printf("done\n\n");
 	
 	printf("bsp_CompileBsp: bsp_ClipBrushes... ");		
 	polygons = bsp_ClipBrushes(brushes, brush_count); 
 	printf("done\n");
-	
-	#ifdef DRAW_WORLD_POLYGONS
-	
-	bsp_DeletePolygons(world_polygons_debug);
-	
-	world_polygons_debug = bsp_DeepCopyPolygons(polygons);
-	#endif
-	
-	
-	
+		
 	printf("bsp_CompileBsp: bsp_SolidLeafBsp... ");
 	bsp = bsp_SolidLeafBsp(polygons);
 	printf("done\n");
@@ -4199,45 +4294,16 @@ void bsp_CompileBsp(int remove_outside)
 	bsp_BuildTriangleGroups(bsp, &world_triangle_groups, &world_triangle_group_count);
 	printf("done\n");
 	
-	
-	printf("bsp_CompileBsp: bsp_CalculatePvs...");
-	bsp_CalculatePvs(bsp);
-	printf("done\n");
-	
-	//bsp_CalculateApproximatePvs(bsp);
-	
 	printf("bsp_CompileBsp: bsp_LinearizeBsp... ");
 	bsp_LinearizeBsp(bsp, &world_vertices, &world_vertices_count, &world_nodes, &world_nodes_count, &world_leaves, &world_leaves_count, world_triangle_groups, world_triangle_group_count, 1);
 	printf("done\n");
 	
-	
-	printf("bsp_CompileBsp: bsp_BuildCollisionBsp...\n");
-	bsp_BuildCollisionBsp();
-	printf("done\n\n");
-	
-	
 	world_Update();
 	
-	/* get rid of'em... */
-	/*brush_DestroyBrushIndex(pos_x_bounds);
-	brush_DestroyBrushIndex(neg_x_bounds);
-	brush_DestroyBrushIndex(pos_y_bounds);
-	brush_DestroyBrushIndex(neg_y_bounds);
-	brush_DestroyBrushIndex(pos_z_bounds);
-	brush_DestroyBrushIndex(neg_z_bounds);*/
-	
-	
-	//bsp_BuildEdgesFromBrush(&brushes[0]);
-	
-	
-	/*printf("bsp_CompileBsp: bsp_ShortLeaves... ");
-	bsp_ShortLeaves(world_bsp, &world_vertices, &world_vertices_count, global_triangle_groups, global_triangle_group_count);
-	printf("done\n\n");*/
-/*	bsp_build_thread = SDL_CreateThread(bsp_BuildBspAssync, "build bsp", NULL);
-	SDL_DetachThread(bsp_build_thread);*/
-	
-	
-	//bsp_MergeLeafTriangles(world_bsp);
+	printf("bsp_CompileBsp: bsp_CalculatePvs...");
+	bsp_CalculatePvs(bsp);
+	printf("done\n");
+
 	
 	
 }

@@ -221,7 +221,7 @@ int renderer_Init(int width, int height, int init_mode)
 	
 	SDL_GL_MakeCurrent(window, context);
 
-	SDL_GL_SetSwapInterval(0);
+	SDL_GL_SetSwapInterval(1);
 	
 	if(glewInit() != GLEW_NO_ERROR)
 	{
@@ -348,7 +348,7 @@ int renderer_Init(int width, int height, int init_mode)
 	stage_str[RENDERER_DRAW_FRAME] = "Draw frame";
 	stage_str[RENDERER_DRAW_GUI] = "GUI";
 	#endif
-	
+
 	return 1;
 	
 	
@@ -1080,6 +1080,8 @@ void renderer_DrawGUI()
 				
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 				
+				renderer_BlitSurface(button->rendered_text, w->x + x - w->w + r_window_width * 0.5 + 1, w->y + y + w->h + r_window_height * 0.5 - 2);
+				
 			break;
 			
 			case WIDGET_CHECKBOX:
@@ -1334,11 +1336,11 @@ void renderer_DrawGUI()
 				
 				if(w->bm_flags & WIDGET_MOUSE_OVER)
 				{
-					glColor3f(0.5, 0.5, 0.5);
+					glColor3f(0.4, 0.4, 0.4);
 				}
 				else
 				{
-					glColor3f(0.4, 0.4, 0.4);
+					glColor3f(0.3, 0.3, 0.3);
 				}
 				
 				
@@ -1359,8 +1361,21 @@ void renderer_DrawGUI()
 					glVertex3f(w->x - w->w + x + 2.0, w->y - w->h + y + 1.0, 0.0);
 					glVertex3f(w->x - w->w + x + 2.0, w->y + w->h + y - 1.0, 0.0);
 					glEnd();
-			
 				}
+				
+				if(field->bm_text_field_flags & TEXT_FIELD_DRAW_TEXT_SELECTED)
+				{
+					glColor3f(0.6, 0.6, 0.6);
+					glBegin(GL_QUADS);
+					glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+					glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+					glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+					glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+					glEnd();
+				}
+				
+				
+				renderer_BlitSurface(field->rendered_text, w->x + x - w->w + r_window_width * 0.5 + 1, w->y + y + w->h + r_window_height * 0.5 - 2);
 				
 			break;
 		}

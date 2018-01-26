@@ -17,6 +17,13 @@ typedef struct bsp_portal_t
 	short go_through;
 }bsp_portal_t;
 
+typedef struct
+{
+	struct timedout_leaf_t *next;
+	bsp_leaf_t *leaf;
+	float last_time_out;
+}timedout_leaf_t;
+
 enum PORTAL_PLANE
 {
 	PORTAL_FRONT,
@@ -55,17 +62,26 @@ void bsp_PvsForLeaves(bsp_node_t *bsp, bsp_portal_t *portals);
 
 void bsp_CalculatePvs(bsp_node_t *bsp);
 
-void bsp_ApproximatePvsForLeaf(bsp_leaf_t *src_leaf, vec3_t *src_center, bsp_node_t *node, bsp_node_t *bsp);
+int bsp_CalculatePvsAssync(void *data);
 
-void bsp_ApproximatePvsForLeaves(bsp_node_t *node, bsp_node_t *bsp, int leaf_count);
 
-void bsp_CalculateApproximatePvs(bsp_node_t *bsp);
+
+
+//void bsp_AllocPvs(bsp_node_t *bsp, bsp_portal_t *portals);
+
+//void bsp_ApproximatePvsForLeaf(bsp_leaf_t *src_leaf, vec3_t *src_center, bsp_node_t *node, bsp_node_t *bsp);
+
+//void bsp_ApproximatePvsForLeaves(bsp_node_t *node, bsp_node_t *bsp, int leaf_count);
+
+//void bsp_CalculateApproximatePvs(bsp_node_t *bsp);
 
 int bsp_LineOfSight(bsp_node_t *root, vec3_t *start, vec3_t *end);
 
 void bsp_DrawPortals();
 
 void bsp_NextPortal();
+
+
 
 
 

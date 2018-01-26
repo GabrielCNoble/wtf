@@ -493,6 +493,11 @@ int light_DestroyLight(char *name)
 
 int light_DestroyLightIndex(int light_index)
 {
+	bsp_dleaf_t *leaf;
+	int i;
+	int leaf_index;
+	int int_index;
+	int bit_index;
 	if(light_index >= 0 && light_index < light_count)
 	{
 		if(!(light_params[light_index].bm_flags & LIGHT_INVALID))
@@ -509,6 +514,27 @@ int light_DestroyLightIndex(int light_index)
 			
 			free_position_stack_top++;
 			free_position_stack[free_position_stack_top] = light_index;
+			
+			if(light_params[light_index].leaf)
+			{
+				leaf = (bsp_dleaf_t *)light_params[light_index].leaf;
+				
+				leaf_index = leaf - world_leaves;
+				
+				int_index = light_index >> 5;
+				bit_index = light_index % 32;
+				
+				leaf_lights[leaf_index].lights[int_index] &= ~(1 << bit_index);
+				
+				
+				if(leaf->pvs)
+				{
+					for(i = 0; i < world_leaves_count; i++)
+					{
+						leaf_lights[i].lights[int_index] &= ~(1 << bit_index);
+					}
+				}
+			}
 			
 			return 1;
 		}

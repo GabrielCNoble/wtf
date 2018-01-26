@@ -157,7 +157,7 @@ void renderer_EditorDraw()
 		
 	}
 	
-	bsp_DrawExpandedBrushes();
+	//bsp_DrawExpandedBrushes();
 	
 	
 }

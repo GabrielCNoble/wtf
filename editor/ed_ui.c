@@ -41,6 +41,20 @@ dropdown_t *misc_dropdown = NULL;
 
 option_list_t *delete_menu;
 
+
+widget_t *save_project_window;
+text_field_t *save_project_text_field;
+button_t *confirm_save_project_button;
+button_t *cancel_save_project_button;
+
+
+
+widget_t *open_project_window;
+text_field_t *open_project_text_field;
+button_t *confirm_open_project_button;
+button_t *cancel_open_project_button;
+
+
 //dropdown_t *wow;
 
 
@@ -65,6 +79,32 @@ int add_cylinder_brush_unique_index;
 int add_spawn_point_unique_index;
 
 
+void confirm_save_project_button_callback(widget_t *widget)
+{
+	editor_SetProjectName(save_project_text_field->text);
+	editor_SaveProject();
+	gui_SetInvisible(save_project_window);
+}
+
+void cancel_save_project_button_callback(widget_t *widget)
+{
+	gui_SetInvisible(save_project_window);
+}
+
+void confirm_open_project_button_callback(widget_t *widget)
+{
+	if(editor_OpenProject(open_project_text_field->text))
+	{
+		editor_SetProjectName(open_project_text_field->text);
+	}
+	
+	gui_SetInvisible(open_project_window);
+}
+
+void cancel_open_project_button_callback(widget_t *widget)
+{
+	gui_SetInvisible(open_project_window);
+}
 
 void file_dropdown_callback(widget_t *widget)
 {
@@ -79,11 +119,13 @@ void file_dropdown_callback(widget_t *widget)
 			break;
 			
 			case 1:
-				editor_SaveProject(current_project_name);
+				editor_OpenSaveProjectWindow();
+				//editor_SaveProject(current_project_name);
 			break;	
 			
 			case 2:
-				editor_OpenProject(current_project_name);
+				editor_OpenOpenProjectWindow();
+				//editor_OpenProject(current_project_name);
 			break;
 			
 			case 3:
@@ -342,9 +384,31 @@ void editor_InitUI()
 	
 	gui_SetInvisible((widget_t *)delete_menu);
 	
+	
+	/*save_project_window = gui_CreateWidget("save project window", 0, 0, 400, 80);
+	save_project_text_field = gui_AddTextField(save_project_window, "save project text field", 0, 30, 380, 0, NULL);
+	confirm_save_project_button= gui_AddButton(save_project_window, "confirm save project button", 100, -40, 50, 50, 0, NULL);
+	cancel_save_project_button= gui_AddButton(save_project_window, "cancel save project button", -100, -40, 50, 50, 0, NULL);*/
 
+	save_project_window = gui_CreateWidget("save project window", 0, 0, 400, 80);
+	save_project_text_field = gui_AddTextField(save_project_window, "save project text field", 0, 20, 380, 0, NULL);
+	confirm_save_project_button = gui_AddButton(save_project_window, "confirm", 80, -15, 90, 40, 0, confirm_save_project_button_callback);
+	cancel_save_project_button = gui_AddButton(save_project_window, "cancel", -80, -15, 90, 40, 0, cancel_save_project_button_callback);
 
-	//gui_AddTextField(NULL, "text field", 0, 0, 150, 0, NULL);
+	gui_SetInvisible((widget_t *)save_project_window);
+	
+	
+	
+	
+	open_project_window = gui_CreateWidget("open project window", 0, 0, 400, 80);
+	open_project_text_field = gui_AddTextField(open_project_window, "open project text field", 0, 20, 380, 0, NULL);
+	confirm_open_project_button = gui_AddButton(open_project_window, "confirm", 80, -15, 90, 40, 0, confirm_open_project_button_callback);
+	cancel_open_project_button = gui_AddButton(open_project_window, "cancel", -80, -15, 90, 40, 0, cancel_open_project_button_callback);
+	
+
+	gui_SetInvisible((widget_t *)open_project_window);
+
+	//gui_AddTextField(NULL, "text field", 0, 0, 230, 0, NULL);
 	
 	
 	//renderer_RegisterCallback(editor_UIWindowResizeCallback, RENDERER_RESOLUTION_CHANGE_CALLBACK);
@@ -384,6 +448,22 @@ void editor_OpenDeleteSelectionMenu(int x, int y)
 		delete_menu->widget.x = x;
 		delete_menu->widget.y = y;
 	}
+}
+
+void editor_OpenSaveProjectWindow()
+{
+	gui_SetText((widget_t *)save_project_text_field, current_project_name);
+	gui_SetVisible(save_project_window);
+}
+
+void editor_CloseSaveProjectWindow()
+{
+	gui_SetInvisible(save_project_window);
+}
+
+void editor_OpenOpenProjectWindow()
+{
+	gui_SetVisible(open_project_window);
 }
 
 

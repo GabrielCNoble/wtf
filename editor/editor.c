@@ -735,6 +735,8 @@ void editor_Init()
 	handle_3d_mode = HANDLE_3D_TRANSLATION;
 	
 	texture_SetPath("textures/env");
+	
+	editor_SetProjectName("untitled.wtf");
 		
 	/*texture_LoadCubeTexture("textures\\env\\aliencube_pos_x.jpg;"
 					        "textures\\env\\aliencube_neg_x.jpg;"

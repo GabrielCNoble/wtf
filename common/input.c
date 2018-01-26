@@ -25,8 +25,6 @@ float normalized_mouse_y;
 float mouse_dx;
 float mouse_dy;
 
-#define TEXT_BUFFER_SIZE 64
-
 int text_buffer_in = 0;
 int text_buffer_out = 0;
 char text_buffer[TEXT_BUFFER_SIZE];
@@ -338,16 +336,87 @@ void input_BufferTextInput()
 	
 	int i;
 	int c;	
+	int mod = 0;
+	int key;
 	
 	//printf("buffer\n");
+	
+	/* flush buffer... */
+	text_buffer_out = text_buffer_in;
 	
 	while(SDL_PollEvent(kb_event))
 	{
 		
+		if(kb_event->key.keysym.mod & KMOD_LSHIFT)
+		{
+			mod = 32;
+		}
+		else
+		{
+			mod = 0;
+		}
+		
 		if(kb_event->key.type == SDL_KEYDOWN)
 		{
-			text_buffer[text_buffer_in] = kb_event->key.keysym.sym;
+			switch(kb_event->key.keysym.sym)
+			{
+				case SDLK_LSHIFT:
+				case SDLK_RSHIFT:
+					continue;
+				break;
+						
+				case SDLK_1:
+					if(mod) key = '!';
+				break;
+				
+				case SDLK_2:
+					if(mod) key = '@';
+				break;
+				
+				case SDLK_3:
+					if(mod) key = '#';
+				break;
+				
+				case SDLK_4:
+					if(mod) key = '$';
+				break;
+				
+				case SDLK_5:
+					if(mod) key = '%';
+				break;
+				
+				case SDLK_6:
+					if(mod) key = '¨';
+				break;
+				
+				case SDLK_7:
+					if(mod) key = '&';
+				break;
+				
+				case SDLK_8:
+					if(mod) key = '*';
+				break;
+				
+				case SDLK_9:
+					if(mod) key = '(';
+				break;
+				
+				case SDLK_0:
+					if(mod) key = ')';
+				break;
+				
+				case SDLK_MINUS:
+					if(mod) key = '_';
+				break;
+				
+				default:
+					key = kb_event->key.keysym.sym & (~mod);
+				break;
+			}
+			
+			text_buffer[text_buffer_in] = key;
 			text_buffer_in = (text_buffer_in + 1) % TEXT_BUFFER_SIZE;
+			
 		}
 		
 		/* buffer is full, bail out... */
@@ -362,11 +431,11 @@ void input_BufferTextInput()
 	c = text_buffer_in;*/
 	
 	
-	while(text_buffer_out != text_buffer_in)
+	/*while(text_buffer_out != text_buffer_in)
 	{
 		printf("%c", text_buffer[text_buffer_out]);
 		text_buffer_out = (text_buffer_out + 1) % TEXT_BUFFER_SIZE;
-	}
+	}*/
 	
 	//printf("\n");
 	

@@ -6,6 +6,8 @@
 
 #include "SDL2\SDL.h"
 
+#define TEXT_BUFFER_SIZE 64
+
 enum MOUSE_FLAGS
 {
 	MOUSE_LEFT_BUTTON_CLICKED = 1,

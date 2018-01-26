@@ -243,6 +243,8 @@ void gui_RenderText(widget_t *widget)
 {
 	option_t *option;
 	dropdown_t *dropdown;
+	text_field_t *field;
+	button_t *button;
 	SDL_Color foreground = {255, 255, 255, 255};
 	SDL_Color background = {0, 0, 0, 0};
 	
@@ -281,7 +283,44 @@ void gui_RenderText(widget_t *widget)
 		break;
 		
 		case WIDGET_TEXT_FIELD:
+			field = (text_field_t *)widget;
+			
+			if(field->text)
+			{
+				//if(field->text_buffer_cursor)
+				{
+					if(field->bm_text_field_flags & TEXT_FIELD_DRAW_TEXT_SELECTED)
+					{
+						foreground.r = 0;
+						foreground.g = 0;
+						foreground.b = 0;
+					}
+					
+					if(field->rendered_text)
+						SDL_FreeSurface(field->rendered_text);
+					
+					
 		
+					sprintf(formated_str, field->text);
+					field->rendered_text = TTF_RenderUTF8_Blended_Wrapped(gui_font->font, formated_str, foreground, field->widget.w * 2.0);	
+				}	
+			}
+			
+		break;
+		
+		case WIDGET_BUTTON:
+			
+			button = (button_t *)widget;
+			
+			if(button->rendered_text)
+			{
+				SDL_FreeSurface(button->rendered_text);
+			}
+			
+			sprintf(formated_str, button->widget.name);
+			
+			button->rendered_text = TTF_RenderUTF8_Blended_Wrapped(gui_font->font, formated_str, foreground, button->widget.w * 2.0);	
+				
 		break;
 	}
 	

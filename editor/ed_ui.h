@@ -12,6 +12,12 @@ void editor_CloseAddToWorldMenu();
 
 void editor_OpenDeleteSelectionMenu(int x, int y);
 
+void editor_OpenSaveProjectWindow();
+
+void editor_CloseSaveProjectWindow();
+
+void editor_OpenOpenProjectWindow();
+
 void editor_UIWindowResizeCallback();
 
 

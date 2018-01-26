@@ -160,11 +160,17 @@ bsp_node_t *bsp_SolidBsp(bsp_polygon_t *polygons);
 
 bsp_node_t *bsp_SolidLeafBsp(bsp_polygon_t *polygons);
 
+void bsp_DeleteSolidBsp(bsp_node_t *bsp);
+
+void bsp_DeleteSolidLeafBsp(bsp_node_t *bsp);
+
 void bsp_DeleteSolid(bsp_node_t *root);
 
 void bsp_DeleteSolidLeaf(bsp_node_t *root);
 
 void bsp_CompileBsp(int remove_outside);
+
+void bsp_CompileBsp2();
 
 int bsp_CompileBspAsync(void *param);
 

@@ -25,6 +25,7 @@ button_t *gui_CreateButton(char *name, short x, short y, short w, short h, short
 	button->widget.name = strdup(name);
 	button->widget.parent = NULL;
 	button->widget.widget_callback = button_callback;
+	
 			
 	button->bm_button_flags = bm_flags & (~BUTTON_PRESSED);
 	button->rendered_text = NULL;

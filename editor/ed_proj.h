@@ -108,9 +108,11 @@ typedef struct
 
 
 
-void editor_SaveProject(char *file_name);
+void editor_SaveProject();
 
-void editor_OpenProject(char *file_name);
+int editor_OpenProject(char *file_name);
+
+void editor_SetProjectName(char *name);
 
 void editor_CloseProject();
 

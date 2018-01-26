@@ -524,7 +524,7 @@ void player_UpdatePlayers(double delta_time)
 			s = fabs(players[i].player_position.y);
 			c = fabs(players[i].collision_box_position.y);
 					
-			players[i].player_position.y += (players[i].collision_box_position.y - players[i].player_position.y) * 0.075;
+			players[i].player_position.y += (players[i].collision_box_position.y - players[i].player_position.y) * 0.075 * delta_time * 0.075;
 
 					
 			if(fabs(s - c) <= 0.01)
@@ -533,7 +533,7 @@ void player_UpdatePlayers(double delta_time)
 		}
 		else
 		{
-			players[i].player_position.y += (players[i].collision_box_position.y - players[i].player_position.y) * 0.25;
+			players[i].player_position.y += (players[i].collision_box_position.y - players[i].player_position.y) * 0.25 * delta_time * 0.075;
 		}
 		
 		/*if(players[i].fire_timer)

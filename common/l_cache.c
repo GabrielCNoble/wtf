@@ -603,6 +603,8 @@ void light_UploadIndexes(int light_index)
 		
 				visible_triangles = &light_visible_triangles[light_index * MAX_TRIANGLES_PER_LIGHT];
 				c = parms->visible_triangle_count;
+				
+				//assert(c < MAX_)
 			
 				#if 0
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, light_cache_element_buffer);
@@ -638,9 +640,15 @@ void light_UploadIndexes(int light_index)
 				if(parms->bm_flags & LIGHT_GENERATE_SHADOWS)
 				{
 					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, light_cache_shadow_element_buffer);
+					/* this is likelly to cause a big slowdown... */
 					indexes = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_READ_WRITE);
+					
+					/* light_cache_frustum_counts is an array of ints, and each group of 
+					six ints represent the counts of the six frustums of a light... */
 					frustum_count = light_cache_frustum_counts + light_cache[cache].offset * 6;
 					
+					/* block_index is the offset from the beginning of light_cache_frustum_counts of 
+					the group of six ints that represents the frustum of this light... */
 					block_index = MAX_INDEXES_PER_FRUSTUM * 6 * light_cache[cache].offset;				
 					
 					
@@ -660,7 +668,15 @@ void light_UploadIndexes(int light_index)
 						/* TODO: FIX THIS! */
 						for(j = 0; j < 6; j++)
 						{
+							/* start_index is the offset from the beginning of the light_cache_frustum_counts
+							that represent this frustum of this light... */
 							start_index = block_index + j * MAX_INDEXES_PER_FRUSTUM;
+							
+							if(frustum_count[j] >= MAX_INDEXES_PER_FRUSTUM)
+								continue;
+							
+							
+							//assert(frustum_count[j] < MAX_INDEXES_PER_FRUSTUM);
 								
 							//if(indexes[start_index + frustum_count[frustum_index]] != visible_triangles[i].first_vertex)
 							{

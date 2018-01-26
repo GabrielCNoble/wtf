@@ -10,8 +10,9 @@
 #include "camera.h"
 #include "texture.h"
 #include "shader.h"
+#include "r_main.h"
 
-
+#include "SDL2\SDL.h"
 #include "GL\glew.h"
 
 
@@ -30,7 +31,9 @@ extern int camera_count;
 extern camera_t *camera_list;
 
 
-char current_project_name[512] = {"test_project.wtf"};
+extern SDL_Window *window;
+
+char current_project_name[512];
 
 /* from world.c */
 extern int world_vertices_count;
@@ -56,11 +59,17 @@ extern texture_reg_t *texture_names;
 extern shader_t *shaders;
 
 /* cleared every time the project is saved, set
-every time a change happen... */
+every time a change happens... */
 int b_project_dirty = 0;
 
+/* from bsp_cmp.c */
+extern int b_compiling;
 
-void editor_SaveProject(char *file_name)
+/* from pvs.c */
+extern int b_calculating_pvs;
+
+
+void editor_SaveProject()
 {
 	FILE *file;
 	int i;
@@ -78,7 +87,7 @@ void editor_SaveProject(char *file_name)
 	material_t *material;
 	char name[64];
 	
-	file = fopen(file_name, "wb");
+	file = fopen(current_project_name, "wb");
 	
 	header.version = PROJ_VERSION;
 	header.brush_count = 0;
@@ -174,9 +183,6 @@ void editor_SaveProject(char *file_name)
 			triangle_group_lump.vertice_count = triangle_group->next;
 			
 			fwrite(&triangle_group_lump, sizeof(triangle_group_lump_t), 1, file);
-			
-			//fwrite(name, 64, 1, file);
-			//fwrite(&triangle_group->next, sizeof(int), 1, file);
 			fwrite(&brush->vertices[triangle_group->start], sizeof(vertex_t), triangle_group->next, file);
 		}
 		
@@ -206,7 +212,7 @@ void editor_SaveProject(char *file_name)
 		fwrite(&light_lump, sizeof(light_lump_t), 1, file);
 	}
 	
-	for(i = 0; i < camera_count; i++)
+	/*for(i = 0; i < camera_count; i++)
 	{
 		camera_lump.fovy = camera_list[i].fov_y;
 		camera_lump.width = camera_list[i].width;
@@ -221,7 +227,7 @@ void editor_SaveProject(char *file_name)
 		
 		strcpy(camera_lump.name, camera_list[i].name);
 		fwrite(&camera_lump, sizeof(camera_lump_t), 1, file);
-	}
+	}*/
 
 	fclose(file);
 	
@@ -229,7 +235,7 @@ void editor_SaveProject(char *file_name)
 	
 }
 
-void editor_OpenProject(char *file_name)
+int editor_OpenProject(char *file_name)
 {
 	FILE *file;
 	int i;
@@ -254,7 +260,11 @@ void editor_OpenProject(char *file_name)
 	
 	editor_CloseProject();
 	
-	file = fopen(file_name, "rb");
+	if(!(file = fopen(file_name, "rb")))
+	{
+		printf("couldn't open project [%s]!\n", file_name);
+		return 0;
+	}
 	
 	fread(&header, sizeof(proj_header_t), 1, file);
 	
@@ -327,8 +337,7 @@ void editor_OpenProject(char *file_name)
 		brush->handle = gpu_Alloc(sizeof(vertex_t) * brush->max_vertexes);
 		brush->start = gpu_GetAllocStart(brush->handle) / sizeof(vertex_t);
 		gpu_Write(brush->handle, 0, brush->vertices, sizeof(vertex_t) * brush->vertex_count, 0);
-		
-		
+	
 		glGenBuffers(1, &brush->element_buffer);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brush->element_buffer);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * brush->max_vertexes, NULL, GL_DYNAMIC_DRAW);
@@ -341,24 +350,15 @@ void editor_OpenProject(char *file_name)
 	for(i = 0; i < header.light_count; i++)
 	{
 		fread(&light_lump, sizeof(light_lump_t), 1, file);
-		
 		light_CreateLight(light_lump.name, &light_lump.orientation, light_lump.position, light_lump.color, light_lump.radius, light_lump.energy, light_lump.bm_flags);
-		
-		/*light_lump.orientation = light_positions[i].orientation;
-		light_lump.position = light_positions[i].position;
-		light_lump.color.r = (float)light_params[i].r / 255.0;
-		light_lump.color.g = (float)light_params[i].g / 255.0;
-		light_lump.color.b = (float)light_params[i].b / 255.0;
-		light_lump.energy = LIGHT_ENERGY(light_params[i].energy);
-		light_lump.radius = LIGHT_RADIUS(light_params[i].radius);
-		light_lump.type = 0;
-		
-		fwrite(&light_lump, sizeof(light_lump_t), 1, file);*/
 	}
 	
-	for(i = 0; i < header.camera_count; i++)
+	
+	return 1;
+	
+	/*for(i = 0; i < header.camera_count; i++)
 	{
-		/*camera_lump.fovy = camera_list[i].fov_y;
+		camera_lump.fovy = camera_list[i].fov_y;
 		camera_lump.width = camera_list[i].width;
 		camera_lump.height = camera_list[i].height;
 		camera_lump.orientation = camera_list[i].world_orientation;
@@ -371,8 +371,41 @@ void editor_OpenProject(char *file_name)
 		
 		strcpy(camera_lump.name, camera_list[i].name);
 		
-		fwrite(&camera_lump, sizeof(camera_lump_t), 1, file);*/
+		fwrite(&camera_lump, sizeof(camera_lump_t), 1, file);
+	}*/
+}
+
+void editor_SetProjectName(char *name)
+{
+	
+	int i = 0;
+	char *s = name;
+	int b_found_point;
+	
+	while(s[i])
+	{
+		
+		if(s[i] == '.')
+		{
+			break;
+		}
+		current_project_name[i] = name[i];
+		
+		i++;
 	}
+	
+	current_project_name[i] = '.';
+	i++;
+	current_project_name[i] = 'w';
+	i++;
+	current_project_name[i] = 't';
+	i++;
+	current_project_name[i] = 'f';
+	i++;
+	current_project_name[i] = '\0';
+	
+	SDL_SetWindowTitle(window, current_project_name);
+
 }
 
 void editor_CloseProject()
@@ -397,6 +430,13 @@ void editor_ExportBsp(char *file_name)
 	material_lump_t material_lump;
 	
 	char attrib_name[32];
+	
+	if(b_compiling || b_calculating_pvs)
+	{
+		printf("editor_ExportBsp: map not compiled!\n");
+		return;
+	}
+	
 	
 	file = fopen(file_name, "wb");
 	

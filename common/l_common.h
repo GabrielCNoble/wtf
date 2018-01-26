@@ -10,9 +10,9 @@
 #define MAX_WORLD_LIGHTS 512
 
 #define LIGHT_CACHE_SIZE 32				/* !!! if this gets changed, it has to be updated on forward_pass.frag !!! */
-#define MAX_INDEXES_PER_FRUSTUM 1536		/* 512 triangles... */
+#define MAX_INDEXES_PER_FRUSTUM (3*1024)		/* 512 triangles... */
 #define MAX_INDEXES_PER_GROUP 1536			/* 512 triangles */
-#define MAX_TRIANGLES_PER_LIGHT 4096
+#define MAX_TRIANGLES_PER_LIGHT (MAX_INDEXES_PER_FRUSTUM*2)
 
 
 #define SHADOW_MAP_RESOLUTION 512		/* fixed size shadow maps for all lights... */
