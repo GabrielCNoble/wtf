@@ -28,11 +28,13 @@ void gui_SetInvisible(widget_t *widget);
 
 void gui_RenderText(widget_t *widget);
 
-gui_var_t *gui_CreateGUIVar(char *name, short type, void *addr);
+gui_var_t *gui_CreateVar(char *name, short type, void *addr);
 
-void gui_DeleteGUIVar(gui_var_t *var);
+void gui_TrackVar(gui_var_t *var, widget_t *widget);
 
-void gui_UpdateGUIVars();
+void gui_DeleteVar(gui_var_t *var);
+
+void gui_UpdateVars();
 
 void gui_ProcessGUI();
 
@@ -47,6 +49,7 @@ gui_var_t gui_MakeDoubleVar(double value);
 gui_var_t gui_MakeVec2Var(vec2_t value);
 
 gui_var_t gui_MakeVec3Var(vec3_t value);
+
 
 #endif
 

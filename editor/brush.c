@@ -125,7 +125,7 @@ brush_t *expanded_brushes = NULL;
 static unsigned int element_buffer;
 
 
-/* from material.c */
+/* from editor.c */
 extern int default_material;
 extern int red_default_material;
 
@@ -240,19 +240,19 @@ int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short 
 		switch(type)
 		{
 			case BRUSH_CUBE:
-			//case BRUSH_CYLINDER:
+			case BRUSH_CYLINDER:
 				material = default_material;
 				vertex_positions = cube_bmodel_verts;
 				vertex_normals = cube_bmodel_normals;
 				vertex_count = CUBE_BMODEL_VERTEX_COUNT;
 			break;
 			
-			case BRUSH_CYLINDER:
+			/*case BRUSH_CYLINDER:
 				material = red_default_material;
 				vertex_positions = cube_bmodel_verts;
 				vertex_normals = cube_bmodel_normals;
 				vertex_count = CUBE_BMODEL_VERTEX_COUNT;
-			break;
+			break;*/
 			
 			/*case BRUSH_CYLINDER:
 				brush_CreateCylinderBrush(8, &vertex_count, &vertex_positions, &vertex_normals);

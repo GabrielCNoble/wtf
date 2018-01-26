@@ -18,6 +18,9 @@
 #define WOW_DROPDOWN_WIDTH 120
 #define MISC_DROPDOWN_WIDTH 200
 
+#define FPS_DISPLAY_WIDTH 70
+#define HANDLE_3D_MODE_DISPLAY_WIDTH 120
+
 
 /* from r_main.c */
 extern int r_window_width;
@@ -55,6 +58,11 @@ button_t *confirm_open_project_button;
 button_t *cancel_open_project_button;
 
 
+text_field_t *fps_display;
+
+text_field_t *handle_3d_mode_display;
+
+
 //dropdown_t *wow;
 
 
@@ -67,6 +75,7 @@ extern vec3_t handle_3d_position;
 extern int bm_handle_3d_flags;
 extern int handle_3d_position_mode;
 extern int handle_3d_mode;
+extern char *handle_3d_mode_str;
 
 extern b_draw_brushes;
 extern b_draw_leaves;
@@ -77,6 +86,10 @@ int add_brush_unique_index;
 int add_cube_brush_unique_index;
 int add_cylinder_brush_unique_index;
 int add_spawn_point_unique_index;
+
+
+/* from engine.c */
+extern float fps;
 
 
 void confirm_save_project_button_callback(widget_t *widget)
@@ -115,7 +128,7 @@ void file_dropdown_callback(widget_t *widget)
 		switch(option->index)
 		{
 			case 0:
-				
+				editor_CloseProject();
 			break;
 			
 			case 1:
@@ -407,6 +420,13 @@ void editor_InitUI()
 	
 
 	gui_SetInvisible((widget_t *)open_project_window);
+
+	
+	fps_display = gui_AddTextField(NULL, "fps", r_window_width * 0.5 - FPS_DISPLAY_WIDTH * 0.5, 0, FPS_DISPLAY_WIDTH, 0 ,NULL);
+	gui_TrackVar(gui_CreateVar("fps", GUI_VAR_FLOAT, &fps), (widget_t *)fps_display);
+	
+	handle_3d_mode_display = gui_AddTextField(NULL, "handle 3d mode", -r_window_width * 0.5 + HANDLE_3D_MODE_DISPLAY_WIDTH * 0.5, -r_window_height * 0.5 + OPTION_HEIGHT * 0.5, HANDLE_3D_MODE_DISPLAY_WIDTH, 0, NULL);
+	gui_TrackVar(gui_CreateVar("handle 3d mode", GUI_VAR_STRING, &handle_3d_mode_str), (widget_t *)handle_3d_mode_display);
 
 	//gui_AddTextField(NULL, "text field", 0, 0, 230, 0, NULL);
 	

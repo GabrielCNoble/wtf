@@ -11,6 +11,7 @@
 #include "texture.h"
 #include "shader.h"
 #include "r_main.h"
+#include "bsp.h"
 
 #include "SDL2\SDL.h"
 #include "GL\glew.h"
@@ -410,14 +411,23 @@ void editor_SetProjectName(char *name)
 
 void editor_CloseProject()
 {
-	if(b_project_dirty)
+	if(editor_IsProjectDirty())
 	{
-		
+	
 	}
 	
 	light_DestroyAllLights();
 	brush_DestroyAllBrushes();
 	material_DestroyAllMaterials();
+	camera_DestroyAllCameras();
+	bsp_DeleteBsp();
+	
+	editor_RestartEditor();
+	
+	/*editor_Finish();
+	editor_Init();*/
+	
+	//editor_SetProjectName("untitled.wtf");
 	
 }
 
@@ -549,7 +559,20 @@ void editor_ExportBsp(char *file_name)
 	fclose(file);
 }
 
+int editor_IsProjectDirty()
+{
+	return b_project_dirty;
+}
 
+void editor_DirtyProject()
+{
+	b_project_dirty = 1;
+}
+
+void editor_CleanProject()
+{
+	b_project_dirty = 0;
+}
 
 
 

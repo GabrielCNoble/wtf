@@ -118,4 +118,14 @@ void editor_CloseProject();
 
 void editor_ExportBsp(char *file_name);
 
+int editor_IsProjectDirty();
+
+void editor_DirtyProject();
+
+void editor_CleanProject();
+ 
 #endif
+
+
+
+

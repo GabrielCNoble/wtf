@@ -221,7 +221,7 @@ int renderer_Init(int width, int height, int init_mode)
 	
 	SDL_GL_MakeCurrent(window, context);
 
-	SDL_GL_SetSwapInterval(1);
+	SDL_GL_SetSwapInterval(0);
 	
 	if(glewInit() != GLEW_NO_ERROR)
 	{

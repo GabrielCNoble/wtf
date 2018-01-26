@@ -110,6 +110,7 @@ enum GUI_VAR_TYPES
 enum GUI_VAR_FLAGS
 {
 	GUI_VAR_VALUE_HAS_CHANGED = 1,
+	GUI_VAR_POINTER_TO_TYPE = 1 << 1
 };
 
 typedef struct gui_var_t
@@ -134,7 +135,6 @@ typedef struct gui_var_t
 	
 	short type;
 	short bm_flags;
-	
 	struct gui_var_t *next;
 	
 }gui_var_t;

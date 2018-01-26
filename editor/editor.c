@@ -35,7 +35,7 @@ static int editor_camera_index;
 /* from r_main.c */
 extern int r_width;
 extern int r_height;
-
+extern int forward_pass_shader;
 extern int r_window_width;
 extern int r_window_height;
 
@@ -47,6 +47,8 @@ extern light_params_t *light_params;
 extern char **light_names;
 extern int visible_light_count;
 extern int light_count;
+
+
 
 
 
@@ -106,12 +108,17 @@ int pie_player_index;
 float editor_camera_yaw = 0.0;
 float editor_camera_pitch = 0.0;
 
-char *handle_3d_mode_str[] = 
+int default_material;
+//int red_default_material;
+
+char *handle_3d_mode_strs[] = 
 {
 	"Translation",
 	"Rotation",
 	"Scale",
 };
+
+char *handle_3d_mode_str = "Translation";
 
 
 void button0_callback(widget_t *widget)
@@ -156,6 +163,8 @@ void editor_Init()
 	editor_camera_index = camera_CreateCamera("editor_camera", vec3(12.0, 10.0, 15.0), &r, 0.68, r_width, r_height, 0.1, 500.0, CAMERA_UPDATE_ON_RESIZE);
 	editor_camera = camera_GetCameraByIndex(editor_camera_index);	
 	camera_SetCameraByIndex(editor_camera_index);
+	
+	default_material = material_CreateMaterial("default_material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);
 	
 	camera_PitchYawCamera(editor_camera, editor_camera_yaw, editor_camera_pitch);
 	camera_ComputeWorldToCameraMatrix(editor_camera);
@@ -758,6 +767,33 @@ void editor_Init()
 	
 	renderer_RegisterCallback(editor_WindowResizeCallback, RENDERER_RESOLUTION_CHANGE_CALLBACK);				        
 	
+}
+
+void editor_RestartEditor()
+{
+	mat3_t r = mat3_t_id();
+	
+	editor_camera_yaw = 0.2;
+	editor_camera_pitch = -0.15;
+	
+	editor_camera_index = camera_CreateCamera("editor_camera", vec3(12.0, 10.0, 15.0), &r, 0.68, r_width, r_height, 0.1, 500.0, CAMERA_UPDATE_ON_RESIZE);
+	editor_camera = camera_GetCameraByIndex(editor_camera_index);	
+	camera_SetCameraByIndex(editor_camera_index);
+	
+	default_material = material_CreateMaterial("default_material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);
+	
+	camera_PitchYawCamera(editor_camera, editor_camera_yaw, editor_camera_pitch);
+	camera_ComputeWorldToCameraMatrix(editor_camera);
+		
+	cursor_3d_position = vec3(0.0, 0.0, 0.0);
+	handle_3d_position = vec3(0.0, 0.0, 0.0);
+
+		
+	bm_handle_3d_flags = 0;
+	handle_3d_position_mode = HANDLE_3D_MEDIAN_POINT;
+	handle_3d_mode = HANDLE_3D_TRANSLATION;
+	
+	editor_SetProjectName("untitled.wtf");
 }
 
 void editor_Finish()
@@ -1765,6 +1801,19 @@ int editor_Check3dHandle()
 		
 	}
 	editor_DisablePicking();
+}
+
+void editor_Set3dHandleMode(int mode)
+{
+	switch(mode)
+	{
+		case HANDLE_3D_TRANSLATION:
+		case HANDLE_3D_ROTATION:
+		case HANDLE_3D_SCALE:
+			handle_3d_mode = mode;
+			handle_3d_mode_str = handle_3d_mode_strs[mode];	
+		break;
+	}
 }
 
 void editor_Position3dCursor()

@@ -248,8 +248,28 @@ void gui_RenderText(widget_t *widget)
 	SDL_Color foreground = {255, 255, 255, 255};
 	SDL_Color background = {0, 0, 0, 0};
 	
+	char *format;
+	
 	if(!gui_font)
 		return;
+		
+		
+	
+	/*if(widget->bm_flags & WIDGET_TRACK_VAR)
+	{
+		switch(widget->var->type)
+		{
+			case GUI_VAR_FLOAT:
+				format = "%f";
+			break;
+		}
+	}
+	else
+	{
+		format = formated_str;
+	}*/
+	
+		
 	
 	switch(widget->type)
 	{
@@ -287,23 +307,19 @@ void gui_RenderText(widget_t *widget)
 			
 			if(field->text)
 			{
-				//if(field->text_buffer_cursor)
+				
+				if(field->bm_text_field_flags & TEXT_FIELD_DRAW_TEXT_SELECTED)
 				{
-					if(field->bm_text_field_flags & TEXT_FIELD_DRAW_TEXT_SELECTED)
-					{
-						foreground.r = 0;
-						foreground.g = 0;
-						foreground.b = 0;
-					}
+					foreground.r = 0;
+					foreground.g = 0;
+					foreground.b = 0;
+				}
 					
-					if(field->rendered_text)
-						SDL_FreeSurface(field->rendered_text);
+				if(field->rendered_text)
+					SDL_FreeSurface(field->rendered_text);
 					
-					
-		
-					sprintf(formated_str, field->text);
-					field->rendered_text = TTF_RenderUTF8_Blended_Wrapped(gui_font->font, formated_str, foreground, field->widget.w * 2.0);	
-				}	
+				sprintf(formated_str, field->text);
+				field->rendered_text = TTF_RenderUTF8_Blended_Wrapped(gui_font->font, formated_str, foreground, field->widget.w * 2.0);		
 			}
 			
 		break;
@@ -329,7 +345,7 @@ void gui_RenderText(widget_t *widget)
 }
 
 
-gui_var_t *gui_CreateGUIVar(char *name, short type, void *addr)
+gui_var_t *gui_CreateVar(char *name, short type, void *addr)
 {
 	gui_var_t *var = NULL;
 	
@@ -350,9 +366,14 @@ gui_var_t *gui_CreateGUIVar(char *name, short type, void *addr)
 			var->name = strdup(name);
 			var->type = type;
 			var->addr = addr;
+			var->next = NULL;
 			var->bm_flags = GUI_VAR_VALUE_HAS_CHANGED;
 			
-			var->prev_var_value.str_var = NULL;
+			if(type == GUI_VAR_STRING)
+			{
+				var->prev_var_value.str_var = strdup(*(char **)addr);
+			}
+			
 			
 			if(!gui_vars)
 			{
@@ -366,14 +387,22 @@ gui_var_t *gui_CreateGUIVar(char *name, short type, void *addr)
 			last_gui_var = var;
 		break;
 	}
-	
-	
-	
-	
+
 	return var;
 }
 
-void gui_DeleteGUIVar(gui_var_t *var)
+void gui_TrackVar(gui_var_t *var, widget_t *widget)
+{
+	text_field_t *field;
+	char *format;
+	if(widget)
+	{
+		widget->var = var;
+		widget->bm_flags |= WIDGET_TRACK_VAR;		
+	}
+}
+
+void gui_DeleteVar(gui_var_t *var)
 {
 	gui_var_t *r = gui_vars;
 	
@@ -417,7 +446,7 @@ void gui_DeleteGUIVar(gui_var_t *var)
 					   }
 
 
-void gui_UpdateGUIVars()
+void gui_UpdateVars()
 {
 	gui_var_t *v = gui_vars;
 	
@@ -443,14 +472,14 @@ void gui_UpdateGUIVars()
 			break;
 			
 			case GUI_VAR_STRING:
-				if(strcmp(v->prev_var_value.str_var, (char *)v->addr))
+				if(strcmp(v->prev_var_value.str_var, *((char **)v->addr)))
 				{
 					if(v->prev_var_value.str_var)
 					{
 						free(v->prev_var_value.str_var);
 					}
 					
-					v->prev_var_value.str_var = strdup((char *)v->addr);
+					v->prev_var_value.str_var = strdup(*((char **)v->addr));
 					v->bm_flags |= GUI_VAR_VALUE_HAS_CHANGED;
 				}
 			break;
@@ -503,11 +532,13 @@ void gui_ProcessGUI()
 	
 	//w = top_widget;
 	w = widgets;
-	
+
+	gui_UpdateVars();	
+
 	top = widgets;
 	
 	_do_rest:
-		
+	
 	//bm_mouse &= ~MOUSE_OVER_WIDGET;
 		
 	while(w)

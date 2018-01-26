@@ -1,5 +1,6 @@
 #include "gui_text_field.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -112,110 +113,143 @@ void gui_SetText(widget_t *widget, char *text)
 void gui_UpdateTextField(widget_t *widget)
 {
 	text_field_t *field = (text_field_t *)widget;
+	gui_var_t *var;
 	int i;
 	char *temp;
 	
-	if(field->bm_text_field_flags & TEXT_FIELD_RECEIVING_TEXT)
+	
+	if(!(widget->bm_flags & WIDGET_TRACK_VAR))
 	{
-		if(field->cursor_blink_timer > 0)
+		if(field->bm_text_field_flags & TEXT_FIELD_RECEIVING_TEXT)
 		{
-			field->cursor_blink_timer--;
-		}
-		else
-		{
-			field->cursor_blink_timer = TEXT_FIELD_CURSOR_BLINK_TIME;
-			field->bm_text_field_flags ^= TEXT_FIELD_CURSOR_VISIBLE;			
+			if(field->cursor_blink_timer > 0)
+			{
+				field->cursor_blink_timer--;
+			}
+			else
+			{
+				field->cursor_blink_timer = TEXT_FIELD_CURSOR_BLINK_TIME;
+				field->bm_text_field_flags ^= TEXT_FIELD_CURSOR_VISIBLE;			
+			}
+			
+			while(text_buffer_out != text_buffer_in)
+			{
+				widget->bm_flags |= WIDGET_RENDER_TEXT;
+				
+				if(field->bm_text_field_flags & TEXT_FIELD_DRAW_TEXT_SELECTED)
+				{
+					field->text_buffer_cursor = 0;
+					field->text[0] = ' ';
+					for(i = 1; i < field->text_buffer_size; i++)
+					{
+						field->text[i] = '\0';
+					}
+				
+					field->bm_text_field_flags &= ~TEXT_FIELD_DRAW_TEXT_SELECTED;		
+				}
+				
+				switch(text_buffer[text_buffer_out])
+				{
+					case SDLK_BACKSPACE:
+						if(field->text_buffer_cursor > 0)
+						{
+							field->text[field->text_buffer_cursor] = '\0';
+							field->text_buffer_cursor--;
+						}
+						field->text[field->text_buffer_cursor] = ' ';
+					break;
+					
+					case SDLK_RETURN:
+					//case SDLK_RETURN2:
+						text_buffer_out = (text_buffer_out + 1) % TEXT_BUFFER_SIZE;
+						goto _disable_text_receiving;
+					break;
+					
+					
+					default:
+						field->text[field->text_buffer_cursor] = text_buffer[text_buffer_out];
+						if(field->text_buffer_cursor + 1 >= field->text_buffer_size)
+						{
+							temp = malloc(field->text_buffer_size + 32);
+							memcpy(temp, field->text, field->text_buffer_cursor);
+							free(field->text);
+							field->text = temp;
+							field->text_buffer_size += 32;
+						}
+						
+						field->text[field->text_buffer_cursor + 1] = '\0';
+						field->text_buffer_cursor++;
+					break;
+				}
+				
+				text_buffer_out = (text_buffer_out + 1) % TEXT_BUFFER_SIZE;
+			}
+				
 		}
 		
-		while(text_buffer_out != text_buffer_in)
+		/* left button click outside a text field will disable text receiving... */
+		if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
 		{
-			widget->bm_flags |= WIDGET_RENDER_TEXT;
-			
-			if(field->bm_text_field_flags & TEXT_FIELD_DRAW_TEXT_SELECTED)
-			{
-				field->text_buffer_cursor = 0;
-				field->text[0] = ' ';
-				for(i = 1; i < field->text_buffer_size; i++)
+			if(widget->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
+			{	
+				if(!(field->bm_text_field_flags & TEXT_FIELD_READ_ONLY))
 				{
-					field->text[i] = '\0';
-				}
-			
-				field->bm_text_field_flags &= ~TEXT_FIELD_DRAW_TEXT_SELECTED;		
-			}
-			
-			switch(text_buffer[text_buffer_out])
-			{
-				case SDLK_BACKSPACE:
-					if(field->text_buffer_cursor > 0)
-					{
-						field->text[field->text_buffer_cursor] = '\0';
-						field->text_buffer_cursor--;
-					}
-					field->text[field->text_buffer_cursor] = ' ';
-				break;
-				
-				case SDLK_RETURN:
-				//case SDLK_RETURN2:
-					text_buffer_out = (text_buffer_out + 1) % TEXT_BUFFER_SIZE;
-					goto _disable_text_receiving;
-				break;
-				
-				
-				default:
-					field->text[field->text_buffer_cursor] = text_buffer[text_buffer_out];
-					if(field->text_buffer_cursor + 1 >= field->text_buffer_size)
-					{
-						temp = malloc(field->text_buffer_size + 32);
-						memcpy(temp, field->text, field->text_buffer_cursor);
-						free(field->text);
-						field->text = temp;
-						field->text_buffer_size += 32;
+					
+					if(!(field->bm_text_field_flags & TEXT_FIELD_NO_WRITE))
+					{			
+						field->bm_text_field_flags |= TEXT_FIELD_CURSOR_VISIBLE | TEXT_FIELD_RECEIVING_TEXT;
+						field->cursor_blink_timer = TEXT_FIELD_CURSOR_BLINK_TIME;
+						
+						if(field->text_buffer_cursor)
+						{
+							field->bm_text_field_flags |= TEXT_FIELD_DRAW_TEXT_SELECTED;
+							widget->bm_flags |= WIDGET_RENDER_TEXT;
+						}
+						//field->text_buffer_cursor = 0;
+						
+						input_EnableTextInput(1);
+						
 					}
 					
-					field->text[field->text_buffer_cursor + 1] = '\0';
-					field->text_buffer_cursor++;
+				}
+			}
+			else
+			{
+				_disable_text_receiving:
+					
+				field->bm_text_field_flags &= ~(TEXT_FIELD_RECEIVING_TEXT | TEXT_FIELD_CURSOR_VISIBLE | TEXT_FIELD_DRAW_TEXT_SELECTED);
+				widget->bm_flags |= WIDGET_RENDER_TEXT;
+			}
+		}
+	}
+	else
+	{
+		var = widget->var;
+		
+		if(var->bm_flags & GUI_VAR_VALUE_HAS_CHANGED)
+		{
+			switch(var->type)
+			{
+				case GUI_VAR_FLOAT:
+					sprintf(field->text, "%.02f", *((float *)var->addr));
+				break;
+				
+				case GUI_VAR_INT:
+					sprintf(field->text, "%d", *((int *)var->addr));
+				break;
+				
+				case GUI_VAR_STRING:
+					sprintf(field->text, "%s", *((char **)var->addr));
 				break;
 			}
-			
-			text_buffer_out = (text_buffer_out + 1) % TEXT_BUFFER_SIZE;
+				
+			var->bm_flags &= ~GUI_VAR_VALUE_HAS_CHANGED;
+			widget->bm_flags |= WIDGET_RENDER_TEXT;
 		}
-			
 	}
 	
-	/* left button click outside a text field will disable text receiving... */
-	if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
-	{
-		if(widget->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
-		{	
-			if(!(field->bm_text_field_flags & TEXT_FIELD_READ_ONLY))
-			{
-				
-				if(!(field->bm_text_field_flags & TEXT_FIELD_NO_WRITE))
-				{			
-					field->bm_text_field_flags |= TEXT_FIELD_CURSOR_VISIBLE | TEXT_FIELD_RECEIVING_TEXT;
-					field->cursor_blink_timer = TEXT_FIELD_CURSOR_BLINK_TIME;
-					
-					if(field->text_buffer_cursor)
-					{
-						field->bm_text_field_flags |= TEXT_FIELD_DRAW_TEXT_SELECTED;
-						widget->bm_flags |= WIDGET_RENDER_TEXT;
-					}
-					//field->text_buffer_cursor = 0;
-					
-					input_EnableTextInput(1);
-					
-				}
-				
-			}
-		}
-		else
-		{
-			_disable_text_receiving:
-				
-			field->bm_text_field_flags &= ~(TEXT_FIELD_RECEIVING_TEXT | TEXT_FIELD_CURSOR_VISIBLE | TEXT_FIELD_DRAW_TEXT_SELECTED);
-			widget->bm_flags |= WIDGET_RENDER_TEXT;
-		}
-	}
+	
+	
 	
 	
 }

@@ -110,7 +110,13 @@ int camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, float 
 
 void camera_DestroyAllCameras()
 {
+	int i;
 	
+	for(i = 0; i < camera_count; i++)
+	{
+		free(camera_list[i].name);
+	}
+	camera_count = 0;
 }
 
 void camera_SetCameraProjectionMatrix(camera_t *camera, float width, float height, float znear, float zfar, float fovy)

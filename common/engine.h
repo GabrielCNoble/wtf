@@ -19,6 +19,11 @@
 #include "font.h"
 #include "log.h"
 
+
+
+
+
+
 enum ENGINE_STATE
 {
 	ENGINE_QUIT = 0,
@@ -28,6 +33,8 @@ enum ENGINE_STATE
 	ENGINE_JUST_PAUSED = 1 << 3,
 	ENGINE_JUST_RESUMED = 1 << 4,
 };
+
+
 
 
 
@@ -46,6 +53,8 @@ void engine_SetEngineState(int state);
 void engine_UpdateDeltaTime();
 
 float engine_GetDeltaTime();
+
+void engine_BackTrace();
 
 
 

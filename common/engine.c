@@ -18,8 +18,14 @@ void (*engine_StartUp)();
 
 void (*engine_GameMain)(float );
 
-
 int b_init_properly = 0;
+
+#define FPS_COLLECTION_TIME 1000.0
+
+float accum_frame_time = 0.0;
+float collection_delta = 0.0;
+int collection_frame_count = 0;
+float fps = 0.0;
 
 void engine_Init(int width, int height, int init_mode)
 {
@@ -153,6 +159,24 @@ void engine_MainLoop()
 		//e = engine_GetDeltaTime();
 		renderer_CloseFrame();
 		
+		if(collection_delta < FPS_COLLECTION_TIME)
+		{
+			accum_frame_time += 1.0 / (engine_GetDeltaTime() * 0.001);
+			collection_delta += engine_GetDeltaTime();
+			collection_frame_count++;
+		}
+		else
+		{
+			fps = accum_frame_time / collection_frame_count;
+			
+			collection_frame_count = 0;
+			collection_delta = 0.0;
+			accum_frame_time = 0.0;
+		}
+		
+		
+		
+		//printf("%f\n", 1.0 / (engine_GetDeltaTime() * 0.001));
 		
 		
 		//printf("CPU: %f\n", e - s);
@@ -213,6 +237,43 @@ float engine_GetDeltaTime()
 	return (float)((cur - start_delta) * 1000) / (float)performance_frequency;
 }
 
+#if defined(__WIN32__) || defined(__WINRT__)
+#define WINDOWS_BACKTRACE
+#include <Windows.h>
+#include <Dbghelp.h>
+
+#else
+#define LINUX_BACKTRACE
+#include <execinfo.h>
+
+#endif
+
+void engine_BackTrace()
+{
+	#ifdef WINDOWS_BACKTRACE
+	
+	HANDLE h_process;
+	HANDLE h_thread;
+	DWORD machine_type;
+	SYMBOL_INFO *info;
+	
+	int i;
+	int captured_frames = 0;
+	
+	void **trace = malloc(sizeof(void *) * MAXSHORT);	
+	captured_frames = RtlCaptureStackBackTrace(0, MAXSHORT, trace, NULL);
+	
+	for(i = 0; i < captured_frames; i++)
+	{
+		printf("%x\n", trace[i]);
+	}
+	
+	free(trace);
+	
+	#else 
+	
+	#endif
+}
 
 
 

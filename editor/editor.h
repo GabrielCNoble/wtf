@@ -7,6 +7,8 @@
 
 void editor_Init();
 
+void editor_RestartEditor();
+
 void editor_Finish();
 
 void editor_Main(float delta_time);
@@ -36,6 +38,8 @@ void editor_DisablePicking();
 int editor_Pick(pick_record_t *record);
 
 int editor_Check3dHandle();
+
+void editor_Set3dHandleMode(int mode);
 
 void editor_Position3dCursor();
 

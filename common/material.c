@@ -19,9 +19,6 @@ char **material_names;
 extern int z_pre_pass_shader;
 extern int forward_pass_shader;
 
-int default_material;
-int red_default_material;
-
 int material_Init()
 {
 	material_list_size = 16;
@@ -31,8 +28,8 @@ int material_Init()
 	material_names = malloc(sizeof(char *) * material_list_size);
 	free_position_stack = malloc(sizeof(int) * material_list_size);
 	
-	default_material = material_CreateMaterial("default_material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);	
-	red_default_material = material_CreateMaterial("red default material", vec4(1.0, 0.0, 0.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);
+	//default_material = material_CreateMaterial("default_material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);	
+	//red_default_material = material_CreateMaterial("red default material", vec4(1.0, 0.0, 0.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);
 	
 	return 1;
 }

@@ -357,15 +357,18 @@ void editor_ProcessKeyboard(float delta_time)
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_G) & KEY_JUST_PRESSED)
 		{
-			handle_3d_mode = HANDLE_3D_TRANSLATION;
+			//handle_3d_mode = HANDLE_3D_TRANSLATION;
+			editor_Set3dHandleMode(HANDLE_3D_TRANSLATION);
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_R) & KEY_JUST_PRESSED)
 		{
-			handle_3d_mode = HANDLE_3D_ROTATION;
+			//handle_3d_mode = HANDLE_3D_ROTATION;
+			editor_Set3dHandleMode(HANDLE_3D_ROTATION);
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_S) & KEY_JUST_PRESSED)
 		{
-			handle_3d_mode = HANDLE_3D_SCALE;
+			editor_Set3dHandleMode(HANDLE_3D_SCALE);
+			//handle_3d_mode = HANDLE_3D_SCALE;
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_A) & KEY_JUST_PRESSED)
 		{
