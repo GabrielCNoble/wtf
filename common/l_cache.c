@@ -229,6 +229,8 @@ void light_DropLight(int light_index)
 			}
 					
 			light_FreeShadowMap(light_index);
+				
+				
 			light_cache_cursor--;
 		}
 		

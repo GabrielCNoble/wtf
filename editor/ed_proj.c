@@ -12,6 +12,8 @@
 #include "shader.h"
 #include "r_main.h"
 #include "bsp.h"
+#include "bsp_cmp.h"
+#include "player.h"
 
 #include "SDL2\SDL.h"
 #include "GL\glew.h"
@@ -70,6 +72,11 @@ extern int b_compiling;
 extern int b_calculating_pvs;
 
 
+/* from player.c */
+extern int spawn_point_count;
+extern spawn_point_t *spawn_points;
+
+
 void editor_SaveProject()
 {
 	FILE *file;
@@ -83,8 +90,11 @@ void editor_SaveProject()
 	camera_lump_t camera_lump;
 	material_lump_t material_lump;
 	triangle_group_lump_t triangle_group_lump;
+	polygon_record_t polygon_record;
+	spawn_point_record_t spawn_point_record;
 	triangle_group_t *triangle_group;
 	brush_t *brush;
+	bsp_polygon_t *polygon;
 	material_t *material;
 	char name[64];
 	
@@ -95,6 +105,7 @@ void editor_SaveProject()
 	header.light_count = 0;
 	header.camera_count = camera_count;
 	header.material_count = material_count;
+	header.spawn_point_count = 0;
 	
 	
 	for(i = 0; i < brush_count; i++)
@@ -116,6 +127,13 @@ void editor_SaveProject()
 		header.light_count++;	
 	}
 	
+	for(i = 0; i < spawn_point_count; i++)
+	{
+		if(spawn_points[i].bm_flags & SPAWN_POINT_INVALID)
+			continue;
+			
+		header.spawn_point_count++;	
+	}
 	
 	
 	fwrite(&header, sizeof(proj_header_t), 1, file);
@@ -123,7 +141,7 @@ void editor_SaveProject()
 	
 	for(i = 0; i < material_count; i++)
 	{
-		for(j = 0; j < 32; j++)
+		for(j = 0; j < MAX_NAME_LEN; j++)
 		{
 			material_lump.name[j] = '\0';
 			material_lump.shader_name[j] = '\0';
@@ -170,23 +188,27 @@ void editor_SaveProject()
 		brush_lump.type = brush->type;
 		brush_lump.triangle_group_count = brush->triangle_group_count;
 		brush_lump.vertex_count = brush->vertex_count;
+		brush_lump.polygon_count = brush->polygon_count;
 		
 		fwrite(&brush_lump, sizeof(brush_lump_t), 1, file);
+		fwrite(brush->vertices, sizeof(vertex_t), brush->vertex_count, file);
 		
-		for(j = 0; j < brushes[i].triangle_group_count; j++)
+		for(j = 0; j < brush->polygon_count; j++)
 		{
-			for(k = 0; k < 64; k++)
-			{
-				name[k] = '\0';
-			}
-			triangle_group = &brushes[i].triangle_groups[j];
-			strcpy(triangle_group_lump.material_name, material_names[triangle_group->material_index]);
-			triangle_group_lump.vertice_count = triangle_group->next;
+			polygon = brush->polygons + j;
 			
-			fwrite(&triangle_group_lump, sizeof(triangle_group_lump_t), 1, file);
-			fwrite(&brush->vertices[triangle_group->start], sizeof(vertex_t), triangle_group->next, file);
+			polygon_record.vert_count = polygon->vert_count;
+			polygon_record.normal = polygon->normal;
+			polygon_record.first_index_offset = polygon->vertices - brush->vertices;
+			
+			for(k = 0; k < MAX_NAME_LEN; k++)
+			{
+				polygon_record.material_name[k] = '\0';
+			}
+				
+			strcpy(polygon_record.material_name, material_names[polygon->material_index]);
+			fwrite(&polygon_record, sizeof(polygon_record_t), 1, file);			
 		}
-		
 	}
 	
 	for(i = 0; i < light_count; i++)
@@ -204,7 +226,7 @@ void editor_SaveProject()
 		light_lump.type = 0;
 		light_lump.bm_flags = light_params[i].bm_flags;
 		
-		for(j = 0; j < 32; j++)
+		for(j = 0; j < MAX_NAME_LEN; j++)
 		{
 			light_lump.name[j] = '\0';
 		}
@@ -212,6 +234,23 @@ void editor_SaveProject()
 		strcpy(light_lump.name, light_names[i]);
 		fwrite(&light_lump, sizeof(light_lump_t), 1, file);
 	}
+	
+	for(i = 0; i < spawn_point_count; i++)
+	{
+		if(spawn_points[i].bm_flags & SPAWN_POINT_INVALID)
+			continue;
+		
+		for(j = 0; j < MAX_NAME_LEN; j++)
+		{
+			spawn_point_record.name[j] = '\0';
+		}
+			
+		spawn_point_record.position = spawn_points[i].position;
+		strcpy(spawn_point_record.name, spawn_points[i].name);
+		
+		fwrite(&spawn_point_record, sizeof(spawn_point_record_t), 1, file);
+	}
+	
 	
 	/*for(i = 0; i < camera_count; i++)
 	{
@@ -238,6 +277,7 @@ void editor_SaveProject()
 
 int editor_OpenProject(char *file_name)
 {
+	//printf("editor_OpenProject\n");
 	FILE *file;
 	int i;
 	int j;
@@ -250,7 +290,11 @@ int editor_OpenProject(char *file_name)
 	material_lump_t material_lump;
 	triangle_group_lump_t triangle_group_lump;
 	triangle_group_t *triangle_group;
+	polygon_record_t polygon_record;
+	spawn_point_record_t spawn_point_record;
 	brush_t *brush;
+	brush_t *brush2;
+	vertex_t *vertices;
 	material_t *material;
 	short shader_index;
 	short material_index;
@@ -261,13 +305,18 @@ int editor_OpenProject(char *file_name)
 	
 	editor_CloseProject();
 	
+
+	
 	if(!(file = fopen(file_name, "rb")))
 	{
 		printf("couldn't open project [%s]!\n", file_name);
 		return 0;
 	}
 	
+	//printf("editor_OpenProject: open file\n");
+	
 	fread(&header, sizeof(proj_header_t), 1, file);
+	//printf("editor_OpenProject: read header\n");
 	
 	for(i = 0; i < header.material_count; i++)
 	{
@@ -284,6 +333,8 @@ int editor_OpenProject(char *file_name)
 		material_CreateMaterial(material_lump.name, material_lump.base, 1.0, 1.0, shader_index, -1, -1);
 	}
 	
+	//printf("editor_OpenProject: read materials\n");
+	
 	
 	for(i = 0; i < header.brush_count; i++)
 	{
@@ -292,61 +343,67 @@ int editor_OpenProject(char *file_name)
 		
 		fread(&brush_lump, sizeof(brush_lump_t), 1, file);
 		
-		brush->vertices = malloc(sizeof(vertex_t) * brush_lump.vertex_count);
+		brush->vertices = malloc(sizeof(vertex_t) * brush_lump.vertex_count * 10);
 		brush->vertex_count = brush_lump.vertex_count;
 		brush->max_vertexes = brush_lump.vertex_count;
+		
+		brush->polygon_count = brush_lump.polygon_count;
+		brush->polygons = malloc(sizeof(bsp_polygon_t) * brush_lump.polygon_count * 10);
+		
 		brush->orientation = brush_lump.orientation;
 		brush->position = brush_lump.position;
 		brush->scale = brush_lump.scale;
 		brush->type = brush_lump.type;
-		brush->triangles = malloc(sizeof(bsp_striangle_t) * brush_lump.vertex_count / 3);
-		brush->triangle_groups = malloc(sizeof(triangle_group_t ) * brush_lump.triangle_group_count);
-		brush->triangle_group_count = brush_lump.triangle_group_count;
-		//brush->triangle_group_count = brush_lump.triangle_group_count;
 		
-		brush->triangle_groups[0].start = 0;
 		
-		for(k = 0; k < brush_lump.triangle_group_count; k++)
+		//vertices = malloc(sizeof(vertex_t) * brush_lump.vertex_count);
+		
+		fread(brush->vertices, sizeof(vertex_t), brush_lump.vertex_count, file);
+		//fread(vertices, sizeof(vertex_t), brush_lump.vertex_count, file);
+		//free(vertices);
+		
+		//brush_lump.orientation = mat3_t_id();
+		
+		//j = brush_CreateBrush(brush_lump.position, &brush_lump.orientation, brush_lump.scale, brush_lump.type);
+		//brush2 = &brushes[j];
+		
+		
+		for(k = 0; k < brush_lump.polygon_count; k++)
 		{
-			fread(&triangle_group_lump, sizeof(triangle_group_lump_t), 1, file);
+			fread(&polygon_record, sizeof(polygon_record_t), 1, file);
 			
-			brush->triangle_groups[k].material_index = material_GetMaterialIndex(triangle_group_lump.material_name);
+			brush->polygons[k].next = &brush->polygons[k + 1];
+			brush->polygons[k].b_used = 0;
+			brush->polygons[k].normal = polygon_record.normal;
+			brush->polygons[k].vert_count = polygon_record.vert_count;
+			brush->polygons[k].vertices = brush->vertices + polygon_record.first_index_offset;
+			brush->polygons[k].material_index = material_GetMaterialIndex(polygon_record.material_name);	
 			
-			/* brush_UpdateBrushElementBuffer needs this to be zero... */
-			brush->triangle_groups[k].next = 0;
 			
-			fread(brush->vertices + brush->triangle_groups[k].start, sizeof(vertex_t), triangle_group_lump.vertice_count, file);
+			//printf("[%f %f %f]     [%f %f %f]\n", brush->polygons[k].normal.x, brush->polygons[k].normal.y, brush->polygons[k].normal.z, 
+			  //                                    brush2->polygons[k].normal.x, brush2->polygons[k].normal.y, brush2->polygons[k].normal.z);
 			
-			for(l = 0; l < triangle_group_lump.vertice_count; l++)
-			{
-				if(!(l % 3))
-				{
-					brush->triangles[(l + brush->triangle_groups[k].start) / 3].first_vertex = l + brush->triangle_groups[k].start;
-					brush->triangles[(l + brush->triangle_groups[k].start) / 3].triangle_group = brush->triangle_groups[k].material_index;
-				}
-			}
-					
-			if(k < brush_lump.triangle_group_count - 1)
-			{
-				brush->triangle_groups[k + 1].start = brush->triangle_groups[k].start + triangle_group_lump.vertice_count;
-			}		
 		}
 		
-		brush->polygons = NULL;
+		brush->polygons[k - 1].next = NULL;
 		
-		
-		brush->handle = gpu_Alloc(sizeof(vertex_t) * brush->max_vertexes);
+		bsp_TriangulatePolygonsIndexes(brush->polygons, &brush->indexes, &brush->index_count);
+			
+		brush->handle = gpu_Alloc(sizeof(vertex_t) * brush->vertex_count * 10);
 		brush->start = gpu_GetAllocStart(brush->handle) / sizeof(vertex_t);
 		gpu_Write(brush->handle, 0, brush->vertices, sizeof(vertex_t) * brush->vertex_count, 0);
 	
 		glGenBuffers(1, &brush->element_buffer);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brush->element_buffer);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * brush->max_vertexes, NULL, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * brush->index_count, NULL, GL_DYNAMIC_DRAW);
 		
+		brush_BuildTriangleGroups(brush);
 		brush_UpdateBrushElementBuffer(brush);
 			
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);	
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
+	
+	//printf("editor_OpenProject: read brushes\n");
 	
 	for(i = 0; i < header.light_count; i++)
 	{
@@ -354,6 +411,15 @@ int editor_OpenProject(char *file_name)
 		light_CreateLight(light_lump.name, &light_lump.orientation, light_lump.position, light_lump.color, light_lump.radius, light_lump.energy, light_lump.bm_flags);
 	}
 	
+	//printf("editor_OpenProject: read lights\n");
+	
+	for(i = 0; i < header.spawn_point_count; i++)
+	{
+		fread(&spawn_point_record, sizeof(spawn_point_record_t), 1, file);
+		player_CreateSpawnPoint(spawn_point_record.position, spawn_point_record.name);
+	}
+	
+	//printf("editor_OpenProject: read spawn points\n");
 	
 	return 1;
 	
@@ -411,24 +477,29 @@ void editor_SetProjectName(char *name)
 
 void editor_CloseProject()
 {
+	//printf("edidor_CloseProject\n");
 	if(editor_IsProjectDirty())
 	{
 	
 	}
 	
 	light_DestroyAllLights();
+	//printf("light_DestroyAllLights\n");
 	brush_DestroyAllBrushes();
+	//printf("brush_DestroyAllBrushes\n");
 	material_DestroyAllMaterials();
+	//printf("material_DestroyAllMaterials\n");
 	camera_DestroyAllCameras();
+	//printf("camera_DestroyAllCameras\n");
 	bsp_DeleteBsp();
+	//printf("bsp_DeleteBsp\n");
 	
 	editor_RestartEditor();
 	
-	/*editor_Finish();
-	editor_Init();*/
+	//printf("editor_RestartEditor\n");
 	
-	//editor_SetProjectName("untitled.wtf");
-	
+	//gpu_ClearHeap();
+		
 }
 
 void editor_ExportBsp(char *file_name)
@@ -438,8 +509,16 @@ void editor_ExportBsp(char *file_name)
 	light_lump_t light_lump;
 	triangle_group_lump_t triangle_group_lump;
 	material_lump_t material_lump;
+	int i;
+	int j;
 	
-	char attrib_name[32];
+	int start;
+	int count;
+	
+	
+	char name[BSP_FILE_MAX_NAME_LEN];
+	
+	char attrib_name[MAX_NAME_LEN];
 	
 	if(b_compiling || b_calculating_pvs)
 	{
@@ -447,14 +526,29 @@ void editor_ExportBsp(char *file_name)
 		return;
 	}
 	
+	i = 0;
 	
-	file = fopen(file_name, "wb");
 	
-	int i;
-	int j;
+	if(strlen(file_name) + 1 >= BSP_FILE_MAX_NAME_LEN)
+	{
+		/* truncate 5 chars away from the max, so there's space for
+		the extension (.bsp) + a trailing null... */
+		file_name[BSP_FILE_MAX_NAME_LEN - 5] = '\0';
+	}
 	
-	int start;
-	int count;
+	strcpy(name, file_name);
+	
+	while(name[i] != '.' && name[i] != '\0') i++;
+	
+	/* remove whatever bizarre extension that might come... */
+	if(name[i] == '.')
+	{
+		name[i] = '\0';
+	}
+	
+	strcat(name, ".bsp");
+	file = fopen(name, "wb");
+	
 	
 	header.version = BSP_FILE_VERSION;
 	header.light_count = light_count;
@@ -490,26 +584,26 @@ void editor_ExportBsp(char *file_name)
 		
 		if(material_lump.bm_textures & 1)
 		{
-			for(j = 0; j < 32; j++)
+			for(j = 0; j < MAX_NAME_LEN; j++)
 			{
 				attrib_name[j] = 0;
 			}
 				
 			strcpy(attrib_name, texture_names[materials[i].diffuse_texture].file_name);
 			
-			fwrite(attrib_name, 32, 1, file);
+			fwrite(attrib_name, MAX_NAME_LEN, 1, file);
 		}
 		
 		if(material_lump.bm_textures & 2)
 		{
-			for(j = 0; j < 32; j++)
+			for(j = 0; j < MAX_NAME_LEN; j++)
 			{
 				attrib_name[j] = 0;
 			}
 				
 			strcpy(attrib_name, texture_names[materials[i].normal_texture].file_name);
 			
-			fwrite(attrib_name, 32, 1, file);
+			fwrite(attrib_name, MAX_NAME_LEN, 1, file);
 		}
 	}
 	
@@ -533,7 +627,7 @@ void editor_ExportBsp(char *file_name)
 	
 	for(i = 0; i < world_triangle_group_count; i++)
 	{
-		for(j = 0; j < 32; j++)
+		for(j = 0; j < MAX_NAME_LEN; j++)
 		{
 			triangle_group_lump.material_name[j] = 0;
 		}

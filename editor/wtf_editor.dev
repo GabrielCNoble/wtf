@@ -11,7 +11,7 @@ ResourceIncludes=
 MakeIncludes=
 Compiler=-masm=intel_@@__@@_
 CppCompiler=
-Linker=_@@_-lmingw32_@@_-lopengl32_@@_-lSDL2main_@@_-lSDL2_@@_-lSDL2_ttf_@@_-lglew32_@@_-lOpenAL32_@@__@@__@@__@@__@@__@@_
+Linker=_@@_-lmingw32_@@_-lopengl32_@@_-lSDL2main_@@_-lSDL2_@@_-lSDL2_ttf_@@_-lglew32_@@_-lOpenAL32_@@__@@_-Wl,-Map=r.map_@@__@@__@@__@@__@@__@@__@@__@@__@@_
 IsCpp=0
 Icon=
 ExeOutput=
@@ -29,7 +29,7 @@ IncludeVersionInfo=0
 SupportXPThemes=0
 CompilerSet=3
 CompilerSettings=00000d0100000000001000000
-UnitCount=118
+UnitCount=121
 
 [VersionInfo]
 Major=1
@@ -1222,6 +1222,36 @@ BuildCmd=
 
 [Unit118]
 FileName=..\common\log.c
+CompileCpp=0
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit119]
+FileName=..\common\gui_surface.h
+CompileCpp=0
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit120]
+FileName=..\common\gui_slider.c
+CompileCpp=0
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit121]
+FileName=..\common\gui_tag.h
 CompileCpp=0
 Folder=
 Compile=1

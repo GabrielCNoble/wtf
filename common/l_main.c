@@ -43,6 +43,7 @@ int stencil_light_mesh_vert_count;
 unsigned int stencil_light_mesh_handle;
 unsigned int stencil_light_mesh_start;
 unsigned int shared_shadow_map;
+unsigned int indirection_texture;
 
 //static int cluster_x_divs;
 //static int cluster_y_divs;
@@ -123,6 +124,7 @@ int light_Init()
 	light_count = 0;
 	free_position_stack_top = -1;
 	mat3_t m;
+	vec2_t indirection;
 	
 	
 	float *stencil_light_mesh;
@@ -132,8 +134,13 @@ int light_Init()
 	light_names = malloc(sizeof(char *) * light_list_size);
 	free_position_stack = malloc(sizeof(int ) * light_list_size);
 	light_visible_triangles = malloc(sizeof(bsp_striangle_t) * light_list_size * MAX_TRIANGLES_PER_LIGHT);
-	
 	clusters = malloc(sizeof(cluster_t) * CLUSTERS_PER_ROW * CLUSTER_ROWS * CLUSTER_LAYERS);
+	
+	for(i = 0; i < light_list_size; i++)
+	{
+		light_names[i] = malloc(LIGHT_MAX_NAME_LEN);
+	}
+	
 	
 	
 	CreatePerspectiveMatrix(&shadow_map_projection_matrix, (45.17578125 * 3.14159265) / 180.0, 1.0, 0.1, LIGHT_MAX_RADIUS * 100.0, 0.0, 0.0, NULL);
@@ -241,26 +248,14 @@ int light_Init()
 	glViewport(0, 0, r_width, r_height);
 	
 	
-	/*glGenBuffers(1, &cluster_uniform_buffer);
-	glBindBuffer(GL_UNIFORM_BUFFER, cluster_uniform_buffer);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(cluster_t) * CLUSTERS_PER_ROW * CLUSTER_ROWS * CLUSTER_LAYERS, NULL, GL_DYNAMIC_DRAW);
-	cls = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+	glGenTextures(1, &indirection_texture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, indirection_texture);
 	
+	indirection.x = 0.0;
+	indirection.y = 0.0;
+	glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RG16F, 1, 1, 0, GL_RG, GL_FLOAT, &indirection.floats[0]);
 	
-	for(k = 0; k < CLUSTER_LAYERS; k++)
-	{
-		for(j = 0; j < CLUSTER_ROWS; j++)
-		{
-			for(i = 0; i < CLUSTERS_PER_ROW; i++)
-			{
-				cls[CLUSTER_OFFSET(i, j , k)].light_indexes_bm = 0;
-				cls[CLUSTER_OFFSET(i, j , k)].time_stamp = 0xffffffff;
-			}
-		}
-	}
-	
-	glUnmapBuffer(GL_UNIFORM_BUFFER);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);*/
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	
 	light_InitCache();
 	
@@ -345,9 +340,15 @@ void light_Finish()
 	
 	light_FinishCache();
 	
-	for(i = 0; i < light_count; i++)
+	for(i = 0; i < light_list_size; i++)
 	{
+		/*if(light_params[i].bm_flags & LIGHT_INVALID)
+			continue;
+			
+		free(light_names[i]);*/
+		
 		free(light_names[i]);
+		
 	}
 	
 	free(light_names);
@@ -356,8 +357,8 @@ void light_Finish()
 	free(free_position_stack);
 	free(light_visible_triangles);
 	
-	free(free_chunks);
-	free(alloc_chunks);
+	//free(free_chunks);
+	//free(alloc_chunks);
 	
 	free(shadow_maps);
 	
@@ -379,7 +380,7 @@ int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t c
 	light_position_t *light_position;
 	light_params_t *light_param;
 	char **light_name;
-	char light_name_str[64];
+	//char light_name_str[64];
 	int light_name_str_len = 0;
 	
 	
@@ -421,6 +422,12 @@ int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t c
 			light_params = light_param;
 			light_names = light_name;
 			
+			light_list_size += 16;
+			
+			for(i = light_index; i < light_list_size; i++)
+			{
+				light_names[i] = malloc(LIGHT_MAX_NAME_LEN);
+			}
 		}
 	}
 	
@@ -461,12 +468,13 @@ int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t c
 	light_param->box_min.y = 999999999999.9;
 	light_param->box_min.z = 999999999999.9;
 		
+	if(strlen(name) + 1 >= LIGHT_MAX_NAME_LEN)
+	{
+		/* names longer than LIGHT_MAX_NAME_LEN get truncated... */
+		name[LIGHT_MAX_NAME_LEN - 1] = '\0';
+	}
 
-	/* TODO: pad name strings to a multiple of 4
-	so fast 4 byte comparisions can be done... */
-	*light_name = strdup(name);
-	
-	
+	strcpy(*light_name, name);
 	
 	return light_index;
 	
@@ -505,11 +513,7 @@ int light_DestroyLightIndex(int light_index)
 			/* drop the light from the cache if it's
 			cached... */
 			light_DropLight(light_index);
-			
-			/* free its shadow map if there's any...*/
-			if(light_params[light_index].bm_flags & LIGHT_GENERATE_SHADOWS)
-				light_FreeShadowMap(light_index);
-		
+					
 			light_params[light_index].bm_flags |= LIGHT_INVALID;
 			
 			free_position_stack_top++;
@@ -554,11 +558,6 @@ void light_DestroyAllLights()
 		if(!(light_params[i].bm_flags & LIGHT_INVALID))
 		{
 			light_DropLight(i);
-			
-			if(light_params[i].bm_flags & LIGHT_GENERATE_SHADOWS)
-			{
-				light_FreeShadowMap(i);
-			}
 		}
 	}
 	
@@ -1634,7 +1633,7 @@ void light_FreeShadowMap(int light_index)
 			
 			shadow_map_index = parms->shadow_map;
 					
-			//if(shadow_maps[shadow_map_index].light_index > -1)
+			if(shadow_maps[shadow_map_index].light_index > -1)
 			{
 				parms->shadow_map = -1;
 				shadow_maps[shadow_map_index].light_index = -1;
@@ -1648,8 +1647,6 @@ void light_FreeShadowMap(int light_index)
 					shadow_map = shadow_maps[shadow_map_index];
 					shadow_maps[shadow_map_index] = shadow_maps[allocd_shadow_map_count - 1];
 					shadow_maps[allocd_shadow_map_count - 1] = shadow_map;
-					
-					
 					
 				}
 				

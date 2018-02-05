@@ -22,6 +22,14 @@ void renderer_DrawLightLeaves();
 
 void renderer_DrawLightBoxes();
 
+void renderer_DrawWorldPolygons();
+
+void renderer_DrawPortals();
+
+void renderer_DrawBrushPolygons();
+
+void renderer_DrawPvsSteps();
+
 
 
 

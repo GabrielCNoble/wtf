@@ -6,6 +6,8 @@ void editor_InitUI();
 
 void editor_FinishUI();
 
+void editor_ProcessUI();
+
 void editor_OpenAddToWorldMenu(int x, int y);
 
 void editor_CloseAddToWorldMenu();
@@ -17,6 +19,10 @@ void editor_OpenSaveProjectWindow();
 void editor_CloseSaveProjectWindow();
 
 void editor_OpenOpenProjectWindow();
+
+
+void editor_OpenLightPropertiesWindow();
+
 
 void editor_UIWindowResizeCallback();
 

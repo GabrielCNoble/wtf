@@ -33,7 +33,7 @@ typedef struct
 typedef struct
 {
 	struct bsp_dleaf_t *leaf;					/* in which leaf this light is in (updated every time it moves)... */
-	vec3_t box_max;						/* this box is calculated when the visible trinagles are determined. As long as
+	vec3_t box_max;						/* this box is calculated when the visible triangles are determined. As long as
 												   the light remains inside this box, no update is needed...*/
 	vec3_t box_min;		
 	
@@ -44,7 +44,7 @@ typedef struct
 	
 	unsigned short radius;
 	unsigned short energy;
-	unsigned short visible_triangle_count;		/* this could go somewhere... */
+	unsigned short visible_triangle_count;		/* this could go somewhere else... */
 	//unsigned int shadow_map;
 	
 	unsigned char bm_flags;

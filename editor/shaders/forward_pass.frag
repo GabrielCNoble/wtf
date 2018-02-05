@@ -107,6 +107,8 @@ float sample_cube_map(vec3 frag_pos, int light_index, out vec3 debug_color)
 	
 	dist = length(light_vec);
 	light_vec.z = -light_vec.z;
+	
+	
 		
 	if(largest == a_light_vec.x)
 	{	
@@ -168,6 +170,8 @@ float sample_cube_map(vec3 frag_pos, int light_index, out vec3 debug_color)
 		ox0 = 2.0 * w;
 	}
 	
+	
+	
 	u0 = 0.5 * (u0 / largest) + 0.5;
 	v0 = 0.5 * (v0 / largest) + 0.5;
 	
@@ -177,12 +181,14 @@ float sample_cube_map(vec3 frag_pos, int light_index, out vec3 debug_color)
 	
 	shadow0 = texelFetch(texture_sampler2, ivec2(SHARED_SHADOW_MAP_WIDTH * v0, SHARED_SHADOW_MAP_HEIGHT * u0), 0).r;
 	
-	if(dist > shadow0 + 0.3)
+	//if(dist > shadow0 + 0.3)
 	//if(fz > shadow0 + 0.00001)
-	{
-		return 0.0;
-	}
-	return 1.0;
+	//{
+	//	return 0.0;
+	//}
+	//return 1.0;
+	
+	return float(dist < shadow0 + 0.3);
 }
 
 

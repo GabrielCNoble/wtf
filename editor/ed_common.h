@@ -40,6 +40,20 @@ enum EDITOR_STATE
 	EDITOR_PIE,
 };
 
+/*float editor_snappings[] = 
+{
+	0.0, 
+	0.001,
+	0.005,
+	0.01,
+	0.05,
+	0.1,
+	0.5,
+	1.0,
+	5.0,
+	10.0,
+};*/
+
 typedef struct
 {
 	int type;
@@ -49,5 +63,30 @@ typedef struct
 }pick_record_t;
 
 
+typedef struct
+{
+	unsigned short *radius;
+	unsigned short *energy;
+	unsigned char *r;
+	unsigned char *g;
+	unsigned char *b;
+}light_ptr_t;
+
+typedef struct
+{
+	int *type;
+	int *vertex_count;
+	int *polygon_count;
+	int *triangle_group_count;
+}brush_ptr_t;
+
+
 
 #endif
+
+
+
+
+
+
+

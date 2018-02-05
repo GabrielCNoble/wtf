@@ -15,9 +15,9 @@
 
 //camera_list_t camera_list;
 
-static int camera_list_size;
-int camera_count;
-camera_t *camera_list;
+static int camera_list_size = 0;
+int camera_count = 0;
+camera_t *camera_list = NULL;
 
 static int active_camera_index;
 
@@ -38,9 +38,18 @@ camera_Init
 */
 int camera_Init()
 {	
+	int i;
+	
 	camera_list_size = 64;
 	camera_count = 0;
 	camera_list = malloc(sizeof(camera_t ) * camera_list_size);	
+	
+	/* space for name strings are prealocated... */
+	for(i = 0; i < camera_list_size; i++)
+	{
+		camera_list[i].name = malloc(CAMERA_MAX_NAME_LEN);
+	}
+	
 	
 	renderer_RegisterCallback(camera_UpdateCamerasCallback, RENDERER_RESOLUTION_CHANGE_CALLBACK);
 	
@@ -57,7 +66,7 @@ void camera_Finish()
 {
 	int i;
 	
-	for(i = 0; i < camera_count; i++)
+	for(i = 0; i < camera_list_size; i++)
 	{
 		free(camera_list[i].name);
 	}
@@ -70,6 +79,7 @@ int camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, float 
 	int camera_index = camera_count++;
 	int name_len;
 	camera_t *camera;
+	int i;
 	
 	if(camera_index >= camera_list_size)
 	{
@@ -77,14 +87,22 @@ int camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, float 
 		memcpy(camera, camera_list, sizeof(camera_t) * camera_list_size);
 		free(camera_list);
 		camera_list = camera;
+		
 		camera_list_size += 16;
+		
+		for(i = camera_index; i < camera_list_size; i++)
+		{
+			camera_list[i].name = malloc(CAMERA_MAX_NAME_LEN);
+		}
+		
+		
 	}
 	
 	camera = &camera_list[camera_index];
 
-	name_len = strlen(name) + 1;
-	name_len = (name_len + 3) & (~3);
-	camera->name = malloc(name_len);
+	//name_len = strlen(name) + 1;
+	//name_len = (name_len + 3) & (~3);
+	//camera->name = malloc(name_len);
 	strcpy(camera->name, name);
 	
 	
@@ -112,10 +130,10 @@ void camera_DestroyAllCameras()
 {
 	int i;
 	
-	for(i = 0; i < camera_count; i++)
+	/*for(i = 0; i < camera_count; i++)
 	{
 		free(camera_list[i].name);
-	}
+	}*/
 	camera_count = 0;
 }
 

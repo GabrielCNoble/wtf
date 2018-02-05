@@ -26,9 +26,12 @@ typedef struct bsp_polygon_t
 	struct bsp_polygon_t *next;
 	int vert_count;
 	int brush_index;								/* the brush from which this polygon came from... */
+	int material_index;
+	int triangle_group;
 	int b_used;
+	vertex_t *vertices;
 	//bsp_triangle_t *triangles;						/* the triangles that form this face... */
-	vec3_t *vertices;
+	//vec3_t *vertices;
 	vec3_t normal;
 }bsp_polygon_t;
 
@@ -110,6 +113,12 @@ bsp_polygon_t *bsp_DeepCopyPolygons(bsp_polygon_t *src);
 
 void bsp_DeletePolygons(bsp_polygon_t *polygons);
 
+void bsp_TriangulatePolygon(bsp_polygon_t *polygon, vertex_t **vertices, int *vertex_count);
+
+void bsp_TriangulatePolygonIndexes(bsp_polygon_t *polygon, int **indexes, int *index_count);
+
+void bsp_TriangulatePolygonsIndexes(bsp_polygon_t *polygons, int **indexes, int *index_count);
+
 
 bsp_triangle_t *bsp_FindSplittingTriangle(bsp_triangle_t *triangles, int ignore_used);
 
@@ -133,6 +142,8 @@ void bsp_ClipTriangleToSolidLeaves(bsp_node_t *root, bsp_triangle_t *triangle);
 
 void bsp_ClipTrianglesToSolidLeaves(bsp_node_t *root, bsp_triangle_t *triangles);
 
+void bsp_TriangulateLeafPolygons(bsp_node_t *node);
+
 void bsp_CountNodesAndLeaves(bsp_node_t *bsp, int *leaves, int *nodes);
 
 void bsp_BuildTriangleGroups(bsp_node_t *root, triangle_group_t **groups, int *count);
@@ -149,12 +160,13 @@ void bsp_ExpandBrushes(vec3_t box_extents);
 
 void bsp_BuildCollisionBsp();
 
-
 void bsp_MergeLeafTriangles(bsp_node_t *root);
 
 void bsp_BuildSolid(bsp_node_t **root, bsp_polygon_t *polygons);
 
 void bsp_BuildSolidLeaf(bsp_node_t **root, bsp_polygon_t *polygons);
+
+void bsp_BuildSolidPooled(bsp_node_t **root, bsp_polygon_t *polygons);
 
 bsp_node_t *bsp_SolidBsp(bsp_polygon_t *polygons);
 
@@ -168,9 +180,15 @@ void bsp_DeleteSolid(bsp_node_t *root);
 
 void bsp_DeleteSolidLeaf(bsp_node_t *root);
 
-void bsp_CompileBsp(int remove_outside);
+void bsp_InitPool();
 
-void bsp_CompileBsp2();
+void bsp_FinishPool();
+
+bsp_node_t *bsp_NewNode();
+
+bsp_leaf_t *bsp_NewLeaf();
+
+void bsp_CompileBsp(int remove_outside);
 
 int bsp_CompileBspAsync(void *param);
 

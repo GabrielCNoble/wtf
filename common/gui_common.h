@@ -11,6 +11,8 @@
 
 #define DROPDOWN_HEIGHT 20
 #define OPTION_HEIGHT 20
+#define SLIDER_HEIGHT 20
+#define SLIDER_HANDLE_SIZE 16.0
 #define CHECKBOX_MIN_SIZE 8
 
 #define TEXT_FIELD_CURSOR_BLINK_TIME 180
@@ -21,7 +23,7 @@ enum WIDGET_FLAGS
 {
 	WIDGET_MOUSE_OVER = 										1,
 	WIDGET_HAS_LEFT_MOUSE_BUTTON = 								1 << 1,
-	WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON = 					1 << 2,			/* active for a single frame... */
+	WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON = 					1 << 2,		/* active for a single frame... */
 	WIDGET_HAS_RIGHT_MOUSE_BUTTON = 							1 << 3,
 	WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON = 					1 << 4,		/* active for a single frame... */	
 	WIDGET_MOUSE_OVER_RIGHT_BORDER = 							1 << 5,
@@ -30,8 +32,9 @@ enum WIDGET_FLAGS
 	WIDGET_MOUSE_OVER_BOTTOM_BORDER = 							1 << 8,
 	WIDGET_INVISIBLE = 											1 << 9,		/* invisible widgets are not processed nor drawn... */
 	WIDGET_RENDER_TEXT = 										1 << 10,
-	WIDGET_TRACK_VAR = 											1 << 11,
-	WIDGET_IGNORE_EDGE_CLIPPING = 								1 << 12,	/* allow a widget to detect mouse over events even if it's outside it's parent widget... */
+	WIDGET_TRACK_VAR = 											1 << 11,	/* this widget is currently tracking a gui_var_t... */
+	WIDGET_IGNORE_EDGE_CLIPPING = 								1 << 12,	/* allow a widget to detect mouse over even if it's outside it's parent widget... */
+	WIDGET_JUST_CREATED =										1 << 13,	/* active for a single frame, set after a widget gets creates (becomes visible)... */
 };
 
 
@@ -91,13 +94,26 @@ enum TEXT_FIELD_FLAGS
 	TEXT_FIELD_DRAW_TEXT_SELECTED = 1 << 4,
 };
 
+enum SLIDER_FLAGS
+{
+	SLIDER_SHOW_VALUE = 1,
+	SLIDER_CLAMP_VAR = 1 << 1,						/* should be used just with values that  */
+};
+
 enum GUI_VAR_TYPES
 {
 	GUI_VAR_CHAR,
+	GUI_VAR_POINTER_TO_CHAR,
+	GUI_VAR_UNSIGNED_CHAR,
+	GUI_VAR_POINTER_TO_UNSIGNED_CHAR,
 	GUI_VAR_SHORT,
+	GUI_VAR_POINTER_TO_SHORT,
 	GUI_VAR_INT,
+	GUI_VAR_POINTER_TO_INT,
 	GUI_VAR_FLOAT,
+	GUI_VAR_POINTER_TO_FLOAT,
 	GUI_VAR_DOUBLE,
+	GUI_VAR_POINTER_TO_DOUBLE,
 	GUI_VAR_VEC2_T,
 	GUI_VAR_VEC3_T,
 	GUI_VAR_VEC4_T,
@@ -117,8 +133,8 @@ typedef struct gui_var_t
 {
 	union
 	{
-		mat4_t mat4_t_var;
-		mat3_t mat3_t_var;
+		//mat4_t mat4_t_var;
+		//mat3_t mat3_t_var;
 		vec4_t vec4_t_var;
 		vec3_t vec3_t_var;
 		vec2_t vec2_t_var;
@@ -127,8 +143,13 @@ typedef struct gui_var_t
 		int int_var;
 		short short_var;
 		char char_var;
+		unsigned char unsigned_char_var;
 		char *str_var;
 	}prev_var_value;
+	
+	/* used to test whether the pointer
+	to which this var points to has changed... */
+	//void *prev_ptr;
 	
 	char *name;
 	void *addr;
@@ -221,13 +242,33 @@ typedef struct
 
 typedef struct
 {
-	widget_t *widget;
-	gui_var_t *var;
+	widget_t widget;
+	//gui_var_t *var;
 	gui_var_t min_value;
 	gui_var_t max_value;
 	float slider_position;
+	int bm_slider_flags;
 }slider_t;
+
+typedef struct
+{
+	widget_t widget;
+	unsigned int gl_texture;	
+}wsurface_t;
+
+typedef struct
+{
+	widget_t *widget;
+	char *text;
+	SDL_Surface *rendered_text;
+}tag_t;
 
 
 
 #endif
+
+
+
+
+
+

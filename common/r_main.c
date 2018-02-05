@@ -152,7 +152,7 @@ unsigned int renderer_ZPrePassQueryObject;
 unsigned int renderer_DrawShadowMapsQueryObject;
 
 
-int r_draw_shadow_maps = 0;
+int r_draw_shadow_maps = 1;
 int r_z_prepass = 0;
 int r_query_stages = 1;
 
@@ -221,7 +221,7 @@ int renderer_Init(int width, int height, int init_mode)
 	
 	SDL_GL_MakeCurrent(window, context);
 
-	SDL_GL_SetSwapInterval(0);
+	SDL_GL_SetSwapInterval(1);
 	
 	if(glewInit() != GLEW_NO_ERROR)
 	{
@@ -270,7 +270,7 @@ int renderer_Init(int width, int height, int init_mode)
 	
 	//ext_str = (char *)glGetString(GL_EXTENSIONS);
 	
-	sub_str = strstr(ext_str, "GL_ARB_seamless_cube_map");
+	/*sub_str = strstr(ext_str, "GL_ARB_seamless_cube_map");
 	if(sub_str)
 	{
 		glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
@@ -284,7 +284,7 @@ int renderer_Init(int width, int height, int init_mode)
 			log_LogMessage(LOG_MESSAGE_ERROR, "renderer_Init: extension GL_ARB_uniform_buffer_object not supported by current driver! Try to update it and then run the application again.");
 			return 0;
 		}
-	}
+	}*/
 	
 	
 	/*glGenQueries(1, &renderer_DrawWorldQueryObject);
@@ -971,6 +971,7 @@ void renderer_DrawGUI()
 	option_t *option;
 	widget_bar_t *bar;
 	text_field_t *field;
+	slider_t *slider;
 	
 	short x = 0;
 	short y = 0;
@@ -1084,6 +1085,55 @@ void renderer_DrawGUI()
 				
 			break;
 			
+			case WIDGET_SLIDER:
+				slider = (slider_t *)w;
+				
+				glBegin(GL_QUADS);
+				
+				/*if(button->bm_button_flags & BUTTON_PRESSED)
+				{
+					glColor3f(0.35, 0.35, 0.35);
+				}
+				else
+				{*/
+				if(w->bm_flags & WIDGET_MOUSE_OVER)
+				{
+					glColor3f(0.5, 0.5, 0.5);
+				}
+				else
+				{
+					glColor3f(0.4, 0.4, 0.4);
+				}
+				//}
+				
+				//glRectf(w->x + w->w, w->y - w->h, w->x - w->w, w->y + w->h);
+				glBegin(GL_QUADS);
+				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+				glEnd();
+				
+				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+				glColor3f(0.0, 0.0, 0.0);
+				glBegin(GL_QUADS);
+				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
+				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
+				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
+				glEnd();
+				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+				
+				
+				glColor3f(0.25, 0.25, 0.25);
+				glPointSize(SLIDER_HANDLE_SIZE);
+				
+				glBegin(GL_POINTS);
+				glVertex3f(x + w->x - w->w + w->w * (1.0 - slider->slider_position) * 2.0, y + w->y, 0.0);
+				glEnd();
+				
+			break;	
+			
 			case WIDGET_CHECKBOX:
 				checkbox = (checkbox_t *)w;
 				
@@ -1109,10 +1159,6 @@ void renderer_DrawGUI()
 					glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
 					glEnd();
 				}
-				
-				
-				
-				
 			break;
 			
 			case WIDGET_DROPDOWN:

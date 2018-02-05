@@ -10,10 +10,15 @@
 #define TRIS_GROUP(tri) ((tri&0xff000000)>>24)
 #define PACK_TRIS(group, first_index) ((group<<24)|(first_index&0x00ffffff))
 
+
+
+/* indexes into an array of vertex_t. first_vertex is the index of the first
+vertex of this triangle, and triangle_group is the index of the triangle_group_t
+this triangle belongs to. bsp_triangle_t's may be unsorted on memory. */
 typedef struct
 {
 	int first_vertex;
-	int triangle_group;
+	int triangle_group;		/* a.k.a. material */
 }bsp_striangle_t;			/* could cut this struct in half... 8 bits for triangle group + 24 bits for the first vertex, which
 gives 256 different triangle groups and 5592405 triangles... */
 
@@ -61,6 +66,8 @@ typedef struct
 {
 	vec3_t normal;
 	vec3_t point;
+	vec3_t edge0;
+	vec3_t edge1;
 }bsp_clipplane_t;
 
 

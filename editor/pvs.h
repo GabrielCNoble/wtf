@@ -32,6 +32,43 @@ enum PORTAL_PLANE
 	PORTAL_CONTAINED
 };
 
+
+typedef struct
+{
+	int out_valid_dst_portal_count;
+	int clipplane_count;
+	
+	bsp_portal_t valid_portals[512];
+	bsp_portal_t *out_valid_dst_portals[512];
+	bsp_clipplane_t clipplanes[512];
+	
+	bsp_leaf_t *dst_dst_leaf;
+	bsp_portal_t *dst_dst_portal;
+	
+	bsp_leaf_t *src_leaf;
+	bsp_leaf_t *dst_leaf;
+	
+	bsp_portal_t *src_portal;
+	bsp_polygon_t *src_portal_polygon;
+	
+	bsp_portal_t *dst_portal;
+	bsp_polygon_t *dst_portal_polygon;
+	
+}recursive_pvs_for_leaf_stack_t;
+
+
+typedef struct
+{
+	bsp_portal_t **portals;
+	bsp_leaf_t *dst_leaf;
+	int in_dst_portal_count;
+	bsp_portal_t *in_dst_portals[512];
+	
+	recursive_pvs_for_leaf_stack_t *recursive_stack;
+	int recursive_stack_pointer;
+}pvs_for_leaf_stack_t;
+
+
 int bsp_ClassifyPortalVertex(bsp_pnode_t *node, vec3_t point);
 
 int bsp_ClassifyPortal(bsp_pnode_t *node, bsp_portal_t *portal);

@@ -61,13 +61,13 @@ int gpu_Init()
 	alloc_list.size = 3200;
 	alloc_list.free_stack_top = -1;
 	alloc_list.free_stack_size = 3200;
-	alloc_list.free_stack = (int *)malloc(sizeof(int) * alloc_list.size);
-	alloc_list.list = (gpu_head_t *)malloc(sizeof(gpu_head_t) * alloc_list.size);
+	alloc_list.free_stack = malloc(sizeof(int) * alloc_list.size);
+	alloc_list.list = malloc(sizeof(gpu_head_t) * alloc_list.size);
 	
 	
 	free_list.cursor = 1;
 	free_list.size = 3200;
-	free_list.list = (gpu_head_t *)malloc(sizeof(gpu_head_t) * free_list.size);
+	free_list.list = malloc(sizeof(gpu_head_t) * free_list.size);
 	
 	
 	/* the whole heap is free... */
@@ -261,8 +261,13 @@ void gpu_Free(int handle)
 		free_list.size += 32;
 	}
 
+	assert(handle > -1);
+
 	free_list.list[free_list.cursor++] = alloc_list.list[handle];
-	alloc_list.free_stack[++alloc_list.free_stack_top] = handle;
+	
+	alloc_list.free_stack_top++;
+	
+	alloc_list.free_stack[alloc_list.free_stack_top] = handle;
 	frees++;
 	//printf("%d free block heads\n", free_list.cursor);
 	if(frees > FREE_THRESHOLD)
@@ -331,14 +336,22 @@ void gpu_Defrag()
 					to this currently invalid chunk's position... */
 					free_list.list[i] = free_list.list[j];
 					free_list.list[j].size = -1;
-					i = j - 1;
+					i--;
 					break;
 				}
 			}
+			
+			if(j >= c)
+				break;
 		}
 	}
 	
 	free_list.cursor = new_count;
+	
+	for(i = 0; i < free_list.cursor; i++)
+	{
+		printf("%d %d\n", free_list.list[i].start, free_list.list[i].size);
+	}
 	
 	//printf("%d free blocks\n", new_count);
 	//printf("%d %d\n", free_list.list[0].size, free_list.list[0].start);
@@ -450,6 +463,8 @@ void gpu_Write(int handle, int offset, void *buffer, int count, int direct)
 {
 	int start;
 	void *p;
+	
+	assert(handle > -1);
 	
 	if(direct)
 	{

@@ -11,6 +11,11 @@
 #include "brush.h"
 #include "l_main.h"
 
+#include "player.h"
+#include "pvs.h"
+
+#include <stdio.h>
+
 
 extern int r_width;
 extern int r_height;
@@ -47,7 +52,19 @@ extern pick_record_t *selections;
 extern int editor_state;
 
 
+/* from player.c */
+extern int spawn_point_count;
+extern spawn_point_t *spawn_points;
+
+
 extern int b_draw_brushes;
+
+/* from pvs.c */
+extern int b_step;
+extern int b_calculating_pvs;
+extern SDL_mutex *step_mutex;
+extern SDL_sem *step_semaphore;
+extern pvs_for_leaf_stack_t pvs_for_leaf_stack;
 
 void editor_Input(float delta_time)
 {
@@ -62,6 +79,8 @@ void editor_ProcessMouse(float delta_time)
 	vec4_t p;
 	vec3_t direction;
 	int i;
+	
+	int lshift;
 	
 	/*float handle_3d_screen_x;
 	float handle_3d_screen_y;
@@ -86,6 +105,9 @@ void editor_ProcessMouse(float delta_time)
 	
 	if(editor_state == EDITOR_EDITING)
 	{
+		if(bm_mouse & MOUSE_OVER_WIDGET)
+			return;
+		
 		if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
 		{
 			if(!(bm_mouse & MOUSE_OVER_WIDGET))
@@ -238,7 +260,9 @@ void editor_ProcessMouse(float delta_time)
 			
 			if(editor_Pick(&record))
 			{	
-			
+				
+				lshift = input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED;
+				
 					
 				if(record.type == selections[selection_count - 1].type)
 				{
@@ -250,6 +274,13 @@ void editor_ProcessMouse(float delta_time)
 						this object is the active object), drop it, set
 						whatever comes before it as the active object and then jump
 						to the code that sets the 3d handle position... */
+						
+						
+						
+						if(!lshift && selection_count)
+						{
+							goto _add_new_selection;
+						}
 							
 						editor_DropSelection(&record);
 						if(selection_count)
@@ -259,7 +290,7 @@ void editor_ProcessMouse(float delta_time)
 						}
 						
 					}
-					else/* if(input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED)*/
+					else
 					{
 						/* if this record  is not equal to the last in the list,
 						append it to the list or set it as the only active object... */
@@ -271,7 +302,7 @@ void editor_ProcessMouse(float delta_time)
 				{
 					_add_new_selection:
 					/* holding shift enables selecting multiple objects... */			
-					if(!(input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED))
+					if(!lshift)
 					{
 						editor_ClearSelection();
 					}
@@ -298,6 +329,12 @@ void editor_ProcessMouse(float delta_time)
 									handle_3d_position.y += light_positions[selections[i].index0].position.y;
 									handle_3d_position.z += light_positions[selections[i].index0].position.z;
 								break;
+								
+								case PICK_SPAWN_POINT:
+									handle_3d_position.x += spawn_points[selections[i].index0].position.x;
+									handle_3d_position.y += spawn_points[selections[i].index0].position.y;
+									handle_3d_position.z += spawn_points[selections[i].index0].position.z;
+								break;
 							}
 						}
 						
@@ -315,6 +352,10 @@ void editor_ProcessMouse(float delta_time)
 										
 							case PICK_LIGHT:
 								handle_3d_position = light_positions[record.index0].position;
+							break;
+							
+							case PICK_SPAWN_POINT:
+								handle_3d_position = spawn_points[record.index0].position;
 							break;
 						}
 					}
@@ -354,6 +395,16 @@ void editor_ProcessKeyboard(float delta_time)
 			{
 				editor_CopySelections();
 			}
+			if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_PRESSED)
+			{
+				if(b_step && b_calculating_pvs)
+				{
+					//SDL_UnlockMutex(step_mutex);
+					//printf("pvs stack pointer: %d\n", pvs_for_leaf_stack.recursive_stack_pointer);
+					SDL_SemPost(step_semaphore);
+				}
+				
+			}
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_G) & KEY_JUST_PRESSED)
 		{
@@ -381,6 +432,16 @@ void editor_ProcessKeyboard(float delta_time)
 		else if(input_GetKeyStatus(SDL_SCANCODE_DELETE) & KEY_JUST_PRESSED)
 		{
 			editor_OpenDeleteSelectionMenu(r_window_width * normalized_mouse_x * 0.5, r_window_height * normalized_mouse_y * 0.5);
+		}
+		if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED)
+		{
+			if(b_step && b_calculating_pvs)
+			{
+				//SDL_UnlockMutex(step_mutex);
+				//printf("pvs stack pointer: %d\n", pvs_for_leaf_stack.recursive_stack_pointer);
+				SDL_SemPost(step_semaphore);
+			}
+			
 		}
 		
 	}

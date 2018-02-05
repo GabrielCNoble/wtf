@@ -36,6 +36,7 @@ extern int draw_bsp_shader;
 /* from editor.c */
 extern int brush_pick_shader;
 extern int light_pick_shader;
+extern int spawn_point_pick_shader;
 extern int brush_dist_shader;
 
 static char shader_base_path[512];
@@ -55,8 +56,8 @@ int shader_Init(char *shader_path)
 	shader_list_size = 16;
 	shader_count = 0;
 	free_position_stack_top = -1;
-	shaders = malloc(sizeof(shader_t ) * shader_list_size);
-	free_position_stack = malloc(sizeof(int) * shader_list_size);
+	shaders = malloc(sizeof(shader_t ) * shader_list_size * 10);
+	free_position_stack = malloc(sizeof(int) * shader_list_size * 10);
 	
 	z_pre_pass_shader = shader_LoadShader("z_pre_pass");
 	forward_pass_shader = shader_LoadShader("forward_pass");
@@ -69,6 +70,7 @@ int shader_Init(char *shader_path)
 	skybox_shader = shader_LoadShader("skybox");
 	brush_pick_shader = shader_LoadShader("brush_pick");
 	light_pick_shader = shader_LoadShader("light_pick");
+	spawn_point_pick_shader = shader_LoadShader("spawn_point_pick");
 	brush_dist_shader = shader_LoadShader("brush_dist");
 	draw_bsp_shader = shader_LoadShader("draw_bsp");
 	

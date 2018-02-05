@@ -118,6 +118,8 @@ void physics_ProcessCollisions(double delta_time)
 	
 	float l;
 	float d;
+	float s;
+	float c;
 	
 	camera_t *active_camera = camera_GetActiveCamera();
 	
@@ -143,9 +145,7 @@ void physics_ProcessCollisions(double delta_time)
 	for(i = 0; i < player_count; i++)
 	{
 		
-		players[i].delta.y -= GRAVITY * delta_time * 0.01;
-		
-		player_Move(&players[i]);
+		players[i].delta.y -= GRAVITY * delta_time * 0.08;
 			 
 		l = players[i].delta.x * players[i].delta.x + players[i].delta.z * players[i].delta.z;
 		
@@ -157,6 +157,10 @@ void physics_ProcessCollisions(double delta_time)
 			players[i].delta.x *= l;
 			players[i].delta.z *= l;
 		}  
+		
+		
+		player_Move(&players[i], delta_time);
+		
 		
 		//printf("%f\n", players[i].delta.y);
 		
@@ -184,6 +188,30 @@ void physics_ProcessCollisions(double delta_time)
 				players[i].delta.z *= 1.0 - (GROUND_FRICTION * delta_time * 0.01);
 			}
 		}
+		
+		players[i].player_position.x = players[i].collision_box_position.x;
+		players[i].player_position.z = players[i].collision_box_position.z;
+		
+		if(players[i].bm_movement & PLAYER_STEPPING_UP)
+		{ 
+			
+			s = fabs(players[i].player_position.y);
+			c = fabs(players[i].collision_box_position.y);
+					
+			players[i].player_position.y += (players[i].collision_box_position.y - players[i].player_position.y) * 0.1 * delta_time * 0.075;
+			
+			//printf("smooth...\n");
+					
+			if(fabs(s - c) <= 0.01)
+				players[i].bm_movement &= ~PLAYER_STEPPING_UP;
+			
+		}
+		else
+		{
+			players[i].player_position.y += (players[i].collision_box_position.y - players[i].player_position.y) * 0.25 * delta_time * 0.075;
+			players[i].bm_movement &= ~PLAYER_STEPPING_UP;
+		}
+		
 				  
 		
 		players[i].player_camera->world_position.x = players[i].player_position.x;

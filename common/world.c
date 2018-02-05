@@ -63,7 +63,7 @@ int world_count = -1;
 //static int global_triangle_group_list_size;
 int world_triangle_group_count = 0;
 triangle_group_t *world_triangle_groups = NULL;
-static unsigned int *index_buffer = NULL;
+unsigned int *index_buffer = NULL;
 unsigned int world_element_buffer;
 
 extern int forward_pass_shader;
@@ -104,163 +104,23 @@ void world_Finish()
 	}
 	
 	bsp_DeleteBsp();
-	/*if(world_nodes)
-	{
-		free(world_nodes);
-	}
 	
-	if(world_leaves)
-	{
-		free(world_leaves);
-	}*/
-	
-	//free(global_triangle_groups);
-	//free(index_buffer);
 	glDeleteBuffers(1, &world_element_buffer);
 }
 
-void world_LoadWorldModel(char *file_name)
-{
-	#if 0
-	int i;
-	int j;
-	int k;
-	int vert_count;
-	FILE *f;
-	
-	vec3_t *vertexes;
-	vec3_t *normals;
-	vec2_t *tex_coords;
-	vec4_t diffuse_color;
-	
-	triangle_group_t *triangle_group;
-	
-	int material_count;
-	int group_index;
-	int group_vertex_count;
-	int bm_material_flags;
-	int diffuse_texture;
-	int normal_texture;
-	char material_name[128] = "material";
-	char c;
-	//int triangle_group_count = 1;
-	
-	if(!(f = fopen(file_name, "rb")))
-	{
-		printf("couldn't open %s\n", file_name);
-		return;
-	}
-	
-	fread(&vert_count, sizeof(int), 1, f);						/* how many vertices in this file */
-	
-	vertexes = malloc(sizeof(vec3_t) * vert_count);			
-	normals = malloc(sizeof(vec3_t) * vert_count);
-	tex_coords = malloc(sizeof(vec2_t) * vert_count);
-	
-	
-	fread(&material_count, sizeof(int), 1, f);					/* how many materials in this file */
-	
-	for(i = 0; i < material_count; i++)
-	{		
-		fread(material_name, 64, 1, f);		
-		fread(&bm_material_flags, sizeof(int), 1, f);			/* material flags */
-		fread(&diffuse_color, sizeof(vec4_t), 1, f);			/* material base color */
-		
-		diffuse_texture = -1;
-		normal_texture = -1;
-		
-		if(bm_material_flags & 1)
-		{
-			fread(material_name, 64, 1, f);						/* diffuse texture */
-			diffuse_texture = texture_LoadTexture(material_name, material_name);
-		}
-		
-		if(bm_material_flags & 2)
-		{
-			fread(material_name, 64, 1, f);						/* normal texture */
-			normal_texture = texture_LoadTexture(material_name, material_name);
-		}
-		
-		
-		//printf("material : %s  [%f %f %f %f]\n", material_name, diffuse_color.r, diffuse_color.g, diffuse_color.b, diffuse_color.a);
-		global_triangle_groups[i].material_index = material_CreateMaterial(material_name, diffuse_color, 1.0, 1.0, forward_pass_shader, diffuse_texture, normal_texture);
-	}
-	
-	global_triangle_group_count = material_count;
-	
-	k = 0;
-	for(j = 0; j < material_count; j++)
-	{
-		fread(&group_index, sizeof(int), 1, f);						/* a group index */
-		fread(&group_vertex_count, sizeof(int), 1, f);				/* how many vertices in this group */
-		
-		//triangle_groups[j].material_index = j;
-		
-		triangle_group = &global_triangle_groups[group_index];
-		//triangle_groups[j].vertex_count = group_vertex_count;
-		//triangle_groups[j].start = k;
-		//triangle_groups[j].next = 0;
-		
-		//triangle_group->vertex_count = group_vertex_count;
-		triangle_group->start = k;
-		triangle_group->next = 0;
-		
-		fread(vertexes, sizeof(vec3_t), group_vertex_count, f);
-		
-		
-		for(i = 0; i < group_vertex_count; i++)
-		{
-			if(!((i + k) % 3))
-			{
-				world_mesh[(i + k) / 3].first_vertex = i + k;
-				world_mesh[(i + k) / 3].triangle_group_index = group_index;
-			}
-			
-			world_mesh_vertices[i + k].position = vertexes[i];
-		}
-		
-		k += i;
-	}
-	
-	fread(normals, sizeof(vec3_t), vert_count, f);
-	
-	for(i = 0; i < vert_count; i++)
-	{		
-		world_mesh_vertices[i].normal = normals[i];
-	}
-	
-	fread(tex_coords, sizeof(vec2_t), vert_count, f);
-	
-	for(i = 0; i < vert_count; i++)
-	{		
-		world_mesh_vertices[i].tex_coord = tex_coords[i];
-	}
-	
-	world_mesh_vertex_count = vert_count;
-	world_mesh_count = vert_count;
-	gpu_Write(world_mesh_handle, 0, world_mesh_vertices, sizeof(vertex_t) * world_mesh_vertex_count, 0);	
 
-	//physics_UpdateWorldMesh(world_mesh_vertices, vert_count);
-	
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_buffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * vert_count, NULL, GL_DYNAMIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);	
-		
-	free(vertexes);
-	free(normals);
-	free(tex_coords);
-	fclose(f);
-	
-	#endif
-	
-}
-
-void world_LoadBsp(char *file_name)
+int world_LoadBsp(char *file_name)
 {
 	FILE *file;
 	bsp_header_t header;
 	light_lump_t light_lump;
 	file = fopen(file_name, "rb");
+	
+	if(!file)
+	{
+		printf("couldn't open file [%s]\n", file_name);
+		return 0;
+	}
 	
 	int i;
 	int light_count;
@@ -285,6 +145,9 @@ void world_LoadBsp(char *file_name)
 	
 	
 	fclose(file);
+	
+	
+	return 1;
 }
 
 void world_BuildBatches()
@@ -630,13 +493,14 @@ void world_Update()
 	int cur_group_index;
 	int cur_batch_index;
 	
+	
+	if(!world_leaves)
+		return;
+	
 	if(world_handle != -1)
 	{
 		gpu_Free(world_handle);
 		free(index_buffer);
-		//free(leaf_batches);
-		//free(leaf_batches_indexes);
-		
 	}
 	if(leaf_lights)
 	{
@@ -644,7 +508,7 @@ void world_Update()
 	}
 	
 	leaf_lights = malloc(sizeof(bsp_lights_t ) * world_leaves_count);
-	index_buffer = malloc(sizeof(unsigned int ) * world_vertices_count);
+	index_buffer = malloc(sizeof(unsigned int ) * world_vertices_count * 10);
 	
 	for(i = 0; i < world_leaves_count; i++)
 	{
@@ -653,10 +517,6 @@ void world_Update()
 			leaf_lights[i].lights[j] = 0;	
 		}
 	}
-	
-	
-	if(!world_leaves)
-		return;
 		
 	world_handle = gpu_Alloc(sizeof(vertex_t) * world_vertices_count);
 	world_start = gpu_GetAllocStart(world_handle) / sizeof(vertex_t);

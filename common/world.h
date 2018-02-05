@@ -8,9 +8,7 @@ void world_Init();
 
 void world_Finish();
 
-void world_LoadWorldModel(char *file_name);
-
-void world_LoadBsp(char *file_name);
+int world_LoadBsp(char *file_name);
 
 void world_BuildBatches();
 

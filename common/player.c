@@ -21,6 +21,8 @@ player_t *active_player = NULL;
 
 int max_spawn_points = 32;
 int spawn_point_count = 0;
+int spawn_point_free_position_stack_top = -1;
+int *spawn_point_free_position_stack = NULL;
 spawn_point_t *spawn_points = NULL;
 
 mesh_t *weapon_mesh;
@@ -60,6 +62,7 @@ void player_Init()
 	//body_mesh = mesh_GetModel("body");
 	
 	spawn_points = malloc(sizeof(spawn_point_t) * max_spawn_points);
+	spawn_point_free_position_stack = malloc(sizeof(int) * max_spawn_points);
 	
 	
 	visible_players_body_transforms = malloc(sizeof(mat4_t ) * player_list_size);
@@ -82,6 +85,7 @@ void player_Finish()
 		free(spawn_points[i].name);
 	}
 	free(spawn_points);
+	free(spawn_point_free_position_stack);
 	
 	
 	free(free_positions_stack);
@@ -177,14 +181,66 @@ int player_CreateSpawnPoint(vec3_t position, char *name)
 {
 	int spawn_point_index;
 	spawn_point_t *spawn_point;
-	spawn_point_index = spawn_point_count++;
+	
+	if(spawn_point_free_position_stack_top > -1)
+	{
+		spawn_point_index = spawn_point_free_position_stack[spawn_point_free_position_stack_top];
+		spawn_point_free_position_stack_top--;	
+	}
+	else
+	{
+		spawn_point_index = spawn_point_count++;
+		
+		if(spawn_point_index >= max_spawn_points)
+		{
+			spawn_point = malloc(sizeof(spawn_point_t) * (max_spawn_points + 16));
+			memcpy(spawn_point, spawn_points, sizeof(spawn_point_t) * max_spawn_points);
+			free(spawn_points);
+			spawn_points = spawn_point;
+			max_spawn_points += 16;
+		}
+		
+	}
 	
 	spawn_point = &spawn_points[spawn_point_index];
-	
 	spawn_point->position = position;
 	spawn_point->name = strdup(name);
+	spawn_point->bm_flags = 0;
 	
 	return spawn_point_index;
+}
+
+void player_DestroySpawnPoint(int spawn_point_index)
+{
+	spawn_point_t *spawn_point;
+	if(spawn_point_index >= 0 && spawn_point_index < spawn_point_count)
+	{
+		if(!(spawn_points[spawn_point_index].bm_flags & SPAWN_POINT_INVALID))
+		{
+			spawn_point = &spawn_points[spawn_point_index];
+			
+			spawn_point->bm_flags |= SPAWN_POINT_INVALID;
+		
+			spawn_point_free_position_stack_top++;
+			spawn_point_free_position_stack[spawn_point_free_position_stack_top] = spawn_point_index;
+		}
+	}
+}
+
+void player_DestroyAllSpawnPoints()
+{
+	int i;
+	
+	for(i = 0; i < spawn_point_count; i++)
+	{
+		if(!(spawn_points[i].bm_flags & SPAWN_POINT_INVALID))
+		{
+			free(spawn_points[i].name);
+		}
+	}
+	
+	spawn_point_free_position_stack_top = -1;
+	spawn_point_count = 0;
 }
 
 void player_SpawnPlayer(int player_index, int spawn_point_index)
@@ -197,6 +253,15 @@ void player_SpawnPlayer(int player_index, int spawn_point_index)
 			if(!spawn_point_count)
 				return;
 			
+			if(spawn_point_index < 0)
+			{
+				spawn_point_index = rand() % spawn_point_count;
+				
+				while(spawn_points[spawn_point_index].bm_flags & SPAWN_POINT_INVALID)
+				{
+					spawn_point_index = rand() % spawn_point_count;
+				}
+			}
 			
 			if(!(players[player_index].bm_flags & PLAYER_IN_WORLD))
 			{
@@ -205,14 +270,8 @@ void player_SpawnPlayer(int player_index, int spawn_point_index)
 				players[player_index].bm_flags |= PLAYER_IN_WORLD;
 				players[player_index].bm_movement = 0;
 				players[player_index].delta = vec3(0.0, 0.0, 0.0);
-				//printf("[%f %f %f]\n", players[player_index].player_position.x, players[player_index].player_position.y, players[player_index].player_position.z);
 			}
-			
-			/*if(spawn_point_index < 0)
-			{
-				
-			}*/
-			
+						
 		}
 	}
 }
@@ -482,7 +541,7 @@ void player_UpdatePlayers(double delta_time)
 			increment = GROUND_DELTA_INCREMENT;
 		}
 		 
-		
+		 
 		if(players[i].bm_movement & MOVE_FORWARD)
 		{
 			players[i].delta.x -= forward_vector.x * increment * delta_time * 0.0025;
@@ -510,12 +569,12 @@ void player_UpdatePlayers(double delta_time)
 		
 		if(players[i].bm_movement & MOVE_JUMP)
 		{
-			players[i].delta.y = JUMP_DELTA * 0.15;
+			players[i].delta.y = JUMP_DELTA * delta_time * 0.025;
 		}
 		
-		player_Move(&players[i]);
+		//player_Move(&players[i]);
 		
-		players[i].player_position.x = players[i].collision_box_position.x;
+	/*	players[i].player_position.x = players[i].collision_box_position.x;
 		players[i].player_position.z = players[i].collision_box_position.z;
 		
 		if(players[i].bm_movement & PLAYER_STEPPING_UP)
@@ -525,7 +584,8 @@ void player_UpdatePlayers(double delta_time)
 			c = fabs(players[i].collision_box_position.y);
 					
 			players[i].player_position.y += (players[i].collision_box_position.y - players[i].player_position.y) * 0.075 * delta_time * 0.075;
-
+			
+			//printf("smooth...\n");
 					
 			if(fabs(s - c) <= 0.01)
 				players[i].bm_movement &= ~PLAYER_STEPPING_UP;
@@ -534,7 +594,10 @@ void player_UpdatePlayers(double delta_time)
 		else
 		{
 			players[i].player_position.y += (players[i].collision_box_position.y - players[i].player_position.y) * 0.25 * delta_time * 0.075;
-		}
+			players[i].bm_movement &= ~PLAYER_STEPPING_UP;
+		}*/
+		
+	//	printf("%d\n", players[i].bm_movement & PLAYER_ON_GROUND);
 		
 		/*if(players[i].fire_timer)
 		{
@@ -610,23 +673,37 @@ void player_UpdatePlayers(double delta_time)
 
 #define BUMP_COUNT 5
 #define SPEED_THRESHOLD 0.00001
-void player_Move(player_t *player)
+void player_Move(player_t *player, float delta_time)
 {
 	if(!player)
 		return;
 	
 	int i;
 	int c;
+	int j;
+	int k;
+	
+	float d;
 	
 	trace_t trace;
 	
 	vec3_t end;
 	vec3_t new_velocity = player->delta;
+	vec3_t original_velocity = player->delta;
+	vec3_t velocity_vector;
+	
+	vec3_t v;
+	
+	int plane_count = 0;
+	bsp_clipplane_t planes[BUMP_COUNT * 2];
+	
+	int b_early_out = 0;
 	
 	
 	if(!(player->bm_flags & PLAYER_IN_WORLD))
 		return;
 	
+	int bm_movement;
 	
 	
 	//end.x = position->x + velocity.x;
@@ -635,132 +712,169 @@ void player_Move(player_t *player)
 	
 	//static int b_break = 0;
 	
+	//printf("---> [%f %f %f]\n", new_velocity.x, new_velocity.y, new_velocity.z);
+	
 	if(collision_nodes)
 	{
 	
-		player->bm_movement &= ~PLAYER_ON_GROUND;	
-	
-		/*end.x = player->collision_box_position.x + player->delta.x;
-		end.y = player->collision_box_position.y + player->delta.y;
-		end.z = player->collision_box_position.z + player->delta.z;*/
+		//player->bm_movement &= ~PLAYER_ON_GROUND;	
 		
-		for(i = 0; i < BUMP_COUNT; i++)
+		//bm_movement = player->bm_movement;
+		
+		//if(fabs(new_velocity.x) >= SPEED_THRESHOLD || fabs(new_velocity.y) >= SPEED_THRESHOLD || fabs(new_velocity.z) >= SPEED_THRESHOLD)
 		{
-			
-			/* still enough to ignore any movement... */
-			if(fabs(new_velocity.x) < SPEED_THRESHOLD && 
-			   fabs(new_velocity.y) < SPEED_THRESHOLD &&
-			   fabs(new_velocity.z) < SPEED_THRESHOLD)
+			player->bm_movement &= ~PLAYER_ON_GROUND;	
+	
+			for(i = 0; i < BUMP_COUNT; i++)
 			{
-				break;
-			}
-			
-			//printf("[%f %f %f]\n", new_velocity.x, new_velocity.y, new_velocity.z);
-			
-			end.x = player->collision_box_position.x + new_velocity.x;
-			end.y = player->collision_box_position.y + new_velocity.y;
-			end.z = player->collision_box_position.z + new_velocity.z;
-			
-			trace.bm_flags = 0;
-			
-			//while(trace.bm_flags & TRACE_MID_SOLID)
-			
-			/* this is less than ideal, but time is short... */
-			do
-			{
-				bsp_FirstHit(collision_nodes, player->collision_box_position, end, &trace);
-				player->collision_box_position.x -= new_velocity.x * 0.05;
-				player->collision_box_position.y -= new_velocity.y * 0.05;
-				player->collision_box_position.z -= new_velocity.z * 0.05;
+				
+				/* still enough to ignore any movement... */
+				if(fabs(new_velocity.x) < SPEED_THRESHOLD && fabs(new_velocity.y) < SPEED_THRESHOLD && fabs(new_velocity.z) < SPEED_THRESHOLD)
+				{
+					//b_early_out = 1;
+					break;
+				}
+				
+				//printf("[%f %f %f]\n", new_velocity.x, new_velocity.y, new_velocity.z);
 				
 				end.x = player->collision_box_position.x + new_velocity.x;
 				end.y = player->collision_box_position.y + new_velocity.y;
 				end.z = player->collision_box_position.z + new_velocity.z;
-			}while(trace.bm_flags & TRACE_MID_SOLID);
-			
-			//bsp_FirstHit(collision_nodes, player->collision_box_position, end, &trace);
-			
-			/*if(trace.bm_flags & TRACE_MID_SOLID)
-			{
 				
-			}*/
-			
-			
-			//printf("%f\n", trace.frac);
-			
-			/* covered whole distance, bail out... */
-			if(trace.frac == 1.0)
-			{
-				//printf("ALL DISTANCE!\n");
-				break;
-			}
-			else
-			{
+				trace.bm_flags = 0;
 				
-			/*	if(trace.bm_flags & TRACE_MID_SOLID)
-				{
-					player->collision_box_position.x += trace.normal.x * 0.5;
-					player->collision_box_position.y += trace.normal.y * 0.5;
-					player->collision_box_position.z += trace.normal.z * 0.5;
+				//while(trace.bm_flags & TRACE_MID_SOLID)
+				
+				bsp_FirstHit(collision_nodes, player->collision_box_position, end, &trace);
+				
+				/* this is less than ideal, but time is short... */
+				//do
+				
+				c = 0;
+				
+			
 					
-					trace.position = player->collision_box_position;
-					
-					printf("*nudge*\n");
-				}*/
+				//printf("[%f %f %f]\n", trace.normal.x, trace.normal.y, trace.normal.z);
 				
-				#if 1
-				
-				/* hit a vertical-ish surface, test to see whether it's a step or a wall... */
-				if(trace.normal.y < 0.2 && trace.normal.y > -0.2)
+				if(trace.bm_flags & TRACE_MID_SOLID)
 				{
-
-					if(bsp_TryStepUp(&player->collision_box_position, &new_velocity, &trace))
-					{
+					velocity_vector = normalize3(original_velocity);
+					
+					while(trace.bm_flags & TRACE_MID_SOLID)
+					{	
+						player->collision_box_position.x -= velocity_vector.x * 0.05;
+						player->collision_box_position.y -= velocity_vector.y * 0.05;
+						player->collision_box_position.z -= velocity_vector.z * 0.05;
+							
+						end.x = player->collision_box_position.x + original_velocity.x;
+						end.y = player->collision_box_position.y + original_velocity.y;
+						end.z = player->collision_box_position.z + original_velocity.z;
 						
-						/* if step-up was successful, do not clip the speed... */
+						bsp_FirstHit(collision_nodes, player->collision_box_position, end, &trace);
 						
-						/* TODO: maybe it's a good idea to dampen the speed on 
-						staircases a little to avoid the player skyrocketing when walking one
-						up... */
-						player->bm_movement |= PLAYER_STEPPING_UP;
-						continue;
 					}
 				}
 				
-				#endif
-				
-				//assert(bsp_SolidPoint(collision_nodes, trace.position) != BSP_SOLID_LEAF);
-				
-				//printf("%f\n", trace.frac);
-				
-				/*if(player->bm_movement & PLAYER_ON_GROUND)
+				/*if(trace.frac > 0.0)
 				{
-					if(bsp_TryStepDown(&player->player_position, &player->delta, &trace))
-					{
-						continue;
-					}
+					original_velocity = player->delta;
+					plane_count = 0;
 				}*/
+					
 				
-
-				player->bm_movement |= PLAYER_ON_GROUND;
+				/* covered whole distance, bail out... */
+				if(trace.frac == 1.0)
+				{
+					//printf("BAIL\n");
+					//b_early_out = 1;
+					break;
+				}
+				else
+				{
+					//printf("[%f %f %f]\n",  trace.normal.x, trace.normal.y, trace.normal.z);
+					
+					/* hit a vertical-ish surface, test to see whether it's a step or a wall... */
+					//if(trace.normal.y < 0.2 && trace.normal.y > -0.2)
+					
+					planes[plane_count++].normal = trace.normal;
+					
+					if(trace.normal.y >= 0.0 && trace.normal.y < 0.2)
+					{
+	
+						if(bsp_TryStepUp(&player->collision_box_position, &original_velocity, &trace))
+						{
+							/* if step-up was successful, do not clip the speed... */
+							
+							/* TODO: maybe it's a good idea to dampen the speed on 
+							staircases a little to avoid the player skyrocketing when walking one
+							up... */
+							player->bm_movement |= PLAYER_STEPPING_UP | PLAYER_ON_GROUND;
+							continue;
+						}
+					}
+					else
+					{
+						if(trace.normal.y >= 0.7)
+							player->bm_movement |= PLAYER_ON_GROUND;
+					}
 				
+					#if 0
+					
+					for(j = 0; j < plane_count; j++)
+					{
+						bsp_ClipVelocityToPlane(planes[j].normal, original_velocity, &new_velocity, 1.0);
+						
+						for(k = 0; k < plane_count; k++)
+						{
+							if(k == j)
+								continue;
+								
+							if(dot3(planes[k].normal, new_velocity) < 0.0)
+							{
+								/* no good... */	
+								break;
+							}
+							
+						}
+						 
+						if(k == plane_count)
+							break;
+					}
+					
+					if(j != plane_count)
+					{
+						player->delta = new_velocity;
+					}
+					else
+					{
+						v = cross(planes[0].normal, planes[1].normal);
+						d = dot3(v, player->delta);
+						player->delta.x = v.x * d; 
+						player->delta.y = v.y * d;
+						player->delta.z = v.z * d;
+					}
+					
+					#endif
+					
+					
 				
-				//printf("before: [%f %f %f]  ", new_velocity.x, new_velocity.y, new_velocity.z);
-				
-				/* horizontal-ish surface (floor or slope)... */
-				bsp_ClipVelocityToPlane(trace.normal, new_velocity, &new_velocity, 1.0);
-				
-				//printf("after: [%f %f %f]\n", new_velocity.x, new_velocity.y, new_velocity.z);
-				
-				player->collision_box_position.x += new_velocity.x * trace.frac;
-				player->collision_box_position.y += new_velocity.y * trace.frac;
-				player->collision_box_position.z += new_velocity.z * trace.frac;
-				
-				
+					/* horizontal-ish surface (floor or slope)... */
+					bsp_ClipVelocityToPlane(trace.normal, new_velocity, &new_velocity, 1.0);					
+					
+					//printf("---> [%f %f %f]\n", new_velocity.x, new_velocity.y, new_velocity.z);
+					
+					//player->collision_box_position.x += new_velocity.x * trace.frac;
+					//player->collision_box_position.y += new_velocity.y * trace.frac;
+					//player->collision_box_position.z += new_velocity.z * trace.frac;
+					
+					
+					
+				}
 				
 			}
-			
 		}
+		
+		
 	}
 	
 	
@@ -769,6 +883,15 @@ void player_Move(player_t *player)
 	player->collision_box_position.x += player->delta.x;
 	player->collision_box_position.y += player->delta.y;
 	player->collision_box_position.z += player->delta.z;
+	
+	/*if(bm_movement)
+	{
+		player->bm_movement = bm_movement;
+	}*/
+	
+	//printf("done\n");
+	
+	//printf("%d\n", player->bm_movement & PLAYER_ON_GROUND);
 		
 	//bsp_Move(&player->player_position, &player->delta);	
 		

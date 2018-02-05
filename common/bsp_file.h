@@ -3,6 +3,8 @@
 
 
 #define BSP_FILE_VERSION 0
+#define BSP_FILE_MAX_NAME_LEN 64
+#define MAX_NAME_LEN 64
 
 
 typedef struct
@@ -24,7 +26,7 @@ typedef struct
 	vec3_t color;
 	float radius;
 	float energy;
-	char name[32];
+	char name[MAX_NAME_LEN];
 	short type;
 	short bm_flags;
 }light_lump_t;
@@ -32,15 +34,19 @@ typedef struct
 typedef struct
 {
 	vec4_t base;
-	char name[32];
-	char shader_name[32];
+	char name[MAX_NAME_LEN];
+	char shader_name[MAX_NAME_LEN];
 	int bm_textures;
 }material_lump_t;
 
 typedef struct
 {
 	int vertice_count;
-	char material_name[32];
+	char material_name[MAX_NAME_LEN];
 }triangle_group_lump_t;
 
 #endif
+
+
+
+

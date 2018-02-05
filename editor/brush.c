@@ -88,10 +88,10 @@ vec3_t cube_bmodel_collision_verts[] =
 	{-1.0, 1.0,-1.0},
 	
 	/* -Y */
-	{-1.0,-1.0, 1.0},
-	{ 1.0,-1.0, 1.0},
+	{-1.0,-1.0,-1.0},
 	{ 1.0,-1.0,-1.0},
-	{-1.0,-1.0,-1.0},   
+	{ 1.0,-1.0, 1.0},
+	{-1.0,-1.0, 1.0},   
 	 
 };
 
@@ -114,11 +114,13 @@ vec3_t cube_bmodel_collision_normals[] =
 
 
 
-static int brush_list_size;
+int brush_list_size;
 int free_position_stack_top = -1;
 int *free_position_stack = NULL;
 int brush_count;
 brush_t *brushes;
+
+
 int expanded_brush_count;
 brush_t *expanded_brushes = NULL;
 
@@ -133,11 +135,11 @@ extern int red_default_material;
 
 void brush_Init()
 {
-	brush_list_size = 256;
+	brush_list_size = 512;
 	brush_count = 0;
 	expanded_brush_count = 0;
 	brushes = malloc(sizeof(brush_t ) * brush_list_size);
-	free_position_stack = malloc(sizeof(int*) * brush_list_size);
+	free_position_stack = malloc(sizeof(int) * brush_list_size);
 	
 	glGenBuffers(1, &element_buffer);
 }
@@ -150,7 +152,7 @@ void brush_Finish()
 		if(brushes[i].type != BRUSH_BOUNDS && brushes[i].type != BRUSH_INVALID)
 		{
 			free(brushes[i].vertices);
-			free(brushes[i].triangles);
+			//free(brushes[i].triangles);
 			free(brushes[i].triangle_groups);
 			
 			glDeleteBuffers(1, &brushes[i].element_buffer);	
@@ -180,9 +182,17 @@ int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short 
 	float *vertex_positions;
 	float *vertex_normals;
 	int vertex_count;
+	int triangle_count;
+	int index_count;
 	int alloc_handle;
+	int polygon_count;
 	int material;
 	int *b;
+	int *indexes;
+	vertex_t *polygon_vertices;
+	
+	bsp_polygon_t *polygons = NULL;
+	bsp_polygon_t *polygon = NULL;
 	
 	vec3_t p;
 	vec3_t v;
@@ -209,12 +219,15 @@ int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short 
 		
 	}
 	
+	printf("brush index: %d\n", brush_index);
+	
 	brush = &brushes[brush_index];
 	
 	brush->type = type;
 	brush->position = position;
 	brush->scale = scale;
 	brush->orientation = *orientation;
+	brush->bm_flags = BRUSH_MOVED;
 	//brush->vertex_count = vertex_count;
 	//brush->vertices = malloc(sizeof(vertex_t) * vertex_count);
 	//brush->triangles = malloc(sizeof(bsp_striangle_t) * (vertex_count / 3));
@@ -242,9 +255,43 @@ int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short 
 			case BRUSH_CUBE:
 			case BRUSH_CYLINDER:
 				material = default_material;
-				vertex_positions = cube_bmodel_verts;
-				vertex_normals = cube_bmodel_normals;
-				vertex_count = CUBE_BMODEL_VERTEX_COUNT;
+				vertex_count = 24;
+				triangle_count = 12;
+				polygon_count = 6;
+				
+				brush->vertices = malloc(sizeof(vertex_t) * vertex_count * 10);
+				brush->polygons = malloc(sizeof(bsp_polygon_t) * polygon_count * 10);
+				brush->indexes = NULL;
+				//brush->indexes = malloc(sizeof(int) * triangle_count * 3 * 2);
+				
+				//polygon_vertices = malloc(sizeof(vertex_t) * 24);
+				polygons = NULL;
+				
+				for(i = 0; i < 6; i++)
+				{
+					polygon = brush->polygons + i;
+					polygon->vert_count = 4;
+					polygon->vertices = brush->vertices + i * 4;
+					polygon->b_used = 0;
+					polygon->material_index = default_material;
+						
+					for(c = 0; c < 4; c++)
+					{
+						polygon->vertices[c].position = cube_bmodel_collision_verts[i * 4 + c];
+						polygon->vertices[c].normal = cube_bmodel_collision_normals[i];
+					}
+					
+					polygon->normal = cube_bmodel_collision_normals[i];
+					
+					triangle_count += c - 2;
+					
+					polygon->next = polygon + 1;
+
+				}
+				
+				brush->polygons[5].next = NULL;
+				
+				bsp_TriangulatePolygonsIndexes(brush->polygons, &brush->indexes, &index_count);
 			break;
 			
 			/*case BRUSH_CYLINDER:
@@ -268,86 +315,114 @@ int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short 
 		//brush->scale = scale;
 		//brush->orientation = *orientation;
 		brush->vertex_count = vertex_count;
-		brush->vertices = malloc(sizeof(vertex_t) * vertex_count);
-		brush->triangles = malloc(sizeof(bsp_striangle_t) * (vertex_count / 3));
-		brush->polygons = NULL;
+		brush->index_count = index_count;
+		brush->polygon_count = polygon_count;
+		//brush->vertices = malloc(sizeof(vertex_t) * vertex_count);
+		//brush->indexes = indexes;
+		//brush->triangles = malloc(sizeof(bsp_striangle_t) * triangle_count);
+		//brush->polygons = polygons;
 		
-		brush->max_triangle_groups = 4;
-		brush->triangle_groups = malloc(sizeof(triangle_group_t) * brush->max_triangle_groups);
+		//brush->max_triangle_groups = brush->polygon_count;
+		//brush->triangle_groups = malloc(sizeof(triangle_group_t) * brush->max_triangle_groups);
+		//brush->triangle_group_count = 1;
+	
+		//brush->triangle_groups[0].material_index = material;
+		//brush->triangle_groups[0].start = 0;
+		//brush->triangle_groups[0].next = 0;
 		
-		brush->triangle_group_count = 1;
+		brush->triangle_groups = NULL;
+		brush->triangle_group_count = 0;
+		brush->max_triangle_groups = 0;
 		
-		//if(type == BRUSH_BOUNDS) brush->triangle_groups[0].material_index = -1;
-		//else brush->triangle_groups[0].material_index = default_material;
-		
-		brush->triangle_groups[0].material_index = material;
-		brush->triangle_groups[0].start = 0;
-		brush->triangle_groups[0].next = 0;
-		//brush->triangle_groups[0].vertex_count = vertex_count;
 		brush->max_vertexes = vertex_count + 128;
 		
-		brush->handle = gpu_Alloc(sizeof(vertex_t) * brush->max_vertexes);
+		brush->handle = gpu_Alloc(sizeof(vertex_t) * brush->max_vertexes * 10);
 		brush->start = gpu_GetAllocStart(brush->handle) / sizeof(vertex_t);
 		
 		glGenBuffers(1, &brush->element_buffer);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brush->element_buffer);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * brush->max_vertexes, NULL, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * index_count, NULL, GL_DYNAMIC_DRAW);
 		
 		default_group = 0;
-		//if(type == BRUSH_BOUNDS) default_group = -1;
-		//else default_group = 0;
 		
-		for(i = 0; i < vertex_count; i++)
+		polygon = brush->polygons;
+		
+		
+		while(polygon)
 		{
-			if(!(i % 3))
+			c = polygon->vert_count;
+			
+			for(i = 0; i < c; i++)
 			{
-				brush->triangles[i / 3].first_vertex = i;
-				brush->triangles[i / 3].triangle_group = default_group;		/* only triangle group in this brush upon creation... */
+				p.x = polygon->vertices[i].position.x * scale.x;
+				p.y = polygon->vertices[i].position.y * scale.y;
+				p.z = polygon->vertices[i].position.z * scale.z;
+				
+				
+				v.x = p.x * orientation->floats[0][0] +
+				  	  p.y * orientation->floats[1][0] +
+				  	  p.z * orientation->floats[2][0] + position.x;
+				  
+				v.y = p.x * orientation->floats[0][1] +
+					  p.y * orientation->floats[1][1] +
+					  p.z * orientation->floats[2][1] + position.y;
+					  
+				v.z = p.x * orientation->floats[0][2] +
+					  p.y * orientation->floats[1][2] +
+					  p.z * orientation->floats[2][2] + position.z;	
+				
+					    	  
+				polygon->vertices[i].position = v; 
+				
+				p.x = polygon->vertices[i].normal.x;
+				p.y = polygon->vertices[i].normal.y;
+				p.z = polygon->vertices[i].normal.z;
+				
+				
+				v.x = p.x * orientation->floats[0][0] +
+					  p.y * orientation->floats[1][0] +
+					  p.z * orientation->floats[2][0];
+					  
+				v.y = p.x * orientation->floats[0][1] +
+					  p.y * orientation->floats[1][1] +
+					  p.z * orientation->floats[2][1];
+					  
+				v.z = p.x * orientation->floats[0][2] +
+					  p.y * orientation->floats[1][2] +
+					  p.z * orientation->floats[2][2];	
+				
+				
+				polygon->vertices[i].normal = v;
+				
 			}
 			
-			p.x = vertex_positions[i * 3	] * scale.x;
-			p.y = vertex_positions[i * 3 + 1] * scale.y;
-			p.z = vertex_positions[i * 3 + 2] * scale.z;
 			
-			
-			v.x = p.x * orientation->floats[0][0] +
-				  p.y * orientation->floats[1][0] +
-				  p.z * orientation->floats[2][0] + position.x;
-				  
-			v.y = p.x * orientation->floats[0][1] +
-				  p.y * orientation->floats[1][1] +
-				  p.z * orientation->floats[2][1] + position.y;
-				  
-			v.z = p.x * orientation->floats[0][2] +
-				  p.y * orientation->floats[1][2] +
-				  p.z * orientation->floats[2][2] + position.z;	
-			
-				    	  
-			brush->vertices[i].position = v;
-			
-			
-			
-			p.x = vertex_normals[i * 3	];
-			p.y = vertex_normals[i * 3 + 1];
-			p.z = vertex_normals[i * 3 + 2];
-			
-			
+			p.x = polygon->normal.x;
+			p.y = polygon->normal.y;
+			p.z = polygon->normal.z;
+				
+				
 			v.x = p.x * orientation->floats[0][0] +
 				  p.y * orientation->floats[1][0] +
 				  p.z * orientation->floats[2][0];
-				  
+					  
 			v.y = p.x * orientation->floats[0][1] +
 				  p.y * orientation->floats[1][1] +
 				  p.z * orientation->floats[2][1];
-				  
+					  
 			v.z = p.x * orientation->floats[0][2] +
 				  p.y * orientation->floats[1][2] +
-				  p.z * orientation->floats[2][2];	
+				  p.z * orientation->floats[2][2];
 			
-			brush->vertices[i].normal = v;
+			
+			polygon->normal = v;
+			
+			polygon = polygon->next;
 		}
-		
+				
 		gpu_Write(brush->handle, 0, brush->vertices, sizeof(vertex_t) * vertex_count, 0);
+		
+		brush_BuildTriangleGroups(brush);
 		
 		brush_UpdateBrushElementBuffer(brush);
 		
@@ -406,37 +481,106 @@ int brush_CreateEmptyBrush()
 		
 	}
 	
+	printf("empty brush index: %d\n", brush_index);
+	
 	brush = &brushes[brush_index];
 	
 	brush->type = BRUSH_EMPTY;
+	
 	brush->polygons = NULL;
+	brush->polygon_count = 0;
 	
-	return brush_index;
+	brush->index_count = 0;
+	brush->indexes = NULL;
 	
+	brush->bm_flags = BRUSH_MOVED;
 	
+	brush->triangle_groups = NULL;
+	brush->triangle_group_count = 0;
+	brush->max_triangle_groups = 0;
+	
+	brush->max_vertexes = 0;
+	brush->vertex_count = 0;
+	brush->vertices = NULL;
+
+	
+	return brush_index;	
 }
+
+
 
 void brush_BuildTriangleGroups(brush_t *brush)
 {
 	int i;
-	int c = brush->vertex_count / 3;
+	//int c = brush->vertex_count / 3;
+	int c = brush->polygon_count;
+	bsp_polygon_t *polygon;
 	int j;
 	int k;
 	
 	int triangle_group_count = 0;
-	triangle_group_t *triangle_groups = malloc(sizeof(triangle_group_t ) * 512);	/* yeah, this should do... */
+	triangle_group_t triangle_groups[64];
+	//triangle_group_t *triangle_groups = malloc(sizeof(triangle_group_t ) * 512);	/* yeah, this should do... */
 	triangle_group_t *cur_group = NULL;
 	
 	for(i = 0; i < c; i++)
 	{
-		/*for(j = 0; j < triangle_group_count; j++)
+		polygon = &brush->polygons[i];
+		
+		/* go over the list of materials found so far... */
+		for(j = 0; j < triangle_group_count; j++)
 		{
-			if(brush->triangles[i].)
-		}*/
+			/* the material this polygon uses was seen before... */
+			if(polygon->material_index == triangle_groups[j].material_index)
+			{
+				break;
+			}
+		}
+		
+		if(j < triangle_group_count)
+		{
+			
+			cur_group = triangle_groups + j;
+			cur_group->next += (polygon->vert_count - 2) * 3;
+			
+			/* adjust any other group that comes after this one... */
+			for(k = j; k < triangle_group_count - 1; k++)
+			{	
+				triangle_groups[k + 1].start = triangle_groups[k].start + triangle_groups[k].next;
+			}
+		}
+		else
+		{
+			/* first time seen... */
+			cur_group = triangle_groups + triangle_group_count;
+			cur_group->material_index = polygon->material_index;
+			cur_group->start = 0;
+			
+			if(triangle_group_count > 1)
+			{
+				cur_group->start = triangle_groups[triangle_group_count - 1].start + triangle_groups[triangle_group_count - 1].next;
+			}
+					
+			triangle_group_count++;
+			cur_group->next = (polygon->vert_count - 2) * 3;
+		}
+		
+		polygon->triangle_group = j;
 	}
 	
+	if(triangle_group_count > brush->max_triangle_groups)
+	{
+		if(brush->triangle_groups)
+			free(brush->triangle_groups);
+			
+		brush->max_triangle_groups += brush->polygon_count;
+		brush->triangle_groups = malloc(sizeof(triangle_group_t) * brush->max_triangle_groups * 10);
+	}
 	
-	free(triangle_groups);
+	memcpy(brush->triangle_groups, triangle_groups, sizeof(triangle_group_t) * triangle_group_count);
+	brush->triangle_group_count = triangle_group_count;
+	
+	//free(triangle_groups);
 	
 	
 	
@@ -457,92 +601,12 @@ int brush_CopyBrush(brush_t *src)
 	
 	vec3_t p;
 	vec3_t v;
-		
+			
 	if(src->type == BRUSH_INVALID)
 		return -1;	
-		
-	if(free_position_stack_top > -1)
-	{
-		brush_index = free_position_stack[free_position_stack_top];
-		
-		free_position_stack_top--;
-	}
-	else
-	{
-		brush_index = brush_count++;
-		
-		if(brush_index >= brush_list_size)
-		{
-			brush = malloc(sizeof(brush_t) * (brush_list_size + 64));
-			memcpy(brush, brushes, sizeof(brush_t) * brush_list_size);
-			free(brushes);
-			
-			brushes = brush;
-			brush_list_size += 64;
-		}
-		
-	}
 	
-	brush = &brushes[brush_index];
-	
-	
-	brush->type = src->type;
-	brush->max_vertexes = src->max_vertexes;
-	brush->vertex_count = src->vertex_count;
-	brush->vertices = malloc(sizeof(vertex_t) * brush->vertex_count);
-	
-	for(i = 0; i < brush->vertex_count; i++)
-	{
-		brush->vertices[i] = src->vertices[i];
-		/*printf("[%f %f %f]    [%f %f %f]\n", brush->vertices[i].position.x, brush->vertices[i].position.y, brush->vertices[i].position.z,
-											 src->vertices[i].position.x, src->vertices[i].position.y, src->vertices[i].position.z);*/
-	}
-	
-	
-	brush->position = src->position;
-	brush->scale = src->scale;
-	brush->orientation = src->orientation;
-	brush->polygons = NULL;
-	
-	
-	brush->max_triangle_groups = src->max_triangle_groups;
-	brush->triangle_group_count = src->triangle_group_count;
-	brush->triangle_groups = malloc(sizeof(triangle_group_t) * brush->triangle_group_count);
-	
-	for(i = 0; i < brush->triangle_group_count; i++)
-	{
-		brush->triangle_groups[i] = src->triangle_groups[i];
-		brush->triangle_groups[i].next = 0;
-		
-		/*printf("[%d %d %d]    [%d %d %d]\n", brush->triangle_groups[i].material_index, brush->triangle_groups[i].start, brush->triangle_groups[i].next, 
-		                                     src->triangle_groups[i].material_index, src->triangle_groups[i].start, src->triangle_groups[i].next);*/
-		
-	}
-	
-	
-	//brush->triangles = src->triangles;
-	
-	brush->triangles = malloc(sizeof(bsp_striangle_t) * (brush->vertex_count / 3));
-	
-	for(i = 0; i < brush->vertex_count / 3; i++)
-	{
-		brush->triangles[i] = src->triangles[i];
-	}
-	
-	brush->handle = gpu_Alloc(sizeof(vertex_t) * brush->vertex_count);
-	brush->start = gpu_GetAllocStart(brush->handle) / sizeof(vertex_t);
-	gpu_Write(brush->handle, 0, brush->vertices, sizeof(vertex_t) * brush->vertex_count, 0);
-	
-	glGenBuffers(1, &brush->element_buffer);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brush->element_buffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * brush->vertex_count, NULL, GL_DYNAMIC_DRAW);
-	brush_UpdateBrushElementBuffer(brush);
-	
-	
-	
-	
-	return brush_index;
-	
+	return brush_CreateBrush(src->position, &src->orientation, src->scale, src->type);
+
 }
 
 void brush_DestroyBrush(brush_t *brush)
@@ -557,23 +621,31 @@ void brush_DestroyBrush(brush_t *brush)
 	
 	if(brush->type != BRUSH_BOUNDS)
 	{
+		
+		
+		//printf("%x\n", brush->vertices);
 		free(brush->vertices);
 		free(brush->triangle_groups);
-		free(brush->triangles);
-		polygon = brush->polygons;
+		//free(brush->triangles);
+		free(brush->indexes);
+		free(brush->polygons);
+	
+		//polygon = brush->polygons;
 		
-		while(polygon)
+		/*while(polygon)
 		{
 			next = polygon->next;
 			free(polygon->vertices);
 			polygon = next;
-		}
+		}*/
 		gpu_Free(brush->handle);
 		glDeleteBuffers(1, &brush->element_buffer);
 	}
 	
 	brush->type = BRUSH_INVALID;
 	brush->polygons = NULL;
+	brush->polygon_count = 0;
+	brush->triangle_groups = NULL;
 	brush_index = brush - brushes;
 	
 	free_position_stack_top++;
@@ -599,7 +671,8 @@ void brush_DestroyAllBrushes()
 	free_position_stack_top = -1;
 }
 
-void brush_CreateCylinderBrush(int base_vertexes, int *vert_count, float **vertices, float **normals)
+
+void brush_CreateCylinder(int base_vertexes, int *vert_count, float **vertices, float **normals)
 {
 	float *verts;
 	float *norms;
@@ -815,33 +888,80 @@ void brush_UpdateBrushElementBuffer(brush_t *brush)
 {
 	int i;
 	int c;
+	int j;
+	int k;
 	int index_start;
 	int triangle_group;
 	int index_current;
+	int first_index;
 	int *b;
-	c = brush->vertex_count / 3;
+	bsp_polygon_t *polygon;
+	//c = brush->vertex_count / 3;
 	//start = brush->start;
 	
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brush->element_buffer);
 	b = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
 	
+	//glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(int) * brush->index_count, brush->indexes);
+	
+	//brush->triangle_groups[0].next = brush->index_count;
+	//brush->triangle_groups[0].start = 0;
+	
+	
+	
+	first_index = 0;
+	
+	c = brush->triangle_group_count;
+	
 	for(i = 0; i < c; i++)
 	{
-		/* the triangle_group_t of this triangle... */
-		triangle_group = brush->triangles[i].triangle_group;
+		brush->triangle_groups[i].next = 0;
+	}
+	
+	c = brush->polygon_count;
+	
+	for(i = 0; i < c; i++)
+	{
+		polygon = brush->polygons + i;
 		
-		/* the offset within the GL_ELEMENT_ARRAY_BUFFER of this brush... */
+		triangle_group = polygon->triangle_group;
 		index_start = brush->triangle_groups[triangle_group].start;
-		
-		/* position this entry should go... */
 		index_current = brush->triangle_groups[triangle_group].next;
 		
-		/* brush->start offsets to its first vertex inside the gpu heap... */
-		b[index_start + index_current	 ] = brush->triangles[i].first_vertex + 	brush->start;
-		b[index_start + index_current + 1] = brush->triangles[i].first_vertex + 1 + brush->start;
-		b[index_start + index_current + 2] = brush->triangles[i].first_vertex + 2 + brush->start;
+		k = (polygon->vert_count - 2) * 3;
 		
-		brush->triangle_groups[triangle_group].next += 3;
+		for(j = 0; j < k; j++)
+		{
+			b[index_start + index_current + j] = brush->indexes[first_index + j] + brush->start;
+		}
+		
+		//b[index_start + index_current	 ] = brush->indexes[first_index] + brush->start;
+		//b[index_start + index_current + 1] = brush->triangles[i].first_vertex + 1 + brush->start;
+		//b[index_start + index_current + 2] = brush->triangles[i].first_vertex + 2 + brush->start;
+		
+		brush->triangle_groups[triangle_group].next += j;
+		first_index += j;
+		
+		
+		//first_index += (polygon->vert_count - 2) * 3;
+		
+		//b[i] = brush->indexes[i] + brush->start;
+		
+		/* the triangle_group_t of this triangle... */
+	//	triangle_group = brush->triangles[i].triangle_group;
+		
+		/* the offset within the GL_ELEMENT_ARRAY_BUFFER of this brush... */
+	//	index_start = brush->triangle_groups[triangle_group].start;
+		
+		/* position this entry should go... */
+	//	index_current = brush->triangle_groups[triangle_group].next;
+		
+		/* brush->start offsets to its first vertex inside the gpu heap... */
+	//	b[index_start + index_current	 ] = brush->triangles[i].first_vertex + 	brush->start;
+	//	b[index_start + index_current + 1] = brush->triangles[i].first_vertex + 1 + brush->start;
+	//	b[index_start + index_current + 2] = brush->triangles[i].first_vertex + 2 + brush->start;
+		
+		//brush->triangle_groups[triangle_group].next += 3;
 	}
 	
 	glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
@@ -879,6 +999,8 @@ void brush_TranslateBrush(brush_t *brush, vec3_t direction)
 	brush->position.y += direction.y;
 	brush->position.z += direction.z;
 	
+	brush->bm_flags |= BRUSH_MOVED;
+	
 	brush_UpdateBrush(brush);
 }
 
@@ -892,6 +1014,8 @@ void brush_RotateBrush(brush_t *brush, vec3_t axis, float amount)
 	
 	mat3_t rotation;
 	mat3_t old_rotation;
+	
+	bsp_polygon_t *polygon;
 	
 	
 	mat3_t_rotate(&rotation, axis, amount, 1);
@@ -955,6 +1079,33 @@ void brush_RotateBrush(brush_t *brush, vec3_t axis, float amount)
 		brush->vertices[i].normal.z = p.z;
 	}
 	
+	polygon = brush->polygons;
+	
+	while(polygon)
+	{
+		
+		n = polygon->normal;
+	
+		p.x = n.x * rotation.floats[0][0] + 
+		      n.y * rotation.floats[1][0] + 
+		      n.z * rotation.floats[2][0];
+		      
+		p.y = n.x * rotation.floats[0][1] + 
+		      n.y * rotation.floats[1][1] + 
+		      n.z * rotation.floats[2][1];
+			  
+		p.z = n.x * rotation.floats[0][2] + 
+		      n.y * rotation.floats[1][2] + 
+		      n.z * rotation.floats[2][2];	 
+		
+		polygon->normal = p;
+		
+		polygon = polygon->next;
+	}
+	
+	
+	brush->bm_flags |= BRUSH_MOVED;
+	
 	brush_UpdateBrush(brush);
 }
 
@@ -988,24 +1139,19 @@ void brush_ScaleBrush(brush_t *brush, vec3_t axis, float amount)
 	
 	if(new_scale.x <= 0.025)
 	{
-		f = 0.025 - new_scale.x;
-		new_scale.x += f; 
+		new_scale.x = 0.025; 
 	}
 	
 	if(new_scale.y <= 0.025)
 	{
-		f = 0.025 - new_scale.y;
-		new_scale.y += f; 
+		new_scale.y = 0.025; 
 	}
 	
 	if(new_scale.z <= 0.025)
 	{
-		f = 0.025 - new_scale.z;
-		new_scale.z += f; 
+		new_scale.z = 0.025; 
 	}
-	
-	
-		
+			
 	
 	/*brush->scale.x += axis.x * amount;
 	brush->scale.y += axis.y * amount;
@@ -1028,10 +1174,6 @@ void brush_ScaleBrush(brush_t *brush, vec3_t axis, float amount)
 	for(i = 0; i < c; i++)
 	{
 		
-		//v.x = brush.draw_data->verts[i * 6] - translation.x;
-		//v.y = brush.draw_data->verts[i * 6 + 1] - translation.y;
-		//v.z = brush.draw_data->verts[i * 6 + 2] - translation.z;
-		
 		v.x = brush->vertices[i].position.x - translation.x;
 		v.y = brush->vertices[i].position.y - translation.y;
 		v.z = brush->vertices[i].position.z - translation.z;
@@ -1043,22 +1185,37 @@ void brush_ScaleBrush(brush_t *brush, vec3_t axis, float amount)
 		v.z *= (new_scale.z / prev_scale.z);
 		
 		v = MultiplyVector3(&brush->orientation, v);
-		
-		/*brush.draw_data->verts[i * 6] = v.x  + translation.x;
-		brush.draw_data->verts[i * 6 + 1] = v.y + translation.y;
-		brush.draw_data->verts[i * 6 + 2] = v.z + translation.z;*/
-		
+				
 		brush->vertices[i].position.x = v.x + translation.x;
 		brush->vertices[i].position.y = v.y + translation.y;
 		brush->vertices[i].position.z = v.z + translation.z;
 		
 	}
 	
+	brush->bm_flags |= BRUSH_MOVED;
+	
 	brush_UpdateBrush(brush);
 }
 
 
-
+void brush_SetFaceMaterial(brush_t *brush, int face_index, int material_index)
+{
+	
+	/* material_index better be a valid material here >:( ... */
+	
+	if(brush)
+	{
+		if(brush->type != BRUSH_INVALID)
+		{
+			if(face_index >= 0 && face_index < brush->polygon_count)
+			{
+				brush->polygons[face_index].material_index = material_index;
+				
+				brush_BuildTriangleGroups(brush);
+			}
+		}
+	}
+}
 
 
 

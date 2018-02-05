@@ -6,19 +6,19 @@
 #include "player.h"
 //#include "projectile.h"
 
-//#define GRAVITY 0.0098
+#define GRAVITY 0.0098
 
-#define GRAVITY 0.015
+//#define GRAVITY 0.015
 
 #define GROUND_FRICTION 0.65
 #define AIR_FRICTION 0.01
 
-#define GROUND_DELTA_INCREMENT 0.25
-#define AIR_DELTA_INCREMENT 0.15
+#define GROUND_DELTA_INCREMENT 0.45
+#define AIR_DELTA_INCREMENT 0.35
 
-#define MAX_HORIZONTAL_DELTA 0.055
+#define MAX_HORIZONTAL_DELTA 0.25
 
-#define JUMP_DELTA 0.35 
+#define JUMP_DELTA 0.85 
 
 #define PLAYER_CAPSULE_HEIGHT 4.0
 #define PLAYER_CAPSULE_RADIUS 1.5

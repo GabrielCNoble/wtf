@@ -15,7 +15,9 @@
 #include "shader.h"
 #include "material.h"
 #include "player.h"
+#include "bsp_cmp.h"
 #include "bsp_common.h"
+#include "pvs.h"
 
 /* from r_main.c */
 extern int z_pre_pass_shader;
@@ -87,6 +89,17 @@ extern int spawn_point_count;
 extern spawn_point_t *spawn_points;
 
 
+/* from bsp_cmp.c */
+extern bsp_node_t *world_bsp;
+
+/* from pvs.c */
+extern bsp_portal_t *world_portals;
+extern int b_step;
+extern int b_calculating_pvs;
+extern SDL_mutex *polygon_copy_mutex;
+extern SDL_sem *step_semaphore;
+extern pvs_for_leaf_stack_t pvs_for_leaf_stack;
+
 static float angles_lut[ROTATION_HANDLE_DIVS][2];
 
 
@@ -101,9 +114,22 @@ int b_draw_cursors = 1;
 int b_draw_selected = 1;
 int b_draw_leaves = 0;
 int b_draw_light_leaves = 0;
+int b_draw_world_polygons = 0;
+int b_draw_brush_polygons = 0;
+int b_draw_brush_polygons_normals = 1;
+int b_draw_portals = 0;
+int b_draw_pvs_steps = 0;
+
+
+
+/* this file is the heaven of fixed function pipeline. The CPU regards
+those functions with a big middle finger... */
+
 
 void renderer_EditorDraw()
 {
+	
+	//renderer_DrawBrushes();
 	
 	if(b_draw_editor && editor_state == EDITOR_EDITING)
 	{
@@ -152,6 +178,26 @@ void renderer_EditorDraw()
 			renderer_DrawLeaves();
 		}
 		
+		if(b_draw_world_polygons)
+		{
+			renderer_DrawWorldPolygons();
+		}
+		
+		if(b_draw_brush_polygons)
+		{
+			renderer_DrawBrushPolygons();
+		}
+		
+		if(b_draw_portals)
+		{
+			renderer_DrawPortals();
+		}
+		
+		if(b_draw_pvs_steps)
+		{
+			renderer_DrawPvsSteps();
+		}
+		
 		//bsp_DrawPolygons();
 		//bsp_DrawPortals();
 		
@@ -193,20 +239,30 @@ void renderer_DrawBrushes()
 	//glClearStencil(0);
 	glViewport(0, 0, r_window_width, r_window_height);
 	//glClear(GL_STENCIL_BUFFER_BIT);
-	
+		
 	/* do a z-prepass for brushes... */
 	shader_UseShader(z_pre_pass_shader);
 	for(i = 0; i < c; i++)
-	{	
+	{
+	
+		//printf("%d\n", brushes[i].bm_flags & BRUSH_MOVED);	
+	
 		if(brushes[i].type == BRUSH_BOUNDS)
 			continue;
 		
 		if(brushes[i].type == BRUSH_INVALID)
 			continue;	
+		
+		if(!(brushes[i].bm_flags & BRUSH_MOVED))
+			continue;
 			
-		glDrawArrays(GL_TRIANGLES, brushes[i].start, brushes[i].vertex_count);
+		
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brushes[i].element_buffer);	
+		glDrawElements(GL_TRIANGLES, brushes[i].index_count, GL_UNSIGNED_INT, 0);
+			
+		//glDrawArrays(GL_TRIANGLES, brushes[i].start, brushes[i].vertex_count);
 	}
-	
+
 	
 	//glStencilFunc(GL_ALWAYS, 0x1, 0xff);
 	//glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);
@@ -270,6 +326,9 @@ void renderer_DrawBrushes()
 			continue;
 		
 		if(brushes[i].type == BRUSH_INVALID)
+			continue;	
+		
+		if(!(brushes[i].bm_flags & BRUSH_MOVED))
 			continue;	
 		
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brushes[i].element_buffer);
@@ -359,6 +418,9 @@ void renderer_DrawSelected()
 	int j;
 	int k;
 	int index;
+	int *indexes;
+	
+	vec3_t pos;
 	
 	triangle_group_t *triangle_group;
 	//brush_triangle_t *triangles;
@@ -387,8 +449,9 @@ void renderer_DrawSelected()
 		{
 			case PICK_BRUSH:
 				index = selections[i].index0;
+				indexes = brushes[index].indexes;
 				vertices = brushes[index].vertices;
-				k = brushes[index].vertex_count;
+				k = brushes[index].index_count;
 				
 				glEnable(GL_STENCIL_TEST);
 				glClear(GL_STENCIL_BUFFER_BIT);
@@ -402,11 +465,11 @@ void renderer_DrawSelected()
 				//glColor3f(0.0, 0.0, 0.6);
 				for(j = 0; j < k;)
 				{
-					glVertex3f(vertices[j].position.x, vertices[j].position.y, vertices[j].position.z);
+					glVertex3f(vertices[indexes[j]].position.x, vertices[indexes[j]].position.y, vertices[indexes[j]].position.z);
 					j++;
-					glVertex3f(vertices[j].position.x, vertices[j].position.y, vertices[j].position.z);
+					glVertex3f(vertices[indexes[j]].position.x, vertices[indexes[j]].position.y, vertices[indexes[j]].position.z);
 					j++;
-					glVertex3f(vertices[j].position.x, vertices[j].position.y, vertices[j].position.z);
+					glVertex3f(vertices[indexes[j]].position.x, vertices[indexes[j]].position.y, vertices[indexes[j]].position.z);
 					j++;
 				}
 				glEnd();
@@ -432,11 +495,11 @@ void renderer_DrawSelected()
 				
 				for(j = 0; j < k;)
 				{
-					glVertex3f(vertices[j].position.x, vertices[j].position.y, vertices[j].position.z);
+					glVertex3f(vertices[indexes[j]].position.x, vertices[indexes[j]].position.y, vertices[indexes[j]].position.z);
 					j++;
-					glVertex3f(vertices[j].position.x, vertices[j].position.y, vertices[j].position.z);
+					glVertex3f(vertices[indexes[j]].position.x, vertices[indexes[j]].position.y, vertices[indexes[j]].position.z);
 					j++;
-					glVertex3f(vertices[j].position.x, vertices[j].position.y, vertices[j].position.z);
+					glVertex3f(vertices[indexes[j]].position.x, vertices[indexes[j]].position.y, vertices[indexes[j]].position.z);
 					j++;
 				}
 				glEnd();
@@ -476,20 +539,114 @@ void renderer_DrawSelected()
 				
 				glBegin(GL_POINTS);
 				
-				/*if(i == c - 1)
-				{
-					glColor3f(0.2, 0.2, 1.0);
-				}
-				else
-				{
-					glColor3f(0.2, 0.2, 0.6);
-				}*/
-				
 				glVertex3f(light_positions[index].position.x, light_positions[index].position.y, light_positions[index].position.z);
 				glEnd();
 				
 				glDisable(GL_POINT_SMOOTH);
 				glDisable(GL_STENCIL_TEST);
+			break;
+			
+			case PICK_SPAWN_POINT:
+				
+				index = selections[i].index0;
+					
+				pos = spawn_points[index].position;
+				
+				glEnable(GL_STENCIL_TEST);
+				glClear(GL_STENCIL_BUFFER_BIT);
+				glStencilFunc(GL_ALWAYS, 0x1, 0xff);
+				glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
+				glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+				glDepthMask(GL_FALSE);
+				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+					
+				glBegin(GL_QUADS);
+				
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+						
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				
+					
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+						
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				
+				
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+						
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				
+				glEnd();
+				
+				
+				
+				glStencilFunc(GL_NOTEQUAL, 0x1, 0xff);
+				glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+				glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+				glDepthMask(GL_TRUE);
+				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+				glLineWidth(4.0);
+				
+				
+				glBegin(GL_QUADS);
+				
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+						
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				
+					
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+						
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				
+				
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+						
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
+				glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
+				
+				glEnd();
+				
+				glLineWidth(1.0);
+				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+				glDisable(GL_STENCIL_TEST);
+				
+					
 			break;
 		}
 	}
@@ -989,6 +1146,10 @@ void renderer_DrawSpawnPoints()
 	
 	for(i = 0; i < spawn_point_count; i++)
 	{
+		
+		if(spawn_points[i].bm_flags & SPAWN_POINT_INVALID)
+			continue;
+		
 		pos = spawn_points[i].position;
 		
 		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
@@ -1028,6 +1189,9 @@ void renderer_DrawSpawnPoints()
 	
 	for(i = 0; i < spawn_point_count; i++)
 	{
+		if(spawn_points[i].bm_flags & SPAWN_POINT_INVALID)
+			continue;
+		
 		pos = spawn_points[i].position;
 		
 		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
@@ -1116,31 +1280,40 @@ void renderer_DrawLeaves()
 			glVertex3f(world_vertices[triangle->first_vertex + 1].position.x, world_vertices[triangle->first_vertex + 1].position.y, world_vertices[triangle->first_vertex + 1].position.z);
 			glVertex3f(world_vertices[triangle->first_vertex + 2].position.x, world_vertices[triangle->first_vertex + 2].position.y, world_vertices[triangle->first_vertex + 2].position.z);
 		}
-		//break;
 		glColor3f(0.35, 0.35, 0.35);
 		
 	}
-	glEnd();
-	
-	/*glPointSize(8.0);
-	glColor3f(0.0, 1.0, 0.0);
-	glBegin(GL_POINTS);
-	
-	for(i = 0; i < c; i++)
-	{
-		leaf = visible_leaves[i];
-		
-		glVertex3f(leaf->center.x, leaf->center.y, leaf->center.z);
-		glColor3f(0.35, 0.35, 0.35);
-		//break;
-	}
 	
 	glEnd();
-	glPointSize(1.0);*/
-	
-	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glEnable(GL_BLEND);
+	glBegin(GL_TRIANGLES);
+	glColor4f(0.0, 1.0, 0.0, 0.2);
+	//for(i = 0; i < c; i++)
+	//{
+	
+	
+	if(visible_leaves_count)
+	{
+		leaf = visible_leaves[0];
+		triangle_count = leaf->tris_count;
+		
+		for(j = 0; j < triangle_count; j++)
+		{
+			triangle = &leaf->tris[j];
+			glVertex3f(world_vertices[triangle->first_vertex].position.x, world_vertices[triangle->first_vertex].position.y, world_vertices[triangle->first_vertex].position.z);
+			glVertex3f(world_vertices[triangle->first_vertex + 1].position.x, world_vertices[triangle->first_vertex + 1].position.y, world_vertices[triangle->first_vertex + 1].position.z);
+			glVertex3f(world_vertices[triangle->first_vertex + 2].position.x, world_vertices[triangle->first_vertex + 2].position.y, world_vertices[triangle->first_vertex + 2].position.z);
+		}
+	}
+		
+		//glColor3f(0.35, 0.35, 0.35);
+		
+	//}
+	glEnd();
+	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
 		
 }
 
@@ -1179,22 +1352,7 @@ void renderer_DrawLightLeaves()
 	glColor3f(1.0, 1.0, 1.0);
 		
 	for(i = 0; i < c; i++)
-	{
-		//leaf = visible_leaves[i];		
-		
-		/*for(k = 0; k < selection_count; k++)
-		{
-			if(selections[k].type == PICK_LIGHT)
-			{
-				light_index = selections[k].index0;
-				if(leaf_lights[i].lights[light_index >> 5] & (1 << (light_index % 32)))
-					break;
-			}
-		}
-		
-		if(k >= selection_count)
-			continue;*/
-			
+	{	
 		for(j = 0; j < k; j++)
 		{
 			if(leaf_lights[i].lights[j >> 5] & (1 << (j % 32)))
@@ -1276,11 +1434,966 @@ void renderer_DrawLightBoxes()
 }
 
 
+void renderer_RecursiveDrawWorldPolygons(bsp_node_t *node)
+{
+	
+	bsp_leaf_t *leaf;
+	bsp_polygon_t *polygon;
+	int i;
+	vec3_t center;
+	vec3_t vert_vec;
+	
+	if(!node)
+		return;
+		
+		
+	
+	if(node->type == BSP_LEAF)
+	{
+		leaf = (bsp_leaf_t *)node;
+		
+		if(!(leaf->bm_flags & BSP_SOLID))
+		{
+			polygon = leaf->polygons;
+				
+			while(polygon)
+			{
+				center.x = 0.0;
+				center.y = 0.0;
+				center.z = 0.0;
+					
+				for(i = 0; i < polygon->vert_count; i++)
+				{
+					center.x += polygon->vertices[i].position.x;
+					center.y += polygon->vertices[i].position.y;
+					center.z += polygon->vertices[i].position.z;
+				}
+				
+				center.x /= polygon->vert_count;
+				center.y /= polygon->vert_count;
+				center.z /= polygon->vert_count;
+				
+				#define POLYGON_SCALE 0.99
+				
+				glBegin(GL_LINE_LOOP);
+				for(i = 0; i < polygon->vert_count; i++)
+				{
+					vert_vec.x = (polygon->vertices[i].position.x - center.x) * POLYGON_SCALE;
+					vert_vec.y = (polygon->vertices[i].position.y - center.y) * POLYGON_SCALE;
+					vert_vec.z = (polygon->vertices[i].position.z - center.z) * POLYGON_SCALE;
+					
+					glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);
+				}
+				glEnd();
+				
+				polygon = polygon->next;
+				
+				#undef POLYGON_SCALE
+			}
+			
+		}		
+	}	
+	else
+	{
+		renderer_RecursiveDrawWorldPolygons(node->front);
+		renderer_RecursiveDrawWorldPolygons(node->back);
+	}
+	
+	
+}
+
+
+void renderer_DrawWorldPolygons()
+{
+	
+	
+	
+	bsp_polygon_t *polygon;
+	camera_t *active_camera;
+	vec3_t center;
+	vec3_t v;
+	int i;
+	int vert_count;
+	
+	if(!world_bsp)
+		return;
+		
+	
+	active_camera = camera_GetActiveCamera();	
+	
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
+	glUseProgram(0);	
+		
+	glLineWidth(4.0);
+	glColor3f(1.0, 1.0, 1.0);
+	//glBegin(GL_LINE_LOOP);
+	renderer_RecursiveDrawWorldPolygons(world_bsp);
+	//glEnd();
+	glLineWidth(1.0);
+}
+
+
+void renderer_DrawPortals()
+{
+	bsp_portal_t *portal;
+	bsp_polygon_t *polygon;
+	int i;
+	int j;
+	
+	camera_t *active_camera = camera_GetActiveCamera();
+	vec3_t center;
+	vec3_t vert_vec;
+	
+	
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
+	glUseProgram(0);
+	
+	glLineWidth(4.0);
+	glDepthMask(GL_FALSE);
+	//glEnable(GL_BLEND);
+	glDisable(GL_CULL_FACE);
+	//glColor4f(0.25, 0.25, 0.8, 0.1);
+	
+	
+	if(!world_portals)
+		return;
+		
+		
+	portal = world_portals;
+	
+	
+	while(portal)
+	{
+		polygon = portal->portal_polygon;
+		
+		while(polygon)
+		{
+			center.x = 0.0;
+			center.y = 0.0;
+			center.z = 0.0;
+						
+			for(j = 0; j < polygon->vert_count; j++)
+			{
+				center.x += polygon->vertices[j].position.x;
+				center.y += polygon->vertices[j].position.y;
+				center.z += polygon->vertices[j].position.z;
+			}
+					
+			center.x /= polygon->vert_count;
+			center.y /= polygon->vert_count;
+			center.z /= polygon->vert_count;
+					
+			
+			glEnable(GL_BLEND);
+			glColor4f(0.45, 0.45, 0.8, 0.1);
+			glBegin(GL_TRIANGLE_FAN);
+			
+			for(j = 0; j < 3; j++)
+			{
+				glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+			}
+
+			for(; j < polygon->vert_count; j++)
+			{
+				glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+			}
+			glEnd();
+			
+			
+			#define POLYGON_SCALE 0.99
+			glDisable(GL_BLEND);
+			glBegin(GL_LINE_LOOP);
+			glColor3f(1.0, 1.0, 1.0);
+			for(j = 0; j < 3; j++)
+			{
+				vert_vec.x = (polygon->vertices[j].position.x - center.x) * POLYGON_SCALE;
+				vert_vec.y = (polygon->vertices[j].position.y - center.y) * POLYGON_SCALE;
+				vert_vec.z = (polygon->vertices[j].position.z - center.z) * POLYGON_SCALE;				
+				glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);		
+			}
+
+			for(; j < polygon->vert_count; j++)
+			{
+				vert_vec.x = (polygon->vertices[j].position.x - center.x) * POLYGON_SCALE;
+				vert_vec.y = (polygon->vertices[j].position.y - center.y) * POLYGON_SCALE;
+				vert_vec.z = (polygon->vertices[j].position.z - center.z) * POLYGON_SCALE;		
+				glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);
+			}
+			glEnd();
+			
+			polygon = polygon->next;
+			
+			#undef POLYGON_SCALE
+		}
+		
+		portal = portal->next;
+	}
+	//glDisable(GL_BLEND);
+	glEnable(GL_CULL_FACE);
+	glDepthMask(GL_TRUE);
+	glLineWidth(1.0);	
+	
+}
+
+
+void renderer_DrawBrushPolygons()
+{
+	int i;
+	int j;
+	bsp_polygon_t *polygon;
+	camera_t *active_camera = camera_GetActiveCamera();
+	vec3_t center;
+	vec3_t vert_vec;
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
+	glUseProgram(0);
+	
+	glLineWidth(4.0);
+	
+	
+	for(i = 0; i < brush_count; i++)
+	{
+	
+		polygon = brushes[i].polygons;
+					
+		while(polygon)
+		{
+			center.x = 0.0;
+			center.y = 0.0;
+			center.z = 0.0;
+						
+			for(j = 0; j < polygon->vert_count; j++)
+			{
+				center.x += polygon->vertices[j].position.x;
+				center.y += polygon->vertices[j].position.y;
+				center.z += polygon->vertices[j].position.z;
+			}
+					
+			center.x /= polygon->vert_count;
+			center.y /= polygon->vert_count;
+			center.z /= polygon->vert_count;
+					
+			#define POLYGON_SCALE 0.99
+			
+			glBegin(GL_LINE_LOOP);
+			glColor3f(1.0, 1.0, 1.0);
+			for(j = 0; j < polygon->vert_count; j++)
+			{
+				vert_vec.x = (polygon->vertices[j].position.x - center.x) * POLYGON_SCALE;
+				vert_vec.y = (polygon->vertices[j].position.y - center.y) * POLYGON_SCALE;
+				vert_vec.z = (polygon->vertices[j].position.z - center.z) * POLYGON_SCALE;
+						
+				glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);
+			}
+			glEnd();
+				
+			#undef POLYGON_SCALE
+			
+			if(b_draw_brush_polygons_normals)
+			{
+				glBegin(GL_LINES);
+				glColor3f(fabs(polygon->normal.x), fabs(polygon->normal.y), fabs(polygon->normal.z));
+				for(j = 0; j < polygon->vert_count; j++)
+				{	
+					glVertex3f(center.x, center.y, center.z);
+					glVertex3f(center.x + polygon->normal.x, center.y + polygon->normal.y, center.z + polygon->normal.z);
+				}
+				glEnd();
+			}
+			
+			
+			polygon = polygon->next;
+			
+		}
+				
+	}
+	
+	glLineWidth(1.0);		
+	
+}
 
 
 
+void renderer_DrawSourceLeaf()
+{
+	
+	bsp_leaf_t *leaf;
+	bsp_polygon_t *polygon;
+	recursive_pvs_for_leaf_stack_t *recursive_stack;
+	int j;
+	
+	
+	recursive_stack = pvs_for_leaf_stack.recursive_stack + pvs_for_leaf_stack.recursive_stack_pointer;
+	
+	leaf = recursive_stack->src_leaf;
+	polygon = leaf->polygons;
+	
+	glLineWidth(4.0);
+	glDepthMask(GL_FALSE);
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glEnable(GL_BLEND);
+	glColor4f(0.0, 1.0, 0.0, 0.25);
+	
+	while(polygon)
+	{
+		glBegin(GL_TRIANGLE_FAN);
+		for(j = 0; j < polygon->vert_count; j++)
+		{
+			glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+		}
+		glEnd();		
+		polygon = polygon->next;
+	}
+
+	glEnd();
+	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+}
 
 
+void renderer_DrawSourcePortal()
+{
+	bsp_leaf_t *leaf;
+	bsp_polygon_t *polygon;
+	bsp_portal_t *portal;
+	vec3_t center;
+	vec3_t vert_vec;
+	recursive_pvs_for_leaf_stack_t *recursive_stack;
+	int j;
+	
+	
+	recursive_stack = pvs_for_leaf_stack.recursive_stack + pvs_for_leaf_stack.recursive_stack_pointer;
+	
+	leaf = recursive_stack->src_leaf;
+	polygon = leaf->polygons;
+
+	portal = recursive_stack->src_portal;
+	polygon = portal->portal_polygon;
+	center.x = 0.0;
+	center.y = 0.0;
+	center.z = 0.0;
+						
+	for(j = 0; j < polygon->vert_count; j++)
+	{
+		center.x += polygon->vertices[j].position.x;
+		center.y += polygon->vertices[j].position.y;
+		center.z += polygon->vertices[j].position.z;
+	}
+					
+	center.x /= polygon->vert_count;
+	center.y /= polygon->vert_count;
+	center.z /= polygon->vert_count;
+					
+			
+	glEnable(GL_BLEND);
+	glColor4f(0.45, 0.45, 0.8, 0.6);
+	glBegin(GL_TRIANGLE_FAN);
+			
+	for(j = 0; j < 3; j++)
+	{
+		glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+	}
+
+	for(; j < polygon->vert_count; j++)
+	{
+		glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+	}
+	glEnd();
+	
+		
+	#define POLYGON_SCALE 0.99
+	glDisable(GL_BLEND);
+	glBegin(GL_LINE_LOOP);
+	glColor3f(1.0, 1.0, 1.0);
+	for(j = 0; j < polygon->vert_count; j++)
+	{
+		vert_vec.x = (polygon->vertices[j].position.x - center.x) * POLYGON_SCALE;
+		vert_vec.y = (polygon->vertices[j].position.y - center.y) * POLYGON_SCALE;
+		vert_vec.z = (polygon->vertices[j].position.z - center.z) * POLYGON_SCALE;				
+		glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);		
+	}
+	glEnd();
+			
+	#undef POLYGON_SCALE
+		
+}
+
+void renderer_DrawDestinationPortals()
+{
+	bsp_leaf_t *leaf;
+	bsp_polygon_t *polygon;
+	bsp_portal_t *dst_portal;
+	vec3_t center;
+	vec3_t vert_vec;
+	recursive_pvs_for_leaf_stack_t *recursive_stack;
+	recursive_pvs_for_leaf_stack_t *stack_base;
+	int j;
+	int i;
+	
+	
+	recursive_stack = pvs_for_leaf_stack.recursive_stack + pvs_for_leaf_stack.recursive_stack_pointer;
+	stack_base = pvs_for_leaf_stack.recursive_stack;
+	
+	//leaf = recursive_stack->dst_leaf;
+	//polygon = leaf->polygons;
+
+	//portal = recursive_stack->dst_portal;
+	//polygon = portal->portal_polygon;
+	//center.x = 0.0;
+	//center.y = 0.0;
+	//center.z = 0.0;
+	
+	SDL_LockMutex(polygon_copy_mutex);
+						
+	for(i = 0; i < pvs_for_leaf_stack.recursive_stack_pointer + 1; i++)
+	{
+		dst_portal = stack_base[i].dst_portal;
+		
+		if(!dst_portal)
+			break;
+						
+		polygon = dst_portal->portal_polygon;
+		center.x = 0.0;
+		center.y = 0.0;
+		center.z = 0.0;
+							
+		for(j = 0; j < polygon->vert_count; j++)
+		{
+			center.x += polygon->vertices[j].position.x;
+			center.y += polygon->vertices[j].position.y;
+			center.z += polygon->vertices[j].position.z;
+		}
+						
+		center.x /= polygon->vert_count;
+		center.y /= polygon->vert_count;
+		center.z /= polygon->vert_count;
+		
+		
+		glEnable(GL_BLEND);
+		glColor4f(0.8, 0.45, 0.45, 0.6);
+		glBegin(GL_TRIANGLE_FAN);
+				
+		for(j = 0; j < 3; j++)
+		{
+			glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+		}
+	
+		for(; j < polygon->vert_count; j++)
+		{
+			glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+		}
+		glEnd();
+		
+			
+		#define POLYGON_SCALE 0.99
+		glDisable(GL_BLEND);
+		glBegin(GL_LINE_LOOP);
+		glColor3f(1.0, 1.0, 1.0);
+		for(j = 0; j < polygon->vert_count; j++)
+		{
+			vert_vec.x = (polygon->vertices[j].position.x - center.x) * POLYGON_SCALE;
+			vert_vec.y = (polygon->vertices[j].position.y - center.y) * POLYGON_SCALE;
+			vert_vec.z = (polygon->vertices[j].position.z - center.z) * POLYGON_SCALE;				
+			glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);		
+		}
+		glEnd();
+				
+		#undef POLYGON_SCALE
+	}
+	
+	SDL_UnlockMutex(polygon_copy_mutex);
+	
+	
+	
+}
+
+
+void renderer_DrawGeneratorPortals()
+{
+	bsp_leaf_t *leaf;
+	bsp_polygon_t *polygon;
+	bsp_portal_t *dst_portal;
+	vec3_t center;
+	vec3_t vert_vec;
+	recursive_pvs_for_leaf_stack_t *recursive_stack;
+	recursive_pvs_for_leaf_stack_t *stack_base;
+	int j;
+	int i;
+	int portal_count;
+	
+	
+	recursive_stack = pvs_for_leaf_stack.recursive_stack + pvs_for_leaf_stack.recursive_stack_pointer;
+	stack_base = pvs_for_leaf_stack.recursive_stack;
+	
+	
+	
+	
+	leaf = recursive_stack->dst_dst_leaf;
+	
+	if(!leaf)
+		return;
+	
+	portal_count = leaf->portal_count;
+	
+	SDL_LockMutex(polygon_copy_mutex);
+	
+	for(i = 0; i < portal_count; i++)
+	{
+		
+		if(leaf->portals[i] == recursive_stack->dst_dst_portal || leaf->portals[i] == recursive_stack->dst_portal)
+			continue;
+		
+		polygon = leaf->portals[i]->portal_polygon;
+		center.x = 0.0;
+		center.y = 0.0;
+		center.z = 0.0;
+							
+		for(j = 0; j < polygon->vert_count; j++)
+		{
+			center.x += polygon->vertices[j].position.x;
+			center.y += polygon->vertices[j].position.y;
+			center.z += polygon->vertices[j].position.z;
+		}
+						
+		center.x /= polygon->vert_count;
+		center.y /= polygon->vert_count;
+		center.z /= polygon->vert_count;
+		
+		
+		
+		glColor4f(0.45, 0.8, 0.45, 0.6);
+		glEnable(GL_BLEND);
+		glBegin(GL_TRIANGLE_FAN);
+				
+		for(j = 0; j < 3; j++)
+		{
+			glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+		}
+	
+		for(; j < polygon->vert_count; j++)
+		{
+			glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+		}
+		glEnd();
+		
+			
+		#define POLYGON_SCALE 0.99
+		glDisable(GL_BLEND);
+		glBegin(GL_LINE_LOOP);
+		glColor3f(1.0, 1.0, 1.0);
+		for(j = 0; j < polygon->vert_count; j++)
+		{
+			vert_vec.x = (polygon->vertices[j].position.x - center.x) * POLYGON_SCALE;
+			vert_vec.y = (polygon->vertices[j].position.y - center.y) * POLYGON_SCALE;
+			vert_vec.z = (polygon->vertices[j].position.z - center.z) * POLYGON_SCALE;				
+			glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);		
+		}
+		glEnd();
+				
+		#undef POLYGON_SCALE
+	}
+	
+	SDL_UnlockMutex(polygon_copy_mutex);
+}
+
+
+void renderer_DrawValidPortals()
+{
+	bsp_leaf_t *leaf;
+	bsp_polygon_t *polygon;
+	bsp_portal_t *dst_portal;
+	vec3_t center;
+	vec3_t vert_vec;
+	recursive_pvs_for_leaf_stack_t *recursive_stack;
+	recursive_pvs_for_leaf_stack_t *stack_base;
+	int j;
+	int i;
+	
+	int portal_count;
+	
+	
+	recursive_stack = pvs_for_leaf_stack.recursive_stack + pvs_for_leaf_stack.recursive_stack_pointer;
+	stack_base = pvs_for_leaf_stack.recursive_stack;
+	
+	
+	SDL_LockMutex(polygon_copy_mutex);
+	
+	portal_count = recursive_stack->out_valid_dst_portal_count;
+	
+	for(i = 0; i < portal_count; i++)
+	{
+		if(!recursive_stack->out_valid_dst_portals[i])
+			break;
+			
+		polygon = recursive_stack->out_valid_dst_portals[i]->portal_polygon;
+		
+		if(!polygon)
+			break;
+		
+		center.x = 0.0;
+		center.y = 0.0;
+		center.z = 0.0;
+							
+		for(j = 0; j < polygon->vert_count; j++)
+		{
+			center.x += polygon->vertices[j].position.x;
+			center.y += polygon->vertices[j].position.y;
+			center.z += polygon->vertices[j].position.z;
+		}
+						
+		center.x /= polygon->vert_count;
+		center.y /= polygon->vert_count;
+		center.z /= polygon->vert_count;
+		
+		
+		
+		glColor4f(0.8, 0.8, 0.45, 0.6);
+		glEnable(GL_BLEND);
+		glBegin(GL_TRIANGLE_FAN);
+				
+		for(j = 0; j < 3; j++)
+		{
+			glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+		}
+	
+		for(; j < polygon->vert_count; j++)
+		{
+			glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+		}
+		glEnd();
+		
+			
+		#define POLYGON_SCALE 0.99
+		glDisable(GL_BLEND);
+		glBegin(GL_LINE_LOOP);
+		glColor3f(1.0, 1.0, 1.0);
+		for(j = 0; j < polygon->vert_count; j++)
+		{
+			vert_vec.x = (polygon->vertices[j].position.x - center.x) * POLYGON_SCALE;
+			vert_vec.y = (polygon->vertices[j].position.y - center.y) * POLYGON_SCALE;
+			vert_vec.z = (polygon->vertices[j].position.z - center.z) * POLYGON_SCALE;				
+			glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);		
+		}
+		glEnd();
+				
+		#undef POLYGON_SCALE
+	}
+	
+	SDL_UnlockMutex(polygon_copy_mutex);
+}
+
+void renderer_DrawClippingPlanes()
+{		
+	bsp_leaf_t *leaf;
+	bsp_polygon_t *polygon;
+	bsp_portal_t *portal;
+	vec3_t center;
+	vec3_t vert_vec;
+	recursive_pvs_for_leaf_stack_t *recursive_stack;
+	int j;
+	int k;
+	float mult;
+	
+	
+	SDL_LockMutex(polygon_copy_mutex);
+	
+	if(pvs_for_leaf_stack.recursive_stack_pointer < 0)
+	{
+		SDL_UnlockMutex(polygon_copy_mutex);
+		return;
+	}
+		
+	
+	recursive_stack = pvs_for_leaf_stack.recursive_stack + pvs_for_leaf_stack.recursive_stack_pointer;
+		
+	leaf = recursive_stack->dst_leaf;
+	
+	if(!leaf)
+	{
+		SDL_UnlockMutex(polygon_copy_mutex);
+		return;
+	}
+		
+	
+	polygon = leaf->polygons;
+	
+	
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glBegin(GL_TRIANGLES);
+	for(k = 0; k < recursive_stack->clipplane_count; k++)
+	{
+		mult = 10.0;
+		glColor4f(1.0, 1.0, 1.0, 0.1);
+			
+		center = recursive_stack->clipplanes[k].point;
+			
+		glVertex3f(center.x, center.y, center.z);
+			
+		vert_vec.x = recursive_stack->clipplanes[k].edge0.x * mult;
+		vert_vec.y = recursive_stack->clipplanes[k].edge0.y * mult;
+		vert_vec.z = recursive_stack->clipplanes[k].edge0.z * mult;
+		glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);
+			
+		vert_vec.x = recursive_stack->clipplanes[k].edge1.x * mult;
+		vert_vec.y = recursive_stack->clipplanes[k].edge1.y * mult;
+		vert_vec.z = recursive_stack->clipplanes[k].edge1.z * mult;
+		glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);
+	}
+	glEnd();
+		
+		
+	glEnable(GL_BLEND);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glBegin(GL_TRIANGLES);
+	for(k = 0; k < recursive_stack->clipplane_count; k++)
+	{
+		glColor4f(1.0, 1.0, 1.0, 0.1);
+		mult = 10.0;
+			
+		center = recursive_stack->clipplanes[k].point;
+		glVertex3f(center.x, center.y, center.z);
+		vert_vec.x = recursive_stack->clipplanes[k].edge0.x * mult;
+		vert_vec.y = recursive_stack->clipplanes[k].edge0.y * mult;
+		vert_vec.z = recursive_stack->clipplanes[k].edge0.z * mult;
+		glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);
+			
+		vert_vec.x = recursive_stack->clipplanes[k].edge1.x * mult;
+		vert_vec.y = recursive_stack->clipplanes[k].edge1.y * mult;
+		vert_vec.z = recursive_stack->clipplanes[k].edge1.z * mult;
+		glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);
+	}
+	glEnd();
+	
+	
+	SDL_UnlockMutex(polygon_copy_mutex);
+}
+
+void renderer_DrawPvsSteps()
+{
+	recursive_pvs_for_leaf_stack_t *recursive_stack;
+	recursive_pvs_for_leaf_stack_t *stack_base;
+	camera_t *active_camera;
+	bsp_portal_t *portal;
+	bsp_portal_t *dst_portal;
+	bsp_polygon_t *polygon;
+	bsp_leaf_t *leaf;
+	bsp_leaf_t *dst_leaf;
+	bsp_triangle_t *triangle;
+	vec3_t center;
+	vec3_t vert_vec;
+	int j;
+	int i;
+	int k;
+	
+	float mult;
+	
+	
+	//if(!b_step)
+	//	return;
+	
+	if(!world_portals)
+		return;	
+	
+	if(!b_calculating_pvs)
+		return;
+	
+	if(pvs_for_leaf_stack.recursive_stack_pointer < 0)
+		return;
+		
+	recursive_stack = pvs_for_leaf_stack.recursive_stack + pvs_for_leaf_stack.recursive_stack_pointer;
+	stack_base = pvs_for_leaf_stack.recursive_stack;
+	active_camera = camera_GetActiveCamera();
+	
+	
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
+	glUseProgram(0);
+	
+
+	renderer_DrawSourceLeaf();
+	
+	renderer_DrawSourcePortal();
+		
+	renderer_DrawDestinationPortals();	
+	
+	renderer_DrawClippingPlanes();
+	
+	renderer_DrawGeneratorPortals();
+	
+	renderer_DrawValidPortals();
+	
+	/*glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glBegin(GL_TRIANGLES);
+	for(k = 0; k < recursive_stack->clipplane_count; k++)
+	{
+		mult = 10.0;
+		glColor4f(1.0, 1.0, 1.0, 0.1);
+			
+		center = recursive_stack->clipplanes[k].point;
+			
+		glVertex3f(center.x, center.y, center.z);
+			
+		vert_vec.x = recursive_stack->clipplanes[k].edge0.x * mult;
+		vert_vec.y = recursive_stack->clipplanes[k].edge0.y * mult;
+		vert_vec.z = recursive_stack->clipplanes[k].edge0.z * mult;
+		glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);
+			
+		vert_vec.x = recursive_stack->clipplanes[k].edge1.x * mult;
+		vert_vec.y = recursive_stack->clipplanes[k].edge1.y * mult;
+		vert_vec.z = recursive_stack->clipplanes[k].edge1.z * mult;
+		glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);
+	}
+	glEnd();
+		
+		
+	glEnable(GL_BLEND);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glBegin(GL_TRIANGLES);
+	for(k = 0; k < recursive_stack->clipplane_count; k++)
+	{
+		glColor4f(1.0, 1.0, 1.0, 0.1);
+		mult = 10.0;
+			
+		center = recursive_stack->clipplanes[k].point;
+		glVertex3f(center.x, center.y, center.z);
+		vert_vec.x = recursive_stack->clipplanes[k].edge0.x * mult;
+		vert_vec.y = recursive_stack->clipplanes[k].edge0.y * mult;
+		vert_vec.z = recursive_stack->clipplanes[k].edge0.z * mult;
+		glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);
+			
+		vert_vec.x = recursive_stack->clipplanes[k].edge1.x * mult;
+		vert_vec.y = recursive_stack->clipplanes[k].edge1.y * mult;
+		vert_vec.z = recursive_stack->clipplanes[k].edge1.z * mult;
+		glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);
+	}
+	glEnd();*/
+	
+	
+	/*for(i = 0; i < pvs_for_leaf_stack.recursive_stack_pointer + 1; i++)
+	{
+		dst_portal = stack_base[i].dst_portal;
+		
+		if(!dst_portal)
+			break;
+						
+		polygon = dst_portal->portal_polygon;
+		center.x = 0.0;
+		center.y = 0.0;
+		center.z = 0.0;
+							
+		for(j = 0; j < polygon->vert_count; j++)
+		{
+			center.x += polygon->vertices[j].position.x;
+			center.y += polygon->vertices[j].position.y;
+			center.z += polygon->vertices[j].position.z;
+		}
+						
+		center.x /= polygon->vert_count;
+		center.y /= polygon->vert_count;
+		center.z /= polygon->vert_count;
+		
+		
+		glEnable(GL_BLEND);
+		glColor4f(0.8, 0.45, 0.45, 0.6);
+		glBegin(GL_TRIANGLE_FAN);
+				
+		for(j = 0; j < 3; j++)
+		{
+			glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+		}
+	
+		for(; j < polygon->vert_count; j++)
+		{
+			glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+		}
+		glEnd();
+		
+			
+		#define POLYGON_SCALE 0.99
+		glDisable(GL_BLEND);
+		glBegin(GL_LINE_LOOP);
+		glColor3f(1.0, 1.0, 1.0);
+		for(j = 0; j < polygon->vert_count; j++)
+		{
+			vert_vec.x = (polygon->vertices[j].position.x - center.x) * POLYGON_SCALE;
+			vert_vec.y = (polygon->vertices[j].position.y - center.y) * POLYGON_SCALE;
+			vert_vec.z = (polygon->vertices[j].position.z - center.z) * POLYGON_SCALE;				
+			glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);		
+		}
+		glEnd();
+				
+		#undef POLYGON_SCALE
+	}
+	
+	
+	for(i = 0; i < recursive_stack->out_valid_dst_portal_count; i++)
+	{
+		polygon = recursive_stack->out_valid_dst_portals[i]->portal_polygon;
+		center.x = 0.0;
+		center.y = 0.0;
+		center.z = 0.0;
+							
+		for(j = 0; j < polygon->vert_count; j++)
+		{
+			center.x += polygon->vertices[j].position.x;
+			center.y += polygon->vertices[j].position.y;
+			center.z += polygon->vertices[j].position.z;
+		}
+						
+		center.x /= polygon->vert_count;
+		center.y /= polygon->vert_count;
+		center.z /= polygon->vert_count;
+		
+		
+		
+		glColor4f(0.45, 0.8, 0.45, 0.6);
+		glEnable(GL_BLEND);
+		glBegin(GL_TRIANGLE_FAN);
+				
+		for(j = 0; j < 3; j++)
+		{
+			glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+		}
+	
+		for(; j < polygon->vert_count; j++)
+		{
+			glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+		}
+		glEnd();
+		
+			
+		#define POLYGON_SCALE 0.99
+		glDisable(GL_BLEND);
+		glBegin(GL_LINE_LOOP);
+		glColor3f(1.0, 1.0, 1.0);
+		for(j = 0; j < polygon->vert_count; j++)
+		{
+			vert_vec.x = (polygon->vertices[j].position.x - center.x) * POLYGON_SCALE;
+			vert_vec.y = (polygon->vertices[j].position.y - center.y) * POLYGON_SCALE;
+			vert_vec.z = (polygon->vertices[j].position.z - center.z) * POLYGON_SCALE;				
+			glVertex3f(center.x + vert_vec.x, center.y + vert_vec.y, center.z + vert_vec.z);		
+		}
+		glEnd();
+				
+		#undef POLYGON_SCALE
+	}*/
+	
+	
+		
+		
+		
+	//}
+	//glDisable(GL_BLEND);
+	glEnable(GL_CULL_FACE);
+	glDepthMask(GL_TRUE);
+	glLineWidth(1.0);	
+		
+	
+		
+}
 
 
 

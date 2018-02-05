@@ -8,10 +8,19 @@ void gui_UpdateOption(widget_t *widget)
 				
 	if(widget->bm_flags & WIDGET_MOUSE_OVER)
 	{
-		/* if this option has the mouse over it, make
-		it the active option of this option list... */
-		option_list->active_option_index = option->index;
-		option_list->active_option = (struct option_t *)option;	
+		
+		if(option_list->active_option_index != option->index)
+		{
+			/* if this option has the mouse over it, make
+			it the active option of this option list... */
+			option_list->active_option_index = option->index;
+			option_list->active_option = (struct option_t *)option;	
+			//printf("wow!\n");
+			
+			gui_SetVisible(widget);	
+		}
+		
+		
 					
 		if(widget->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
 		{

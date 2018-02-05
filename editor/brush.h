@@ -1,6 +1,8 @@
 #ifndef BRUSH_H
 #define BRUSH_H
 
+#include <assert.h>
+
 #include "matrix_types.h"
 #include "vector_types.h"
 #include "mesh.h"
@@ -17,6 +19,13 @@ enum BRUSH_TYPE
 	BRUSH_COLLISION,
 	BRUSH_EMPTY,
 	BRUSH_INVALID,
+	BRUSH_COMPOUND,
+};
+
+enum BRUSH_FLAGS
+{
+	BRUSH_MOVED = 1,
+	BRUSH_ON_COMPOUND = 1 << 1
 };
 
 
@@ -53,16 +62,19 @@ typedef struct
 													   is added/removed to/from the world... */
 	bsp_striangle_t *triangles;
 	vertex_t *vertices;
-	
-	struct bsp_polygon_t *polygons;						/* HACK!! */
+	int *indexes;
+	int index_count;
+	struct bsp_polygon_t *polygons;			
+	int polygon_count;
 	
 	int max_vertexes;								/* max number before a gpu realloc is needed... */
 	int vertex_count;
-	int base_vertex_count;
+	//int base_vertex_count;
 	int start;
 	int handle;
 	int type;
 	unsigned int element_buffer;
+	int bm_flags;
 }brush_t;
 
 
@@ -86,7 +98,7 @@ void brush_DestroyBrushIndex(int brush_index);
 
 void brush_DestroyAllBrushes();
 
-void brush_CreateCylinderBrush(int base_vertexes, int *vert_count, float **vertices, float **normals);
+void brush_CreateCylinder(int base_vertexes, int *vert_count, float **vertices, float **normals);
 
 void brush_UpdateBrushElementBuffer(brush_t *brush);
 
@@ -97,6 +109,8 @@ void brush_TranslateBrush(brush_t *brush, vec3_t direction);
 void brush_RotateBrush(brush_t *brush, vec3_t axis, float amount);
 
 void brush_ScaleBrush(brush_t *brush, vec3_t axis, float amount);
+
+void brush_SetFaceMaterial(brush_t *brush, int face_index, int material_index);
 
 #endif 
 

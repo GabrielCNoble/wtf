@@ -33,7 +33,7 @@ mat4_t gui_projection_matrix;
 gui_var_t *gui_vars = NULL;
 gui_var_t *last_gui_var = NULL;
 
-static char formated_str[8192];
+char formated_str[8192];
 extern font_t *gui_font;
 
 
@@ -181,6 +181,24 @@ void gui_DestroyWidget(widget_t *widget)
 	
 }
 
+void gui_GetAbsolutePosition(widget_t *widget, short *x, short *y)
+{
+	widget_t *w;
+	
+	*x = widget->x;
+	*y = widget->y;
+	
+	w = widget->parent;
+	
+	while(w)
+	{
+		*x += w->x;
+		*y += w->y;
+		
+		w = w->parent;
+	}
+}
+
 void gui_SetAsTop(widget_t *widget)
 {
 	widget_t **first;
@@ -228,9 +246,46 @@ void gui_SetAsTop(widget_t *widget)
 }
 
 
+int stack_top = -1;
+widget_t *stack[512];
+
+
 void gui_SetVisible(widget_t *widget)
 {
 	widget->bm_flags &= ~WIDGET_INVISIBLE;
+	
+	widget = widget->nestled;
+	
+	
+	/* propagate the flag downwards... */
+	while(widget)
+	{
+		widget->bm_flags |= WIDGET_JUST_CREATED;
+		
+		if(widget->nestled)
+		{
+			stack_top++;
+			stack[stack_top] = widget;
+			
+			widget = widget->nestled;
+			continue;
+		}
+		
+		_advance_widget:
+		
+		widget = widget->next;
+		
+		if(!widget)
+		{
+			if(stack_top >= 0)
+			{
+				widget = stack[stack_top]; 
+				stack_top--;
+				goto _advance_widget;
+			}
+		}
+			
+	}
 }
 
 void gui_SetInvisible(widget_t *widget)
@@ -253,24 +308,7 @@ void gui_RenderText(widget_t *widget)
 	if(!gui_font)
 		return;
 		
-		
-	
-	/*if(widget->bm_flags & WIDGET_TRACK_VAR)
-	{
-		switch(widget->var->type)
-		{
-			case GUI_VAR_FLOAT:
-				format = "%f";
-			break;
-		}
-	}
-	else
-	{
-		format = formated_str;
-	}*/
-	
-		
-	
+			
 	switch(widget->type)
 	{
 		case WIDGET_OPTION:
@@ -329,9 +367,8 @@ void gui_RenderText(widget_t *widget)
 			button = (button_t *)widget;
 			
 			if(button->rendered_text)
-			{
 				SDL_FreeSurface(button->rendered_text);
-			}
+			
 			
 			sprintf(formated_str, button->widget.name);
 			
@@ -358,21 +395,24 @@ gui_var_t *gui_CreateVar(char *name, short type, void *addr)
 		case GUI_VAR_VEC2_T:
 		case GUI_VAR_DOUBLE:
 		case GUI_VAR_FLOAT:
+		case GUI_VAR_POINTER_TO_FLOAT:
 		case GUI_VAR_INT:
 		case GUI_VAR_SHORT:
 		case GUI_VAR_CHAR:
+		case GUI_VAR_POINTER_TO_UNSIGNED_CHAR:
 		case GUI_VAR_STRING:
 			var = malloc(sizeof(gui_var_t));
 			var->name = strdup(name);
 			var->type = type;
 			var->addr = addr;
+			//var->prev_ptr = NULL;
 			var->next = NULL;
 			var->bm_flags = GUI_VAR_VALUE_HAS_CHANGED;
-			
-			if(type == GUI_VAR_STRING)
+			var->prev_var_value.str_var = NULL;
+			/*if(type == GUI_VAR_STRING)
 			{
 				var->prev_var_value.str_var = strdup(*(char **)addr);
-			}
+			}*/
 			
 			
 			if(!gui_vars)
@@ -402,6 +442,8 @@ void gui_TrackVar(gui_var_t *var, widget_t *widget)
 	}
 }
 
+/* this will cause problems if there's a widget tracking
+this var... */
 void gui_DeleteVar(gui_var_t *var)
 {
 	gui_var_t *r = gui_vars;
@@ -463,6 +505,16 @@ void gui_UpdateVars()
 				}
 			break;
 			
+			case GUI_VAR_POINTER_TO_FLOAT:
+				if(!(*(float **)v->addr))
+					break;
+				
+				if(v->prev_var_value.float_var != **((float **)v->addr))
+				{
+					v->prev_var_value.float_var = **((float **)v->addr);
+					v->bm_flags |= GUI_VAR_VALUE_HAS_CHANGED;
+				}
+				
 			case GUI_VAR_FLOAT:
 				if(v->prev_var_value.float_var != *((float *)v->addr))
 				{
@@ -472,7 +524,7 @@ void gui_UpdateVars()
 			break;
 			
 			case GUI_VAR_STRING:
-				if(strcmp(v->prev_var_value.str_var, *((char **)v->addr)))
+				if(!v->prev_var_value.short_var || strcmp(v->prev_var_value.str_var, *((char **)v->addr)))
 				{
 					if(v->prev_var_value.str_var)
 					{
@@ -482,6 +534,19 @@ void gui_UpdateVars()
 					v->prev_var_value.str_var = strdup(*((char **)v->addr));
 					v->bm_flags |= GUI_VAR_VALUE_HAS_CHANGED;
 				}
+			break;
+			
+			case GUI_VAR_POINTER_TO_UNSIGNED_CHAR:
+				if(!(*(unsigned char **)v->addr))
+					break;
+					
+				if(v->prev_var_value.unsigned_char_var != **((unsigned char **)v->addr))
+				{
+					v->prev_var_value.unsigned_char_var = **((unsigned char **)v->addr);
+					v->bm_flags |= GUI_VAR_VALUE_HAS_CHANGED;
+				}
+				
+					
 			break;
 		}
 		
@@ -590,6 +655,7 @@ void gui_ProcessGUI()
 			{
 				//printf("%s %d\n", w->name, w->bm_flags & WIDGET_IGNORE_EDGE_CLIPPING);
 				
+				
 				if(w->bm_flags & WIDGET_IGNORE_EDGE_CLIPPING)
 				{
 					_do_flag_business:
@@ -673,6 +739,10 @@ void gui_ProcessGUI()
 			
 			case WIDGET_BUTTON:
 				gui_UpdateButton(w);
+			break;
+			
+			case WIDGET_SLIDER:
+				gui_UpdateSlider(w);
 			break;
 			
 			case WIDGET_CHECKBOX:
@@ -776,14 +846,17 @@ void gui_ProcessGUI()
 		}*/
 		
 		
-		_advance_widget:
 		
-		/* we'll get here after recursing through all the
-		widgets contained within this bar, and so we have
-		all the information needed to properly decide things... */
+		_advance_widget:
+			
+		w->bm_flags &= ~WIDGET_JUST_CREATED;
+		
 		
 		switch(w->type)
 		{
+			/* we'll get here after recursing through all the
+			widgets contained within this bar, and so we have
+			all the information needed to properly decide things... */
 			case WIDGET_BAR:
 				gui_PostUpdateWidgetBar(w);
 			break;
@@ -845,6 +918,13 @@ void gui_UpdateGUIProjectionMatrix()
 	float top = r_window_height / 2;
 	float bottom = -top;
 	CreateOrthographicMatrix(&gui_projection_matrix, left, right, top, bottom, -10.0, 10.0, NULL);
+}
+
+gui_var_t gui_MakeUnsignedCharVar(unsigned char value)
+{
+	gui_var_t var;
+	var.prev_var_value.unsigned_char_var = value;
+	return var;
 }
 
 gui_var_t gui_MakeIntVar(int value)

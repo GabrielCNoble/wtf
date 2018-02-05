@@ -7,7 +7,7 @@
 #include "frustum.h"
 //#include "scenegraph.h"
 
-
+#define CAMERA_MAX_NAME_LEN 32		/* including trailing null... */
 
 int camera_Init();
 

@@ -35,6 +35,9 @@
 #define UNPACK_CLUSTER_INDEXES(x, y, z, index) y=((index)&0x000000ff);x=((index>>16)&0x000000ff);z=((index>>24)&0x000000ff)
 
 
+#define LIGHT_MAX_NAME_LEN 32	/* including trailing null... */
+
+
 enum LIGHT_FRUSTUM
 {
 	LIGHT_FRUSTUM_X_POS = 0,

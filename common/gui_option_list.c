@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "gui_option_list.h"
 #include "input.h"
@@ -7,6 +8,11 @@
 /* from gui.c */
 extern widget_t *widgets;
 extern widget_t *last_widget;
+
+
+extern int r_window_width;
+extern int r_window_height;
+
 
 int gui_option_unique_index = 0;
 
@@ -30,7 +36,7 @@ option_list_t *gui_CreateOptionList(char *name, short x, short y, short w, short
 	options->option_count = 0;
 	options->active_option_index = -1;
 	options->active_option = NULL;
-	options->widget.bm_flags = WIDGET_IGNORE_EDGE_CLIPPING;
+	options->widget.bm_flags = WIDGET_IGNORE_EDGE_CLIPPING | WIDGET_JUST_CREATED;
 	options->bm_option_list_flags = OPTION_LIST_UPDATE_EXTENTS;
 	options->widget.widget_callback = option_list_callback;
 	
@@ -59,7 +65,7 @@ void gui_AddOptionToList(option_list_t *option_list, char *name, char *text)
 	option->widget.w = option_list->widget.w;
 	option->widget.h = OPTION_HEIGHT / 2.0;
 	option->widget.x = 0;
-	option->widget.bm_flags = WIDGET_RENDER_TEXT | WIDGET_IGNORE_EDGE_CLIPPING;
+	option->widget.bm_flags = WIDGET_RENDER_TEXT | WIDGET_IGNORE_EDGE_CLIPPING | WIDGET_JUST_CREATED; 
 	option->widget.next = NULL;
 	option->widget.prev = NULL;
 	option->widget.nestled = NULL;
@@ -140,7 +146,7 @@ option_list_t *gui_NestleOptionList(option_list_t *option_list, int option_index
 			options->option_count = 0;
 			options->active_option_index = -1;
 			options->active_option = NULL;
-			options->widget.bm_flags = WIDGET_IGNORE_EDGE_CLIPPING;
+			options->widget.bm_flags = WIDGET_IGNORE_EDGE_CLIPPING | WIDGET_JUST_CREATED;
 			options->bm_option_list_flags = OPTION_LIST_UPDATE_EXTENTS;
 			options->widget.widget_callback = wdg->widget_callback;
 			
@@ -186,6 +192,10 @@ void gui_UpdateOptionList(widget_t *widget)
 	option_list_t *option_list = (option_list_t *)widget;
 	int top_y;
 	widget_t *r;
+	widget_t *parent;
+	
+	short x;
+	short y;
 				
 	if(option_list->bm_option_list_flags & OPTION_LIST_UPDATE_EXTENTS)
 	{
@@ -209,6 +219,7 @@ void gui_UpdateOptionList(widget_t *widget)
 				{
 					
 				}
+				/* dropdown... */
 				else
 				{
 					widget->y -= OPTION_HEIGHT * 0.5;
@@ -245,6 +256,44 @@ void gui_UpdateOptionList(widget_t *widget)
 					
 		option_list->bm_option_list_flags &= ~OPTION_LIST_UPDATE_EXTENTS;
 	}
+	
+	if(widget->parent)
+	{
+		parent = widget->parent;
+		
+		if(parent->type == WIDGET_OPTION)
+		{
+			
+			gui_GetAbsolutePosition(parent, &x, &y);
+		
+			if(x + parent->w + widget->w > r_window_width * 0.5) /*|| x + widget->w > r_window_width * 0.5)*/
+			{
+				widget->x = -parent->w - widget->w;
+			}
+			else
+			{
+				widget->x = +parent->w + widget->w;
+			}
+			
+		}
+		else if(parent->type == WIDGET_DROPDOWN)
+		{
+			gui_GetAbsolutePosition(parent, &x, &y);
+			
+			if(y + parent->h + widget->h > r_window_height * 0.5)
+			{
+				widget->y = -parent->h - widget->h;
+			}
+			else
+			{
+				widget->y = parent->h + widget->h;
+			}
+			
+		}
+		
+		
+	}
+	
 }
 
 

@@ -27,6 +27,11 @@ extern bsp_pnode_t *world_nodes;
 extern bsp_pnode_t *collision_nodes;
 extern int world_leaves_count;
 extern bsp_dleaf_t *world_leaves;
+extern int world_triangle_group_count;
+extern triangle_group_t *world_triangle_groups;
+extern unsigned int *index_buffer;
+extern unsigned int world_element_buffer;
+extern int world_handle;
 
 //extern bsp_leaf_t *world_leaves;
 
@@ -91,6 +96,8 @@ void bsp_DeleteBsp()
 			free(world_leaves[i].tris);
 		}
 		
+		free(index_buffer);
+		free(world_triangle_groups);
 		free(world_nodes);
 		free(collision_nodes);
 		free(world_leaves);
@@ -98,6 +105,18 @@ void bsp_DeleteBsp()
 		world_nodes = NULL;
 		collision_nodes = NULL;
 		world_leaves = NULL;
+		index_buffer = NULL;
+		world_triangle_groups = NULL;
+		
+		world_triangle_group_count = 0;
+		
+		
+		gpu_Free(world_handle);
+		
+		
+		glDeleteBuffers(1, &world_element_buffer);
+	
+		
 	}
 	
 	
@@ -313,13 +332,11 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 		/*while(bsp_SolidPoint(collision_nodes, mid) == BSP_SOLID_LEAF)
 		{
 			
-			
-			
 			frac -= 0.1;
-			
 			if(frac < 0.0)
 			{
 				printf("backup past zero!\n");
+				trace->bm_flags |= TRACE_MID_SOLID;
 				break;
 			}
 				
@@ -329,10 +346,10 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 			mid.y = start->y + (end->y - start->y) * frac;
 			mid.z = start->z + (end->z - start->z) * frac;
 			
-		}
+		}*/
 		
-		trace->position = mid;
-		trace->frac = midf;*/
+		//trace->position = mid;
+		//trace->frac = midf;
 		
 		//assert(bsp_SolidPoint(collision_nodes, mid) != BSP_SOLID_LEAF);
 		

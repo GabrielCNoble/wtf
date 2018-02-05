@@ -44,6 +44,10 @@ enum PLAYER_FLAGS
 	PLAYER_INVALID = 1 << 2,
 };
 
+enum SPAWN_POINT_FLAGS
+{
+	SPAWN_POINT_INVALID = 1,
+};
 
 typedef struct
 {
@@ -78,6 +82,7 @@ typedef struct
 typedef struct
 {
 	vec3_t position;
+	int bm_flags;
 	char *name;
 }spawn_point_t;
 
@@ -93,6 +98,10 @@ void player_DestroyPlayer(char *name);
 void player_DestroyPlayerIndex(int player_index);
 
 int player_CreateSpawnPoint(vec3_t position, char *name);
+
+void player_DestroySpawnPoint(int spawn_point_index);
+
+void player_DestroyAllSpawnPoints();
 
 void player_SpawnPlayer(int player_index, int spawn_point_index);
 
@@ -112,7 +121,7 @@ void player_ProcessAI(float delta_time);
 
 void player_UpdatePlayers(double delta_time);
 
-void player_Move(player_t *player);
+void player_Move(player_t *player, float delta_time);
 
 void player_TransformPlayers();
 

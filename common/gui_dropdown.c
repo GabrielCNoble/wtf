@@ -1,11 +1,19 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "gui_dropdown.h"
 #include "input.h"
 
 /* from input.c */
 extern int bm_mouse;
+
+/* from r_main.c */
+extern int r_window_width;
+extern int r_window_height;
+
+/* from gui.c */
+extern char formated_str[];
 
 dropdown_t *gui_CreateDropdown(char *name, char *text, short x, short y, short w, short bm_flags, void (*dropdown_callback)(widget_t *widget))
 {
@@ -145,6 +153,7 @@ void gui_AddOption(dropdown_t *dropdown, char *name, char *text)
 void gui_UpdateDropdown(widget_t *widget)
 {
 	dropdown_t *dropdown = (dropdown_t *)widget;
+	gui_var_t *var;
 	
 	dropdown->bm_dropdown_flags &= ~DROPDOWN_JUST_DROPPED;
 				
@@ -156,9 +165,47 @@ void gui_UpdateDropdown(widget_t *widget)
 		}
 		else
 		{
-			dropdown->bm_dropdown_flags |= DROPDOWN_DROPPED | DROPDOWN_JUST_DROPPED;
+			dropdown->bm_dropdown_flags |= DROPDOWN_DROPPED | DROPDOWN_JUST_DROPPED;			
 		}
 	}
+	
+	if(widget->bm_flags & WIDGET_TRACK_VAR)
+	{
+		var = widget->var;
+		
+		if(var->bm_flags & GUI_VAR_VALUE_HAS_CHANGED)
+		{
+			switch(var->type)
+			{
+				case GUI_VAR_FLOAT:
+				
+				break;
+				
+				case GUI_VAR_INT:
+				
+				break;
+				
+				case GUI_VAR_STRING:
+					if(dropdown->dropdown_text)
+						free(dropdown->dropdown_text);
+					
+					sprintf(formated_str, "%s", *((char **)var->addr));
+					dropdown->dropdown_text = strdup(formated_str);
+					
+					widget->bm_flags |= WIDGET_RENDER_TEXT;
+					
+				break;
+				
+				default:
+					
+				break;
+			}
+		}
+		
+		
+		
+	}
+	
 }
 
 void gui_PostUpdateDropdown(widget_t *widget)
@@ -197,40 +244,31 @@ void gui_UpdateDropdownBar(widget_t *bar)
 	
 	while(w)
 	{
-		
 		if(w->bm_flags & WIDGET_MOUSE_OVER)
 		{
 			
 			if(wbar->active_widget)
 			{
-				dropdown = (dropdown_t *)w;
-				active_dropdown = (dropdown_t *)wbar->active_widget;
-				
-				dropdown->bm_dropdown_flags |= active_dropdown->bm_dropdown_flags & DROPDOWN_DROPPED;
-				
-				active_dropdown->bm_dropdown_flags &= ~DROPDOWN_DROPPED;
-				/*r = wbar->active_widget;
-				
-				while(r)
+				if(wbar->active_widget != w)
 				{
-					r->bm_flags &= ~WIDGET_MOUSE_OVER;
-					r = r->parent;
-				}*/
-				
+					dropdown = (dropdown_t *)w;
+					active_dropdown = (dropdown_t *)wbar->active_widget;
+					dropdown->bm_dropdown_flags |= active_dropdown->bm_dropdown_flags & DROPDOWN_DROPPED;
+					active_dropdown->bm_dropdown_flags &= ~DROPDOWN_DROPPED;
+					
+					if(dropdown->bm_dropdown_flags & DROPDOWN_DROPPED)
+					{
+						dropdown->bm_dropdown_flags |= DROPDOWN_JUST_DROPPED;
+					}
+				}
 			}
 			
 			wbar->active_widget = w;
-			/*r = w;
-			while(r)
-			{
-				r->bm_flags |= WIDGET_MOUSE_OVER;
-				r = r->parent;
-			}*/
+			active_dropdown = (dropdown_t *)wbar->active_widget;
 		}
 		
 		w = w->next;
 	}
-	
 	
 }
 

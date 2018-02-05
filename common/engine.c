@@ -82,7 +82,7 @@ void engine_Finish()
 {
 	if(b_init_properly)
 	{
-		editor_Finish();
+		//editor_Finish();
 		shader_Finish();
 		material_Finish();
 		input_Finish();

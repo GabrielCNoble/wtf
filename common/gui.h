@@ -9,6 +9,7 @@
 #include "gui_widget_bar.h"
 #include "gui_checkbox.h"
 #include "gui_text_field.h"
+#include "gui_slider.h"
 
 int gui_Init();
 
@@ -19,6 +20,8 @@ widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h);
 void gui_NestleWidget(widget_t *parent, widget_t *widget);
 
 void gui_DestroyWidget(widget_t *widget);
+
+void gui_GetAbsolutePosition(widget_t *widget, short *x, short *y);
 
 void gui_SetAsTop(widget_t *widget);
 
@@ -39,6 +42,8 @@ void gui_UpdateVars();
 void gui_ProcessGUI();
 
 void gui_UpdateGUIProjectionMatrix();
+
+gui_var_t gui_MakeUnsignedCharVar(unsigned char value);
 
 gui_var_t gui_MakeIntVar(int value);
 

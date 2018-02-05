@@ -22,6 +22,10 @@
 #define HANDLE_3D_MODE_DISPLAY_WIDTH 120
 
 
+#define LIGHT_PROPERTIES_WINDOW_WIDTH	100
+#define LIGHT_PROPERTIES_WINDOW_HEIGHT	100
+
+
 /* from r_main.c */
 extern int r_window_width;
 extern int r_window_height;
@@ -59,8 +63,16 @@ button_t *cancel_open_project_button;
 
 
 text_field_t *fps_display;
-
 text_field_t *handle_3d_mode_display;
+
+
+
+widget_t *light_properties_window;
+slider_t *selected_light_r;
+slider_t *selected_light_g;
+slider_t *selected_light_b;
+slider_t *selected_light_radius;
+slider_t *selected_light_energy;
 
 
 //dropdown_t *wow;
@@ -76,10 +88,16 @@ extern int bm_handle_3d_flags;
 extern int handle_3d_position_mode;
 extern int handle_3d_mode;
 extern char *handle_3d_mode_str;
+extern light_ptr_t selected_light;
+extern int selected_type;
 
-extern b_draw_brushes;
-extern b_draw_leaves;
-extern b_draw_light_leaves;
+extern int b_draw_brushes;
+extern int b_draw_leaves;
+extern int b_draw_light_leaves;
+extern int b_draw_world_polygons;
+extern int b_draw_brush_polygons;
+extern int b_draw_portals;
+extern int b_draw_pvs_steps;
 
 int add_light_unique_index;
 int add_brush_unique_index;
@@ -88,9 +106,16 @@ int add_cylinder_brush_unique_index;
 int add_spawn_point_unique_index;
 
 
+/* from pvs.c */
+extern int b_step;
+
+
 /* from engine.c */
 extern float fps;
 
+float insane_float0 = 0.5;
+float insane_float1 = 0.5;
+float insane_float2 = 0.5;
 
 void confirm_save_project_button_callback(widget_t *widget)
 {
@@ -129,6 +154,7 @@ void file_dropdown_callback(widget_t *widget)
 		{
 			case 0:
 				editor_CloseProject();
+				//printf("new project\n");
 			break;
 			
 			case 1:
@@ -164,8 +190,12 @@ void world_dropdown_callback(widget_t *widget)
 				bsp_CompileBsp(0);
 			break;
 			
+			case 2:
+				b_draw_portals ^= 1;
+			break;
+			
 			case 1:
-				editor_ExportBsp("test.bsp");
+				editor_ExportBsp(current_project_name);
 			break;
 			
 			case 3:
@@ -179,6 +209,20 @@ void world_dropdown_callback(widget_t *widget)
 			case 5:
 				b_draw_light_leaves ^= 1;
 			break;
+			
+			case 6:
+				b_draw_world_polygons ^= 1;
+			break;
+			
+			case 7:
+				b_draw_brush_polygons ^= 1;
+			break;
+			
+			case 8:
+				b_draw_pvs_steps ^= 1;
+			break;
+			
+			
 		}
 	}
 }
@@ -206,6 +250,10 @@ void misc_dropdown_callback(widget_t *widget)
 			
 			case 3:
 				log_FlushLog();
+			break;
+			
+			case 4:
+				b_step ^= 1;
 			break;
 		}
 	}
@@ -292,12 +340,13 @@ void add_to_world_menu_callback(widget_t *widget)
 		else if(option->unique_index == add_spawn_point_unique_index)
 		{
 			index = player_CreateSpawnPoint(cursor_3d_position, "spawn point");
-			
-			/*
+		
+	
 			record.type = PICK_SPAWN_POINT;
 			record.index0 = index;
+			
 			editor_ClearSelection();
-			editor_AddSelection(&record);*/
+			editor_AddSelection(&record);
 			
 			handle_3d_position = cursor_3d_position;
 			
@@ -334,6 +383,10 @@ void delete_selection_menu_callback(widget_t *widget)
 	}
 }
 
+char *insane_string = "INSANE!";
+
+unsigned char insane_char = 0;
+unsigned char *p_insane_char = &insane_char;
 
 void editor_InitUI()
 {
@@ -345,7 +398,7 @@ void editor_InitUI()
 	menu_dropdown_bar = gui_AddWidgetBar(menu_bar, "menu widget bar", 0, 0, r_window_width, MENU_BAR_HEIGHT, WIDGET_BAR_FIXED_SIZE);
 	
 	file_dropdown = gui_CreateDropdown("file", "file", 0, 0, FILE_DROPDOWN_WIDTH, 0, file_dropdown_callback);
-	gui_AddOption(file_dropdown, "new_file", "new...");
+	gui_AddOption(file_dropdown, "new", "new...");
 	gui_AddOption(file_dropdown, "save", "save");
 	gui_AddOption(file_dropdown, "load", "load");
 	gui_AddOption(file_dropdown, "exit", "exit");
@@ -359,6 +412,9 @@ void editor_InitUI()
 	gui_AddOption(world_dropdown, "visualize brushes", "visualize brushes");
 	gui_AddOption(world_dropdown, "visualize leaves", "visualize leaves");
 	gui_AddOption(world_dropdown, "visualize light leaves", "visualize light leaves");
+	gui_AddOption(world_dropdown, "visualize world polygons", "visualize world polygons");
+	gui_AddOption(world_dropdown, "visualize brush polygons", "visualize brush polygons");
+	gui_AddOption(world_dropdown, "visualize pvs steps", "visualize pvs steps");
 	
 	gui_AddWidgetToBar((widget_t *) world_dropdown, menu_dropdown_bar);
 	
@@ -367,8 +423,24 @@ void editor_InitUI()
 	gui_AddOption(misc_dropdown, "enable z prepass", "enable z prepass");
 	gui_AddOption(misc_dropdown, "enable shadow mapping", "enable shadow mapping");
 	gui_AddOption(misc_dropdown, "flush log", "flush log");
+	gui_AddOption(misc_dropdown, "step pvs", "step pvs");
 	
 	gui_AddWidgetToBar((widget_t *)misc_dropdown, menu_dropdown_bar);
+	
+	
+	
+	/*dropdown_t *test_dropdown = gui_CreateDropdown("misc", "misc", 0, 0, MISC_DROPDOWN_WIDTH, 0, NULL);
+	gui_AddOption(test_dropdown, "fuck", "fuck");
+	gui_AddOption(test_dropdown, "piss", "piss");
+	gui_AddOption(test_dropdown, "ass", "ass");
+	gui_AddOption(test_dropdown, "shit", "shit");
+	
+	gui_AddWidgetToBar((widget_t *)test_dropdown, menu_dropdown_bar);*/
+	
+	//gui_var_t *test_var = gui_CreateVar("test var", GUI_VAR_STRING, &insane_string);
+	//gui_TrackVar(test_var, (widget_t *)test_dropdown);
+	
+	
 	
 	
 	
@@ -379,7 +451,6 @@ void editor_InitUI()
 	
 	add_light_unique_index = gui_GetOptionUniqueIndex(add_to_world_menu, 0);
 	add_spawn_point_unique_index = gui_GetOptionUniqueIndex(add_to_world_menu, 2);
-	//add_brush_unique_index = gui_GetOptionUniqueIndex(add_to_world_menu, 1);
 	
 	brush_types_option_list = gui_NestleOptionList(add_to_world_menu, 1, "brush type options");
 	gui_AddOptionToList(brush_types_option_list, "cube brush", "cube brush");
@@ -388,13 +459,11 @@ void editor_InitUI()
 	
 	add_cube_brush_unique_index = gui_GetOptionUniqueIndex(brush_types_option_list, 0);
 	add_cylinder_brush_unique_index = gui_GetOptionUniqueIndex(brush_types_option_list, 1);
-		
 	gui_SetInvisible((widget_t *)add_to_world_menu);
 	
 	
 	delete_menu = gui_CreateOptionList("delete", 0, 0, 100, 0, delete_selection_menu_callback);
 	gui_AddOptionToList(delete_menu, "delete", "delete?");
-	
 	gui_SetInvisible((widget_t *)delete_menu);
 	
 	
@@ -417,8 +486,6 @@ void editor_InitUI()
 	open_project_text_field = gui_AddTextField(open_project_window, "open project text field", 0, 20, 380, 0, NULL);
 	confirm_open_project_button = gui_AddButton(open_project_window, "confirm", 80, -15, 90, 40, 0, confirm_open_project_button_callback);
 	cancel_open_project_button = gui_AddButton(open_project_window, "cancel", -80, -15, 90, 40, 0, cancel_open_project_button_callback);
-	
-
 	gui_SetInvisible((widget_t *)open_project_window);
 
 	
@@ -427,6 +494,20 @@ void editor_InitUI()
 	
 	handle_3d_mode_display = gui_AddTextField(NULL, "handle 3d mode", -r_window_width * 0.5 + HANDLE_3D_MODE_DISPLAY_WIDTH * 0.5, -r_window_height * 0.5 + OPTION_HEIGHT * 0.5, HANDLE_3D_MODE_DISPLAY_WIDTH, 0, NULL);
 	gui_TrackVar(gui_CreateVar("handle 3d mode", GUI_VAR_STRING, &handle_3d_mode_str), (widget_t *)handle_3d_mode_display);
+
+
+
+	
+		
+	gui_var_t *var0 = gui_CreateVar("selected light r", GUI_VAR_POINTER_TO_UNSIGNED_CHAR, &selected_light.r);
+	gui_var_t *var1 = gui_CreateVar("selected light g", GUI_VAR_POINTER_TO_UNSIGNED_CHAR, &selected_light.g);
+	gui_var_t *var2 = gui_CreateVar("selected light b", GUI_VAR_POINTER_TO_UNSIGNED_CHAR, &selected_light.b);
+	
+	light_properties_window = gui_CreateWidget("wow", r_window_width * 0.5 - LIGHT_PROPERTIES_WINDOW_WIDTH * 0.5, 0, LIGHT_PROPERTIES_WINDOW_WIDTH, LIGHT_PROPERTIES_WINDOW_HEIGHT);
+ 	selected_light_r = gui_AddSlider(light_properties_window, "light r", 0, 20, 90, 0, NULL, var0, gui_MakeUnsignedCharVar(0), gui_MakeUnsignedCharVar(255));
+	selected_light_g = gui_AddSlider(light_properties_window, "light g", 0, 0, 90, 0, NULL, var1, gui_MakeUnsignedCharVar(0), gui_MakeUnsignedCharVar(255));
+	selected_light_b = gui_AddSlider(light_properties_window, "light b", 0, -20, 90, 0, NULL, var2, gui_MakeUnsignedCharVar(0), gui_MakeUnsignedCharVar(255));
+
 
 	//gui_AddTextField(NULL, "text field", 0, 0, 230, 0, NULL);
 	
@@ -440,6 +521,18 @@ void editor_InitUI()
 void editor_FinishUI()
 {
 	
+}
+
+void editor_ProcessUI()
+{
+	if(selected_type == PICK_LIGHT)
+	{
+		editor_OpenLightPropertiesWindow();
+	}
+	else
+	{
+		editor_CloseLightPropertiesWindow();
+	}
 }
 
 void editor_OpenAddToWorldMenu(int x, int y)
@@ -486,6 +579,17 @@ void editor_OpenOpenProjectWindow()
 	gui_SetVisible(open_project_window);
 }
 
+void editor_OpenLightPropertiesWindow()
+{
+	if(light_properties_window)
+		gui_SetVisible(light_properties_window);
+}
+
+editor_CloseLightPropertiesWindow()
+{
+	if(light_properties_window)
+		gui_SetInvisible(light_properties_window);
+}
 
 void editor_UIWindowResizeCallback()
 {
