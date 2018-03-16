@@ -5,7 +5,9 @@
 #include "w_common.h"
 #include "brush.h"
 
-#define FUZZY_ZERO 0.0001
+#include "SDL2\SDL.h"
+
+#define FUZZY_ZERO 0.0005
 
 
 typedef struct bsp_triangle_t 
@@ -30,6 +32,7 @@ typedef struct bsp_polygon_t
 	int triangle_group;
 	int b_used;
 	vertex_t *vertices;
+	int *indexes;
 	//bsp_triangle_t *triangles;						/* the triangles that form this face... */
 	//vec3_t *vertices;
 	vec3_t normal;
@@ -41,10 +44,10 @@ typedef struct bsp_edge_t
 	struct bsp_edge_t *next;
 	vec3_t v0;
 	vec3_t v1;
-	short v0_p0;
-	short v1_p0;
-	short v0_p1;
-	short v1_p1;
+	short v0_p0;							/* vertex 0 on polygon 0... */
+	short v1_p0;							/* vertex 1 on polygon 0... */
+	short v0_p1;							/* vertex 0 on polygon 1... */
+	short v1_p1;							/* vertex 1 on polygon 1... */
 	float dot;
 	bsp_polygon_t *polygon0;
 	bsp_polygon_t *polygon1;
@@ -68,6 +71,11 @@ typedef struct bsp_leaf_t
 	
 	int portal_count;
 	struct bsp_portal_t *portals[MAX_PORTALS_PER_LEAF];
+	
+	int src_leaf_marker_count;
+	int *src_leaf_markers;
+	
+	//struct pvs_for_leaf_stack_t *stack;
 	
 	//int pvs_size;
 	unsigned char *pvs;
@@ -111,6 +119,8 @@ bsp_polygon_t *bsp_DeepCopyPolygon(bsp_polygon_t *src);
 
 bsp_polygon_t *bsp_DeepCopyPolygons(bsp_polygon_t *src);
 
+bsp_polygon_t *bsp_DeepCopyPolygonsContiguous(bsp_polygon_t *src);
+
 void bsp_DeletePolygons(bsp_polygon_t *polygons);
 
 void bsp_TriangulatePolygon(bsp_polygon_t *polygon, vertex_t **vertices, int *vertex_count);
@@ -122,7 +132,7 @@ void bsp_TriangulatePolygonsIndexes(bsp_polygon_t *polygons, int **indexes, int 
 
 bsp_triangle_t *bsp_FindSplittingTriangle(bsp_triangle_t *triangles, int ignore_used);
 
-bsp_polygon_t *bsp_FindSplitter(bsp_polygon_t *polygons, int ignore_used);
+bsp_polygon_t *bsp_FindSplitter(bsp_polygon_t **polygons, int ignore_used, int ignore_coplanar);
 
 void bsp_QuickHull(vec2_t *in_verts, int in_vert_count, vec2_t **hull_verts, int *hull_vert_count);
 
@@ -134,9 +144,23 @@ bsp_triangle_t *bsp_BuildTrianglesFromBrushes();
 
 bsp_polygon_t *bsp_ClipPolygonToBsp(bsp_node_t *bsp, bsp_polygon_t *polygon, int copy);
 
+bsp_polygon_t *bsp_ClipPolygonsToBsp(bsp_node_t *bsp, bsp_polygon_t *polygons, int do_copy);
+
+bsp_polygon_t *bsp_ClipContiguousPolygonsToBsp(bsp_node_t *bsp, bsp_polygon_t *polygons, int do_copy);
+
 bsp_polygon_t *bsp_ClipBspToBsp(bsp_node_t *bsp, bsp_node_t *input);
 
-bsp_polygon_t *bsp_ClipBrushes(brush_t *brushes, int brush_count);
+void bsp_ClipBspToBspAssync(bsp_polygon_t **polygons, bsp_node_t *bsp, bsp_node_t *input, SDL_sem *semaphore);
+
+bsp_polygon_t *bsp_IntersectPolygonToBsp(bsp_node_t *bsp, bsp_polygon_t *polygon, int copy);
+
+bsp_polygon_t *bsp_IntersectBspToBsp(bsp_node_t *bsp, bsp_node_t *input);
+
+bsp_polygon_t *bsp_ClipBrushes(brush_t *brush_list, int brush_list_count);
+
+bsp_polygon_t *bsp_ClipBrushes2(brush_t *brush_list, int brush_list_count);
+
+bsp_polygon_t *bsp_SubtractBrush(brush_t *brush, brush_t *subtractive);
 
 void bsp_ClipTriangleToSolidLeaves(bsp_node_t *root, bsp_triangle_t *triangle);
 
@@ -162,7 +186,7 @@ void bsp_BuildCollisionBsp();
 
 void bsp_MergeLeafTriangles(bsp_node_t *root);
 
-void bsp_BuildSolid(bsp_node_t **root, bsp_polygon_t *polygons);
+void bsp_BuildSolid(bsp_node_t **root, bsp_polygon_t *polygons, int ignore_used, int ignore_coplanar);
 
 void bsp_BuildSolidLeaf(bsp_node_t **root, bsp_polygon_t *polygons);
 
@@ -174,11 +198,11 @@ bsp_node_t *bsp_SolidLeafBsp(bsp_polygon_t *polygons);
 
 void bsp_DeleteSolidBsp(bsp_node_t *bsp);
 
+void bsp_DeleteSolidBspAssync(bsp_node_t *bsp);
+
 void bsp_DeleteSolidLeafBsp(bsp_node_t *bsp);
 
-void bsp_DeleteSolid(bsp_node_t *root);
-
-void bsp_DeleteSolidLeaf(bsp_node_t *root);
+void bsp_NegateBsp(bsp_node_t *bsp);
 
 void bsp_InitPool();
 
@@ -197,6 +221,8 @@ void bsp_DrawExpandedBrushes();
 void bsp_DrawBevelEdges();
 
 void bsp_DrawPolygons();
+
+int bsp_IntersectBsp(bsp_node_t *node, vec3_t start, vec3_t end);
 
 
 

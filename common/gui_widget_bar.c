@@ -13,7 +13,7 @@ widget_bar_t *gui_AddWidgetBar(widget_t *widget, char *name, short x, short y, s
 	
 	if(w < WIDGET_MIN_SIZE) w = WIDGET_MIN_SIZE;
 	if(h < WIDGET_MIN_SIZE) h = WIDGET_MIN_SIZE;
-	
+	 
 	bar->widget.last_nestled = NULL;
 	bar->widget.nestled = NULL;
 	bar->widget.next = NULL;
@@ -27,10 +27,13 @@ widget_bar_t *gui_AddWidgetBar(widget_t *widget, char *name, short x, short y, s
 	bar->widget.parent = widget;
 	bar->widget.widget_callback = NULL;
 	bar->widget.name = strdup(name);
+	bar->widget.process_callback = NULL;
+	
 	bar->type = WIDGET_NONE;
 	bar->process_fn = NULL;
 	bar->bm_flags = bm_flags;
 	bar->active_widget = NULL;
+	bar->first_widget = NULL;
 	
 	if(!widget->nestled)
 	{
@@ -51,12 +54,14 @@ void gui_AddWidgetToBar(widget_t *widget, widget_bar_t *bar)
 	if(widget)
 	{
 		if(bar)
-		{
+		{		
 			/* first widget added defines the type of this bar... */
 			if(bar->type == WIDGET_NONE)
 			{
 				bar->type = widget->type;
 				bar->widget.nestled = widget;
+				
+				widget->bm_flags |= WIDGET_NOT_AS_TOP;
 				
 				/* set proper process function pointer here... */
 				switch(bar->type)
@@ -87,6 +92,12 @@ void gui_AddWidgetToBar(widget_t *widget, widget_bar_t *bar)
 			}
 			
 			widget->parent = (widget_t *) bar;
+			widget->bm_flags |= WIDGET_NOT_AS_TOP;
+			
+			if(!bar->first_widget)
+			{
+				bar->first_widget = widget;
+			}
 			
 			bar->widget.last_nestled = widget;
 			bar->bm_flags |= WIDGET_BAR_ADJUST_WIDGETS;
@@ -123,7 +134,11 @@ void gui_AdjustBar(widget_t *widget)
 	if(!(bar->bm_flags & WIDGET_BAR_FIXED_SIZE))	
 		bar->widget.w = width;
 	
-	r = widget->nestled;
+	//r = widget->nestled;
+	
+	
+	
+	r = bar->first_widget;
 	
 	next_x = -bar->widget.w + r->w;
 		

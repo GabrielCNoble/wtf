@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+extern int gui_widget_unique_index;
+
 slider_t *gui_AddSlider(widget_t *widget, char *name, short x, short y, short w, short bm_flags, void (*slider_callback)(widget_t *), gui_var_t *var, gui_var_t max, gui_var_t min)
 {
 	slider_t *slider = NULL;
@@ -12,7 +14,7 @@ slider_t *gui_AddSlider(widget_t *widget, char *name, short x, short y, short w,
 	if(widget)
 	{
 		slider = malloc(sizeof(slider_t ));
-		
+		 
 		slider->widget.x = x;
 		slider->widget.y = y;
 		slider->widget.w = w * 0.5;
@@ -26,6 +28,9 @@ slider_t *gui_AddSlider(widget_t *widget, char *name, short x, short y, short w,
 		slider->widget.var = var;
 		slider->widget.widget_callback = slider_callback;
 		slider->widget.bm_flags = WIDGET_TRACK_VAR;
+		slider->widget.rendered_name = NULL;
+		slider->widget.unique_index = gui_widget_unique_index++;
+		slider->widget.process_callback = NULL;
 		
 		
 		slider->max_value = max;
@@ -65,6 +70,7 @@ void gui_UpdateSlider(widget_t *widget)
 	float min;
 	float *fvar;
 	unsigned char *cvar;
+	unsigned short *svar;
 	
 	
 	
@@ -111,6 +117,32 @@ void gui_UpdateSlider(widget_t *widget)
 		
 		break;
 		
+		case GUI_VAR_UNSIGNED_CHAR:
+			max = (float)slider->max_value.prev_var_value.unsigned_char_var;
+			min = (float)slider->min_value.prev_var_value.unsigned_char_var;
+			cvar = (unsigned char *)var->addr;
+			
+			if(!cvar)
+				break;	
+			
+			f = (float)(*cvar);
+			
+			d = max - min;
+			
+			if(!(widget->bm_flags & WIDGET_HAS_LEFT_MOUSE_BUTTON))
+			{
+				t = (f - min) / d;
+				/* var got modified externally, 
+				so update the slider value, making
+				sure the var value is properly clamped... */
+				if(t > 1.0) t = 1.0;	
+				else if(t < 0.0) t = 0.0;
+				
+				slider->slider_position = t;
+			}		
+			*cvar = (unsigned char)min + (unsigned char)(d * slider->slider_position);
+		break;
+		
 		case GUI_VAR_POINTER_TO_UNSIGNED_CHAR:
 			max = (float)slider->max_value.prev_var_value.unsigned_char_var;
 			min = (float)slider->min_value.prev_var_value.unsigned_char_var;
@@ -133,9 +165,60 @@ void gui_UpdateSlider(widget_t *widget)
 				else if(t < 0.0) t = 0.0;
 				
 				slider->slider_position = t;
-			}
-						
+			}		
 			*cvar = (unsigned char)min + (unsigned char)(d * slider->slider_position);	
+		break;
+		
+		case GUI_VAR_UNSIGNED_SHORT:
+			max = (float)slider->max_value.prev_var_value.unsigned_short_var;
+			min = (float)slider->min_value.prev_var_value.unsigned_short_var;
+			svar = (unsigned short *)var->addr;
+			
+			if(!svar)
+				break;	
+			
+			f = (float)(*svar);
+			
+			d = max - min;
+			
+			if(!(widget->bm_flags & WIDGET_HAS_LEFT_MOUSE_BUTTON))
+			{
+				t = (f - min) / d;
+				/* var got modified externally, 
+				so update the slider value, making
+				sure the var value is properly clamped... */
+				if(t > 1.0) t = 1.0;	
+				else if(t < 0.0) t = 0.0;
+				
+				slider->slider_position = t;
+			}		
+			*svar = (unsigned short)min + (unsigned short)(d * slider->slider_position);	
+		break;
+		
+		case GUI_VAR_POINTER_TO_UNSIGNED_SHORT:
+			max = (float)slider->max_value.prev_var_value.unsigned_short_var;
+			min = (float)slider->min_value.prev_var_value.unsigned_short_var;
+			svar = *(unsigned short **)var->addr;
+			
+			if(!svar)
+				break;
+			
+			f = (float)(*svar);
+			
+			d = max - min;
+			
+			if(!(widget->bm_flags & WIDGET_HAS_LEFT_MOUSE_BUTTON))
+			{
+				t = (f - min) / d;
+				/* var got modified externally, 
+				so update the slider value, making
+				sure the var value is properly clamped... */
+				if(t > 1.0) t = 1.0;	
+				else if(t < 0.0) t = 0.0;
+				
+				slider->slider_position = t;
+			}		
+			*svar = (unsigned short)min + (unsigned short)(d * slider->slider_position);	
 		break;
 	}
 }

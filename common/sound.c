@@ -19,7 +19,7 @@
 ALCdevice *sound_device;
 ALCcontext *sound_context;
 SDL_Thread *sound_thread;
-
+ 
 
 static int sound_list_size;
 static int sound_count;

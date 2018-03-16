@@ -1,13 +1,15 @@
 #version 400 compatibility
 
-attribute vec4 vertex_position;
+in vec4 vertex_position;
 
 
 //flat varying int face_index;
 
+uniform mat4 UNIFORM_model_view_projection_matrix;
+
 void main()
 {
-    gl_Position = gl_ModelViewProjectionMatrix * vertex_position;
+    gl_Position = UNIFORM_model_view_projection_matrix * vertex_position;
     //face_index = gl_VertexID / 3;
 
 }

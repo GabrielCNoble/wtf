@@ -1,6 +1,7 @@
 #include "input.h"
 #include "r_main.h"
 #include "engine.h"
+#include "memory.h"
 //#include "console.h"
 //#include "pew.h"
 //#include "draw.h"
@@ -11,29 +12,34 @@
 //extern renderer_t renderer;
 //extern int engine_state;
 
+#define DOUBLE_CLICK_TIME 230.0
 
-Uint8 *kb_keys;
-SDL_Event *kb_event;
-int max_registered_keys;
-int registered_keys_count;
-key_t *registered_keys;
-int bm_mouse;
-int mouse_x;
-int mouse_y;
-float normalized_mouse_x;
-float normalized_mouse_y;
-float mouse_dx;
-float mouse_dy;
+ 
+Uint8 *kb_keys = NULL;
+SDL_Event kb_event;
+int max_registered_keys = 0;
+int registered_keys_count = 0;
+//key_t *registered_keys = NULL;
+int bm_mouse = 0;
+int mouse_x = 0;
+int mouse_y = 0;
+float normalized_mouse_x = 0.0;
+float normalized_mouse_y = 0.0;
+float mouse_dx = 0.0;
+float mouse_dy = 0.0;
 
 int text_buffer_in = 0;
 int text_buffer_out = 0;
-char text_buffer[TEXT_BUFFER_SIZE];
+short text_buffer[TEXT_BUFFER_SIZE];
 
 int b_text_input = 0;
 
 
 float last_mouse_x = 0.0;
 float last_mouse_y = 0.0;
+
+float mouse_left_button_timer = 0.0;
+float mouse_right_button_timer = 0.0;
 
 SDL_Cursor *ibeam;
 SDL_Cursor *arrow;
@@ -50,6 +56,7 @@ extern int r_window_height;
 extern int engine_state;
 
 short key_pos_map[SDL_NUM_SCANCODES];
+key_t registered_keys[SDL_NUM_SCANCODES];
 
 
 /*
@@ -60,6 +67,7 @@ input_Init
 int input_Init()
 {
 	int i;
+	float f;
 	
 	ibeam = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
 	arrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
@@ -70,20 +78,24 @@ int input_Init()
 	
 	mouse_dx=0.0;
 	mouse_dy=0.0;
-	kb_event=(SDL_Event *)calloc(1, sizeof(SDL_Event) * 10);
+	//kb_event=(SDL_Event *)calloc(5, sizeof(SDL_Event));
 	SDL_WarpMouseInWindow(window, r_window_width / 2, r_window_height / 2);
 	bm_mouse = 0;
 	registered_keys_count = 0;
-	max_registered_keys = 0;
-	registered_keys = NULL;
+	//max_registered_keys = 0;
+	//registered_keys = memory_Malloc(sizeof(key_t) * SDL_NUM_SCANCODES);
+	//registered_keys = NULL;
 	
 	for(i = 0; i < SDL_NUM_SCANCODES; i++)
 	{
 		key_pos_map[i] = -1;
 	}
+	/*if(input_ParseFloat(&f, "25.0"))
+		printf("%f\n", f);*/
 	
 	
-	input_GetInput();
+	
+	input_GetInput(0.0);
 	return 1;
 }
 
@@ -94,7 +106,7 @@ input_Finish
 */
 void input_Finish()
 {
-	free(kb_event);
+	//free(kb_event);
 	return;
 }
 
@@ -103,7 +115,7 @@ void input_Finish()
 input_GetInput
 =============
 */
-void input_GetInput()
+void input_GetInput(double delta_time)
 {
 	int bm;
 	int i;
@@ -114,23 +126,23 @@ void input_GetInput()
 		
 	if(!b_text_input)
 	{
-		while(SDL_PollEvent(kb_event))
+		while(SDL_PollEvent(&kb_event))
 		{		
-			switch(kb_event->type)
+			switch(kb_event.type)
 			{
 				case SDL_WINDOWEVENT:
-					if(kb_event->window.event == SDL_WINDOWEVENT_CLOSE)
+					if(kb_event.window.event == SDL_WINDOWEVENT_CLOSE)
 					{
 						engine_SetEngineState(ENGINE_QUIT);
 					}
 				break;
 				
 				case SDL_MOUSEWHEEL:
-					if(kb_event->wheel.y == 1)
+					if(kb_event.wheel.y == 1)
 					{
 						bm_mouse |= MOUSE_WHEEL_UP;
 					}
-					else if(kb_event->wheel.y == -1)
+					else if(kb_event.wheel.y == -1)
 					{
 						bm_mouse |= MOUSE_WHEEL_DOWN;
 					}
@@ -182,16 +194,37 @@ void input_GetInput()
 		
 	mouse_y = r_window_height - mouse_y;
 	
-	bm_mouse &= ~(MOUSE_LEFT_BUTTON_JUST_CLICKED | MOUSE_RIGHT_BUTTON_JUST_CLICKED |
-				  MOUSE_LEFT_BUTTON_JUST_RELEASED | MOUSE_RIGHT_BUTTON_JUST_RELEASED |
+	bm_mouse &= ~(MOUSE_LEFT_BUTTON_JUST_CLICKED | MOUSE_RIGHT_BUTTON_JUST_CLICKED | MOUSE_RIGHT_BUTTON_DOUBLE_CLICKED |
+				  MOUSE_LEFT_BUTTON_JUST_RELEASED | MOUSE_RIGHT_BUTTON_JUST_RELEASED | MOUSE_LEFT_BUTTON_DOUBLE_CLICKED |
 				  MOUSE_MIDDLE_BUTTON_JUST_CLICKED | MOUSE_MIDDLE_BUTTON_JUST_RELEASED);
 
+	if(mouse_left_button_timer >= 0.0)
+	{
+		mouse_left_button_timer += delta_time;
+		if(mouse_left_button_timer >= DOUBLE_CLICK_TIME)
+		{
+			mouse_left_button_timer = -1.0;
+			//printf("double click timeout!\n");
+		}
+	}
 	
 	if(bm & 1)
 	{
+		
 		if(!(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED))
 		{
 			bm_mouse |= MOUSE_LEFT_BUTTON_JUST_CLICKED;
+			
+			if(mouse_left_button_timer < 0.0)
+			{
+				mouse_left_button_timer = 0.0;
+			}
+			else if(mouse_left_button_timer < DOUBLE_CLICK_TIME)
+			{
+				bm_mouse |= MOUSE_LEFT_BUTTON_DOUBLE_CLICKED;
+				mouse_left_button_timer = -1.0;
+				//printf("double click!\n");
+			}
 		}
 		bm_mouse |= MOUSE_LEFT_BUTTON_CLICKED;
 	}
@@ -344,75 +377,166 @@ void input_BufferTextInput()
 	/* flush buffer... */
 	text_buffer_out = text_buffer_in;
 	
-	while(SDL_PollEvent(kb_event))
+	while(SDL_PollEvent(&kb_event))
 	{
 		
-		if(kb_event->key.keysym.mod & KMOD_LSHIFT)
+		if(kb_event.key.keysym.mod & KMOD_LSHIFT)
 		{
-			mod = 32;
+			mod |= 32;
 		}
 		else
 		{
-			mod = 0;
+			mod &= ~32;
 		}
 		
-		if(kb_event->key.type == SDL_KEYDOWN)
+		if(kb_event.key.keysym.mod & KMOD_ALT)
 		{
-			switch(kb_event->key.keysym.sym)
+			mod |= 16;
+		}
+		else
+		{
+			mod &= ~16;
+		}
+		
+		if(kb_event.key.type == SDL_KEYDOWN)
+		{
+			switch(kb_event.key.keysym.sym)
 			{
 				case SDLK_LSHIFT:
 				case SDLK_RSHIFT:
 					continue;
 				break;
-						
+				
+				case SDLK_KP_1:
+					mod = 0;		
 				case SDLK_1:
-					if(mod) key = '!';
+					if(mod & 32) key = '!';
+					else key = '1';
 				break;
 				
+				case SDLK_KP_2:
+					mod = 0;
 				case SDLK_2:
-					if(mod) key = '@';
+					if(mod & 32) key = '@';
+					else key = '2';
 				break;
 				
+				case SDLK_KP_3:
+					mod = 0;
 				case SDLK_3:
-					if(mod) key = '#';
+					if(mod & 32) key = '#';
+					else key = '3';
 				break;
 				
+				case SDLK_KP_4:
+					mod = 0;
 				case SDLK_4:
-					if(mod) key = '$';
+					if(mod & 32) key = '$';
+					else key = '4';
 				break;
 				
+				case SDLK_KP_5:
+					mod = 0;
 				case SDLK_5:
-					if(mod) key = '%';
+					if(mod & 32) key = '%';
+					else key = '5';
 				break;
 				
+				case SDLK_KP_6:
+					mod = 0;
 				case SDLK_6:
-					if(mod) key = '¨';
+					if(mod & 32) key = '¨';
+					else key = '6';
 				break;
 				
+				case SDLK_KP_7:
+					mod = 0;
 				case SDLK_7:
-					if(mod) key = '&';
+					if(mod & 32) key = '&';
+					else key = '7';
 				break;
 				
+				case SDLK_KP_8:
+					mod = 0;
 				case SDLK_8:
-					if(mod) key = '*';
+					if(mod & 32) key = '*';
+					else key = '8';
 				break;
 				
+				case SDLK_KP_9:
+					mod = 0;
 				case SDLK_9:
-					if(mod) key = '(';
+					if(mod & 32) key = '(';
+					else key = '9';
 				break;
 				
+				case SDLK_KP_0:
+					mod = 0;
 				case SDLK_0:
-					if(mod) key = ')';
+					if(mod & 32) key = ')';
+					else key = '0';
 				break;
 				
+				
+				case SDLK_KP_MINUS:
+					mod = 0;
 				case SDLK_MINUS:
-					if(mod) key = '_';
+					if(mod & 32) key = '_';
+					else key = '-';
 				break;
 				
-				default:
-					key = kb_event->key.keysym.sym & (~mod);
+				case SDLK_KP_PLUS:
+					mod = 0;
+				case SDLK_PLUS:
+					if(mod & 32) key = '=';
+					else key = '+';
 				break;
-			}
+				
+				case SDLK_KP_MULTIPLY:
+					key = '*';
+				break;
+				
+				case SDLK_KP_DIVIDE:
+					key = '/';
+				break;
+				
+				case SDLK_KP_PERIOD:
+					key = '.';
+				break;
+				
+				case SDLK_COMMA:
+					if(mod & 32) key = '<';
+					else key = ',';
+				break;
+				
+				case SDLK_PERIOD:
+					if(mod & 32) key = '>';
+					else key = '.';	
+				break;
+				
+				case SDLK_SEMICOLON:
+					if(mod & 32) key = ':';
+					else key = ';';
+				break;
+				
+				case SDLK_KP_ENTER:
+					key = SDLK_RETURN;
+				break;
+				
+				case SDLK_q:
+					if(mod & 16) key = '/';
+					else key = 'q';
+				break;
+				
+				case SDLK_LALT:
+				case SDLK_RALT:
+					continue;
+				break;
+					
+				default:
+					key = kb_event.key.keysym.sym & (~mod);
+				break;
+			} 
 			
 			text_buffer[text_buffer_in] = key;
 			text_buffer_in = (text_buffer_in + 1) % TEXT_BUFFER_SIZE;
@@ -490,8 +614,9 @@ int input_RegisterKey(int key)
 	{
 		return -1;
 	}
+
 	
-	if(!registered_keys)
+	/*if(!registered_keys)
 	{
 		registered_keys = (key_t *)malloc(sizeof(key_t));
 		max_registered_keys = 1;
@@ -503,12 +628,14 @@ int input_RegisterKey(int key)
 		free(registered_keys);
 		registered_keys = t;
 		max_registered_keys++;
-	}
+	}*/
+
 	
 	registered_keys[registered_keys_count].key = key;
 	registered_keys[registered_keys_count].bm_flags = 0;
 	key_pos_map[key] = registered_keys_count;
 	registered_keys_count++;
+
 	
 }
 
@@ -533,6 +660,208 @@ int input_UnregisterKey(int key)
 
 	key_pos_map[key] = -1;
 	registered_keys_count--;
+}
+
+int input_ParseFloat(float *value, char *str)
+{
+	int i = 0;
+	int dot = -1;
+	int snot = 0;
+	char *s;
+	int len;
+	
+	s = str;
+	
+	/* empty string... */
+	if(s[0] == '\0')
+		return 0;
+	
+	
+	len = strlen(s);
+	
+	/* strip away white/new line chars... */
+	while(len >= 0 && (s[len] == ' ' || s[len] == '\n')) len--;
+	
+	/* string formed by only spaces... */
+	if(!len)
+		return 0;
+	
+	i = 0;
+	/* strip away white/spaces at the beginning... */
+	while(s[i] == ' ') i++;		
+
+	while(s[i] != '\0' && i < len)
+	{
+		if(s[i] > '9' || s[i] < '0')
+		{
+			switch(s[i])
+			{
+				case '.':
+					if(dot != -1)
+					{
+						return 0;
+					}
+						
+					dot = i++;
+					
+					if(s[i] > '9' || s[i] < '0')
+					{
+						return 0;
+					}
+						
+				break;
+				
+				case 'e':
+				case 'E':
+					if(snot || !i)
+					{
+						return 0;
+					}				
+						
+					snot = i++;					
+				break;
+				
+				case '-':
+				case '+':
+					
+					if(i)
+					{
+						if(s[i - 1] != 'e' || s[i - 1] != 'E')
+						{
+							return 0;
+						}
+					}
+				break;
+				
+				default:
+					return 0;
+				break;	
+			}
+		}
+		
+		i++;
+	}
+	
+	*value = atof(s);
+	
+	return 1;
+	
+}
+
+int input_ParseInt(int *value, char *str)
+{
+	int i = 0;
+	int hex = 0;
+	int oct = 0;
+	char *s;
+	int len;
+	
+	s = str;
+	
+	/* empty string... */
+	if(s[0] == '\0')
+		return 0;
+	
+	len = strlen(s);
+	
+	/* strip away white/new line chars at the end... */
+	while(len >= 0 && (s[len] == ' ' || s[len] == '\n')) len--;
+	
+	/* string formed by only spaces... */
+	if(!len)
+		return 0;
+		
+	i = 0;
+	/* strip away white/spaces at the beginning... */
+	while(s[i] == ' ') i++;	
+	
+	while(s[i] != '\0' && i < len)
+	{
+		//if(s[i] > '9' || s[i] < '0')
+		//{
+			switch(s[i])
+			{
+				/* hex prefix is already handled by another case,
+				so if we end up here, it means it's duplicated... */
+				case 'x':
+				case 'X':
+					return 0;
+				break;
+				
+				case '0':
+					
+					i++;
+					
+					if(s[i] == 'x' || s[i] == 'X')
+					{
+						hex = 1;
+					}
+					else
+					{
+						oct = 1;
+					}
+							
+				break;
+				
+				case 'a': case 'A':
+				case 'b': case 'B':
+				case 'c': case 'C':
+				case 'd': case 'D':
+				case 'e': case 'E':
+				case 'f': case 'F':	
+					if(!hex)
+					{
+						return 0;
+					}
+				break;
+				
+				/* we can have an arbitrary number of minuses and
+				pluses in the beginning of the number, but none
+				in between... */
+				case '-':
+				case '+':
+					
+					/* we're past the first char... */
+					if(i)
+					{
+						/* if the prev char is not a sign, something
+						is wrong with this constant... */
+						if(s[i - 1] != '-' || s[i - 1] != '+')
+						{
+							return 0;
+						}
+					}
+				break;
+				
+				case '1': case '2': case '3': case '4':
+				case '5': case '6': case '7': case '8': case '9':
+				
+				break;
+				
+				default:
+					return 0;
+				break;
+				
+			}
+		//}
+		
+		
+		i++;
+	}
+	
+	*value = atoi(s);
+	
+	return 1;
+}
+
+int input_ParseShort(short *value, char *str)
+{
+	
+}
+
+int input_ParseVec3(vec3_t *value, char *str)
+{
+	
 }
 
 

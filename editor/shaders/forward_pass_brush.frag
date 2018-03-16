@@ -1,12 +1,11 @@
 #version 400 compatibility
+
 #extension GL_EXT_gpu_shader4 : require
-#extension GL_ARB_uniform_buffer_object : require
+//#extension GL_ARB_uniform_buffer_object : require
+//#extension GL_EXT_uniform_buffer_object : enable
 
 
-uniform int r_width;
-uniform int r_height;
-uniform int r_frame;
-uniform usampler3D cluster_texture;
+
 
 
 
@@ -28,50 +27,53 @@ uniform usampler3D cluster_texture;
 #define LIGHT_INVALID (1 << 4)
 
 
+
+
+
 struct light_params_fields
 {
 	vec4 forward_axis;
 	vec4 position_radius;
 	vec4 color_energy;
 	int bm_flags;
-	int x_y;
+	unsigned int x_y;
 	int align0;
 	int align1;
 };
 
 
-/*struct test_t
-{
-	vec4 color;
-};
-
-
-layout(std140) uniform test_block
-{
-	test_t ints[8];
-};*/
 
 layout(std140) uniform light_params_uniform_block
 {
 	light_params_fields light_params[LIGHT_CACHE_SIZE];
 };
 
+uniform int UNIFORM_r_width;
+uniform int UNIFORM_r_height;
+uniform int UNIFORM_r_frame;
+
+
+uniform sampler2D UNIFORM_texture_sampler0;
+uniform sampler2D UNIFORM_texture_sampler1;
+uniform sampler2D UNIFORM_texture_sampler2;
+uniform samplerCube UNIFORM_texture_cube_sampler0;
+uniform unsigned int UNIFORM_material_flags;
+uniform vec4 UNIFORM_active_camera_position;
+uniform usampler3D UNIFORM_cluster_texture;
 
 
 
-uniform sampler2D texture_sampler0;
-uniform sampler2D texture_sampler1;
-uniform sampler2D texture_sampler2;
-uniform samplerCube texture_cube_sampler0;
-uniform mat4 camera_to_light_matrix;
-uniform int texture_flags;
-uniform vec4 active_camera_position;
 
-
-
-
-#define USE_DIFFUSE_TEXTURE 1
-#define USE_NORMAL_TEXTURE 2
+#define MATERIAL_USE_DIFFUSE_TEXTURE (1 << 1)
+#define MATERIAL_USE_NORMAL_TEXTURE (1 << 2)
+#define MATERIAL_USE_HEIGHT_TEXTURE (1 << 3)
+#define MATERIAL_USE_ROUGHNESS_TEXTURE (1 << 4)
+#define MATERIAL_USE_METALNESS_TEXTURE (1 << 5)
+	
+#define MATERIAL_INVERT_NORMAL_X (1 << 6)
+#define MATERIAL_INVERT_NORMAL_Y (1 << 7)
+#define MATERIAL_USE_CUSTOM_SHADER (1 << 8)
+#define MATERIAL_TRANSLUCENT (1 << 9)
 
 
 #define CLUSTERS_PER_ROW 32
@@ -83,12 +85,13 @@ uniform vec4 active_camera_position;
 in vec2 uv;
 in vec3 world_space_normal;
 in vec3 world_space_position;
+in vec3 world_space_tangent;
 in vec3 eye_space_position;
 in vec3 camera_position;
 
 
 
-#if 0
+
 
 float sample_cube_map(vec3 frag_pos, int light_index, out vec3 debug_color)
 {
@@ -105,7 +108,8 @@ float sample_cube_map(vec3 frag_pos, int light_index, out vec3 debug_color)
 	float y = float((light_params[light_index].x_y >> 16) & uint(0x0000ffff)) / float(SHARED_SHADOW_MAP_HEIGHT);
 	float w = float(SHADOW_MAP_RESOLUTION) / float(SHARED_SHADOW_MAP_WIDTH);
 	float h = float(SHADOW_MAP_RESOLUTION) / float(SHARED_SHADOW_MAP_HEIGHT);
-
+	//float w = 0.0625;
+	//float h = 0.0625;
 	
 	float dist;
 	float largest;
@@ -115,6 +119,8 @@ float sample_cube_map(vec3 frag_pos, int light_index, out vec3 debug_color)
 	
 	dist = length(light_vec);
 	light_vec.z = -light_vec.z;
+	
+	
 		
 	if(largest == a_light_vec.x)
 	{	
@@ -176,6 +182,8 @@ float sample_cube_map(vec3 frag_pos, int light_index, out vec3 debug_color)
 		ox0 = 2.0 * w;
 	}
 	
+	
+	
 	u0 = 0.5 * (u0 / largest) + 0.5;
 	v0 = 0.5 * (v0 / largest) + 0.5;
 	
@@ -183,19 +191,20 @@ float sample_cube_map(vec3 frag_pos, int light_index, out vec3 debug_color)
 	u0 = y + oy0 + h * u0;
 
 	
-	shadow0 = texelFetch(texture_sampler2, ivec2(SHARED_SHADOW_MAP_WIDTH * v0, SHARED_SHADOW_MAP_HEIGHT * u0), 0).r;
+	shadow0 = texelFetch(UNIFORM_texture_sampler2, ivec2(SHARED_SHADOW_MAP_WIDTH * v0, SHARED_SHADOW_MAP_HEIGHT * u0), 0).r;
 	
-	if(dist > shadow0 + 0.3)
+	//if(dist > shadow0 + 0.3)
 	//if(fz > shadow0 + 0.00001)
-	{
-		return 0.0;
-	}
-	return 1.0;
+	//{
+	//	return 0.0;
+	//}
+	//return 1.0;
+	
+	return float(dist < shadow0 + 0.3);
 }
 
 
 
-#endif
 
 
 int cluster_index(float x, float y, float view_z, float znear, float zfar, float width, float height, out ivec3 debug)
@@ -203,10 +212,14 @@ int cluster_index(float x, float y, float view_z, float znear, float zfar, float
 	int cluster;
 	int row;
 	int layer;
+
+	//3.6989700043360188047862611052755
 	
 	cluster = min(int((x / width) * float(CLUSTERS_PER_ROW)), CLUSTERS_PER_ROW);
 	row = min(int((y / height) * float(CLUSTER_ROWS)), CLUSTER_ROWS);
-	layer = int((log(-view_z / znear) / log(zfar / znear)) * float(CLUSTER_LAYERS));
+	layer = int((log(view_z / znear) / log(zfar / znear)) * float(CLUSTER_LAYERS));
+
+	//layer = int((log(-view_z / znear) / 3.6989700043360188047862611052755) * float(CLUSTER_LAYERS));
 	
 	layer = max(min(layer, CLUSTER_LAYERS), 0);
 	
@@ -221,11 +234,12 @@ int cluster_index(float x, float y, float view_z, float znear, float zfar, float
 void main()
 {
 	
+	vec4 color;
 	vec4 accum = vec4(0.0);
 	vec3 light_vec;
-	vec3 color;
-	vec3 light_color = vec3(0.0);
+	vec3 light_color;
 	vec3 debug;
+	vec3 normal;
 	vec3 v;
 	
 	int i;
@@ -248,28 +262,42 @@ void main()
 	
 	vec3 eye_vec;
 	vec3 half_vec;
+	mat3 tbn;
 	
-	/*if(bool(texture_flags & USE_DIFFUSE_TEXTURE) == true)
+	
+	if(bool(UNIFORM_material_flags & MATERIAL_USE_DIFFUSE_TEXTURE))
 	{
-		color = texture2D(texture_sampler0, uv);
+		color = texture2D(UNIFORM_texture_sampler0, uv);
 	}
 	else
-	{*/
-		color = gl_FrontMaterial.diffuse.rgb;
-		//color = vec3(1.0, 0.0, 0.0);
-	//}
-
+	{
+		color = vec4(gl_FrontMaterial.diffuse.rgb, 1.0);
+	}
 	
-	cluster_index(gl_FragCoord.x, gl_FragCoord.y, eye_space_position.z, 1.0, 500.0, r_width, r_height, cluster);
-	bm = texelFetch(cluster_texture, cluster, 0).r;
-/*	contents = ivec4(texelFetch(cluster_texture, cluster, 0));
+	if(bool(UNIFORM_material_flags & MATERIAL_USE_NORMAL_TEXTURE))
+	{
+		tbn[0] = (world_space_tangent);
+		tbn[1] = (cross(world_space_tangent, world_space_normal));
+		tbn[2] = (world_space_normal);
+		
+		normal = (texture2D(UNIFORM_texture_sampler1, uv).rgb * 2.0 - 1.0);
+		
+		normal.x = mix(normal.x, -normal.x, clamp(float(bool(UNIFORM_material_flags & MATERIAL_INVERT_NORMAL_X)), 0.0, 1.0));
+		normal.y = mix(normal.y, -normal.y, clamp(float(bool(UNIFORM_material_flags & MATERIAL_INVERT_NORMAL_Y)), 0.0, 1.0));
+		
+		normal = normalize(tbn * normal);	
+	}
+	else
+	{
+		normal = world_space_normal;
+	}
 	
-	bm = uint(contents.r);
-	if(contents.g != r_frame)
-		discard;*/
+	
+	cluster_index(gl_FragCoord.x, gl_FragCoord.y, eye_space_position.z, 1.0, 500.0, UNIFORM_r_width, UNIFORM_r_height, cluster);
+	bm = texelFetch(UNIFORM_cluster_texture, cluster, 0).r;
 
-	//eye_vec = normalize(-position);
-	eye_vec = normalize(active_camera_position.xyz - world_space_position);
+
+	eye_vec = normalize(UNIFORM_active_camera_position.xyz - world_space_position);
 	for(i = 0; i < LIGHT_CACHE_SIZE; i++)
 	{
 		
@@ -278,39 +306,25 @@ void main()
 			
 			
 			light_vec = light_params[i].position_radius.xyz - world_space_position;
-			
-			//light_vec = vec3(0.0, 5.0, 0.0) - world_space_position;
-			
 			light_color = light_params[i].color_energy.rgb;
-		
-			//light_color = vec3(0.3, 0.0, 0.0);
 			
 			distance = length(light_vec);
+			///distance = dot(light_vec, light_vec);
 			energy = light_params[i].color_energy.a;
 			radius = light_params[i].position_radius.w;
 			
 			shadow = 1.0;
-			
-			
+
+
+						
 			light_vec /= distance;
 			half_vec = normalize(eye_vec + light_vec);
 
 			attenuation = (1.0 / (distance)) * max(1.0 - (distance / radius), 0.0);
-			diffuse = ((color.rgb / 3.14159265) * max(dot(light_vec, world_space_normal), 0.0)) * attenuation * energy;
-			specular = light_color * pow(max(dot(half_vec, world_space_normal), 0.0), 32.0) * attenuation * energy * 0.1;
-			accum += (vec4(diffuse * light_color, 1.0) + vec4(specular, 1.0));
-			//accum.rgb = light_color;
-			//accum.rgb = light_params[0].color_energy.rgb;
-			//accum = vec4(1.0);
-			//accum = vec4(dot(world_space_normal, light_vec));		
-			
-			//accum.rgb = ints[0].color.rgb;
-			
-		
-			
+			diffuse = ((color.rgb / 3.14159265) * max(dot(light_vec, normal), 0.0)) * attenuation * energy;
+			specular = light_color * pow(max(dot(half_vec, normal), 0.0), 1024.0) * attenuation * energy * 1.5;
+			accum += (vec4(diffuse * light_color, 1.0) + vec4(specular, 1.0)) * shadow;			
 		}
-		
-		//break;
 		
 		bm >>= 1;
 	}
@@ -318,7 +332,6 @@ void main()
 	
 	
 	gl_FragColor = accum;
-
 }
 
 

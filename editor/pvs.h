@@ -17,12 +17,14 @@ typedef struct bsp_portal_t
 	short go_through;
 }bsp_portal_t;
 
-typedef struct
+typedef struct pvs_job_t
 {
-	struct timedout_leaf_t *next;
+	struct pvs_job_t *next;
 	bsp_leaf_t *leaf;
-	float last_time_out;
-}timedout_leaf_t;
+	float time_out;
+	int src_portal_index;
+	//float last_time_out;
+}pvs_job_t;
 
 enum PORTAL_PLANE
 {
@@ -32,15 +34,17 @@ enum PORTAL_PLANE
 	PORTAL_CONTAINED
 };
 
+#define MAX_VALID_PORTALS 64
+#define MAX_CLIP_PLANES 64
 
-typedef struct
+typedef struct recursive_pvs_for_leaf_stack_t
 {
 	int out_valid_dst_portal_count;
 	int clipplane_count;
 	
-	bsp_portal_t valid_portals[512];
-	bsp_portal_t *out_valid_dst_portals[512];
-	bsp_clipplane_t clipplanes[512];
+	bsp_portal_t valid_portals[MAX_VALID_PORTALS];
+	bsp_portal_t *out_valid_dst_portals[MAX_VALID_PORTALS];
+	bsp_clipplane_t clipplanes[MAX_CLIP_PLANES];
 	
 	bsp_leaf_t *dst_dst_leaf;
 	bsp_portal_t *dst_dst_portal;
@@ -57,12 +61,12 @@ typedef struct
 }recursive_pvs_for_leaf_stack_t;
 
 
-typedef struct
+typedef struct pvs_for_leaf_stack_t
 {
 	bsp_portal_t **portals;
 	bsp_leaf_t *dst_leaf;
 	int in_dst_portal_count;
-	bsp_portal_t *in_dst_portals[512];
+	bsp_portal_t *in_dst_portals[MAX_VALID_PORTALS];
 	
 	recursive_pvs_for_leaf_stack_t *recursive_stack;
 	int recursive_stack_pointer;
@@ -93,14 +97,29 @@ void bsp_GeneratePortals(bsp_node_t *bsp, bsp_portal_t **portals);
 
 void bsp_DeletePortals(bsp_portal_t *portals);
 
-void bsp_PvsForLeaf(bsp_leaf_t *leaf);
+int bsp_PvsForLeaf(bsp_leaf_t *leaf, float time_out, int portal_index);
 
 void bsp_PvsForLeaves(bsp_node_t *bsp, bsp_portal_t *portals);
+
+int bsp_PvsForLeavesThreadFn(void *data);
 
 void bsp_CalculatePvs(bsp_node_t *bsp);
 
 int bsp_CalculatePvsAssync(void *data);
 
+void bsp_BuildPvsJobList(bsp_node_t *bsp);
+
+bsp_leaf_t *bsp_GetNextLeaf();
+
+pvs_job_t *bsp_GetNextJob();
+
+void bsp_RequeueLeaf(bsp_leaf_t *leaf);
+
+void bsp_RequeueJob(pvs_job_t *job);
+
+void bsp_DeletePvsJobList();
+
+void bsp_Stop();
 
 
 

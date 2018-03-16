@@ -107,6 +107,7 @@ int light_DestroyLight(char *name);
 int light_DestroyLightIndex(int light_index);
 
 void light_DestroyAllLights();
+
 /* updates which leaves contains which lights... */
 void light_UpdateLights();
 
@@ -124,6 +125,7 @@ void light_VisibleLights();
 /* update the index list each light keeps to
 render its shadow map... */
 void light_VisibleTriangles(int light_index);
+
 
 void light_ClearLightLeaves();
 

@@ -4,7 +4,13 @@
 
 void renderer_EditorDraw();
 
+void renderer_PostDraw();
+
 void renderer_DrawBrushes();
+
+void renderer_DrawBrushBsp();
+
+void renderer_DrawBrushesOBBs();
 
 void renderer_DrawGrid();
 
@@ -24,9 +30,15 @@ void renderer_DrawLightBoxes();
 
 void renderer_DrawWorldPolygons();
 
+void renderer_DrawCollisionPolygons();
+
+void renderer_DrawCollisionNodes();
+
 void renderer_DrawPortals();
 
 void renderer_DrawBrushPolygons();
+
+void renderer_DrawClippedPolygons();
 
 void renderer_DrawPvsSteps();
 

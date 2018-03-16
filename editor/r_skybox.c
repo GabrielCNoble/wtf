@@ -18,7 +18,7 @@ void renderer_DeleteSkybox(char *name)
 void renderer_SetSkybox(int skybox_index)
 {
 	
-}
+} 
 
 /*void renderer_DrawSkyBox()
 {

@@ -9,9 +9,8 @@ char log_path[256];
 
 FILE *log_file;
 
-void log_Init(char *path)
+void log_Init()
 {
-	strcpy(log_path, path);
 	log_file = fopen("massacre.log", "w");
 }
 
@@ -23,7 +22,7 @@ void log_Finish()
 	fclose(log_file);
 }
 
- 
+  
 void log_LogMessage(int message_type, char *format, ...)
 {
 	va_list args;

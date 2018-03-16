@@ -10,16 +10,17 @@
 extern int bm_mouse;
 extern int text_buffer_in;
 extern int text_buffer_out;
-extern char text_buffer[];
+extern short text_buffer[];
 
 /* from gui.c */
 extern widget_t *widgets;
 extern widget_t *last_widget;
+extern int gui_widget_unique_index;
 
 text_field_t *gui_AddTextField(widget_t *widget, char *name, short x, short y, short w, short bm_flags, void (*text_field_callback)(widget_t *))
 {
 	text_field_t *field;
-	
+	 
 	int i;
 	
 	field = malloc(sizeof(text_field_t));
@@ -37,9 +38,12 @@ text_field_t *gui_AddTextField(widget_t *widget, char *name, short x, short y, s
 	field->widget.type = WIDGET_TEXT_FIELD;
 	field->widget.widget_callback = text_field_callback;
 	field->widget.bm_flags = 0;
+	field->widget.rendered_name = NULL;
+	field->widget.unique_index = gui_widget_unique_index++;
+	field->widget.process_callback = NULL;
 	
 	
-	field->bm_text_field_flags = bm_flags;
+	field->bm_text_field_flags = bm_flags & (~TEXT_FIELD_UPDATED);
 	field->cursor_blink_timer = TEXT_FIELD_CURSOR_BLINK_TIME;
 	field->text_buffer_size = TEXT_FIELD_BUFFER_SIZE;
 	field->text_buffer_cursor = 0;
@@ -116,121 +120,152 @@ void gui_UpdateTextField(widget_t *widget)
 	gui_var_t *var;
 	int i;
 	char *temp;
+	char **str_ptr;
+	unsigned char *uc_ptr;
+	float *f_ptr;
+	float fval;
 	
 	
-	if(!(widget->bm_flags & WIDGET_TRACK_VAR))
-	{
-		if(field->bm_text_field_flags & TEXT_FIELD_RECEIVING_TEXT)
-		{
-			if(field->cursor_blink_timer > 0)
-			{
-				field->cursor_blink_timer--;
-			}
-			else
-			{
-				field->cursor_blink_timer = TEXT_FIELD_CURSOR_BLINK_TIME;
-				field->bm_text_field_flags ^= TEXT_FIELD_CURSOR_VISIBLE;			
-			}
-			
-			while(text_buffer_out != text_buffer_in)
-			{
-				widget->bm_flags |= WIDGET_RENDER_TEXT;
-				
-				if(field->bm_text_field_flags & TEXT_FIELD_DRAW_TEXT_SELECTED)
-				{
-					field->text_buffer_cursor = 0;
-					field->text[0] = ' ';
-					for(i = 1; i < field->text_buffer_size; i++)
-					{
-						field->text[i] = '\0';
-					}
-				
-					field->bm_text_field_flags &= ~TEXT_FIELD_DRAW_TEXT_SELECTED;		
-				}
-				
-				switch(text_buffer[text_buffer_out])
-				{
-					case SDLK_BACKSPACE:
-						if(field->text_buffer_cursor > 0)
-						{
-							field->text[field->text_buffer_cursor] = '\0';
-							field->text_buffer_cursor--;
-						}
-						field->text[field->text_buffer_cursor] = ' ';
-					break;
-					
-					case SDLK_RETURN:
-					//case SDLK_RETURN2:
-						text_buffer_out = (text_buffer_out + 1) % TEXT_BUFFER_SIZE;
-						goto _disable_text_receiving;
-					break;
-					
-					
-					default:
-						field->text[field->text_buffer_cursor] = text_buffer[text_buffer_out];
-						if(field->text_buffer_cursor + 1 >= field->text_buffer_size)
-						{
-							temp = malloc(field->text_buffer_size + 32);
-							memcpy(temp, field->text, field->text_buffer_cursor);
-							free(field->text);
-							field->text = temp;
-							field->text_buffer_size += 32;
-						}
-						
-						field->text[field->text_buffer_cursor + 1] = '\0';
-						field->text_buffer_cursor++;
-					break;
-				}
-				
-				text_buffer_out = (text_buffer_out + 1) % TEXT_BUFFER_SIZE;
-			}
-				
-		}
+	//if(!(widget->bm_flags & WIDGET_TRACK_VAR))
+	
+	field->bm_text_field_flags &= ~TEXT_FIELD_UPDATED;
 		
-		/* left button click outside a text field will disable text receiving... */
-		if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
+	
+	if(field->bm_text_field_flags & TEXT_FIELD_RECEIVING_TEXT)
+	{
+		if(field->cursor_blink_timer > 0)
 		{
-			if(widget->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
-			{	
-				if(!(field->bm_text_field_flags & TEXT_FIELD_READ_ONLY))
-				{
-					
-					if(!(field->bm_text_field_flags & TEXT_FIELD_NO_WRITE))
-					{			
-						field->bm_text_field_flags |= TEXT_FIELD_CURSOR_VISIBLE | TEXT_FIELD_RECEIVING_TEXT;
-						field->cursor_blink_timer = TEXT_FIELD_CURSOR_BLINK_TIME;
-						
-						if(field->text_buffer_cursor)
-						{
-							field->bm_text_field_flags |= TEXT_FIELD_DRAW_TEXT_SELECTED;
-							widget->bm_flags |= WIDGET_RENDER_TEXT;
-						}
-						//field->text_buffer_cursor = 0;
-						
-						input_EnableTextInput(1);
-						
-					}
-					
-				}
-			}
-			else
+			field->cursor_blink_timer--;
+		}
+		else
+		{
+			field->cursor_blink_timer = TEXT_FIELD_CURSOR_BLINK_TIME;
+			field->bm_text_field_flags ^= TEXT_FIELD_CURSOR_VISIBLE;			
+		}
+			
+		while(text_buffer_out != text_buffer_in)
+		{
+			widget->bm_flags |= WIDGET_RENDER_TEXT;
+				
+			if(field->bm_text_field_flags & TEXT_FIELD_DRAW_TEXT_SELECTED)
 			{
-				_disable_text_receiving:
-					
-				field->bm_text_field_flags &= ~(TEXT_FIELD_RECEIVING_TEXT | TEXT_FIELD_CURSOR_VISIBLE | TEXT_FIELD_DRAW_TEXT_SELECTED);
-				widget->bm_flags |= WIDGET_RENDER_TEXT;
+				field->text_buffer_cursor = 0;
+				field->text[0] = ' ';
+				for(i = 1; i < field->text_buffer_size; i++)
+				{
+					field->text[i] = '\0';
+				}
+				
+				field->bm_text_field_flags &= ~TEXT_FIELD_DRAW_TEXT_SELECTED;		
 			}
+				
+			switch(text_buffer[text_buffer_out])
+			{
+				case SDLK_BACKSPACE:
+					if(field->text_buffer_cursor > 0)
+					{
+						field->text[field->text_buffer_cursor] = '\0';
+						field->text_buffer_cursor--;
+					}
+					field->text[field->text_buffer_cursor] = ' ';
+				break;
+					
+				case SDLK_RETURN:
+				case SDLK_ESCAPE:
+					text_buffer_out = (text_buffer_out + 1) % TEXT_BUFFER_SIZE;
+					goto _disable_text_receiving;
+				break;
+				
+				case SDLK_LALT:
+				case SDLK_RALT:
+					
+				break;
+							
+				
+				default:
+					field->text[field->text_buffer_cursor] = text_buffer[text_buffer_out];
+					if(field->text_buffer_cursor + 1 >= field->text_buffer_size)
+					{
+						temp = malloc(field->text_buffer_size + 32);
+						memcpy(temp, field->text, field->text_buffer_cursor);
+						free(field->text);
+						field->text = temp;
+						field->text_buffer_size += 32;
+					}
+						
+					field->text[field->text_buffer_cursor + 1] = '\0';
+					field->text_buffer_cursor++;
+				break;
+			}
+				
+			text_buffer_out = (text_buffer_out + 1) % TEXT_BUFFER_SIZE;
 		}
 	}
-	else
+				
+	
+		
+	/* left button click outside a text field will disable text receiving... */
+	if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
+	{
+		if(widget->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
+		{	
+			if(!(field->bm_text_field_flags & TEXT_FIELD_READ_ONLY))
+			{
+					
+				if(!(field->bm_text_field_flags & TEXT_FIELD_NO_WRITE))
+				{			
+					field->bm_text_field_flags |= TEXT_FIELD_CURSOR_VISIBLE | TEXT_FIELD_RECEIVING_TEXT;
+					field->cursor_blink_timer = TEXT_FIELD_CURSOR_BLINK_TIME;
+						
+					if(field->text_buffer_cursor)
+					{
+						field->bm_text_field_flags |= TEXT_FIELD_DRAW_TEXT_SELECTED;
+						widget->bm_flags |= WIDGET_RENDER_TEXT;
+					}
+						//field->text_buffer_cursor = 0;
+						
+					input_EnableTextInput(1);
+					
+				}
+					
+			}
+		}
+		else
+		{
+			_disable_text_receiving:
+			
+			if(field->bm_text_field_flags & TEXT_FIELD_RECEIVING_TEXT)
+			{
+				field->bm_text_field_flags |= TEXT_FIELD_UPDATED;
+				if(field->widget.widget_callback)
+				{
+					//printf("callback\n");
+					field->widget.widget_callback(widget);
+				}
+			}
+					
+					
+			field->bm_text_field_flags &= ~(TEXT_FIELD_RECEIVING_TEXT | TEXT_FIELD_CURSOR_VISIBLE | TEXT_FIELD_DRAW_TEXT_SELECTED);
+			widget->bm_flags |= WIDGET_RENDER_TEXT;
+		}
+	}
+	
+	//else
+	if(widget->bm_flags & WIDGET_TRACK_VAR)
 	{
 		var = widget->var;
 		
-		if(var->bm_flags & GUI_VAR_VALUE_HAS_CHANGED)
+		if(var->bm_flags & GUI_VAR_VALUE_HAS_CHANGED || field->bm_text_field_flags & TEXT_FIELD_UPDATED)
 		{
 			switch(var->type)
 			{
 				case GUI_VAR_FLOAT:
+					if(field->bm_text_field_flags & TEXT_FIELD_UPDATED)
+					{
+						fval = atof(field->text);
+						f_ptr = (float *)var->addr;
+						*f_ptr = fval;
+					}
 					sprintf(field->text, "%.02f", *((float *)var->addr));
 				break;
 				
@@ -238,9 +273,47 @@ void gui_UpdateTextField(widget_t *widget)
 					sprintf(field->text, "%d", *((int *)var->addr));
 				break;
 				
-				case GUI_VAR_STRING:
+				case GUI_VAR_UNSIGNED_CHAR:
+					if(field->bm_text_field_flags & TEXT_FIELD_UPDATED)
+					{
+						uc_ptr = (unsigned char *)var->addr;
+						
+						if(input_ParseInt(&i, field->text))
+						{
+							//printf("parse!\n");
+							if(i > 255) i = 255;
+							else if(i < 0) i = 0;
+							*uc_ptr = (unsigned char)i;	
+						}	
+					}
+					
+					sprintf(field->text, "%d", *((unsigned char *)var->addr));
+				break;
+				
+				/*case GUI_VAR_POINTER_TO_UNSIGNED_CHAR:
+					if(field->bm_text_field_flags & TEXT_FIELD_UPDATED)
+					{
+						uc_ptr = (unsigned char **)var->addr;
+						*uc = (unsigned char)atoi()
+					}
+				break;*/
+				
+				case GUI_VAR_ALLOCD_STRING:
+					if(field->bm_text_field_flags & TEXT_FIELD_UPDATED)
+					{
+						str_ptr = (char **)var->addr;
+						free(*str_ptr);
+						*str_ptr = strdup(field->text);
+					}
+					
 					sprintf(field->text, "%s", *((char **)var->addr));
 				break;
+				
+				case GUI_VAR_STRING:
+					if(var->addr)
+						sprintf(field->text, "%s", *((char **)var->addr));
+				break;
+				
 			}
 				
 			var->bm_flags &= ~GUI_VAR_VALUE_HAS_CHANGED;

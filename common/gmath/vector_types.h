@@ -1,6 +1,8 @@
 #ifndef _VECTOR_TYPES_H_
 #define _VECTOR_TYPES_H_
 
+
+#include <stdint.h>
 //#include "GL/glew.h"
 
 
@@ -102,6 +104,19 @@ typedef union
 	};
 	
 }ivec3_t;
+
+typedef union
+{
+	struct
+	{
+		uint64_t x, y, z; 
+	};
+	
+	struct 
+	{
+		uint64_t ints[3];
+	};
+}luivec3_t;
 
 
 typedef union 

@@ -22,15 +22,26 @@
 #include "pvs.h"
 #include "indirect.h"
 #include "player.h"
+#include "entity.h"
 
 #include "r_main.h"
 #include "r_editor.h"
-
+ 
 #include "ed_ui.h"
 #include "ed_proj.h"
 
+#include "model.h"
+
+#include "entity.h"
+
 static camera_t *editor_camera;
 static int editor_camera_index;
+
+
+//int resource_count;
+//resource_t *resources;
+
+
 
 /* from r_main.c */
 extern int r_width;
@@ -38,6 +49,7 @@ extern int r_height;
 extern int forward_pass_shader;
 extern int r_window_width;
 extern int r_window_height;
+extern int r_draw_gui;
 
 /* from light.c */
 extern light_position_t *visible_light_positions;
@@ -69,6 +81,10 @@ extern spawn_point_t *spawn_points;
 extern int brush_count;
 extern brush_t *brushes;
 
+/* from entity.c */
+extern int ent_entity_list_cursor;
+extern entity_t *ent_entities;
+
 
 /* from material.c */
 extern int material_count;
@@ -92,9 +108,14 @@ unsigned int cursor_color_texture_id;
 unsigned int cursor_depth_texture_id;
 
 int brush_pick_shader;
+int pick_brush_face_shader;
 int light_pick_shader;
 int spawn_point_pick_shader;
 int brush_dist_shader;
+int draw_cursors_shader;
+int forward_pass_brush_shader;
+extern int model_thumbnail_shader;
+
 int max_selections;
 int selection_count;
 pick_record_t *selections;
@@ -102,7 +123,26 @@ vec3_t cursor_3d_position;
 vec3_t handle_3d_position;
 int bm_handle_3d_flags;
 int handle_3d_position_mode;
-int handle_3d_mode;
+int ed_handle_3d_mode;
+
+int scale_handle_model_handle;
+int scale_handle_model_start;
+int scale_handle_model_count;
+
+int ed_editing_mode = EDITING_MODE_OBJECT;
+int ed_handle_3d_tranform_mode = HANDLE_3D_TRANFORM_LOCAL;
+
+
+light_params_t *ed_selected_light_params;
+light_position_t *ed_selected_light_position;
+
+
+brush_t *ed_selected_brush;
+int ed_selected_brush_selection_index = -1;
+int ed_selected_brush_index = -1;
+int ed_selected_brush_polygon_index = -1;
+int ed_selected_brush_polygon_vertex_index = -1;
+int ed_selected_brush_polygon_edge_index = -1;
 
 
 //light_position_t *selected_light_position;
@@ -114,7 +154,7 @@ brush_ptr_t selected_brush;
 
 
 
-int selected_type = PICK_NONE;
+int ed_selection_type = PICK_NONE;
 int editor_state = EDITOR_EDITING;
 int pie_player_index;
 
@@ -124,22 +164,82 @@ float editor_camera_pitch = 0.0;
 float editor_snap = 0.0;
 
 int default_material;
+int texture_material;
 //int red_default_material;
 
-char *handle_3d_mode_strs[] = 
+char *ed_handle_3d_mode_strs[] = 
 {
 	"Translation",
 	"Rotation",
 	"Scale",
 };
 
-char *handle_3d_mode_str = "Translation";
+char *ed_handle_3d_mode_str = "Translation";
+
+
+float ed_editor_linear_snap_values[] = 
+{
+	0.0,
+	0.01,
+	0.1,
+	1.0,
+};
+
+char *ed_editor_linear_snap_values_str[] = 
+{
+	"None",
+	"1cm",
+	"10cm",
+	"1m",
+	NULL,
+};
+
+float ed_editor_angular_snap_values[] = 
+{
+	0.0,
+	0.1, 
+	0.2,
+	0.25,
+};
+
+char *ed_editor_angular_snap_values_str[] = 
+{
+	"None",
+	"0.1 rad",
+	"0.2 rad",
+	"0.25 rad",
+	NULL,
+};
+
+
+float ed_editor_linear_snap_value;
+int ed_editor_linear_snap_value_index;
+
+float ed_editor_angular_snap_value;
+int ed_editor_angular_snap_value_index;
+
+char *ed_editor_snap_value_str;
 
 
 
-void editor_Init()
+void editor_Init(int argc, char *argv[])
 {
 	mat3_t r = mat3_t_id();
+	int w;
+	int h;
+	
+	SDL_DisplayMode display_mode;
+	
+	
+	//editor_snap_value = 0.0;
+	ed_editor_linear_snap_value_index = 0;
+	ed_editor_angular_snap_value_index = 0;
+	ed_editor_linear_snap_value = 0.0;
+	ed_editor_angular_snap_value = 0.0;
+	
+	
+	//editor_snap_value_str = snap_values_str[0];
+	
 	//mat3_t r;
 	
 	//mat3_t_rotate(&r, vec3(1.0, 0.0, 0.0), -0.2, 1);
@@ -152,7 +252,93 @@ void editor_Init()
 	editor_camera = camera_GetCameraByIndex(editor_camera_index);	
 	camera_SetCameraByIndex(editor_camera_index);
 	
-	default_material = material_CreateMaterial("default_material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);
+	//default_material = material_CreateMaterial("default_material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);
+	
+	path_AddSearchPath("shaders", SEARCH_PATH_SHADER);
+	path_AddSearchPath("textures/world", SEARCH_PATH_TEXTURE);
+	
+	draw_cursors_shader = shader_LoadShader("draw_cursors");
+	pick_brush_face_shader = shader_LoadShader("pick_brush_face");
+	brush_pick_shader = shader_LoadShader("brush_pick");
+	light_pick_shader = shader_LoadShader("light_pick");
+	spawn_point_pick_shader = shader_LoadShader("spawn_point_pick");
+	brush_dist_shader = shader_LoadShader("brush_dist");
+	forward_pass_brush_shader = shader_LoadShader("forward_pass_brush");
+	model_thumbnail_shader = shader_LoadShader("model_thumbnail");
+	
+	
+	int model_index;// = model_LoadModel("portal_gun6.mpk", "portal gun");
+	int entity_def_index;// = entity_CreateEntityDef("portal gun", ENTITY_TYPE_MOVABLE, model_index);
+	
+	
+	
+	
+	/*entity_LoadModel("staircase.mpk", "staircase", "staircase", ENTITY_TYPE_STATIC);*/
+	//entity_LoadModel("portal_gun6.mpk", "portal_gun", "portal_gun", ENTITY_TYPE_STATIC);
+	
+	
+	
+	entity_LoadModel("toilet.mpk", "toilet", "toilet", ENTITY_TYPE_STATIC);
+	entity_LoadModel("toilet2.mpk", "toilet2", "toilet2", ENTITY_TYPE_STATIC);
+	
+	
+	
+	/*entity_LoadModel("cargo_container_01.mpk", "cargo", "cargo", ENTITY_TYPE_STATIC);
+	entity_LoadModel("tetra.mpk", "tetra", "tetra", ENTITY_TYPE_STATIC);*/
+	
+	/*model_index =*/ 
+	/*model_LoadModel("staircase.mpk", "staircase");
+	model_index = model_LoadModel("portal_gun6.mpk", "portal_gun");
+	model_LoadModel("toilet.mpk", "toilet");
+	model_LoadModel("cargo_container_01.mpk", "cargo");
+	model_LoadModel("tetra.mpk", "tetra");*/
+	
+	
+	//entity_def_index = entity_CreateEntityDef("staircase", ENTITY_TYPE_STATIC, model_index);
+	//entity_CreateEntity("staircase", vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), NULL, entity_def_index);
+	
+	/*entity_CreateEntity("test entity", vec3(0.0, 0.0, 0.0), vec3(0.1, 0.1, 0.1), NULL, entity_def_index);*/
+	
+	
+	
+	
+	
+	/*texture_LoadTexture("concrete_01_diffuse.png", "concrete_diffuse", 0);
+	texture_LoadTexture("concrete_01_normal.png", "concrete_normal", 0);
+	
+	texture_LoadTexture("synthetic_dirt_01_diffuse.png", "dirt_diffuse", 0);
+	texture_LoadTexture("synthetic_dirt_01_normal.png", "dirt_normal", 0);
+	
+	texture_LoadTexture("diffuse.tga", "tiles_diffuse", 0);
+	texture_LoadTexture("normal.tga", "tiles_normal", 0);
+	
+	texture_LoadTexture("TexturesCom_Cobblestone_512_albedo.png", "cobblestone_diffuse", 0);
+	texture_LoadTexture("TexturesCom_Cobblestone_512_normal.png", "cobblestone_normal", 0);
+	
+	texture_LoadTexture("dungeon-stone1-albedo2.png", "dungeon_diffuse", 0);
+	texture_LoadTexture("dungeon-stone1-normal.png", "dungeon_normal", 0);
+	
+	texture_LoadTexture("oakfloor_basecolor.png", "oak_floor_diffuse", 0);
+	texture_LoadTexture("oakfloor_normal.png", "oak_floor_normal", TEXTURE_INVERT_Y);*/
+	
+	
+	/*path_SetDir("C:/Users/Noble/Documents");
+	path_GoUp();
+	path_GoUp();
+	path_GoUp();
+	path_GoUp();
+	path_GoUp();
+	path_GoUp();*/
+	
+	//path_GoDown("Documents");
+	/*material_CreateMaterial("concrete", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, texture_GetTexture("concrete_diffuse"), texture_GetTexture("concrete_normal"));
+	material_CreateMaterial("tiles", vec4(1.0, 1.0 ,1.0, 1.0), 1.0, 1.0, forward_pass_shader, texture_GetTexture("tiles_diffuse"), texture_GetTexture("tiles_normal")); */
+	
+	
+//	material_CreateMaterial("material1", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);
+//	material_CreateMaterial("material2", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);
+//	material_CreateMaterial("material3", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);
+	
 	
 	camera_PitchYawCamera(editor_camera, editor_camera_yaw, editor_camera_pitch);
 	camera_ComputeWorldToCameraMatrix(editor_camera);
@@ -160,7 +346,6 @@ void editor_Init()
 	r = mat3_t_id();
 	
 	brush_Init();
-	
 	
 	input_RegisterKey(SDL_SCANCODE_ESCAPE);
 	input_RegisterKey(SDL_SCANCODE_W);
@@ -173,14 +358,21 @@ void editor_Init()
 	input_RegisterKey(SDL_SCANCODE_LSHIFT);
 	
 	
+	
+	
 	input_RegisterKey(SDL_SCANCODE_H);
 	input_RegisterKey(SDL_SCANCODE_J);
 	input_RegisterKey(SDL_SCANCODE_L);
 	input_RegisterKey(SDL_SCANCODE_P);
 	input_RegisterKey(SDL_SCANCODE_R);
 	input_RegisterKey(SDL_SCANCODE_G);
+	input_RegisterKey(SDL_SCANCODE_M);
+	input_RegisterKey(SDL_SCANCODE_T);
+	input_RegisterKey(SDL_SCANCODE_V);
 	
 	input_RegisterKey(SDL_SCANCODE_DELETE);
+	
+	input_RegisterKey(SDL_SCANCODE_TAB);
 	
 	
 	//renderer_RegisterCallback(bsp_DrawPortals, POST_SHADING_STAGE_CALLBACK);
@@ -197,10 +389,11 @@ void editor_Init()
 	//renderer_RegisterCallback(renderer_DrawSelected, POST_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterCallback(renderer_DrawCursors, POST_SHADING_STAGE_CALLBACK);
 	
-	renderer_RegisterCallback(renderer_EditorDraw, POST_SHADING_STAGE_CALLBACK);
+	renderer_RegisterCallback(renderer_EditorDraw, PRE_SHADING_STAGE_CALLBACK);
+	renderer_RegisterCallback(renderer_PostDraw, POST_SHADING_STAGE_CALLBACK);
 	
 	
-	
+	SDL_GetDisplayMode(0, 0, &display_mode);
 	
 	glGenFramebuffers(1, &pick_framebuffer_id);
 	glGenTextures(1, &pick_framebuffer_texture);
@@ -213,7 +406,7 @@ void editor_Init()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, r_width, r_height, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, display_mode.w, display_mode.h, 0, GL_RGBA, GL_FLOAT, NULL);
 	
 	glBindTexture(GL_TEXTURE_2D, pick_framebuffer_depth_texture);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -222,7 +415,7 @@ void editor_Init()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, r_width,r_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, display_mode.w, display_mode.h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, pick_framebuffer_id);
@@ -245,7 +438,7 @@ void editor_Init()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, r_width, r_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, r_width, r_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	
 	glBindTexture(GL_TEXTURE_2D, cursor_depth_texture_id);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -260,11 +453,16 @@ void editor_Init()
 	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, cursor_depth_texture_id, 0);
 	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, cursor_depth_texture_id, 0);
 	
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	
+
 	
 	
 	editor_InitUI();
+	
 	
 	
 	max_selections = 1024;
@@ -273,42 +471,34 @@ void editor_Init()
 	
 	pie_player_index = player_CreatePlayer("pie player", vec3(0, 0, 0), &r);
 	
+	
+	//brush_CreateBrush(vec3(0, 0, 0), &r, vec3(1, 1, 1), BRUSH_CUBE, 1);
+	
+	
 	cursor_3d_position = vec3(0.0, 0.0, 0.0);
 	handle_3d_position = vec3(0.0, 0.0, 0.0);
-//	mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
-	//brush_CreateBrush(vec3(0.0, 6.0, 0.0), &r, vec3(1.0, 2.0, 1.0), BRUSH_CYLINDER);
-	
 	int i;
 			
 	bm_handle_3d_flags = 0;
 	handle_3d_position_mode = HANDLE_3D_MEDIAN_POINT;
-	handle_3d_mode = HANDLE_3D_TRANSLATION;
-	
-	texture_SetPath("textures/env");
+	//ed_handle_3d_mode = HANDLE_3D_TRANSLATION;
+	editor_Set3dHandleMode(HANDLE_3D_TRANSLATION);
+	editor_SetEditingMode(EDITING_MODE_OBJECT);
 	
 	editor_SetProjectName("untitled.wtf");
-		
-	/*texture_LoadCubeTexture("textures\\env\\aliencube_pos_x.jpg;"
-					        "textures\\env\\aliencube_neg_x.jpg;"
-					        "textures\\env\\aliencube_pos_y.jpg;"
-					        "textures\\env\\aliencube_neg_y.jpg;"
-					        "textures\\env\\aliencube_pos_z.jpg;"
-					        "textures\\env\\aliencube_neg_z.jpg;", "env");*/
-	
-	//texture_LoadCubeTexture("aliencube.jpg", "env");				        
+	renderer_RegisterCallback(editor_WindowResizeCallback, RENDERER_RESOLUTION_CHANGE_CALLBACK);		
 	
 	
-	/*texture_LoadCubeTexture("textures\\env\\cliffrt.bmp;"
-					        "textures\\env\\clifflf.bmp;"
-					        "textures\\env\\cliffup.bmp;"
-					        "textures\\env\\cliffdn.bmp;"
-					        "textures\\env\\cliffbk.bmp;"
-					        "textures\\env\\cliffft.bmp;", "env");*/
-					        
+	if(argc > 1)
+	{
+		editor_OpenProject(argv[1]);
+	}
 	
-	renderer_RegisterCallback(editor_WindowResizeCallback, RENDERER_RESOLUTION_CHANGE_CALLBACK);				        
-	
+				        	
 }
+
+extern bsp_node_t *world_bsp;
+extern bsp_node_t *collision_bsp;
 
 void editor_RestartEditor()
 {
@@ -317,11 +507,14 @@ void editor_RestartEditor()
 	editor_camera_yaw = 0.2;
 	editor_camera_pitch = -0.15;
 	
-	editor_camera_index = camera_CreateCamera("editor_camera", vec3(12.0, 10.0, 15.0), &r, 0.68, r_width, r_height, 0.1, 500.0, CAMERA_UPDATE_ON_RESIZE);
-	editor_camera = camera_GetCameraByIndex(editor_camera_index);	
-	camera_SetCameraByIndex(editor_camera_index);
+	//editor_camera_index = camera_CreateCamera("editor_camera", vec3(12.0, 10.0, 15.0), &r, 0.68, r_width, r_height, 0.1, 500.0, CAMERA_UPDATE_ON_RESIZE);
+	//editor_camera = camera_GetCameraByIndex(editor_camera_index);	
+	//camera_SetCameraByIndex(editor_camera_index);
 	
-	default_material = material_CreateMaterial("default_material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);
+	//default_material = material_CreateMaterial("default_material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);
+	
+//	material_CreateMaterial("concrete", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, texture_GetTexture("dirt_diffuse"), texture_GetTexture("dirt_normal"));
+//	material_CreateMaterial("tiles", vec4(1.0, 1.0 ,1.0, 1.0), 1.0, 1.0, forward_pass_shader, texture_GetTexture("tiles_diffuse"), texture_GetTexture("tiles_normal"));
 	
 	camera_PitchYawCamera(editor_camera, editor_camera_yaw, editor_camera_pitch);
 	camera_ComputeWorldToCameraMatrix(editor_camera);
@@ -338,6 +531,21 @@ void editor_RestartEditor()
 	//handle_3d_mode = HANDLE_3D_TRANSLATION;
 	
 	editor_ClearSelection();
+	
+	if(world_bsp)
+	{
+		bsp_DeleteSolidLeafBsp(world_bsp);
+		world_bsp = NULL;
+	}
+	
+	if(collision_bsp)
+	{
+		bsp_DeleteSolidLeafBsp(collision_bsp);
+		collision_bsp = NULL;
+	}
+	
+	path_ClearSearchPaths();
+	
 	
 	editor_SetProjectName("untitled.wtf");
 }
@@ -364,6 +572,9 @@ extern float insane_float1;
 extern float insane_float2;
 
 extern unsigned char insane_char;
+
+extern wsurface_t *edit_uv_window;
+
 
 void editor_Main(float delta_time)
 {
@@ -397,8 +608,20 @@ void editor_Main(float delta_time)
 	 	
  	translation = vec3(0.0, 0.0, 0.0);
  	
+ 	if(active_camera == editor_camera)
+	{
+	 	CreatePerspectiveMatrix(&active_camera->projection_matrix, 0.68, (float)r_window_width / (float)r_window_height, 0.1, 500.0, 0.0, 0.0, &active_camera->frustum);
+	}
+ 	 	
+ 	
+ 	
+ 	
+ 	//editor_ProcessUI();
+ 	
+ 	brush_ProcessBrushes();
+ 	
  		
-	if(bm_mouse & MOUSE_MIDDLE_BUTTON_CLICKED && editor_state == EDITOR_EDITING)
+	if(bm_mouse & MOUSE_MIDDLE_BUTTON_CLICKED && editor_state == EDITOR_EDITING && !(edit_uv_window->widget.bm_flags & WIDGET_HAS_MIDDLE_MOUSE_BUTTON))
 	{	
 		engine_SetEngineState(ENGINE_PLAYING);
 		
@@ -541,7 +764,7 @@ void editor_EnablePicking()
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, pick_framebuffer_id);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, pick_framebuffer_id);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	glViewport(0, 0, r_width, r_height);
+	glViewport(0, 0, r_window_width, r_window_height);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);	
 }
 
@@ -551,7 +774,7 @@ void editor_DisablePicking()
 	glDrawBuffer(GL_BACK);
 }
 
- int editor_Pick(pick_record_t *record)
+ int editor_PickObject()
 {
 	int i;
 	int c;
@@ -565,73 +788,131 @@ void editor_DisablePicking()
 	int pick_index1;
 	int pick_index2;
 	
+	pick_record_t record;
+	model_t *model;
+	
+	int lshift;
+	
+	int start;
+	
 	vec3_t pos;
+	mat4_t transform;
 	
 	camera_t *active_camera = camera_GetActiveCamera();
 	triangle_group_t *triangle_group;
 	material_t *material;
+	bsp_polygon_t *polygon;
 	
 	float q[4];
 	
-	gpu_BindGpuHeap();
-	shader_UseShader(brush_pick_shader);	
-	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
-	
-	glViewport(0, 0, r_window_width, r_window_height);
-	
-	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, pick_framebuffer_id);
-	//glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-	
 	editor_EnablePicking();
 	
-	c = brush_count;
+	gpu_BindGpuHeap();
+	
+	renderer_SetShader(brush_pick_shader);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, (int)&((vertex_t *)0)->position, sizeof(vertex_t));
+	
+	renderer_SetProjectionMatrix(&active_camera->projection_matrix);
+	renderer_SetViewMatrix(&active_camera->world_to_camera_matrix);
+	renderer_SetModelMatrix(NULL);
+	renderer_UpdateMatrices();	
 		
+	
+	glViewport(0, 0, r_window_width, r_window_height);
+		
+		
+	
+		
+	c = brush_count;
+			
 	for(i = 0; i < c; i++)
 	{
-		
+			
 		if(brushes[i].type == BRUSH_INVALID)
 			continue;
-		
+			
 		if(brushes[i].type == BRUSH_BOUNDS)
 			continue;
-		
+			
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brushes[i].element_buffer);
+	
 		k = brushes[i].triangle_group_count;
 		
 		triangle_group = brushes[i].triangle_groups;
-		
+			
 		for(j = 0; j < k; j++)
 		{		
 			*(int *)&q[0] = PICK_BRUSH;
 			*(int *)&q[1] = i + 1;
 			q[2] = 0.0;
 			q[3] = 0.0;
-			
+					
 			glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, q);
 			glDrawElements(GL_TRIANGLES, triangle_group[j].next, GL_UNSIGNED_INT, (void *)(triangle_group[j].start * sizeof(int)));
 		}
-		
 	}
 	
-	gpu_UnbindGpuHeap();
 	
-	shader_UseShader(light_pick_shader);
+	c = ent_entity_list_cursor;
 	
+	for(i = 0; i < c; i++)
+	{
+		if(ent_entities[i].flags & ENTITY_INVALID)
+			continue;
+		
+		if(ent_entities[i].flags & ENTITY_INVISIBLE)
+			continue;	
+		
+		model = model_GetModelPointerIndex(ent_entities[i].model_index);
+		mat4_t_compose(&transform, &ent_entities[i].orientation, ent_entities[i].position);
+		
+		transform.floats[0][0] *= ent_entities[i].scale.x;
+		transform.floats[0][1] *= ent_entities[i].scale.x;
+		transform.floats[0][2] *= ent_entities[i].scale.x;
+		
+		
+		transform.floats[1][0] *= ent_entities[i].scale.y;
+		transform.floats[1][1] *= ent_entities[i].scale.y;
+		transform.floats[1][2] *= ent_entities[i].scale.y;
+		
+		
+		transform.floats[2][0] *= ent_entities[i].scale.z;
+		transform.floats[2][1] *= ent_entities[i].scale.z;
+		transform.floats[2][2] *= ent_entities[i].scale.z;
+		
+		renderer_SetModelMatrix(&transform);
+		renderer_UpdateMatrices();
+		
+		*(int *)&q[0] = PICK_ENTITY;
+		*(int *)&q[1] = i + 1;
+		q[2] = 0.0;
+		q[3] = 0.0;
+					
+		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, q);
+		
+		glDrawArrays(GL_TRIANGLES, model->vert_start, model->vert_count);
+	}	
+
+	
+	
+	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);	
+	renderer_SetShader(light_pick_shader);
+		
 	c = light_count;
 	glPointSize(24.0);
 	glEnable(GL_POINT_SMOOTH);
-	
+		
 	for(i = 0; i < c; i++)
 	{
 		if(light_params[i].bm_flags & LIGHT_INVALID)
 			continue;
-		
+			
 		*(int *)&q[0] = PICK_LIGHT;
 		*(int *)&q[1] = i + 1;
 		q[2] = 0.0;
 		q[3] = 0.0;	
 		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, q);
-		
+			
 		glBegin(GL_POINTS);
 		glVertex3f(light_positions[i].position.x, light_positions[i].position.y, light_positions[i].position.z);
 		glEnd();
@@ -640,12 +921,10 @@ void editor_DisablePicking()
 	glDisable(GL_POINT_SMOOTH);
 	glPointSize(1.0);
 	
-	shader_UseShader(spawn_point_pick_shader);
-	
+	renderer_SetShader(spawn_point_pick_shader);
+		
 	glDisable(GL_CULL_FACE);
-	//glColor3f(1.0, 1.0, 1.0);
-	//glBegin(GL_QUADS);
-	
+		
 	for(i = 0; i < spawn_point_count; i++)
 	{
 		*(int *)&q[0] = PICK_SPAWN_POINT;
@@ -653,134 +932,209 @@ void editor_DisablePicking()
 		q[2] = 0.0;
 		q[3] = 0.0;	
 		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, q);
-		
-		
-		
+			
+			
+			
 		pos = spawn_points[i].position;
-		
+			
 		glBegin(GL_QUADS);
-		
+			
 		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
 		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
 		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
 		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		
-		
+			
+			
 		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
 		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
 		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
 		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		
-		
+			
+			
 		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
 		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
 		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
 		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
-		
-		
+			
+			
 		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
 		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
 		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
 		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		
+			
 		glEnd();
 		
 	}
 	
-	/*glEnd();
-	glLineWidth(1.0);
-	
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glColor4f(1.0, 1.0, 1.0, 0.1);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-	glDepthMask(GL_FALSE);
-	glBegin(GL_QUADS);
-	
-	for(i = 0; i < spawn_point_count; i++)
-	{
-		pos = spawn_points[i].position;
-		
-		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
-		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
-		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
 		
 		
-		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
-		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
-		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		
-		
-		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
-		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
-		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
-		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
-		
-		
-		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		
-		
-		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
-		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y + PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
-		
-		
-		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
-		glVertex3f(pos.x - PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z + PLAYER_Z_EXTENT);
-		glVertex3f(pos.x + PLAYER_X_EXTENT, pos.y - PLAYER_Y_EXTENT, pos.z - PLAYER_Z_EXTENT);
-		
-	}
-	
-	glEnd();
-	glEnable(GL_CULL_FACE);
-	glDisable(GL_BLEND);
-	glDepthMask(GL_TRUE);
-	glPopMatrix();
-	*/
-	
-	
-	
 	x = r_window_width * (normalized_mouse_x * 0.5 + 0.5);
 	y = r_window_height * (normalized_mouse_y * 0.5 + 0.5);
 	glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, q);
-	
-	//printf("[%d %d %d %d]\n", *(int *)&q[0], *(int *)&q[1], *(int *)&q[2], *(int *)&q[3]);
-	
+			
 	editor_DisablePicking();
-	
+		
 	pick_type = (*(int *)&q[0]);
-	
+		
 	switch(pick_type)
 	{
 		case PICK_BRUSH:
 		case PICK_LIGHT:
 		case PICK_SPAWN_POINT:
-			record->type = pick_type;
-			record->index0 = (*(int *)&q[1]) - 1;
-			record->index1 = (*(int *)&q[2]);
-			record->index2 = (*(int *)&q[3]);
-			return 1;
+		case PICK_ENTITY:
+			record.type = pick_type;
+			record.index0 = (*(int *)&q[1]) - 1;
+			record.index1 = (*(int *)&q[2]);
+			record.index2 = (*(int *)&q[3]);
 		break;
-		
-		/*case PICK_SPAWN_POINT:
-			printf("fuck you...\n");
-			return 0;
-		break;
-		*/
+
 		case PICK_NONE:
 			return 0;
 		break;
 	}
+	gpu_UnbindGpuHeap();
 	
-	//if(pick_type == PICK_LIGHT) printf("light!\n");
+	
+	lshift = input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED;
+				
+					
+	if(record.type == selections[selection_count - 1].type)
+	{
+		/* if the just picked thing is the same as the last picked thing... */	
+		if(record.index0 == selections[selection_count - 1].index0)
+		{
+							
+			/* if this selection is the last in the list (meaning
+			this object is the active object), drop it, set
+			whatever comes before it as the active object and then jump
+			to the code that sets the 3d handle position... */
+						
+						
+						
+			if(!lshift && selection_count)
+			{
+				goto _add_new_selection;
+			}
+							
+			editor_DropSelection(&record);
+			if(selection_count)
+			{
+				record = selections[selection_count - 1];
+				goto _set_handle_3d_position;
+			}
+						
+		}
+		else
+		{
+			/* if this record  is not equal to the last in the list,
+			append it to the list or set it as the only active object... */
+			goto _add_new_selection;
+		}
+					
+	}
+	else
+	{
+		_add_new_selection:
+		/* holding shift enables selecting multiple objects... */			
+		if(!lshift)
+		{
+			editor_ClearSelection();
+		}
+										
+		editor_AddSelection(&record);
+							
+		_set_handle_3d_position:
 		
+		editor_Position3dHandle();			
+	}
+}
+
+int editor_PickOnBrush(brush_t *brush)
+{
+	int i;
+	int j;
+	int x;
+	int y;
+	
+	vertex_t *vertices;
+	int *indexes;
+	camera_t *active_camera;
+	bsp_polygon_t *polygon;
+	int polygon_count;
+	int vertice_count;
+	int index_count;
+	float pick[4];
+	
+	
+		
+	if(brush)
+	{
+		//gpu_BindGpuHeap();
+		//glDisable(GL_CULL_FACE);
+		glDisable(GL_BLEND);
+		
+		renderer_SetShader(pick_brush_face_shader); 
+		active_camera = camera_GetActiveCamera();
+		
+		glMatrixMode(GL_MODELVIEW);
+		glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
+		
+		editor_EnablePicking();
+		
+		polygon_count = brush->polygon_count;
+		
+		for(i = 0; i < polygon_count; i++)
+		{
+			polygon = brush->polygons + i;
+			vertice_count = polygon->vert_count;
+			
+			pick[0] = i + 1;
+			pick[1] = 0.0;
+			pick[2] = 0.0;
+			pick[3] = 0.0;
+		
+			glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, pick);
+			
+			
+			glBegin(GL_TRIANGLE_FAN);
+			for(j = 0; j < vertice_count; j++)
+			{
+				glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+			}
+			glEnd();
+		}
+		
+		x = r_window_width * (normalized_mouse_x * 0.5 + 0.5);
+		y = r_window_height * (normalized_mouse_y * 0.5 + 0.5);
+		glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, pick);
+		
+		editor_DisablePicking();
+		pick[0] -= 1;
+		
+		if(pick[0] < 0.0)
+		{
+			return;
+		}
+			
+		
+		if((int)pick[0] != ed_selected_brush_polygon_index)
+		{
+			ed_selected_brush_polygon_index = (int)pick[0];
+			editor_OpenBrushFacePropertiesWindow(brush - brushes, ed_selected_brush_polygon_index);
+		}
+		else
+		{
+			ed_selected_brush_polygon_index = -1;
+			editor_CloseBrushFacePropertiesWindow();
+		}
+		
+		//printf("face %d\n", (int)pick[0]);
+		//gpu_UnbindGpuHeap();	
+		
+		//printf("[%f %f %f %f]\n", pick[0], pick[1], pick[2], pick[3]);
+		
+		//glEnable(GL_CULL_FACE);
+	}
 }
 
 int editor_Check3dHandle()
@@ -795,7 +1149,7 @@ int editor_Check3dHandle()
 	int i;
 	float step = (2.0 * 3.14159265) / ROTATION_HANDLE_DIVS;
 	float angle = 0.0;
-	
+	int index;
 	float angles_lut[ROTATION_HANDLE_DIVS][2];
 	
 	editor_EnablePicking();
@@ -831,17 +1185,56 @@ int editor_Check3dHandle()
 		
 		
 		
-		switch(handle_3d_mode)
+		switch(ed_handle_3d_mode)
 		{
 			case HANDLE_3D_TRANSLATION:
 			case HANDLE_3D_SCALE:
 				
-				right_vector = vec3(1.0, 0.0, 0.0);
-				up_vector = vec3(0.0, 1.0, 0.0);
-				forward_vector = vec3(0.0, 0.0, 1.0);
+				
+				if(ed_handle_3d_tranform_mode == HANDLE_3D_TRANFORM_GLOBAL || ed_handle_3d_mode == HANDLE_3D_TRANSLATION)
+				{
+					_global_vectors:
 						
+					right_vector = vec3(1.0, 0.0, 0.0);
+					up_vector = vec3(0.0, 1.0, 0.0);
+					forward_vector = vec3(0.0, 0.0, 1.0);
+				}
+				else
+				{
+					index = selections[selection_count - 1].index0;
+					
+					switch(selections[selection_count - 1].type)
+					{
+						case PICK_BRUSH:
+							right_vector = brushes[index].orientation.r_axis;
+							up_vector = brushes[index].orientation.u_axis;
+							forward_vector = brushes[index].orientation.f_axis;
+						break;
+						
+						case PICK_ENTITY:
+							right_vector = ent_entities[index].orientation.r_axis;
+							up_vector = ent_entities[index].orientation.u_axis;
+							forward_vector = ent_entities[index].orientation.f_axis;
+						break;
+						
+						case PICK_LIGHT:
+						case PICK_SPAWN_POINT:
+							goto _global_vectors;
+						break;
+					}
+				}
+			
+				
 				right_vector.x *= d;
+				right_vector.y *= d;
+				right_vector.z *= d;
+				
+				up_vector.x *= d;
 				up_vector.y *= d;
+				up_vector.z *= d;
+				
+				forward_vector.x *= d;
+				forward_vector.y *= d;
 				forward_vector.z *= d;
 				
 				right_vector.x += handle_3d_position.x;
@@ -862,7 +1255,7 @@ int editor_Check3dHandle()
 				glVertex3f(handle_3d_position.x, handle_3d_position.y, handle_3d_position.z);
 				glEnd();
 				
-				if(handle_3d_mode == HANDLE_3D_TRANSLATION)
+				if(ed_handle_3d_mode == HANDLE_3D_TRANSLATION)
 				{
 					glPointSize(16.0);
 					glBegin(GL_POINTS);
@@ -1084,8 +1477,8 @@ int editor_Check3dHandle()
 			
 		
 		
-		x = r_width * (normalized_mouse_x * 0.5 + 0.5);
-		y = r_height * (normalized_mouse_y * 0.5 + 0.5);
+		x = r_window_width * (normalized_mouse_x * 0.5 + 0.5);
+		y = r_window_height * (normalized_mouse_y * 0.5 + 0.5);
 		glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, q);
 		
 		bm_handle_3d_flags;
@@ -1130,13 +1523,21 @@ void editor_Set3dHandleMode(int mode)
 {
 	switch(mode)
 	{
-		case HANDLE_3D_TRANSLATION:
 		case HANDLE_3D_ROTATION:
-		case HANDLE_3D_SCALE:
-			handle_3d_mode = mode;
-			handle_3d_mode_str = handle_3d_mode_strs[mode];	
+			ed_editor_snap_value_str = ed_editor_angular_snap_values_str[ed_editor_angular_snap_value_index];
 		break;
+		
+		case HANDLE_3D_TRANSLATION:
+		case HANDLE_3D_SCALE:
+			ed_editor_snap_value_str = ed_editor_linear_snap_values_str[ed_editor_linear_snap_value_index];
+		break;
+		
+		default:
+			return;
 	}
+	
+	ed_handle_3d_mode = mode;
+	ed_handle_3d_mode_str = ed_handle_3d_mode_strs[mode];	
 }
 
 void editor_Set3dHandlePivotMode(int mode)
@@ -1147,6 +1548,41 @@ void editor_Set3dHandlePivotMode(int mode)
 		case HANDLE_3D_MEDIAN_POINT:
 			handle_3d_position_mode = mode;
 		break;
+	}
+}
+
+void editor_SetEditingMode(int mode)
+{
+	switch(mode)
+	{
+		case EDITING_MODE_OBJECT:
+			editor_CloseBrushFacePropertiesWindow();
+		break;
+		
+		case EDITING_MODE_BRUSH:
+			
+		break;
+		
+		case EDITING_MODE_UV:
+		
+		break;
+		
+		default:
+			return;
+	}
+	
+	ed_editing_mode = mode;
+}
+
+void editor_ToggleBrushEditing()
+{
+	if(ed_editing_mode == EDITING_MODE_OBJECT)
+	{
+		editor_SetEditingMode(EDITING_MODE_BRUSH);
+	}
+	else
+	{
+		editor_SetEditingMode(EDITING_MODE_OBJECT);
 	}
 }
 
@@ -1178,7 +1614,10 @@ void editor_Position3dCursor()
 	float qt;
 	
 	gpu_BindGpuHeap();
-	shader_UseShader(brush_dist_shader);	
+	//shader_UseShader(brush_dist_shader);	
+	renderer_SetShader(brush_dist_shader);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, (int)&((vertex_t *)0)->position, sizeof(vertex_t));
+	
 	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
 	
 	glViewport(0, 0, r_window_width, r_window_height);
@@ -1253,9 +1692,10 @@ void editor_Position3dCursor()
 	
 	mat4_t_compose(&camera_to_world_matrix, &active_camera->world_orientation, active_camera->world_position);
 	
-	
 	qr = active_camera->frustum.znear / active_camera->frustum.right;
 	qt = active_camera->frustum.znear / active_camera->frustum.top;
+	
+	//printf("%f\n", q[0]);
 	
 	if(q[0] == active_camera->frustum.zfar)
 	{
@@ -1270,6 +1710,8 @@ void editor_Position3dCursor()
 	pos.y = (normalized_mouse_y / qt) * (-z);
 	pos.z = z;
 	pos.w = 1.0;
+	
+	//printf("%f\n", z);
 		
 	mat4_t_vec4_t_mult(&camera_to_world_matrix, &pos);
 	
@@ -1298,38 +1740,97 @@ void editor_Position3dCursor()
 	//if(pick_type == PICK_LIGHT) printf("light!\n");
 }
 
+void editor_Position3dHandle()
+{
+	int i;
+	
+	handle_3d_position.x = 0.0;
+	handle_3d_position.y = 0.0;
+	handle_3d_position.z = 0.0;
+	
+	for(i = 0; i < selection_count; i++)
+	{	
+		switch(selections[i].type)
+		{
+			case PICK_LIGHT:
+				handle_3d_position.x += light_positions[selections[i].index0].position.x;
+				handle_3d_position.y += light_positions[selections[i].index0].position.y;
+				handle_3d_position.z += light_positions[selections[i].index0].position.z;
+			break;
+			
+			case PICK_BRUSH:
+				handle_3d_position.x += brushes[selections[i].index0].position.x;
+				handle_3d_position.y += brushes[selections[i].index0].position.y;
+				handle_3d_position.z += brushes[selections[i].index0].position.z;
+			break;	
+			
+			case PICK_SPAWN_POINT:
+				handle_3d_position.x += spawn_points[selections[i].index0].position.x;
+				handle_3d_position.y += spawn_points[selections[i].index0].position.y;
+				handle_3d_position.z += spawn_points[selections[i].index0].position.z;
+			break;
+			
+			case PICK_ENTITY:
+				handle_3d_position.x += ent_entities[selections[i].index0].position.x;
+				handle_3d_position.y += ent_entities[selections[i].index0].position.y;
+				handle_3d_position.z += ent_entities[selections[i].index0].position.z;
+			break;	
+		}
+	
+	}
+	
+	handle_3d_position.x /= (float)selection_count;
+	handle_3d_position.y /= (float)selection_count;
+	handle_3d_position.z /= (float)selection_count;
+}
+
 void editor_AddSelection(pick_record_t *record)
 {
 	/* try to drop this selection, to make sure
 	there's just one selection per object... */
 	editor_DropSelection(record);
 	
-	selected_light.r = NULL;
+	/*selected_light.r = NULL;
 	selected_light.g = NULL;
 	selected_light.b = NULL;
 	selected_light.radius = NULL;
 	selected_light.energy = NULL;
+	*/
+	
+	if(record->type != PICK_UV_VERTEX)
+	{
+		ed_selected_light_params = NULL;
+		ed_selected_light_position = NULL;
+		
+		ed_selected_brush = NULL;
+		ed_selected_brush_polygon_index = -1;
+		ed_selected_brush_selection_index = -1;
+	}
+	
 	
 	
 	switch(record->type)
 	{
 		case PICK_LIGHT:
-			selected_light.r = &light_params[record->index0].r;
-			selected_light.g = &light_params[record->index0].g;
-			selected_light.b = &light_params[record->index0].b;
-			selected_light.radius = &light_params[record->index0].radius;
-			selected_light.energy = &light_params[record->index0].energy;
+			ed_selected_light_params = &light_params[record->index0];
+			ed_selected_light_position = &light_positions[record->index0];
+			editor_CloseBrushPropertiesWindow();
+			editor_OpenLightPropertiesWindow(record->index0);
+			//ed_selected_brush_selection_index = -1;
 		break;
 		
 		case PICK_BRUSH:
-			selected_brush.vertex_count = &brushes[record->index0].vertex_count;
-			selected_brush.triangle_group_count = &brushes[record->index0].triangle_group_count;
-			selected_brush.type = &brushes[record->index0].type;
-			selected_brush.polygon_count = &brushes[record->index0].polygon_count;
+			ed_selected_brush = &brushes[record->index0];
+			editor_CloseLightPropertiesWindow();
+			ed_selected_brush_selection_index = selection_count;
+		break;
+		
+		case PICK_UV_VERTEX:
+			
 		break;
 	}
 	
-	selected_type = record->type;
+	ed_selection_type = record->type;
 	
 	selections[selection_count++] = *record;
 }
@@ -1359,56 +1860,81 @@ void editor_DropSelection(pick_record_t *record)
 		}
 	}
 	
-	selected_light.r = NULL;
+	/*selected_light.r = NULL;
 	selected_light.g = NULL;
 	selected_light.b = NULL;
 	selected_light.radius = NULL;
-	selected_light.energy = NULL;
+	selected_light.energy = NULL;*/
+	
+	/*if(selections[selection_count - 1].type != PICK_UV_VERTEX &&)
+	{
+		ed_selected_light_params = NULL;
+		ed_selected_light_position = NULL;
+		
+		ed_selected_brush = NULL;
+		ed_selected_brush_polygon_index = -1;
+		ed_selected_brush_selection_index = -1;
+	}*/
+	
+	
 	
 	if(selection_count)
 	{
 		switch(selections[selection_count - 1].type)
 		{
 			case PICK_LIGHT:
-				selected_light.r = &light_params[selections[selection_count - 1].index0].r;
-				selected_light.g = &light_params[selections[selection_count - 1].index0].g;
-				selected_light.b = &light_params[selections[selection_count - 1].index0].b;
-				selected_light.radius = &light_params[selections[selection_count - 1].index0].radius;
-				selected_light.energy = &light_params[selections[selection_count - 1].index0].energy;
+				ed_selected_light_params = &light_params[selections[selection_count - 1].index0];
+				ed_selected_light_position = &light_positions[selections[selection_count - 1].index0];
+				
+				ed_selected_brush = NULL;
+				ed_selected_brush_polygon_index = -1;
+				ed_selected_brush_selection_index = -1;
+				
 			break;
 						
 			case PICK_BRUSH:
-				selected_brush.vertex_count = &brushes[selections[selection_count - 1].index0].vertex_count;
-				selected_brush.triangle_group_count = &brushes[selections[selection_count - 1].index0].triangle_group_count;
-				selected_brush.type = &brushes[selections[selection_count - 1].index0].type;
-				selected_brush.polygon_count = &brushes[selections[selection_count - 1].index0].polygon_count;	
+				ed_selected_brush = &brushes[selections[selection_count - 1].index0];
+				ed_selected_brush_selection_index = selection_count - 1;
+				
+				ed_selected_light_params = NULL;
+				ed_selected_light_position = NULL;
+				
 			break;
 		}
 					
-		selected_type = selections[selection_count - 1].type;
+		ed_selection_type = selections[selection_count - 1].type;
 	}
 	else
 	{
-		selected_type = PICK_NONE;
+		ed_selection_type = PICK_NONE;
 	}
 }
 
 void editor_ClearSelection()
 {
-	selection_count = 0;
-	selected_type = PICK_NONE;
 	
-	selected_light.r = NULL;
-	selected_light.g = NULL;
-	selected_light.b = NULL;
-	selected_light.radius = NULL;
-	selected_light.energy = NULL;
+	if(ed_editing_mode == EDITING_MODE_UV)
+	{
+		selection_count = ed_selected_brush_selection_index + 1;
+		ed_selection_type = PICK_BRUSH;
+	}
+	else
+	{
+		selection_count = 0;
+		ed_selection_type = PICK_NONE;
+		
+		ed_selected_light_params = NULL;
+		ed_selected_light_position = NULL;
+		
+		ed_selected_brush = NULL;
+		ed_selected_brush_polygon_index = -1;
+		ed_selected_brush_polygon_vertex_index = -1;
+		ed_selected_brush_selection_index = -1;
+	}
 	
+	editor_CloseLightPropertiesWindow();
+	editor_CloseBrushPropertiesWindow();
 	
-	selected_brush.polygon_count = NULL;
-	selected_brush.vertex_count = NULL;
-	selected_brush.type = NULL;
-	selected_brush.triangle_group_count = NULL;
 }
 
 void editor_TranslateSelections(vec3_t direction, float amount)
@@ -1440,12 +1966,20 @@ void editor_TranslateSelections(vec3_t direction, float amount)
 				spawn_points[selections[i].index0].position.y += direction.y * amount;
 				spawn_points[selections[i].index0].position.z += direction.z * amount;
 			break;
+			
+			case PICK_UV_VERTEX:
+			
+			break;
+			
+			case PICK_ENTITY:
+				entity_TranslateEntity(selections[i].index0, direction, amount);
+			break;
 		}
 	}
 	
-	handle_3d_position.x += direction.x * amount;
+	/*handle_3d_position.x += direction.x * amount;
 	handle_3d_position.y += direction.y * amount;
-	handle_3d_position.z += direction.z * amount;
+	handle_3d_position.z += direction.z * amount;*/
 }
 
 void editor_RotateSelections(vec3_t axis, float amount)
@@ -1518,6 +2052,29 @@ void editor_RotateSelections(vec3_t axis, float amount)
 				light_TranslateLight(selections[i].index0, v, 1.0);
 			break;
 			
+			
+			case PICK_ENTITY:
+				v = ent_entities[selections[i].index0].position;
+				
+				
+				entity_RotateEntity(selections[i].index0, axis, amount);
+				
+				v.x -= handle_3d_position.x;
+				v.y -= handle_3d_position.y;
+				v.z -= handle_3d_position.z;
+				
+				mat3_t_vec3_t_mult(&rot, &v);
+				
+				
+				v.x += handle_3d_position.x;
+				v.y += handle_3d_position.y;
+				v.z += handle_3d_position.z;
+				
+				ent_entities[selections[i].index0].position = v;
+				//ent_entities[selections[i].index0].flags |= ENTITY_HAS_MOVED;
+				//spawn_points[selections[i].index0].position = v;
+			break;
+			
 			case PICK_SPAWN_POINT:
 				v = spawn_points[selections[i].index0].position;
 				
@@ -1535,6 +2092,7 @@ void editor_RotateSelections(vec3_t axis, float amount)
 				spawn_points[selections[i].index0].position = v;
 				
 			break;
+				
 		}
 	}
 }
@@ -1550,6 +2108,10 @@ void editor_ScaleSelections(vec3_t axis, float amount)
 		{
 			case PICK_BRUSH:
 				brush_ScaleBrush(&brushes[selections[i].index0], axis, amount);
+			break;
+			
+			case PICK_ENTITY:
+				entity_ScaleEntity(selections[i].index0, axis, amount);
 			break;
 		}
 	}
@@ -1578,7 +2140,7 @@ void editor_CopySelections()
 				light_pos = &light_positions[selections[i].index0];
 				light_parms = &light_params[selections[i].index0];
 				
-				new_index = light_CreateLight("copy_light", &light_pos->orientation, light_pos->position, vec3((float)light_parms->r / 255.0, (float)light_parms->g / 255.0, (float)light_parms->b / 255.0), LIGHT_ENERGY(light_parms->energy), LIGHT_RADIUS(light_parms->radius), light_parms->bm_flags);
+				new_index = light_CreateLight("copy_light", &light_pos->orientation, light_pos->position, vec3((float)light_parms->r / 255.0, (float)light_parms->g / 255.0, (float)light_parms->b / 255.0), (float)(LIGHT_ENERGY(light_parms->energy)), (float)(LIGHT_RADIUS(light_parms->radius)), light_parms->bm_flags);
 				
 				selections[i].index0 = new_index;
 			break;
@@ -1626,6 +2188,7 @@ void editor_StartPIE()
 		player_SpawnPlayer(pie_player_index, -1);
 		player_SetPlayerAsActiveIndex(pie_player_index);
 		engine_SetEngineState(ENGINE_PLAYING);
+		r_draw_gui = 0;
 	}
 	
 	
@@ -1640,6 +2203,7 @@ void editor_StopPIE()
 		player_RemovePlayer(pie_player_index);
 		camera_SetCamera(editor_camera);
 		engine_SetEngineState(ENGINE_PAUSED);
+		r_draw_gui = 1;
 		//printf("stop pie!\n");
 		
 		//printf("%d\n", active_player->bm_flags & PLAYER_IN_WORLD);
@@ -1709,6 +2273,8 @@ void editor_WindowResizeCallback()
 	//glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, cursor_depth_texture_id, 0);
 	
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	
+	
 }
 
 

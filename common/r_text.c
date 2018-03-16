@@ -22,7 +22,7 @@ void renderer_BlitSurface(SDL_Surface *surface, float x, float y)
 	glPushMatrix();
 	glLoadIdentity();
 	
-	
+	 
 	glRasterPos2f(((float)x / (float)r_window_width) * 2.0 - 1.0, ((float)(y) / (float)r_window_height) * 2.0 - 1.0);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 	glUseProgram(0);

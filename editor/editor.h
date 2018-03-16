@@ -3,6 +3,7 @@
 
 #include "ed_common.h"
 #include "ed_in.h"
+#include "brush.h"
 
 
 void editor_Init();
@@ -25,7 +26,9 @@ void editor_EnablePicking();
 
 void editor_DisablePicking();
 
-int editor_Pick(pick_record_t *record);
+int editor_PickObject();
+
+int editor_PickOnBrush(brush_t *brush);
 
 int editor_Check3dHandle();
 
@@ -33,7 +36,13 @@ void editor_Set3dHandleMode(int mode);
 
 void editor_Set3dHandlePivotMode(int mode);
 
+void editor_SetEditingMode(int mode);
+
+void editor_ToggleBrushEditing();
+
 void editor_Position3dCursor();
+
+void editor_Position3dHandle();
 
 
 
@@ -64,4 +73,13 @@ void editor_StopPIE();
 void editor_WindowResizeCallback();
 
 
+
 #endif 
+
+
+
+
+
+
+
+

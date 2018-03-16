@@ -18,7 +18,7 @@ extern bsp_pnode_t *world_nodes;
 extern int world_leaves_count;
 extern bsp_dleaf_t *world_leaves;
 
-
+ 
 
 /* from light.c */
 extern light_position_t *visible_light_positions;

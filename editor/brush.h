@@ -5,7 +5,7 @@
 
 #include "matrix_types.h"
 #include "vector_types.h"
-#include "mesh.h"
+#include "model.h"
 #include "world.h"
 #include "bsp_common.h"
 //#include "bsp_cmp.h"
@@ -25,7 +25,11 @@ enum BRUSH_TYPE
 enum BRUSH_FLAGS
 {
 	BRUSH_MOVED = 1,
-	BRUSH_ON_COMPOUND = 1 << 1
+	BRUSH_ON_COMPOUND = 1 << 1,
+	BRUSH_SUBTRACTIVE = 1 << 2,
+	BRUSH_UPDATE = 1 << 3,
+	BRUSH_INVISIBLE = 1 << 4,
+	BRUSH_CLIP_POLYGONS = 1 << 5,
 };
 
 
@@ -62,10 +66,18 @@ typedef struct
 													   is added/removed to/from the world... */
 	bsp_striangle_t *triangles;
 	vertex_t *vertices;
+	struct bsp_edge_t *edges;						/* necessary to manipulate individual faces... */
 	int *indexes;
 	int index_count;
 	struct bsp_polygon_t *polygons;			
 	int polygon_count;
+	
+	
+	struct bsp_polygon_t *clipped_polygons;
+	struct bsp_node_t *brush_bsp;
+	
+	//vec3_t obb[3];
+	
 	
 	int max_vertexes;								/* max number before a gpu realloc is needed... */
 	int vertex_count;
@@ -75,6 +87,11 @@ typedef struct
 	int type;
 	unsigned int element_buffer;
 	int bm_flags;
+	
+	int max_intersections;
+	int *intersections;
+	
+	
 }brush_t;
 
 
@@ -84,11 +101,15 @@ void brush_Init();
 
 void brush_Finish();
 
-int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short type);
+void brush_ProcessBrushes();
+
+int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short type, short b_subtractive);
 
 int brush_CreateEmptyBrush();
 
 void brush_BuildTriangleGroups(brush_t *brush);
+
+void brush_BuildEdgeList(brush_t *brush);
 
 int brush_CopyBrush(brush_t *src);
 
@@ -102,7 +123,7 @@ void brush_CreateCylinder(int base_vertexes, int *vert_count, float **vertices, 
 
 void brush_UpdateBrushElementBuffer(brush_t *brush);
 
-void brush_UpdateBrush(brush_t *brush);
+void brush_UploadBrushVertices(brush_t *brush);
 
 void brush_TranslateBrush(brush_t *brush, vec3_t direction);
 
@@ -111,6 +132,20 @@ void brush_RotateBrush(brush_t *brush, vec3_t axis, float amount);
 void brush_ScaleBrush(brush_t *brush, vec3_t axis, float amount);
 
 void brush_SetFaceMaterial(brush_t *brush, int face_index, int material_index);
+
+//void brush_AddBrushToCompoundBrush(brush_t *compound_brush, brush_t *brush);
+
+//void brush_ComputeCompoundBrush(brush_t *brush);
+
+void brush_SetAllVisible();
+
+void brush_SetAllInvisible();
+
+void brush_BuildBrushBsp(brush_t *brush);
+
+void brush_CheckIntersecting();
+
+int brush_CheckBrushIntersection(brush_t *a, brush_t *b);
 
 #endif 
 

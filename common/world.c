@@ -12,7 +12,7 @@
 #include "camera.h"
 
 #include "world.h"
-#include "mesh.h"
+#include "model.h"
 #include "texture.h"
 
 #include "l_main.h"
@@ -23,7 +23,7 @@
 #include "bsp_file.h"
 
 #include "engine.h"
-
+ 
 //bsp_node_t *world_bsp = NULL;
 //int world_leaves_count = 0;
 //bsp_sleaf_t *world_leaves = NULL;
@@ -71,7 +71,7 @@ extern int forward_pass_shader;
 
 
 
-void world_Init()
+int world_Init()
 {
 	
 	//global_triangle_group_list_size = 0;
@@ -81,6 +81,8 @@ void world_Init()
 	
 	//index_buffer = malloc(sizeof(int) * 200000);
 	glGenBuffers(1, &world_element_buffer);
+	
+	return 1;
 	
 	/*glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_buffer);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * 200000, NULL, GL_DYNAMIC_DRAW);
@@ -111,9 +113,9 @@ void world_Finish()
 
 int world_LoadBsp(char *file_name)
 {
-	FILE *file;
+	/*FILE *file;
 	bsp_header_t header;
-	light_lump_t light_lump;
+	light_record_t light_record;
 	file = fopen(file_name, "rb");
 	
 	if(!file)
@@ -129,9 +131,9 @@ int world_LoadBsp(char *file_name)
 	
 	for(i = 0; i < header.light_count; i++)
 	{	
-		fread(&light_lump, sizeof(light_lump_t), 1, file);
+		fread(&light_record, sizeof(light_record_t), 1, file);
 		
-		light_CreateLight("light", &light_lump.orientation, light_lump.position, light_lump.color, light_lump.radius, light_lump.energy, light_lump.bm_flags);
+		light_CreateLight("light", &light_record.orientation, light_record.position, light_record.color, light_record.radius, light_record.energy, light_record.bm_flags);
 	}
 	
 	world_nodes = malloc(sizeof(bsp_pnode_t) * header.world_nodes_count);
@@ -147,51 +149,11 @@ int world_LoadBsp(char *file_name)
 	fclose(file);
 	
 	
-	return 1;
+	return 1;*/
+	
+	return 0;
 }
 
-void world_BuildBatches()
-{
-	
-	int i;
-	int c;
-	
-	int k;
-	bsp_dleaf_t *leaf;
-	
-	if(!world_leaves)
-		return;
-		
-	int total_batches = 0;	
-	
-	for(i = 0; i < world_leaves_count; i++)
-	{
-		for(k = 0; k < world_triangle_group_count; k++)
-		{
-			world_triangle_groups[k].next = 0;
-		}
-		
-		leaf = &world_leaves[i];
-		
-		c = leaf->tris_count;
-		
-		for(k = 0; k < c; k++)
-		{
-			world_triangle_groups[leaf->tris[k].triangle_group].next++;
-		}
-		
-		
-		for(k = 0; k < world_triangle_group_count; k++)
-		{
-			if(world_triangle_groups[k].next)
-			{
-				total_batches++;
-			}
-		}
-	}
-		
-		
-}
 
 void world_VisibleLeaves()
 {
@@ -284,7 +246,7 @@ void world_VisibleWorld()
 		
 		for(j = 0; j < visible_leaves_count; j++)
 		{
-			break;
+			//break;
 			leaf = visible_leaves[j];
 			
 			corners[0].x = leaf->center.x - leaf->extents.x;
@@ -436,8 +398,16 @@ void world_VisibleWorld()
 			}
 		}*/
 		
+	/*	if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED)
+		{
+			printf("breakpoint!\n");
+			
+			printf("breakpoint!\n");
+		}*/
 		
 		
+		
+		//printf("%d\n", visible_leaves_count);
 		/* for each leaf on the list... */
 		for(j = 0; j < visible_leaves_count; j++)
 		{
@@ -532,24 +502,6 @@ void world_Update()
 	
 }
 
-
-
-
-
-void world_Move(vec3_t *position, vec3_t *velocity)
-{
-	
-}
-
-void world_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace)
-{
-	
-}
-
-void world_TryStepDown(vec3_t *position, vec3_t *velocity, trace_t *trace)
-{
-	
-}
 
 
 

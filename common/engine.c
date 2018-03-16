@@ -1,10 +1,16 @@
 #include <stdio.h>
+#include <signal.h>
+
 
 #include "engine.h"
+#include "memory.h"
 #include "SDL2\SDL_timer.h"
 
 #include <float.h>
 
+
+int command_line_arg_count;
+char **command_line_args;
 
 int engine_state;
 
@@ -14,7 +20,7 @@ float delta_time;
 unsigned long long start_delta;
 unsigned long long end_delta;
 
-void (*engine_StartUp)();
+void (*engine_StartUp)(int, char *[]);
 
 void (*engine_GameMain)(float );
 
@@ -27,36 +33,71 @@ float collection_delta = 0.0;
 int collection_frame_count = 0;
 float fps = 0.0;
 
-void engine_Init(int width, int height, int init_mode)
+
+void engine_SigSegHandler(int signal)
+{
+	log_LogMessage(LOG_MESSAGE_ERROR, "engine_SigSegHandler: Forced log flush due a segmentation fault!");
+	//engine_BackTrace();
+	log_Finish();
+	exit(-1);
+}
+
+void engine_Init(int width, int height, int init_mode, int argc, char *argv[])
 {
 	mat3_t r;
 	int camera_index;
+	int *i = 0;
 	
-	log_Init("log");
+	signal(SIGSEGV, engine_SigSegHandler);
+	
+	//*i = 5;
+	
+	log_Init();
 	
 	log_LogMessage(LOG_MESSAGE_NOTIFY, "ENGINE START");
 	
-	if(renderer_Init(width, height, init_mode) &&
-	   shader_Init("shaders") &&
-	   input_Init() &&
-	   gpu_Init() &&
-	   mesh_Init() &&
-	   light_Init() &&
-	   world_Init() &&
-	   camera_Init() &&
-	   player_Init() &&
-	   sound_Init() &&
-	   gui_Init() && 
-	   physics_Init() &&
-	   material_Init() &&
-	   texture_Init() && 
-	   font_Init() &&
-	   bsp_Init()
-	   )
-	{
-		b_init_properly = 1;
-	}
+	path_Init(argv[0]);
+	path_AddSearchPath("shaders", SEARCH_PATH_SHADER);
+	path_AddSearchPath("fonts", SEARCH_PATH_FONT);
 	
+	b_init_properly = 1;
+	
+	//if(renderer_Init(width, height, init_mode))
+	//printf("start\n");
+	b_init_properly &= renderer_Init(width, height, init_mode);
+	//printf("a\n");
+	b_init_properly &= shader_Init();
+	//printf("b\n");
+	b_init_properly &= input_Init();
+	//printf("c\n");
+	b_init_properly &= gpu_Init();
+	//printf("d\n");
+	b_init_properly &= model_Init();
+	//printf("e\n");
+	b_init_properly &= entity_Init();
+	//printf("f\n");
+	b_init_properly &= light_Init();
+	//printf("g\n");
+	b_init_properly &= world_Init();
+	//printf("h\n");
+	b_init_properly &= camera_Init();
+	//printf("i\n");
+	b_init_properly &= sound_Init();
+	//printf("j\n");
+	b_init_properly &= player_Init();
+	//printf("k\n");
+	b_init_properly &= gui_Init();
+	//printf("l\n");
+	b_init_properly &= physics_Init();
+	//printf("m\n");
+	b_init_properly &= material_Init();
+	//printf("n\n");
+	b_init_properly &= texture_Init();
+	//printf("o\n");
+	b_init_properly &= font_Init();
+	//printf("p\n");
+	b_init_properly &= bsp_Init();
+	//printf("q\n");
 	
 	if(b_init_properly)
 	{		
@@ -75,6 +116,9 @@ void engine_Init(int width, int height, int init_mode)
 		log_LogMessage(LOG_MESSAGE_NOTIFY, "Massacre engine has found problems during initialization...");
 	}
 	
+	command_line_arg_count = argc;
+	command_line_args = argv;
+	
 	
 }
 
@@ -86,29 +130,31 @@ void engine_Finish()
 		shader_Finish();
 		material_Finish();
 		input_Finish();
-		mesh_Finish();
+		model_Finish();
 		world_Finish();
 		camera_Finish();
 		light_Finish();
 		texture_Finish();
 		sound_Finish();
-		//collision_Finish();
+		entity_Finish();
 		gui_Finish();
 		bsp_Finish();
 		player_Finish();
 		font_Finish();
-		//projectile_Finish();
 		physics_Finish();
-		//brush_Finish();
 		gpu_Finish();
 		renderer_Finish();
 		log_LogMessage(LOG_MESSAGE_NOTIFY, "Massacre engine finished properly!");
 	}
 
-
+	path_Finish();
+	
+	memory_Report();
 	log_LogMessage(LOG_MESSAGE_NOTIFY, "ENGINE FINISH");
 	
 	log_Finish();
+	
+	
 }
 
 void engine_MainLoop()
@@ -116,10 +162,10 @@ void engine_MainLoop()
 	
 	if(!b_init_properly)
 		return;
-	
+
 	if(engine_StartUp)
 	{
-		engine_StartUp();
+		engine_StartUp(command_line_arg_count, command_line_args);
 	}
 	
 	float s;
@@ -127,39 +173,35 @@ void engine_MainLoop()
 	
 	while(engine_state)
 	{
-		engine_UpdateDeltaTime();
-		
+		engine_UpdateDeltaTime();		
 		renderer_OpenFrame();
-		input_GetInput();
+		input_GetInput(delta_time);
 		gui_ProcessGUI();
+		
 		engine_GameMain(delta_time);
 		
-
 		if(engine_state == ENGINE_PLAYING)
 		{
 			player_ProcessActivePlayer(delta_time);
 			player_ProcessAI(delta_time);
 			player_UpdatePlayers(delta_time);
-			physics_ProcessCollisions(*(float *)&delta_time);
+			physics_ProcessCollisions(delta_time);
+			player_PostUpdatePlayers(delta_time);
 			//projectile_UpdateProjectiles();
-		}
-		
-		
+		} 
+
 		sound_ProcessSound();
-		//s = engine_GetDeltaTime();
-		light_UpdateLights();	
+		light_UpdateLights();
+		entity_UpdateEntities();
+			
 		world_VisibleWorld();
 		light_VisibleLights();
 		
-		//e = engine_GetDeltaTime();
-		
-		
-		//s = engine_GetDeltaTime();
-		renderer_DrawFrame();
-		//e = engine_GetDeltaTime();
+
+		renderer_DrawFrame();		
 		renderer_CloseFrame();
 		
-		if(collection_delta < FPS_COLLECTION_TIME)
+		/*if(collection_delta < FPS_COLLECTION_TIME)
 		{
 			accum_frame_time += 1.0 / (engine_GetDeltaTime() * 0.001);
 			collection_delta += engine_GetDeltaTime();
@@ -172,7 +214,9 @@ void engine_MainLoop()
 			collection_frame_count = 0;
 			collection_delta = 0.0;
 			accum_frame_time = 0.0;
-		}
+		}*/
+		
+		
 		
 		
 		
@@ -183,7 +227,7 @@ void engine_MainLoop()
 	}
 }
 
-void engine_SetGameStartupFunction(void (*startup_fn)(void))
+void engine_SetGameStartupFunction(void (*startup_fn)(int, char *[]))
 {
 	engine_StartUp = startup_fn;
 }
@@ -192,6 +236,16 @@ void engine_SetGameMainFunction(void (*game_main_fn)(float ))
 {
 	//game_main = game_main_fn;
 	engine_GameMain = game_main_fn;
+}
+
+void engine_ReadConfig()
+{
+	
+}
+
+void engine_WriteConfig()
+{
+	
 }
 
 void engine_SetEngineState(int state)
@@ -227,7 +281,7 @@ void engine_SetEngineState(int state)
 void engine_UpdateDeltaTime()
 {
 	end_delta = SDL_GetPerformanceCounter();
-	delta_time = (float)((end_delta - start_delta) * 1000) / performance_frequency;
+	delta_time = (float)((float)(end_delta - start_delta) * 1000) / performance_frequency;
 	start_delta = end_delta;
 }
 
@@ -240,7 +294,9 @@ float engine_GetDeltaTime()
 #if defined(__WIN32__) || defined(__WINRT__)
 #define WINDOWS_BACKTRACE
 #include <Windows.h>
+#include <winnt.h>
 #include <Dbghelp.h>
+#include <imagehlp.h>
 
 #else
 #define LINUX_BACKTRACE
@@ -252,7 +308,52 @@ void engine_BackTrace()
 {
 	#ifdef WINDOWS_BACKTRACE
 	
-	HANDLE h_process;
+	CONTEXT context;
+	STACKFRAME frame;
+	HANDLE process;
+	HANDLE thread;
+	HINSTANCE module;
+	IMAGEHLP_SYMBOL *symbol;
+	
+	void *(*exception_information)();
+	int d = 0;
+	char symbol_buffer[sizeof(IMAGEHLP_SYMBOL) + 255];
+	
+	memset(symbol_buffer, 0, sizeof(IMAGEHLP_SYMBOL) + 255);
+	symbol = (IMAGEHLP_SYMBOL *)symbol_buffer;
+	
+	
+	symbol->SizeOfStruct = sizeof(IMAGEHLP_SYMBOL) + 255;
+	symbol->MaxNameLength = 254;
+	
+
+	RtlCaptureContext(&context); 
+	
+	//context = ((GetExceptionInformation())->ContextRecord);
+	process = GetCurrentProcess();
+	thread = GetCurrentThread();
+	
+	SymInitialize(process, 0, 1);
+	
+	
+	frame.AddrPC.Offset = context.Eip;
+	frame.AddrPC.Mode = AddrModeFlat;
+	frame.AddrStack.Offset = context.Esp;
+	frame.AddrStack.Mode = AddrModeFlat;
+	frame.AddrFrame.Offset = context.Ebp;
+	frame.AddrFrame.Mode = AddrModeFlat;
+	
+	while (StackWalk(IMAGE_FILE_MACHINE_I386, process, thread, &frame, &context, 0, SymFunctionTableAccess, SymGetModuleBase, 0))
+  	{
+  		if(SymGetSymFromAddr(process, frame.AddrPC.Offset, (DWORD *)&d, symbol))
+		{
+			printf("%s\n", symbol->Name);  	
+		}
+  		//addr2line("wow", (void*)frame.AddrPC.Offset);
+  		//printf("%x\n", (void *)frame.AddrPC.Offset);
+  	}
+	
+	/*HANDLE h_process;
 	HANDLE h_thread;
 	DWORD machine_type;
 	SYMBOL_INFO *info;
@@ -268,13 +369,14 @@ void engine_BackTrace()
 		printf("%x\n", trace[i]);
 	}
 	
-	free(trace);
+	free(trace);*/
+	
+	SymCleanup(GetCurrentProcess());
 	
 	#else 
 	
 	#endif
 }
-
 
 
 

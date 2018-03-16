@@ -6,20 +6,23 @@
 
 enum SHADER_UNIFORMS
 {
-	UNIFORM_TEXTURE_SAMPLER0,
-	UNIFORM_TEXTURE_SAMPLER1,
-	UNIFORM_TEXTURE_SAMPLER2,
-	UNIFORM_TEXTURE_CUBE_SAMPLER0,
-	UNIFORM_SHADOW_SAMPLER,
-	UNIFORM_TEXTURE_FLAGS,
-	UNIFORM_FRAME,
-	UNIFORM_WIDTH,
-	UNIFORM_HEIGHT,
-	UNIFORM_LIGHT_COUNT,
-	UNIFORM_LIGHT_INDEX,
-	UNIFORM_CAMERA_TO_LIGHT_MATRIX,
-	UNIFORM_CLUSTER_TEXTURE,
-	UNIFORM_ACTIVE_CAMERA_POSITION,
+	UNIFORM_texture_sampler0 = 0,
+	UNIFORM_texture_sampler1,
+	UNIFORM_texture_sampler2,
+	UNIFORM_texture_cube_sampler0,
+	UNIFORM_r_frame,
+	UNIFORM_r_width,
+	UNIFORM_r_height,
+	UNIFORM_r_bloom_radius,
+	UNIFORM_cluster_texture,
+	UNIFORM_active_camera_position,
+	UNIFORM_material_flags,
+	UNIFORM_projection_matrix,
+	UNIFORM_view_matrix,
+	UNIFORM_model_matrix,
+	UNIFORM_view_projection_matrix,
+	UNIFORM_model_view_projection_matrix,
+	UNIFORM_LAST_UNIFORM
 };
 
 enum SHADER_ATTRIBS
@@ -37,6 +40,12 @@ enum SHADER_FLAGS
 
 typedef struct
 {
+	unsigned short location;
+//	unsigned short type;
+}uniform_t;
+
+typedef struct
+{
 	
 	char *name;
 	char *file_name;
@@ -48,34 +57,17 @@ typedef struct
 	unsigned char vertex_tangent;
 	unsigned char vertex_tex_coords;
 	
-	unsigned short texture_sampler0;
-	unsigned short texture_sampler1;
-	unsigned short texture_sampler2;
-	unsigned short texture_cube_sampler0;
-	unsigned short shadow_sampler;
-	unsigned short camera_to_light_matrix;
-	unsigned short frame;
-	unsigned short width;
-	unsigned short height;
-	unsigned short active_camera_position;
-	//unsigned short render_target_width;
-	//unsigned short render_target_height;
-	unsigned short cluster_texture;
-	unsigned short texture_flags;
-	//unsigned short light_count;
+	uniform_t *uniforms;
+	
 	unsigned short shader_index;
-	unsigned short light_index;
-	
 	unsigned short bm_flags;
-	//unsigned short align0;
-	
 
 }shader_t;
 
 
 
 
-int shader_Init(char *shader_path);
+int shader_Init();
 
 void shader_Finish();
 

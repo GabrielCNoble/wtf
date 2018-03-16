@@ -4,7 +4,7 @@
 #include "matrix_types.h"
 #include "vector_types.h"
 #include "camera_types.h"
-#include "mesh.h"
+#include "model.h"
 
 #define PLAYER_CAMERA_HEIGHT 0.75
 //#define PLAYER_CAMERA_HEIGHT 0.0
@@ -59,10 +59,12 @@ typedef struct
 	
 	camera_t *player_camera;
 	char *player_name;
-	int weapon_start;
-	int weapon_count;
-	int body_start;
-	int body_count;
+	
+	int gun_entity_index;
+	//int weapon_start;
+	//int weapon_count;
+	//int body_start;
+	//int body_count;
 	float weapon_x_shift;
 	float weapon_y_shift;
 	float weapon_z_shift;
@@ -87,7 +89,7 @@ typedef struct
 }spawn_point_t;
 
 
-void player_Init();
+int player_Init();
 
 void player_Finish();
 
@@ -115,11 +117,13 @@ void player_SetPlayerAsActive(player_t *player);
 
 void player_SetPlayerAsActiveIndex(int player_index);
 
-void player_ProcessActivePlayer(float delta_time);
+void player_ProcessActivePlayer(double delta_time);
 
 void player_ProcessAI(float delta_time);
 
 void player_UpdatePlayers(double delta_time);
+
+void player_PostUpdatePlayers(double delta_time);
 
 void player_Move(player_t *player, float delta_time);
 

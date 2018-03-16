@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <intrin.h>
+#include <math.h>
+#include <float.h>
+#include <limits.h>
 
 #include "GL/glew.h"
 #include "SDL2/SDL_thread.h"
@@ -18,7 +21,7 @@
 #include "gpu.h"
 
 #include "engine.h"
-
+ 
 
 static int light_list_size;
 int light_count;
@@ -85,7 +88,7 @@ mat4_t shadow_map_projection_matrix;
 #define MAX_VISIBLE_LIGHTS 32
 
 int visible_light_count;
-int visible_lights[MAX_VISIBLE_LIGHTS];
+int visible_lights[MAX_WORLD_LIGHTS];
 
 int free_chunk_count;
 int free_chunk_size;
@@ -143,7 +146,7 @@ int light_Init()
 	
 	
 	
-	CreatePerspectiveMatrix(&shadow_map_projection_matrix, (45.17578125 * 3.14159265) / 180.0, 1.0, 0.1, LIGHT_MAX_RADIUS * 100.0, 0.0, 0.0, NULL);
+	CreatePerspectiveMatrix(&shadow_map_projection_matrix, (45.17578125 * 3.14159265) / 180.0, 1.0, 0.1, LIGHT_MAX_RADIUS, 0.0, 0.0, NULL);
 	
 	//visible_light_list_size = MAX_LIGHTS;
 	//visible_light_count = 0;
@@ -223,7 +226,7 @@ int light_Init()
 	while(glGetError() != GL_NO_ERROR);
 	/* ~100MB for shadow maps... */
 	//glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE16F_ARB, /*SHARED_SHADOW_MAP_WIDTH*/ 64, /*SHARED_SHADOW_MAP_HEIGHT*/ 64, 0, GL_LUMINANCE, GL_FLOAT, NULL);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, SHARED_SHADOW_MAP_WIDTH, SHARED_SHADOW_MAP_HEIGHT, 0, GL_RED, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, SHARED_SHADOW_MAP_WIDTH, SHARED_SHADOW_MAP_HEIGHT, 0, GL_RED, GL_FLOAT, NULL);
 	if(glGetError() == GL_OUT_OF_MEMORY)
 	{
 		//printf("ERROR: out of graphics memory!\n");
@@ -260,7 +263,7 @@ int light_Init()
 	light_InitCache();
 	
 	
-	mesh_GenerateIcoSphere(1.0, 1, &stencil_light_mesh, &stencil_light_mesh_vert_count);
+	model_GenerateIcoSphere(1.0, 1, &stencil_light_mesh, &stencil_light_mesh_vert_count);
 	
 	stencil_light_mesh_vert_count *= 3;
 	
@@ -313,6 +316,8 @@ int light_Init()
 	
 	/*free_shadow_map_x = 0;
 	free_shadow_map_y = 0;*/
+	
+	
 	
 	
 	
@@ -896,8 +901,8 @@ void light_LightBounds()
 		
 		glUseProgram(0);	
 		
-		glColor3f(0.0, 1.0, 0.0);*/
-		/*glPointSize(8.0);
+		glColor3f(0.0, 1.0, 0.0);
+		glPointSize(8.0);
 		glBegin(GL_POINTS);
 		
 		glVertex3f((light_origin.x * qr) / light_origin.z, (light_origin.y * qt) / light_origin.z, -0.5);
@@ -1090,105 +1095,8 @@ void light_LightBounds()
 			
 			params->last_cluster = PACK_CLUSTER_INDEXES(cluster_x_end, cluster_y_end, cluster_z_end);
 			
-			//UNPACK_CLUSTER_INDEXES(cluster_x_end, cluster_y_end, cluster_z_end, params->last_cluster);
-			
-			
-			
-			/*for(z = cluster_z_start; z <= cluster_z_end; z++)
-			{
-				for(y = cluster_y_start; y <= cluster_y_end; y++)
-				{
-					for(x = cluster_x_start; x <= cluster_x_end; x++)
-					{
-						if(cluster[CLUSTER_OFFSET(x, y, z)].time_stamp != r_frame)
-						{
-							cluster[CLUSTER_OFFSET(x, y, z)].light_indexes_bm = 0;
-							cluster[CLUSTER_OFFSET(x, y, z)].time_stamp = r_frame;
-						}
-							
-						cluster[CLUSTER_OFFSET(x, y, z)].light_indexes_bm = 1;
-					}
-				}
-			}*/
-			
-			
-			
-		/*	#if 0
-			
-			cluster_x = (int)(floor((window_width * (x_min * 0.5 + 0.5)) / CLUSTER_SIZE));
-			cluster_y = (int)(floor((window_height * (1.0 - (y_max * 0.5 + 0.5))) / CLUSTER_SIZE));
-			
-			light_z = light_origin.z + light_radius;
-			
-			
-			
-			if(light_z > nznear) cluster_z = 0;
-			else cluster_z = (int)((log(-light_z / -nznear)/log(-nzfar / -nznear)) * CLUSTER_Z_DIVS);
-			
-			visible_light_params[visible_light_count].first_cluster_id = PACK_CLUSTER_ID(cluster_x, cluster_y, cluster_z);
-			
-			cluster_x = (int)(floor((window_width * (x_max * 0.5 + 0.5)) / CLUSTER_SIZE));
-			cluster_y = (int)(floor((window_height * (1.0 - (y_min * 0.5 + 0.5))) / CLUSTER_SIZE));
-			
-			light_z = light_origin.z - light_radius;
-			
-			if(light_z > nznear) cluster_z = 0;
-			else cluster_z = (int)((log(-light_z / -nznear)/log(-nzfar / -nznear)) * CLUSTER_Z_DIVS);
-			
-			visible_light_params[visible_light_count].first_cluster_id = PACK_CLUSTER_ID(cluster_x, cluster_y, cluster_z);
-			
-			#endif*/
-			
-			//visible_light_count++;
 		}
-				
-		
-		
-		/*glMatrixMode(GL_PROJECTION);
-		glPushMatrix();
-		glLoadIdentity();
-		glMatrixMode(GL_MODELVIEW);
-		glPushMatrix();
-		glLoadIdentity();		
-		
-		glColor3f(0.0, 1.0, 0.0);*/
-		
-		/*glPointSize(8.0);
-		glBegin(GL_POINTS);
-		
-		glVertex3f(x_min, y_max, -0.5);
-		glVertex3f(x_min, y_min, -0.5);
-		glVertex3f(x_max, y_min, -0.5);
-		glVertex3f(x_max, y_max, -0.5);
-		
-		glEnd();
-		glPointSize(1.0);*/
-		
-		/*glBegin(GL_LINES);
-		glVertex3f(x_min, y_max, -0.5);
-		glVertex3f(x_min, y_min, -0.5);
-		
-		glVertex3f(x_min, y_min, -0.5);
-		glVertex3f(x_max, y_min, -0.5);
-		
-		glVertex3f(x_max, y_min, -0.5);
-		glVertex3f(x_max, y_max, -0.5);
-		
-		glVertex3f(x_max, y_max, -0.5);
-		glVertex3f(x_min, y_max, -0.5);
-		glEnd();
-		
-		
-		glMatrixMode(GL_PROJECTION);
-		glPopMatrix();
-		glMatrixMode(GL_MODELVIEW);
-		glPopMatrix();*/
-		
-		
 	}
-	
-	/*glUnmapBuffer(GL_UNIFORM_BUFFER);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);*/
 }
 #endif
 
@@ -1254,6 +1162,8 @@ void light_UpdateClusters()
 	{
 		light_index = visible_lights[i];
 		
+	//	printf("light on clusters!\n");
+		
 		parms = &light_params[light_index];
 		offset = light_cache[parms->cache].offset;
 		
@@ -1281,6 +1191,8 @@ void light_UpdateClusters()
 		}
 				
 	}
+	
+	//printf("yup\n");
 	
 	/*if(SDL_LockMutex(cluster_thread0_out_lock))
 	{
@@ -1310,6 +1222,14 @@ void light_UpdateClusters()
 
 
 
+//vec3_t z_curve_light_pos[MAX_WORLD_LIGHTS];
+
+
+/*luivec3_t z_curve_light_pos[MAX_WORLD_LIGHTS];
+vec3_t z_curve_box_center;
+vec3_t z_curve_box_max_extents;
+vec3_t z_curve_box_min_extents;*/
+
 void light_VisibleLights()
 {
 	//printf("light_VisibleLights\n");
@@ -1324,6 +1244,9 @@ void light_VisibleLights()
 	camera_t *active_camera = camera_GetActiveCamera();
 	vec4_t light_origin;
 	vec3_t v;
+	//vec3_t farthest;
+	float farthest;
+	int farthest_index;
 	light_position_t *pos;
 	light_params_t *parms;
 	bsp_lights_t lights;
@@ -1332,7 +1255,7 @@ void light_VisibleLights()
 	
 	if(!world_leaves)
 	{
-		for(i = 0; i < light_count && i < MAX_VISIBLE_LIGHTS; i++)
+		for(i = 0; i < light_count; i++)
 		{
 			if(!(light_params[i].bm_flags & LIGHT_INVALID))
 			{
@@ -1384,43 +1307,55 @@ void light_VisibleLights()
 	}
 	
 	_clusterize:
-		
-	//e = engine_GetDeltaTime();
-	
-	//printf("%f\n", e - s);
-	
-	//s = engine_GetDeltaTime();
-	
 	light_LightBounds();
+	 
 	
-	//e = engine_GetDeltaTime();
-	
-	//printf("%f\n", e - s);
-	
-	//light_AllocShadowMaps();
-	
-	s = engine_GetDeltaTime();
-	
+	/* drop far away lights... */
+	/* NOTE: quicksorting the lights might scale better... */
+	if(visible_light_count > MAX_VISIBLE_LIGHTS)
+	{
+		//printf("maximum visible lights exceeded! Eliminating...\n");
+		c = visible_light_count - MAX_VISIBLE_LIGHTS;
+		
+		for(i = 0; i < c; i++)
+		{
+			farthest = FLT_MIN;
+			
+			for(j = 0; j < visible_light_count; j++)
+			{
+				k = visible_lights[j];
+				
+				v.x = light_positions[k].position.x - active_camera->world_position.x;
+				v.y = light_positions[k].position.y - active_camera->world_position.y;
+				v.z = light_positions[k].position.z - active_camera->world_position.z;
+				
+				d = dot3(v, v);
+				
+				if(d > farthest)
+				{
+					farthest = d;
+					farthest_index = j;
+				}
+			}
+			
+			if(farthest_index < visible_light_count - 1)
+			{
+				visible_lights[farthest_index] = visible_lights[visible_light_count - 1];
+			}
+			
+			visible_light_count--;
+		}
+	}
+		
 	for(i = 0; i < visible_light_count; i++)
 	{
 		light_CacheLight(visible_lights[i]);
 	}
 	
-	//e = engine_GetDeltaTime();
-	
-	//printf("%f\n", e - s);
-	
-	
 	light_UpdateClusters();
-	
-	
-	//s = engine_GetDeltaTime();
 	light_UploadCache();
-	//e = engine_GetDeltaTime();
 	
 	
-	
-	//printf("%f\n", e - s);
 }
 
 void light_VisibleTriangles(int light_index)
@@ -1550,6 +1485,7 @@ int cur_light_index = -1;
 
 void light_SetLight(int light_index)
 {
+	#if 0
 	int cache_index;
 	if(light_index >= 0 && light_index < light_count)
 	{
@@ -1564,6 +1500,7 @@ void light_SetLight(int light_index)
 			}
 		}
 	}
+	#endif
 }
 
 

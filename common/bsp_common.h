@@ -2,7 +2,7 @@
 #define BSP_COMMON_H
 
 #include "vector.h"
-#include "mesh.h"
+#include "model.h"
 #include "l_common.h"
 
 

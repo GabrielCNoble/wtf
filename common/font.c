@@ -3,6 +3,8 @@
 #include <string.h>
 #include "font.h"
 
+#include "path.h"
+
 static char font_path[256];
 
 int max_fonts;
@@ -13,6 +15,9 @@ font_t *gui_font = NULL;
 
 int font_Init()
 {
+	
+	char *full_path;
+	
 	if(TTF_Init() < 0)
 	{
 		printf("couldn't initialize SDL_ttf!\n");
@@ -23,8 +28,12 @@ int font_Init()
 	font_count = 0;
 	fonts = malloc(sizeof(font_t ) * max_fonts);
 	
+	 
+	//font_LoadFont("..\\common\\fonts\\consola.ttf", "gui", 16);
 	
-	font_LoadFont("..\\common\\fonts\\consola.ttf", "gui", 16);
+	full_path = path_GetPathToFile("consola.ttf");
+	
+	font_LoadFont(full_path, "gui", 16);
 	
 	gui_font = &fonts[0];
 	

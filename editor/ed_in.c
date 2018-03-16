@@ -10,11 +10,19 @@
 #include "camera.h"
 #include "brush.h"
 #include "l_main.h"
-
+ 
 #include "player.h"
 #include "pvs.h"
 
+#include "r_main.h"
+
 #include <stdio.h>
+
+#include "ed_ui_material.h"
+#include "ed_ui_texture.h"
+#include "ed_ui_explorer.h"
+#include "ed_ui_brush.h"
+#include "ed_ui_entity.h"
 
 
 extern int r_width;
@@ -44,12 +52,17 @@ extern brush_t *brushes;
 
 /* from editor.c */
 extern int bm_handle_3d_flags;
-extern int handle_3d_mode;
+extern int ed_handle_3d_mode;
 extern int handle_3d_position_mode;
 extern vec3_t handle_3d_position;
 extern int selection_count;
 extern pick_record_t *selections;
 extern int editor_state;
+extern int ed_editing_mode;
+extern int ed_handle_3d_tranform_mode;
+extern int ed_selected_brush_polygon_index;
+extern float ed_editor_linear_snap_value;
+extern float ed_editor_angular_snap_value;
 
 
 /* from player.c */
@@ -77,10 +90,12 @@ void editor_ProcessMouse(float delta_time)
 	camera_t *active_camera = camera_GetActiveCamera();
 	mat4_t model_view_projection_matrix;
 	vec4_t p;
+	vec4_t sp;
 	vec3_t direction;
 	int i;
 	
 	int lshift;
+	float d;
 	
 	/*float handle_3d_screen_x;
 	float handle_3d_screen_y;
@@ -139,7 +154,7 @@ void editor_ProcessMouse(float delta_time)
 				
 			if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
 			{
-				if(handle_3d_mode == HANDLE_3D_SCALE || handle_3d_mode == HANDLE_3D_TRANSLATION)
+				if(ed_handle_3d_mode == HANDLE_3D_SCALE || ed_handle_3d_mode == HANDLE_3D_TRANSLATION)
 				{
 					grab_screen_offset_x = normalized_mouse_x - p.x;
 					grab_screen_offset_y = normalized_mouse_y - p.y;
@@ -178,21 +193,9 @@ void editor_ProcessMouse(float delta_time)
 				//direction = active_camera->world_to_camera_matrix.f_axis;
 			}
 			
-			if(handle_3d_mode == HANDLE_3D_SCALE || handle_3d_mode == HANDLE_3D_TRANSLATION)
+			if(ed_handle_3d_mode == HANDLE_3D_SCALE || ed_handle_3d_mode == HANDLE_3D_TRANSLATION)
 			{
-				
-				if(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED)
-				{
-					if(handle_3d_mode == HANDLE_3D_SCALE)
-					{
-						grab_screen_offset_x = normalized_mouse_x - p.x;
-						grab_screen_offset_y = normalized_mouse_y - p.y;
-						
-						//prev_dx = screen_dx;
-						//prev_dy = screen_dy;
-					}
-				}
-				
+				sp = p;	
 				p.vec3 = direction;
 				p.w = 0.0;
 				
@@ -207,6 +210,28 @@ void editor_ProcessMouse(float delta_time)
 				screen_y /= amount;
 				
 				amount = (screen_dx * screen_x + screen_dy * screen_y) * z;
+				
+				
+				if(ed_editor_linear_snap_value > 0.0)
+				{
+					d = amount / ed_editor_linear_snap_value;
+			 		amount = ed_editor_linear_snap_value * (int)d;
+				}
+				
+				
+				if(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED)
+				{
+					if(ed_handle_3d_mode == HANDLE_3D_SCALE)
+					{
+						if(fabs(amount) > 0.0)
+						{
+							grab_screen_offset_x = normalized_mouse_x - sp.x;
+							grab_screen_offset_y = normalized_mouse_y - sp.y;
+						}
+						
+					}
+				}
+				
 			}
 			else
 			{
@@ -224,32 +249,59 @@ void editor_ProcessMouse(float delta_time)
 					
 				amount = asin(prev_dx * screen_dy - prev_dy * screen_dx);
 				
-				//printf("%f\n", amount);
+				d = dot3(direction, active_camera->world_orientation.f_axis);
 				
-				
-				if(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED)
+				if(d < 0)
 				{
-					prev_dx = screen_dx;
-					prev_dy = screen_dy;
+					amount = -amount;
+				}
+				else if(d == 0)
+				{
+					d = dot3(direction, active_camera->world_orientation.r_axis);
+					
+					if(d < 0)
+					{
+						amount = -amount;
+					}
+				}
+				
+				if(ed_editor_angular_snap_value > 0.0)
+				{
+					d = amount / ed_editor_angular_snap_value;
+					amount = ed_editor_angular_snap_value * (int)d;
+				}
+				
+				if(amount != 0.0)
+				{
+					if(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED)
+					{
+						prev_dx = screen_dx;
+						prev_dy = screen_dy;
+					}
 				}
 			}
 			 
-			
-				
-			switch(handle_3d_mode)
+			if(ed_editing_mode == EDITING_MODE_OBJECT)
 			{
-				case HANDLE_3D_TRANSLATION:			
-					editor_TranslateSelections(direction, amount);
-				break;
+				switch(ed_handle_3d_mode)
+				{
+					case HANDLE_3D_TRANSLATION:
+						editor_TranslateSelections(direction, amount);		
+					break;
+					
+					case HANDLE_3D_ROTATION:
+						editor_RotateSelections(direction, amount);
+					break;
+					
+					case HANDLE_3D_SCALE:
+						editor_ScaleSelections(direction, amount);
+					break;
+				}
 				
-				case HANDLE_3D_ROTATION:
-					editor_RotateSelections(direction, amount);
-				break;
-				
-				case HANDLE_3D_SCALE:
-					editor_ScaleSelections(direction, amount);
-				break;
+				editor_Position3dHandle();
 			}
+				
+			
 	
 		}
 			
@@ -257,112 +309,21 @@ void editor_ProcessMouse(float delta_time)
 			
 		if(bm_mouse & MOUSE_RIGHT_BUTTON_JUST_CLICKED)
 		{
-			
-			if(editor_Pick(&record))
-			{	
-				
-				lshift = input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED;
-				
-					
-				if(record.type == selections[selection_count - 1].type)
-				{
-					/* if the just picked thing is the same as the last picked thing... */	
-					if(record.index0 == selections[selection_count - 1].index0)
-					{
-							
-						/* if this selection is the last in the list (meaning
-						this object is the active object), drop it, set
-						whatever comes before it as the active object and then jump
-						to the code that sets the 3d handle position... */
-						
-						
-						
-						if(!lshift && selection_count)
-						{
-							goto _add_new_selection;
-						}
-							
-						editor_DropSelection(&record);
-						if(selection_count)
-						{
-							record = selections[selection_count - 1];
-							goto _set_handle_3d_position;
-						}
-						
-					}
-					else
-					{
-						/* if this record  is not equal to the last in the list,
-						append it to the list or set it as the only active object... */
-						goto _add_new_selection;
-					}
-					
-				}
-				else
-				{
-					_add_new_selection:
-					/* holding shift enables selecting multiple objects... */			
-					if(!lshift)
-					{
-						editor_ClearSelection();
-					}
-										
-					editor_AddSelection(&record);
-							
-					_set_handle_3d_position:
-					
-					if(handle_3d_position_mode == HANDLE_3D_MEDIAN_POINT)
-					{
-						handle_3d_position = vec3(0.0, 0.0, 0.0);
-						for(i = 0; i < selection_count; i++)
-						{
-							switch(selections[i].type)
-							{
-								case PICK_BRUSH:
-									handle_3d_position.x += brushes[selections[i].index0].position.x;
-									handle_3d_position.y += brushes[selections[i].index0].position.y;
-									handle_3d_position.z += brushes[selections[i].index0].position.z;
-								break;
-										
-								case PICK_LIGHT:
-									handle_3d_position.x += light_positions[selections[i].index0].position.x;
-									handle_3d_position.y += light_positions[selections[i].index0].position.y;
-									handle_3d_position.z += light_positions[selections[i].index0].position.z;
-								break;
-								
-								case PICK_SPAWN_POINT:
-									handle_3d_position.x += spawn_points[selections[i].index0].position.x;
-									handle_3d_position.y += spawn_points[selections[i].index0].position.y;
-									handle_3d_position.z += spawn_points[selections[i].index0].position.z;
-								break;
-							}
-						}
-						
-						handle_3d_position.x /= selection_count;
-						handle_3d_position.y /= selection_count;
-						handle_3d_position.z /= selection_count;
-					}
-					else
-					{
-						switch(record.type)
-						{
-							case PICK_BRUSH:
-								handle_3d_position = brushes[record.index0].position;	
-							break;
-										
-							case PICK_LIGHT:
-								handle_3d_position = light_positions[record.index0].position;
-							break;
-							
-							case PICK_SPAWN_POINT:
-								handle_3d_position = spawn_points[record.index0].position;
-							break;
-						}
-					}
-						
-				}
+			if(ed_editing_mode == EDITING_MODE_OBJECT)
+			{
+				editor_PickObject();	
 			}
+			else
+			{
+				if(ed_editing_mode == EDITING_MODE_UV)
+				{
+					editor_CloseBrushFaceUVWindow();
+				}
+				i = selections[selection_count - 1].index0;
 				
+				editor_PickOnBrush(&brushes[i]);
+			}
+			
 		}
 	}
 	
@@ -376,54 +337,60 @@ void editor_ProcessKeyboard(float delta_time)
 	{
 		if(input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED)
 		{
-			/*if(input_GetKeyStatus(SDL_SCANCODE_C) & KEY_JUST_PRESSED)
-			{
-				bsp_CompileBsp(0);
-				//indirect_BuildVolumes();
-			}
-			else if(input_GetKeyStatus(SDL_SCANCODE_S) & KEY_JUST_PRESSED)
-			{
-				//renderer_Fullscreen(1);
-				//renderer_SetWindowSize(1920, 1080);
-			}*/
-	
 			if(input_GetKeyStatus(SDL_SCANCODE_A) & KEY_JUST_PRESSED)
 			{
-				editor_OpenAddToWorldMenu(r_window_width * normalized_mouse_x * 0.5, r_window_height * normalized_mouse_y * 0.5);
+				if(ed_editing_mode == EDITING_MODE_OBJECT)
+				{
+					editor_OpenAddToWorldMenu(r_window_width * normalized_mouse_x * 0.5, r_window_height * normalized_mouse_y * 0.5);
+				}
+			}
+			else if(input_GetKeyStatus(SDL_SCANCODE_M) & KEY_JUST_PRESSED)
+			{
+				//editor_OpenMaterialWindow();
+				editor_ToggleMaterialWindow();
+			}
+			else if(input_GetKeyStatus(SDL_SCANCODE_T) & KEY_JUST_PRESSED)
+			{
+				editor_ToggleTextureWindow();
+			}
+			else if(input_GetKeyStatus(SDL_SCANCODE_V) & KEY_JUST_PRESSED)
+			{
+				editor_ToggleEntityDefViewerWindow();
 			}
 			else if(input_GetKeyStatus(SDL_SCANCODE_D) & KEY_JUST_PRESSED)
 			{
-				editor_CopySelections();
-			}
-			if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_PRESSED)
-			{
-				if(b_step && b_calculating_pvs)
+				if(ed_editing_mode == EDITING_MODE_OBJECT)
 				{
-					//SDL_UnlockMutex(step_mutex);
-					//printf("pvs stack pointer: %d\n", pvs_for_leaf_stack.recursive_stack_pointer);
-					SDL_SemPost(step_semaphore);
+					editor_CopySelections();
 				}
 				
+			}
+			if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED)
+			{
+				renderer_ToggleFullscreen();
 			}
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_G) & KEY_JUST_PRESSED)
 		{
-			//handle_3d_mode = HANDLE_3D_TRANSLATION;
 			editor_Set3dHandleMode(HANDLE_3D_TRANSLATION);
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_R) & KEY_JUST_PRESSED)
 		{
-			//handle_3d_mode = HANDLE_3D_ROTATION;
 			editor_Set3dHandleMode(HANDLE_3D_ROTATION);
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_S) & KEY_JUST_PRESSED)
 		{
 			editor_Set3dHandleMode(HANDLE_3D_SCALE);
-			//handle_3d_mode = HANDLE_3D_SCALE;
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_A) & KEY_JUST_PRESSED)
 		{
-			editor_ClearSelection();
+			if(ed_editing_mode == EDITING_MODE_OBJECT)
+			{
+				editor_ClearSelection();
+				editor_CloseLightPropertiesWindow();
+				editor_CloseBrushPropertiesWindow();
+			}
+			
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_P) & KEY_JUST_PRESSED)
 		{
@@ -431,8 +398,30 @@ void editor_ProcessKeyboard(float delta_time)
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_DELETE) & KEY_JUST_PRESSED)
 		{
-			editor_OpenDeleteSelectionMenu(r_window_width * normalized_mouse_x * 0.5, r_window_height * normalized_mouse_y * 0.5);
+			if(ed_editing_mode == EDITING_MODE_OBJECT)
+			{
+				editor_OpenDeleteSelectionMenu(r_window_width * normalized_mouse_x * 0.5, r_window_height * normalized_mouse_y * 0.5);
+			}
 		}
+		else if(input_GetKeyStatus(SDL_SCANCODE_TAB) & KEY_JUST_PRESSED)
+		{
+			if(ed_editing_mode == EDITING_MODE_BRUSH || ed_editing_mode == EDITING_MODE_UV)
+			{
+				editor_SetEditingMode(EDITING_MODE_OBJECT);
+				ed_selected_brush_polygon_index = -1;
+			}
+			else
+			{
+				if(selection_count)
+				{
+					if(selections[selection_count - 1].type == PICK_BRUSH)
+					{
+						editor_SetEditingMode(EDITING_MODE_BRUSH);
+					}
+				}
+			}
+		}
+		
 		if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED)
 		{
 			if(b_step && b_calculating_pvs)
@@ -443,6 +432,7 @@ void editor_ProcessKeyboard(float delta_time)
 			}
 			
 		}
+	
 		
 	}
 	else

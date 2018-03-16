@@ -4,8 +4,8 @@
 #define LIGHT_MAX_RADIUS 250.0
 #define LIGHT_MIN_RADIUS 1.0
 
-#define LIGHT_MAX_ENERGY 500.0
-#define LIGHT_MIN_ENERGY 1.0
+#define LIGHT_MAX_ENERGY 5000.0
+#define LIGHT_MIN_ENERGY 0.0
 
 #define MAX_WORLD_LIGHTS 512
 
@@ -28,8 +28,8 @@
 #define CLUSTER_OFFSET(x, y, z) (x+y*CLUSTERS_PER_ROW+z*CLUSTERS_PER_ROW*CLUSTER_ROWS)
 
 
-#define LIGHT_RADIUS(radius) (LIGHT_MIN_RADIUS+(LIGHT_MAX_RADIUS-LIGHT_MIN_RADIUS)*((float)((unsigned short)radius)/0xffff))
-#define LIGHT_ENERGY(energy) (LIGHT_MIN_ENERGY+(LIGHT_MAX_ENERGY-LIGHT_MIN_ENERGY)*((float)((unsigned short)energy)/0xffff))
+#define LIGHT_RADIUS(radius) (LIGHT_MIN_RADIUS+(LIGHT_MAX_RADIUS-LIGHT_MIN_RADIUS)*((float)((unsigned short)radius)/(float)0xffff))
+#define LIGHT_ENERGY(energy) (LIGHT_MIN_ENERGY+(LIGHT_MAX_ENERGY-LIGHT_MIN_ENERGY)*((float)((unsigned short)energy)/(float)0xffff))
 
 #define PACK_CLUSTER_INDEXES(x, y, z) ((z<<24)|(x<<16)|(y))
 #define UNPACK_CLUSTER_INDEXES(x, y, z, index) y=((index)&0x000000ff);x=((index>>16)&0x000000ff);z=((index>>24)&0x000000ff)

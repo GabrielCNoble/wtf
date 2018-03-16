@@ -11,7 +11,7 @@ enum LOG_MESSAGE_TYPE
 };
 
 
-void log_Init(char *path);
+void log_Init();
 
 void log_Finish();
 

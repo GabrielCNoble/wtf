@@ -1,11 +1,6 @@
 #ifndef W_COMMON_H
 #define W_COMMON_H
 
-typedef struct
-{
-	int first_vertex;										   
-	int triangle_group_index;				/* references the triangle group this triangle is part of... */
-}world_mesh_triangle_t;
 
 /* A triangle_group_t groups triangles which share the same material. It keeps
 an entry in a GL_ELEMENT_ARRAY_BUFFER, which contain the indexes (laid contiguously on said buffer)

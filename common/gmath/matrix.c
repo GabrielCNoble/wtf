@@ -13,7 +13,7 @@ void CreatePerspectiveMatrix(mat4_t *mat,  float fovY, float aspect, float znear
 			mat->floats[i][j]=0;
 		}
 	}
-	
+	 
 	f.znear=znear;
 	f.zfar=zfar;
 	f.top=tan(fovY)*znear;
@@ -451,9 +451,12 @@ __fastcall void mat4_t_mult_fast(mat4_t *result, mat4_t *mat1, mat4_t *mat2)
 			"shufps xmm5, xmm5, 0xaa\n"
 			"mulps xmm5, xmm2\n"
 			"addps xmm6, xmm5\n"
-		
+			
 			"movups xmm5, xmm4\n"
 			"shufps xmm5, xmm5, 0xff\n"
+			//"shufps xmm4, xmm4, 0xff\n"
+			//"mulps xmm4, xmm3\n"
+			//"addps xmm6, xmm4\n"
 			"mulps xmm5, xmm3\n"
 			"addps xmm6, xmm5\n"
 		

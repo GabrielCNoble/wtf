@@ -18,7 +18,7 @@ extern light_params_t *light_params;
 extern bsp_striangle_t *light_visible_triangles;
 extern unsigned int shadow_map_frame_buffer;
 extern unsigned int cluster_uniform_buffer;
-
+ 
 
 /* from r_main.c */
 extern int r_frame;

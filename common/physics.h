@@ -2,7 +2,7 @@
 #define PHYSICS_H
 
 #include "vector_types.h"
-#include "mesh.h"
+#include "model.h"
 #include "player.h"
 //#include "projectile.h"
 
@@ -73,7 +73,7 @@ typedef struct
 }ray_cast_result_t;
 
 
-void physics_Init();
+int physics_Init();
 
 void physics_Finish();
 

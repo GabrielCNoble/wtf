@@ -1,6 +1,11 @@
+#include "texture.h"
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "path.h"
 
 #include "GL/glew.h"
 #include "SOIL.h"
@@ -9,16 +14,16 @@
 #include "IL/ilut.h"
 #include "IL/il.h"*/
 
-#include "texture.h"
+
 
 
 static char texture_path[256];
 
-
+ 
 static int texture_list_size;
-static int texture_count;
+int texture_count;
 texture_t *textures;
-texture_reg_t *texture_names;
+texture_info_t *texture_info;
 //char **texture_names;
 
 
@@ -35,15 +40,76 @@ static char *suffixes[] =
 	".cubemap_neg_z"
 };
 
-void texture_Init()
+#define MISSING_TEXTURE_SIZE 64
+
+texture_t missing_texture;
+texture_info_t missing_texture_info;
+
+int texture_Init()
 {
-	
+	int x;
+	int y;
 	free_position_stack_top = -1;
 	texture_list_size = 64;
 	texture_count = 0;
 	textures = malloc(sizeof(texture_t) * texture_list_size);
-	texture_names = malloc(sizeof(texture_reg_t ) * texture_list_size);
+	texture_info = malloc(sizeof(texture_info_t ) * texture_list_size);
 	free_position_stack = malloc(sizeof(int) * texture_list_size);
+	
+	char *missing_texture_bytes = malloc(MISSING_TEXTURE_SIZE * MISSING_TEXTURE_SIZE * 4);
+	
+	
+	for(y = 0; y < MISSING_TEXTURE_SIZE; y++)
+	{
+		for(x = 0; x < MISSING_TEXTURE_SIZE; x++)
+		{
+			if((x + y) % 2)
+			{
+				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4] = 0xff;
+				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4 + 1] = 0;
+				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4 + 2] = 0xff;
+				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4 + 3] = 0;
+			}
+			else
+			{
+				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4] = 0;
+				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4 + 1] = 0;
+				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4 + 2] = 0;
+				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4 + 3] = 0;
+			}
+				
+		}
+	}
+	
+	
+	
+	missing_texture_info.name = strdup("missing texture");
+	missing_texture_info.file_name = NULL;
+	missing_texture_info.width = MISSING_TEXTURE_SIZE;
+	missing_texture_info.height = MISSING_TEXTURE_SIZE;
+	missing_texture_info.internal_format = GL_RGBA8;
+	missing_texture_info.format = GL_RGBA;
+	
+	missing_texture.bm_flags = 0;
+	
+	glGenTextures(1, &missing_texture.gl_handle);
+	glBindTexture(GL_TEXTURE_2D, missing_texture.gl_handle);
+	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, MISSING_TEXTURE_SIZE, MISSING_TEXTURE_SIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, missing_texture_bytes);
+	
+	
+	glBindTexture(GL_TEXTURE_2D, 0);
+	
+	free(missing_texture_bytes);
+	
+	
+	return 1;
 }
 
 void texture_Finish()
@@ -52,36 +118,49 @@ void texture_Finish()
 	for(i = 0; i < texture_count; i++)
 	{
 		//free(texture_names[i]);
-		free(texture_names[i].name);
-		free(texture_names[i].file_name);
-		glDeleteTextures(1, &textures[i].gl_handle);
+		if(textures[i].gl_handle != 0)
+		{
+			free(texture_info[i].name);
+			free(texture_info[i].file_name);
+			free(texture_info[i].full_path);
+			glDeleteTextures(1, &textures[i].gl_handle);
+		}
+		
 	}
 	
-	free(texture_names);
+	free(texture_info);
 	free(textures);
 	free(free_position_stack);
+	
+	glDeleteTextures(1, &missing_texture.gl_handle);
 	
 	//ilShutdown();
 }
 
-void texture_SetPath(char *path)
+/*void texture_SetPath(char *path)
 {
 	strcpy(texture_path, path);
-}
+}*/
 
-int texture_LoadTexture(char *file_name, char *name)
+int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 {
 	//unsigned int il_tex_handle;
+	int i;
+	
 	unsigned int gl_tex_handle;
 	int texture_index;
 	texture_t *texture;
-	texture_reg_t *texture_name;
+	texture_info_t *info;
 	
 	void *tex_data;
 	char **c_temp;
-	char tex_name[128];
-	char full_path[256];
-	int tex_name_len;
+	char *full_path;
+	char *tex_path;
+	char *tex_file_name;
+	int tex_file_name_start;
+	//int tex_path_start;
+	int tex_path_len;
+	int full_path_len;
 	
 	int channels;
 	int width;
@@ -90,91 +169,77 @@ int texture_LoadTexture(char *file_name, char *name)
 	int internal_format;
 	int format;
 	
+	
 	//ilGenImages(1, &il_tex_handle);
 	//ilBindImage(il_tex_handle);
 	
-	strcpy(tex_name, name);
-	tex_name_len = strlen(tex_name) + 1;
+	//strcpy(tex_name, name);
+	//tex_name_len = strlen(tex_name) + 1;
 	
-	while(tex_name_len % 4)
+	/*while(tex_name_len % 4)
 	{
 		tex_name[tex_name_len] = '\0';
 		tex_name_len++;
-	}
+	}*/
 	
-	texture_index = texture_GetTexture(tex_name);
+	texture_index = texture_GetTexture(name);
 	
 	if(texture_index != -1)
 	{
 		/* this texture was already loaded, so 
-		just return the existing texture instead... */
+		just return the existing texture... */
+		printf("texture_LoadTexture: texture [%s] already exists!\n", name);
 		return texture_index;
 	}
 	
-	strcpy(full_path, texture_path);
-	strcat(full_path, "/");
-	strcat(full_path, file_name);
 	
 	
-	//printf("%s\n", file_name);
 	
-	//tex_data = SOIL_load_image(file_name, &width, &height, &channels, SOIL_LOAD_AUTO);
+	/* try to load the file by its file name alone first. This enables
+	importing texture files from places outside the project directory... */
+	tex_data = SOIL_load_image(file_name, &width, &height, &channels, SOIL_LOAD_AUTO);
 	
-	tex_data = SOIL_load_image(full_path, &width, &height, &channels, SOIL_LOAD_AUTO);
 	
-	/*if(!ilLoadImage(file_name))*/
+	/* didn't find the file outside the current directory, so check the search paths... */
 	if(!tex_data)
 	{
-		printf("couldn't load %s!\n", name);
-		//ilDeleteImages(1, &il_tex_handle);
-		return;
+		full_path = path_GetPathToFile(file_name);
+	
+		if(!full_path)
+		{
+			printf("couldn't fild file [%s] for texture [%s]!\n", file_name, name);
+			return;
+		}
+		
+		tex_data = SOIL_load_image(full_path, &width, &height, &channels, SOIL_LOAD_AUTO);
+		
+		if(!tex_data)
+		{
+			printf("couldn't load %s!\nFailure reason: %s\n", name, SOIL_last_result());
+			return;
+		}
 	}
-	
-	
-	
-	//channels = ilGetInteger(IL_IMAGE_FORMAT);
-	//width = ilGetInteger(IL_IMAGE_WIDTH);
-	//height = ilGetInteger(IL_IMAGE_HEIGHT);
-	//tex_data = ilGetData();
-	
-	//while(glGetError() != GL_NO_ERROR);
-	
-	glActiveTexture(GL_TEXTURE0);
-	glGenTextures(1, &gl_tex_handle);
-	glBindTexture(GL_TEXTURE_2D, gl_tex_handle);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 4);
-	
-	
-	switch(channels)
+	else
 	{
-		case 1:
-			internal_format = GL_LUMINANCE8;
-			format = GL_LUMINANCE;
-			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-		break;
-		
-		case 3:
-			internal_format = GL_RGB;
-			format = GL_RGB;
-			glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-		break;
-		
-		case 4:
-			internal_format = GL_RGBA8;
-			format = GL_RGBA;
-			glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-		break;
+		full_path = file_name;
 	}
-	glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, tex_data);
-	glGenerateMipmap(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, 0);
 	
-	//printf("%s %d %x\n", name, channels, glGetError());
+	
+	full_path_len = strlen(full_path);
+	
+	/* strip away the file name, keeping only
+	the path to the file... */	
+	for(tex_file_name_start = full_path_len; tex_file_name_start > 0; tex_file_name_start--)
+	{
+		if(full_path[tex_file_name_start] == '\\' || full_path[tex_file_name_start] == '/')
+		{
+			tex_file_name_start ++;
+			break;
+		}
+	}
+	
+	
+	
 	
 	if(free_position_stack_top >= 0)
 	{
@@ -190,30 +255,127 @@ int texture_LoadTexture(char *file_name, char *name)
 			free(free_position_stack);
 			
 			texture = malloc(sizeof(texture_t) * (texture_list_size + 16));
-			texture_name = malloc(sizeof(texture_reg_t) * (texture_list_size + 16));
+			texture_info = malloc(sizeof(texture_info_t) * (texture_list_size + 16));
 			//c_temp = malloc(sizeof(char *) * (texture_list_size + 16));
 			free_position_stack = malloc(sizeof(int) * (texture_list_size + 16));
 			
 			memcpy(texture, textures, sizeof(texture_t) * texture_list_size);
-			memcpy(texture_name, texture_names, sizeof(texture_reg_t) * texture_list_size);
+			memcpy(info, texture_info, sizeof(texture_info_t) * texture_list_size);
 		
 			
 			free(textures);
-			free(texture_names);
+			free(texture_info);
 			
 			textures = texture;
-			texture_names = texture_name;
+			texture_info = info;
 		}
 	}
 	
 	
 	
 	texture = &textures[texture_index];
-	texture_names[texture_index].name = strdup(tex_name);
-	texture_names[texture_index].file_name = strdup(file_name);
+	info = &texture_info[texture_index];
+	
+	
+	/*texture->gl_handle = gl_tex_handle;
+	texture->bm_flags = bm_flags & (~TEXTURE_INVALID);
+	
+	info->name = strdup(name);
+	info->file_name = strdup(full_path + tex_file_name_start);
+	info->full_path = strdup(full_path);
+	info->format = format;
+	info->internal_format = internal_format;
+	info->width = width;
+	info->height = height;
+	info->ref_count = 0;*/
+	
+	
+	
+	/* the texture is within the same directory as the project file (and it shouldn't...) */
+	//if(!tex_file_name_start)
+	//{
+		//tex_path = malloc(full_path_len + 1);
+		//tex_file_name = malloc(full_path_len + 1);
+		//tex_path_len = full_path_len;
+	//	tex_file_name_start = 0;
+	//}
+	//else
+	//{
+		//tex_path = malloc(tex_path_len + 1);
+		//tex_file_name = malloc(full_path_len - tex_path_len + 1);
+		//tex_file_name_start = tex_path_len + 1;
+	//}
+	
+	//memcpy(tex_path, full_path, tex_path_len);
+	//tex_path[tex_path_len] = '\0';	
+	
+	//strcpy(tex_file_name, full_path + tex_file_name_start);
+	//memcpy(tex_file_name, full_path + )
+	
+	glActiveTexture(GL_TEXTURE0);
+	glGenTextures(1, &gl_tex_handle);
+	glBindTexture(GL_TEXTURE_2D, gl_tex_handle);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 4);
 	
 	texture->gl_handle = gl_tex_handle;
-	texture->tex_type = GL_TEXTURE_2D;
+	texture->bm_flags = bm_flags & (~TEXTURE_INVALID);
+	
+	//printf("%d\n", channels);
+	
+	switch(channels)
+	{
+		case 1:
+			internal_format = GL_LUMINANCE8;
+			format = GL_LUMINANCE;
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		break;
+		
+		case 3:
+			internal_format = GL_RGB8;
+			format = GL_RGB;
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		break;
+		
+		case 4:
+			internal_format = GL_RGBA8;
+			format = GL_RGBA;
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+		break;
+	}
+	glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, tex_data);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+	
+	
+	info->name = strdup(name);
+	info->file_name = strdup(full_path + tex_file_name_start);
+	info->full_path = strdup(full_path);
+	info->format = format;
+	info->internal_format = internal_format;
+	info->width = width;
+	info->height = height;
+	info->base_level = 0;
+	info->max_level = 4;
+	info->min_filter = GL_LINEAR_MIPMAP_LINEAR;
+	info->mag_filter = GL_LINEAR_MIPMAP_LINEAR;
+	info->wrap_s = GL_REPEAT;
+	info->wrap_t = GL_REPEAT;
+	info->target = GL_TEXTURE_2D;
+	info->ref_count = 0;
+	
+	//printf("%s %d %x\n", name, channels, glGetError());
+	
+	
+	//info->bm_flags = bm_flags;
+	
+	//printf("texture_LoadTexture: texture [%s] with name [%s] loaded!\n", info->file_name, info->name);
+	
 	free(tex_data);
 	
 	return texture_index;
@@ -224,6 +386,7 @@ int texture_LoadTexture(char *file_name, char *name)
 
 int texture_LoadCubeTexture(char *file_name, char *name)
 {
+	#if 0
 	int i;
 	int c;
 	int k;
@@ -410,10 +573,10 @@ int texture_LoadCubeTexture(char *file_name, char *name)
 	}
 	
 	
-	
+	/*
 	texture = &textures[texture_index];
 	texture_names[texture_index].name = strdup(name);
-	texture_names[texture_index].file_name = strdup(file_name);
+	texture_names[texture_index].file_name = strdup(file_name);*/
 	
 	texture->gl_handle = gl_tex_handle;
 	texture->tex_type = GL_TEXTURE_CUBE_MAP;
@@ -426,6 +589,8 @@ int texture_LoadCubeTexture(char *file_name, char *name)
 	
 	return texture_index;
 	
+	#endif
+	
 	
 }
 
@@ -434,10 +599,10 @@ void texture_DeleteTextureByIndex(int texture_index)
 {
 	if(texture_index >= 0 && texture_index < texture_count)
 	{
-		if(textures[texture_index].texture_index != -1)
+		if(textures[texture_index].gl_handle)
 		{
-			textures[texture_index].texture_index = -1;
 			glDeleteTextures(1, &textures[texture_index].gl_handle);
+			textures[texture_index].gl_handle = 0;
 			free_position_stack_top++;
 			free_position_stack[free_position_stack_top] = texture_index;
 		}
@@ -450,7 +615,7 @@ int texture_GetTexture(char *name)
 	
 	for(i = 0; i < texture_count; i++)
 	{
-		if(!strcmp(name, texture_names[i].name))
+		if(!strcmp(name, texture_info[i].name))
 		{
 			return i;
 		}
@@ -459,14 +624,57 @@ int texture_GetTexture(char *name)
 	return -1;
 }
 
-
-
-void texture_BindTexture(int texture_index, int tex_unit)
+void texture_UploadTexture(int texture_index)
 {
-	texture_t *tex = &textures[texture_index];	
-	glActiveTexture(tex_unit);
-	glBindTexture(tex->tex_type, tex->gl_handle);
+	
 }
+
+void texture_TexParameteri(int texture_index, int param, int value)
+{
+	int target;
+	unsigned int handle;
+	if(texture_index >= 0 && texture_index < texture_count)
+	{
+		if(textures[texture_index].gl_handle)
+		{
+			target = texture_info[texture_index].target;
+			handle = textures[texture_index].gl_handle;
+			
+			switch(param)
+			{
+				case GL_TEXTURE_MIN_FILTER:
+				case GL_TEXTURE_MAG_FILTER:
+				case GL_TEXTURE_BASE_LEVEL:
+				case GL_TEXTURE_MAX_LEVEL:
+				case GL_TEXTURE_WRAP_S:
+				case GL_TEXTURE_WRAP_T:
+					glBindTexture(target, handle);
+					glTexParameteri(target, param, value);
+					
+					if(param == GL_TEXTURE_BASE_LEVEL || param == GL_TEXTURE_MAX_LEVEL)
+					{
+						glGenerateMipmap(target);
+					}
+				break;
+				
+				default:
+					return;
+				
+			}
+			
+			
+			
+		}
+	}	
+}
+
+
+
+
+
+
+
+
 
 
 

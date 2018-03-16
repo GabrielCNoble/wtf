@@ -10,6 +10,7 @@
 #include "physics.h"
 #include "sound.h"
 #include "bsp.h"
+#include "entity.h"
 
 int player_list_size;
 int player_count;
@@ -24,7 +25,7 @@ int spawn_point_count = 0;
 int spawn_point_free_position_stack_top = -1;
 int *spawn_point_free_position_stack = NULL;
 spawn_point_t *spawn_points = NULL;
-
+ 
 mesh_t *weapon_mesh;
 mesh_t *body_mesh;
 
@@ -47,7 +48,7 @@ extern bsp_pnode_t *collision_nodes;
 
 extern int fire_sound;
 
-void player_Init()
+int player_Init()
 {
 	player_list_size = 64;
 	player_count = 0;
@@ -68,6 +69,8 @@ void player_Init()
 	visible_players_body_transforms = malloc(sizeof(mat4_t ) * player_list_size);
 	visible_players_weapon_transforms = malloc(sizeof(mat4_t) * player_list_size);
 	visible_players_indexes = malloc(sizeof(int) * player_list_size);
+	
+	return 1;
 }
 
 void player_Finish()
@@ -104,6 +107,8 @@ int player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation)
 	int w;
 	int h;
 	
+	int gun_entity_def;
+	
 	if(free_positions_stack_top > -1)
 	{
 		player_index = free_positions_stack[free_positions_stack_top];
@@ -132,6 +137,8 @@ int player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation)
 	strcpy(camera_name, name);
 	strcat(camera_name, "_camera");
 	
+	
+	
 	//renderer_GetWindowSize(&w, &h);
 	
 	
@@ -140,6 +147,11 @@ int player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation)
 	player->player_orientation = *orientation;
 	player->bm_flags = 0;
 	
+	
+	//gun_entity_def = entity_GetEntityDef("portal gun");
+	//player->gun_entity_index = entity_CreateEntity("gun", vec3(position.x + 1.0, position.y - 1.0, position.z - 2.0), vec3(0.035, 0.055, 0.055), orientation, gun_entity_def);
+	
+	//entity_SetInvisible(player->gun_entity_index);
 	
 	//player->weapon_start = weapon_mesh->start;
 	//player->weapon_count = weapon_mesh->vert_count;
@@ -270,6 +282,9 @@ void player_SpawnPlayer(int player_index, int spawn_point_index)
 				players[player_index].bm_flags |= PLAYER_IN_WORLD;
 				players[player_index].bm_movement = 0;
 				players[player_index].delta = vec3(0.0, 0.0, 0.0);
+				
+				//entity_SetVisible(players[player_index].gun_entity_index);
+				
 			}
 						
 		}
@@ -283,6 +298,9 @@ void player_RemovePlayer(int player_index)
 		if(!(players[player_index].bm_flags & PLAYER_INVALID))
 		{
 			players[player_index].bm_flags &= ~PLAYER_IN_WORLD;
+			
+		//	entity_SetInvisible(players[player_index].gun_entity_index);
+			
 			if(active_player == &players[player_index])
 			{
 				active_player = NULL;
@@ -332,7 +350,7 @@ void player_SetPlayerAsActiveIndex(int player_index)
 	
 }
 
-void player_ProcessActivePlayer(float delta_time)
+void player_ProcessActivePlayer(double delta_time)
 {
 	static float pitch;
 	static float yaw;
@@ -342,9 +360,13 @@ void player_ProcessActivePlayer(float delta_time)
 	
 	vec3_t forward_vector;
 	vec3_t right_vector;
+	vec3_t up_vector;
+	
+	camera_t *player_camera;
 	
 	float dx;
 	float dy;
+	float r;
 	
 	static int fire_timer = 0;
 
@@ -359,8 +381,24 @@ void player_ProcessActivePlayer(float delta_time)
 		x_shift *= 0.925;
 		y_shift *= 0.925;
 		
+		//printf("[%f %f]\n", x_shift, y_shift);
+		
 		dx = normalized_mouse_x * 0.25;
 		dy = normalized_mouse_y * 0.25;
+		
+		
+		//forward_vector = active_player->player_orientation.f_axis;
+		//right_vector = active_player->player_orientation.r_axis;
+		//up_vector = active_player->player_orientation.u_axis;
+		
+		player_camera = active_player->player_camera;
+		
+		
+		forward_vector = player_camera->world_orientation.f_axis;
+		
+		r = (forward_vector.x * forward_vector.x + forward_vector.z * forward_vector.z);
+		
+		//printf("%f\n", r);
 		 
 		active_player->pitch += dy;		
 		if(active_player->pitch > 0.5) active_player->pitch = 0.5;
@@ -371,22 +409,30 @@ void player_ProcessActivePlayer(float delta_time)
 		if(active_player->yaw > 1.0) active_player->yaw = -1.0 + (active_player->yaw - 1.0);
 		else if(active_player->yaw < -1.0) active_player->yaw = 1.0 + (active_player->yaw + 1.0);
 		
-		x_shift -= dx * delta_time * 0.05;
+		x_shift -= dx * delta_time * 0.05 * r;
 		
 		if(x_shift > 1.0) x_shift = -1.0 + (x_shift - 1.0);
 		else if(x_shift < -1.0) x_shift = 1.0 + (x_shift + 1.0);
 		
 		
-		//forward_vector = active_player->player_orientation.f_axis;
+		if(active_player->pitch < 0.5 && active_player->pitch > -0.5)
+		{
+			y_shift += dy * delta_time * 0.05;
+		}
 		
-		y_shift += dy * delta_time * 0.05;
+		
 		
 		if(y_shift < -0.5) y_shift = -0.5;
 		else if(y_shift > 0.5) y_shift = 0.5;
 		
+	/*	if(active_player->pitch == 0.5 || active_player->pitch == -0.5)
+			y_shift = 0.0;*/
+		
 		active_player->weapon_x_shift = sin(x_shift * 3.14159265) * 0.5;
 		active_player->weapon_y_shift = sin(y_shift * 3.14159265) * 0.5;
 		active_player->weapon_z_shift = (-cos(x_shift * 3.14159265) - cos(y_shift * 3.14159265)) * 0.5;
+		
+		//printf("[%f %f %f]\n", active_player->weapon_x_shift, active_player->weapon_y_shift, active_player->weapon_z_shift);
 				
 		if(input_GetKeyPressed(SDL_SCANCODE_W))
 		{
@@ -502,12 +548,14 @@ void player_UpdatePlayers(double delta_time)
 	mat4_t weapon_transform;
 	mat3_t weapon_rot = mat3_t_id();
 	mat3_t rot;
-	vec3_t weapon_position = vec3(1.0, -1.0, -2.0);
+	vec3_t weapon_position = vec3(1.0, -1.0, -1.5);
 	vec3_t direction;
 	vec3_t r_vector;
 	vec3_t u_vector;
 	vec3_t r_direction;
 	vec3_t position;
+	
+	entity_t *gun;
 	
 	//printf("%f\n", delta_time);
 	
@@ -569,8 +617,23 @@ void player_UpdatePlayers(double delta_time)
 		
 		if(players[i].bm_movement & MOVE_JUMP)
 		{
-			players[i].delta.y = JUMP_DELTA * delta_time * 0.025;
+			//printf("%f\n", delta_time);
+			players[i].delta.y = JUMP_DELTA * 0.35 /** delta_time * 0.025*/;
 		}
+		
+		
+	/*	position = weapon_position;
+		
+		mat3_t_vec3_t_mult(&players[i].player_orientation, &position);
+		
+		position.x += players[i].collision_box_position.x;
+		position.y += players[i].collision_box_position.y;
+		position.z += players[i].collision_box_position.z;
+		
+		gun = entity_GetEnttiyPointerIndex(players[i].gun_entity_index);
+		gun->position = position;
+		gun->flags |= ENTITY_HAS_MOVED;*/
+		
 		
 		//player_Move(&players[i]);
 		
@@ -671,6 +734,76 @@ void player_UpdatePlayers(double delta_time)
 	
 }
 
+void player_PostUpdatePlayers(double delta_time)
+{
+	int i;
+	int j;
+	float r;
+	vec3_t forward_vector;
+	vec3_t right_vector;
+	
+	float s;
+	float c;
+	int transform_index;
+	
+	float increment;
+	
+	camera_t *active_camera = camera_GetActiveCamera();
+	camera_t *player_camera;
+	
+	mat4_t transform;
+	mat4_t weapon_transform;
+	mat3_t weapon_rot;
+	mat3_t rot;
+	vec3_t weapon_position = vec3(1.0, -1.0, -0.35);
+	vec3_t direction;
+	vec3_t r_vector;
+	vec3_t u_vector;
+	vec3_t r_direction;
+	vec3_t position;
+	
+	entity_t *gun;
+	
+	//printf("%f\n", delta_time);
+	
+	mat3_t_rotate(&weapon_rot, vec3(0.0, 1.0, 0.0), 0.5, 1);
+	
+	visible_player_count = 0;
+	
+	for(i = 0; i < player_count; i++)
+	{	
+	
+		if(!(players[i].bm_flags & PLAYER_IN_WORLD))
+			continue;
+	
+	/*	
+		
+		rot = weapon_rot;
+		position = weapon_position;
+		
+		position.x += players[i].weapon_x_shift;
+		position.y -= players[i].weapon_y_shift;
+		position.z += players[i].weapon_z_shift;
+		
+		
+		player_camera = players[i].player_camera;
+		
+		mat3_t_mult(&rot, &weapon_rot, &player_camera->world_orientation);
+		mat3_t_vec3_t_mult(&player_camera->world_orientation, &position);
+		
+		position.x += player_camera->world_position.x;
+		position.y += player_camera->world_position.y;
+		position.z += player_camera->world_position.z;
+		
+		gun = entity_GetEnttiyPointerIndex(players[i].gun_entity_index);
+		gun->position = position;
+		gun->orientation = rot;
+		gun->flags |= ENTITY_HAS_MOVED;*/
+				
+	}
+
+}
+
 #define BUMP_COUNT 5
 #define SPEED_THRESHOLD 0.00001
 void player_Move(player_t *player, float delta_time)
@@ -706,6 +839,14 @@ void player_Move(player_t *player, float delta_time)
 	int bm_movement;
 	
 	
+	/*new_velocity.x *= delta_time;
+	new_velocity.y *= delta_time;
+	new_velocity.z *= delta_time;
+	
+	
+	original_velocity.x *= delta_time;
+	original_velocity.y *= delta_time;
+	original_velocity.z *= delta_time;*/
 	//end.x = position->x + velocity.x;
 	//end.y = position->y + velocity.y;
 	//end.z = position->z + velocity.z;
@@ -791,7 +932,17 @@ void player_Move(player_t *player, float delta_time)
 				}
 				else
 				{
-					//printf("[%f %f %f]\n",  trace.normal.x, trace.normal.y, trace.normal.z);
+					/* HACK -- if our speed points in the same general direction
+					as the wall we just hit, it means it's normal should be flipped
+					to avoid 'floating' over surfaces... */
+					if(dot3(trace.normal, new_velocity) > 0.0)
+					{
+						trace.normal.x = -trace.normal.x;
+						trace.normal.y = -trace.normal.y;
+						trace.normal.z = -trace.normal.z;
+					}
+					
+				//	printf("[%f %f %f]\n",  trace.normal.x, trace.normal.y, trace.normal.z);
 					
 					/* hit a vertical-ish surface, test to see whether it's a step or a wall... */
 					//if(trace.normal.y < 0.2 && trace.normal.y > -0.2)
@@ -801,14 +952,11 @@ void player_Move(player_t *player, float delta_time)
 					if(trace.normal.y >= 0.0 && trace.normal.y < 0.2)
 					{
 	
-						if(bsp_TryStepUp(&player->collision_box_position, &original_velocity, &trace))
+						if(bsp_TryStepUp(&player->collision_box_position, &new_velocity, &trace))
 						{
 							/* if step-up was successful, do not clip the speed... */
-							
-							/* TODO: maybe it's a good idea to dampen the speed on 
-							staircases a little to avoid the player skyrocketing when walking one
-							up... */
 							player->bm_movement |= PLAYER_STEPPING_UP | PLAYER_ON_GROUND;
+							//printf("step up!\n");
 							continue;
 						}
 					}
@@ -856,8 +1004,8 @@ void player_Move(player_t *player, float delta_time)
 					
 					#endif
 					
-					
-				
+					//printf("---> [%f %f %f]\n", new_velocity.x, new_velocity.y, new_velocity.z);
+					//printf("[%f %f %f]\n", trace.normal.x, trace.normal.y, trace.normal.z);
 					/* horizontal-ish surface (floor or slope)... */
 					bsp_ClipVelocityToPlane(trace.normal, new_velocity, &new_velocity, 1.0);					
 					

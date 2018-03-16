@@ -12,6 +12,8 @@ enum PICK_TYPE
 	PICK_BRUSH,
 	PICK_LIGHT,
 	PICK_SPAWN_POINT,
+	PICK_UV_VERTEX,
+	PICK_ENTITY,
 };
 
 enum HANDLE_3D_FLAGS
@@ -34,25 +36,29 @@ enum HANDLE_3D_MODE
 	HANDLE_3D_SCALE,
 };
 
+enum HANDLE_3D_TRANFORM_MODE
+{
+	HANDLE_3D_TRANFORM_GLOBAL = 0,
+	HANDLE_3D_TRANFORM_LOCAL,
+};
+
 enum EDITOR_STATE
 {
 	EDITOR_EDITING = 1,
 	EDITOR_PIE,
 };
 
-/*float editor_snappings[] = 
+enum EDITING_MODE
 {
-	0.0, 
-	0.001,
-	0.005,
-	0.01,
-	0.05,
-	0.1,
-	0.5,
-	1.0,
-	5.0,
-	10.0,
-};*/
+	EDITING_MODE_OBJECT = 0,
+	EDITING_MODE_BRUSH,
+	EDITING_MODE_UV,
+};
+
+enum EDITOR_TEXTURE_FLAGS
+{
+	TEXTURE_COPY = 1 << 28,					/* used to signal a texture should be copied to the project folder... */
+};
 
 typedef struct
 {
@@ -61,6 +67,7 @@ typedef struct
 	int index1;
 	int index2;
 }pick_record_t;
+
 
 
 typedef struct
@@ -79,7 +86,6 @@ typedef struct
 	int *polygon_count;
 	int *triangle_group_count;
 }brush_ptr_t;
-
 
 
 #endif

@@ -4,7 +4,9 @@
 
 #include "gpu.h"
 #include "vector.h"
-#include "mesh.h"
+#include "model.h"
+
+#include "memory.h"
 
 #include "GL\glew.h"
 
@@ -20,7 +22,7 @@ unsigned int gpu_heap;
 
 static int frees;
 
-
+ 
 static gpu_heap_list_t alloc_list;
 static gpu_heap_list_t free_list;
 
@@ -61,13 +63,16 @@ int gpu_Init()
 	alloc_list.size = 3200;
 	alloc_list.free_stack_top = -1;
 	alloc_list.free_stack_size = 3200;
-	alloc_list.free_stack = malloc(sizeof(int) * alloc_list.size);
-	alloc_list.list = malloc(sizeof(gpu_head_t) * alloc_list.size);
+	//alloc_list.free_stack = malloc(sizeof(int) * alloc_list.size);
+	//alloc_list.list = malloc(sizeof(gpu_head_t) * alloc_list.size);
 	
+	alloc_list.free_stack = memory_Malloc(sizeof(int) * alloc_list.size, "gpu_Init");
+	alloc_list.list = memory_Malloc(sizeof(gpu_head_t) * alloc_list.size, "gpu_Init");
 	
 	free_list.cursor = 1;
 	free_list.size = 3200;
-	free_list.list = malloc(sizeof(gpu_head_t) * free_list.size);
+	//free_list.list = malloc(sizeof(gpu_head_t) * free_list.size);
+	free_list.list = memory_Malloc(sizeof(gpu_head_t) * free_list.size, "gpu_Init");
 	
 	
 	/* the whole heap is free... */
@@ -81,9 +86,14 @@ int gpu_Init()
 void gpu_Finish()
 {
 	glDeleteBuffers(1, &gpu_heap);
-	free(alloc_list.list);
+	/*free(alloc_list.list);
 	free(alloc_list.free_stack);
-	free(free_list.list);
+	free(free_list.list);*/
+	
+	memory_Free(alloc_list.list);
+	memory_Free(alloc_list.free_stack);
+	memory_Free(free_list.list);
+	
 	//free(free_list.free_stack);
 }
 
@@ -161,11 +171,19 @@ int gpu_Alloc(int size)
 	
 	if(alloc_list.cursor >= alloc_list.size)
 	{
-		t = (gpu_head_t *)malloc(sizeof(gpu_head_t) * (alloc_list.size + 32));
-		q = (int *)malloc(sizeof(int) * (alloc_list.size + 32));
+		/*t = (gpu_head_t *)malloc(sizeof(gpu_head_t) * (alloc_list.size + 32));
+		q = (int *)malloc(sizeof(int) * (alloc_list.size + 32));*/
+		
+		t = (gpu_head_t *)memory_Malloc(sizeof(gpu_head_t) * (alloc_list.size + 32), "gpu_Alloc");
+		q = (int *)memory_Malloc(sizeof(int) * (alloc_list.size + 32), "gpu_Alloc");
+		
 		memcpy(t, alloc_list.list, sizeof(gpu_head_t) * alloc_list.size);
-		free(alloc_list.list);
-		free(alloc_list.free_stack);
+		//free(alloc_list.list);
+		//free(alloc_list.free_stack);
+		
+		memory_Free(alloc_list.list);
+		memory_Free(alloc_list.free_stack);
+		
 		alloc_list.list = t;
 		alloc_list.free_stack = q;
 		alloc_list.size += 32;
@@ -254,9 +272,11 @@ void gpu_Free(int handle)
 	
 	if(free_list.cursor >= free_list.size)
 	{
-		t = (gpu_head_t *)malloc(sizeof(gpu_head_t) * (free_list.size + 32));
+		//t = (gpu_head_t *)malloc(sizeof(gpu_head_t) * (free_list.size + 32));
+		t = (gpu_head_t *)memory_Malloc(sizeof(gpu_head_t) * (free_list.size + 32), "gpu_Free");
 		memcpy(t, free_list.list, sizeof(gpu_head_t) * free_list.size);
-		free(free_list.list);
+		//free(free_list.list);
+		memory_Free(free_list.list);
 		free_list.list = t;
 		free_list.size += 32;
 	}

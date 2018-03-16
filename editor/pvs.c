@@ -11,15 +11,16 @@
 #include "l_main.h"
 
 
+
 /* from world.c */
 extern int world_nodes_count;
 extern bsp_pnode_t *world_nodes;
 extern bsp_polygon_t *node_polygons;			/* necessary to quickly build portals... */
 extern int world_leaves_count;
 extern bsp_dleaf_t *world_leaves;
+ 
 
-
-timedout_leaf_t *timed_out_leaves = NULL;
+//timedout_leaf_t *timed_out_leaves = NULL;
 
 bsp_portal_t *world_portals = NULL;
 
@@ -37,9 +38,17 @@ extern SDL_sem *step_semaphore;
 extern int b_draw_pvs_steps;
 
 
-#define START_TIME_OUT 30000.0
-#define MAX_TIME_OUT 300000.0
-#define TIME_OUT_INCREMENT 30000.0
+SDL_mutex *stop_flag_mutex = NULL;
+SDL_mutex *job_list_mutex = NULL;
+SDL_sem *pvs_threads_semaphore = NULL;
+int b_stop = 0;
+
+#define SMALL_START_TIME_OUT 15000.0
+#define SMALL_TIME_OUT_INCREMENT 15000.0
+
+#define START_TIME_OUT 60000.0			
+#define MAX_TIME_OUT 14400000.0				/* maximum of 4 hours per leaf... */
+#define TIME_OUT_INCREMENT 60000.0
 
 
 
@@ -47,9 +56,13 @@ extern int b_draw_pvs_steps;
 
 //pvs_for_leaf_stack *pvs_calc_stack;
 
-#define MAX_RECURSIVE_PVS_STACK 1024
+#define MAX_RECURSIVE_PVS_STACK_DEPTH 256
 
-pvs_for_leaf_stack_t pvs_for_leaf_stack;
+pvs_for_leaf_stack_t *pvs_for_leaf_stack;
+
+
+pvs_job_t *pvs_jobs = NULL;
+pvs_job_t *last_job = NULL;
 
 
 void bsp_InitPvsTimer()
@@ -600,13 +613,19 @@ void bsp_RemoveBadPortals(bsp_portal_t **portals)
 	float y_min;
 	float x_min;
 	
+	float w;
+	float h;
+	
+	float num;
+	float denum;
+	
 	int i;
 	
 	p = *portals;
-	while(p)
+	/*while(p)
 	{
 		p = p->next;
-	}
+	}*/
 	
 	
 	p = *portals;
@@ -692,19 +711,48 @@ void bsp_RemoveBadPortals(bsp_portal_t **portals)
 		
 		/* calculate the approximate area of this portal to enable
 		selecting the largest amongst duplicated portals... */
-		p->approx_area = (x_max - x_min) * (y_max - y_min);
+		w = x_max - x_min;
+		h = y_max - y_min;
 		
-		/*if(p->approx_area < 0.0001)
-			goto _remove;*/
-
+		p->approx_area = w * h;
+		
+		/* remove if too small... */
+		if(p->approx_area < 0.05)
+		{
+			goto _remove;
+		}
+		
+		/* remove if one of the dimensions is zero... */
+		if(!w || !h)
+		{
+			goto _remove;
+		}
+		
+		
+		if(w > h)
+		{
+			denum = w;
+			num = h;
+		}
+		else
+		{
+			denum = h;
+			num = w;
+		}
+		
+		/* remove if it doesn't have
+		a nice ratio between it's sides... */
+		
+		/* NOTE: THIS can cause problems... */
+		/* NOTE: pesky crack portals... */
+		if((num / denum) < 0.001)
+		{
+			goto _remove;
+		}
+	
 		n = p;
 		p = p->next;
 	}
-	
-/*	if(s)
-	{
-		*portals = s;	
-	}*/
 	
 	
 	
@@ -714,7 +762,7 @@ void bsp_RemoveBadPortals(bsp_portal_t **portals)
 	while(p)
 	{
 		
-		biggest = p;
+		//biggest = p;
 		
 		n = p->next;
 		prev_n = p;
@@ -728,19 +776,12 @@ void bsp_RemoveBadPortals(bsp_portal_t **portals)
 				prev_n->next = n->next;
 				
 				if(p->approx_area >= n->approx_area)
-				{
-					//q = n->next;
-					
+				{	
 					free(n->portal_polygon->vertices);
-					free(n->portal_polygon);
-					//free(n);
-					
-					//n = q;
-					//continue;	
+					free(n->portal_polygon);	
 				}
 				else
-				{
-					
+				{	
 					free(p->portal_polygon->vertices);
 					free(p->portal_polygon);
 					
@@ -748,11 +789,6 @@ void bsp_RemoveBadPortals(bsp_portal_t **portals)
 					p->approx_area = n->approx_area;
 					p->leaf0 = n->leaf0;
 					p->leaf1 = n->leaf1;
-					
-					
-					
-					//n = prev_n->next;
-					//continue;
 				}
 				
 				free(n);
@@ -1113,9 +1149,8 @@ void bsp_Unlock()
 	SDL_UnlockMutex(polygon_copy_mutex);
 }
 
-#define MAX_CLIP_PLANES 512
-#define MAX_OUT_VALID_PORTALS 512
 
+#if 0
 int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_leaf_t *dst_leaf, bsp_portal_t **in_valid_dst_portals, int in_valid_dst_portal_count)
 {
 	int i;
@@ -1167,6 +1202,9 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 	int dst_leaf_side;
 	int dst_dst_portal_side;
 	
+	bsp_leaf_t *leaf0;
+	bsp_leaf_t *leaf1;
+	
 	float d0;
 	float d1;
 	
@@ -1189,6 +1227,7 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 		return 0;
 			
 	src_leaf->pvs[dst_leaf->leaf_index >> 3] |= 1 << (dst_leaf->leaf_index % 8);
+	dst_leaf->pvs[src_leaf->leaf_index >> 3] |= 1 << (src_leaf->leaf_index % 8);
 	
 	//return;
 	
@@ -1210,11 +1249,11 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 	
 	//pvs_for_leaf_stack.recursive_stack_pointer++;
 	
-	assert(pvs_for_leaf_stack.recursive_stack_pointer + 1 < MAX_RECURSIVE_PVS_STACK);
+	assert(pvs_for_leaf_stack->recursive_stack_pointer + 1 < MAX_RECURSIVE_PVS_STACK_DEPTH);
 	
 	
 	
-	stack = pvs_for_leaf_stack.recursive_stack + pvs_for_leaf_stack.recursive_stack_pointer + 1;
+	stack = pvs_for_leaf_stack->recursive_stack + pvs_for_leaf_stack->recursive_stack_pointer + 1;
 	
 	stack->src_leaf = src_leaf;
 	stack->src_portal = src_portal;
@@ -1225,7 +1264,7 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 	stack->dst_leaf = dst_leaf;
 	
 	
-	pvs_for_leaf_stack.recursive_stack_pointer++;
+	pvs_for_leaf_stack->recursive_stack_pointer++;
 	
 	
 	//valid_portals = stack->valid_portals;
@@ -1296,23 +1335,6 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 				edge0.y = -v0.y;
 				edge0.z = -v0.z;
 				
-						
-				#if 0
-				
-				if(v0.x <= FUZZY_ZERO && v0.x >= -FUZZY_ZERO)
-				{
-					if(v0.y <= FUZZY_ZERO && v0.y >= -FUZZY_ZERO)
-					{
-						if(v0.z <= FUZZY_ZERO && v0.z >= -FUZZY_ZERO)
-						{
-							/* src and dst portals share this vertex, 
-							so skip it... */
-							//continue;
-						}
-					}
-				}
-				
-				#endif
 				
 				//point3 = stack->dst_portal_polygon->vertices[(k + 1) % dst_poly_vert_count].position;
 				
@@ -1437,26 +1459,7 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 				edge0.x = v0.x;
 				edge0.y = v0.y;
 				edge0.z = v0.z;
-				
-				
-				
-				
-				
-				#if 0
-				if(v0.x <= 0.0001 && v0.x >= -0.0001)
-				{
-					if(v0.y <= 0.0001 && v0.y >= -0.0001)
-					{
-						if(v0.z <= 0.0001 && v0.z >= -0.0001)
-						{
-							/* src and dst portals share this vertex, 
-							so skip it... */
-							continue;
-						}
-					}
-				}
-				
-				#endif
+
 				
 				//point3 = stack->dst_portal_polygon->vertices[(k + 1) % dst_poly_vert_count].position;
 				
@@ -1537,8 +1540,8 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 		
 		
 		
-		src_leaf_side = bsp_ClassifyPoint(src_leaf->center, src_portal->portal_polygon->vertices[0].position, src_portal->portal_polygon->normal);
-		dst_leaf_side = bsp_ClassifyPoint(dst_leaf->center, stack->dst_portal->portal_polygon->vertices[0].position, stack->dst_portal->portal_polygon->normal);
+		src_leaf_side = bsp_ClassifyPoint(stack->src_leaf->center, stack->src_portal->portal_polygon->vertices[0].position, stack->src_portal->portal_polygon->normal);
+		dst_leaf_side = bsp_ClassifyPoint(stack->dst_leaf->center, stack->dst_portal->portal_polygon->vertices[0].position, stack->dst_portal->portal_polygon->normal);
 		
 		//if(stack->clipplane_count < stack->dst_portal_polygon->vert_count)
 		//	continue;
@@ -1648,6 +1651,12 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 				continue;
 			
 			
+			/* NOTE: if a generator portal straddles the source portal plane, the 
+			generator portal should be clipped, and only the portion 'outside' the leaf should be
+			used, given that the source portal cannot look towards the general direction
+			of the source leaf... */
+			
+			/* NOTE: THIS CODE IS FAILING!!!! */
 			dst_dst_portal_side = bsp_ClassifyPolygon(stack->dst_dst_portal->portal_polygon, stack->src_portal->portal_polygon->vertices[0].position, stack->src_portal->portal_polygon->normal);
 			
 			if(dst_dst_portal_side == POLYGON_FRONT)
@@ -1683,14 +1692,21 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 				bsp_Lock();
 			
 			stack->valid_portals[stack->out_valid_dst_portal_count].portal_polygon = bsp_DeepCopyPolygon(stack->dst_dst_portal->portal_polygon);
+			
+			
+			/* NOTE: even if the clipping planes form a closed clipping volume, portals outside it can be considered
+			valid if they get tested against a clipping plane that contains the source portal... */
 				
 			for(k = 0; k < stack->clipplane_count; k++)
 			{
 				src_side = bsp_ClassifyPolygon(stack->src_portal_polygon, stack->clipplanes[k].point, stack->clipplanes[k].normal);
 				dst_side = bsp_ClassifyPolygon(stack->valid_portals[stack->out_valid_dst_portal_count].portal_polygon, stack->clipplanes[k].point, stack->clipplanes[k].normal);
 				
-				if(src_side == dst_side || (dst_side & (POLYGON_CONTAINED_BACK | POLYGON_CONTAINED_FRONT)))
+				if(src_side == dst_side)
 				{
+					
+					_drop_portal:
+					
 					free(stack->valid_portals[stack->out_valid_dst_portal_count].portal_polygon->vertices);
 					free(stack->valid_portals[stack->out_valid_dst_portal_count].portal_polygon);
 					break;
@@ -1717,11 +1733,46 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 						free(back_split);
 						stack->valid_portals[stack->out_valid_dst_portal_count].portal_polygon = front_split;
 					}
-				}	
+				}
+				else
+				{
+					if(src_side == POLYGON_CONTAINED_BACK)
+						if(dst_side == POLYGON_BACK)
+							goto _drop_portal;
+							
+					if(src_side == POLYGON_CONTAINED_FRONT)
+						if(dst_side == POLYGON_FRONT)
+							goto _drop_portal;	
+					
+					if(dst_side == POLYGON_CONTAINED_FRONT)
+						if(src_side == POLYGON_FRONT)
+							goto _drop_portal;
+						
+					if(dst_side == POLYGON_CONTAINED_BACK)
+						if(src_side == POLYGON_BACK)
+							goto _drop_portal;			
+					
+				}
+				
+					
 			}
 			
 			if(k >= stack->clipplane_count)
 			{
+				/* TODO: Check to see if the portal has an acceptable area. If it has
+				check if it has an acceptable ratio between the sides of it's bounding box. If it
+				has, keep it. Drop it, otherwise. */
+				
+				leaf0 = stack->valid_portals[stack->out_valid_dst_portal_count].leaf0;
+				leaf1 = stack->valid_portals[stack->out_valid_dst_portal_count].leaf1;
+				
+				
+				/* make the leaves on both sides of this portal see each other
+				(just so the map becomes visible faster)... */
+				leaf0->pvs[leaf1->leaf_index >> 3] |= (1 << (leaf1->leaf_index % 8));
+				leaf1->pvs[leaf0->leaf_index >> 3] |= (1 << (leaf0->leaf_index % 8));
+				
+				
 				stack->valid_portals[stack->out_valid_dst_portal_count].go_through = src_leaf->leaf_index;
 				stack->out_valid_dst_portal_count++;
 			}
@@ -1796,7 +1847,7 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 	if(b_draw_pvs_steps)
 		bsp_Lock();
 	
-	pvs_for_leaf_stack.recursive_stack_pointer--;
+	pvs_for_leaf_stack->recursive_stack_pointer--;
 	
 	stack->dst_dst_leaf = NULL;
 	stack->dst_leaf = NULL;
@@ -1820,8 +1871,670 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 	
 }
 
+#endif
 
 
+
+int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_leaf_t *dst_leaf, bsp_portal_t **in_valid_dst_portals, int in_valid_dst_portal_count, float time_out)
+{
+	int i;
+	int j;
+	int k;
+	int src_poly_vert_count = 0;
+	int dst_poly_vert_count = 0;
+	int dst_dst_leaf_portal_count = 0;
+	
+	
+	int src_side;
+	int dst_side;
+	int cls;
+	
+	//recursive_pvs_for_leaf_stack_t *stack;
+	
+	int out_valid_dst_portal_count = 0;
+	bsp_portal_t *valid_portals = NULL;
+	bsp_portal_t **out_valid_dst_portals = NULL;
+	bsp_portal_t *dst_portal = NULL;
+	
+	bsp_leaf_t *dst_dst_leaf = NULL;
+	bsp_portal_t *dst_dst_portal = NULL;
+	
+	
+	int clipplane_count;
+	int rtrn = 0;
+	bsp_clipplane_t *clipplanes;
+	//bsp_clipplane_t clipping_planes[MAX_CLIPPING_PLANES];
+	
+	bsp_polygon_t *src_portal_polygon;
+	bsp_polygon_t *dst_portal_polygon;
+	
+	bsp_polygon_t *front_split;
+	bsp_polygon_t *back_split;
+	
+	vec3_t v0;
+	vec3_t v1;
+	
+	vec3_t e0;
+	vec3_t e1;
+	
+	vec3_t point;
+	vec3_t edge0;
+	vec3_t edge1;
+	vec3_t normal;
+	
+	int src_leaf_side;
+	int dst_leaf_side;
+	int dst_dst_portal_side;
+	
+	bsp_leaf_t *leaf0;
+	bsp_leaf_t *leaf1;
+	
+	float d0;
+	float d1;
+	
+	//printf("%f\n", bsp_DeltaTime());
+	
+	//if(b_step)
+	//{
+	//	bsp_Wait();
+	//}
+	//else
+	
+	//{
+	
+	
+	if(b_stop)
+		return -2;
+	
+	
+	
+	if(bsp_DeltaTime() > time_out)
+		return -1;	
+//	}
+
+	
+
+	
+	if(dst_leaf == src_leaf)
+		return 0;
+			
+	src_leaf->pvs[dst_leaf->leaf_index >> 3] |= 1 << (dst_leaf->leaf_index % 8);
+	//dst_leaf->pvs[src_leaf->leaf_index >> 3] |= 1 << (src_leaf->leaf_index % 8);
+	
+	//return;
+	
+	/* this leaf is a terminal leaf... */
+	if(!in_valid_dst_portal_count)
+		return 0;
+		
+	
+	if(dst_leaf->pvs[dst_leaf->leaf_index >> 3] & (1 << (dst_leaf->leaf_index % 8)))
+		return 0;
+		
+	
+		
+	/* mark this leaf on it's own pvs to avoid cyclic recursion... */
+	dst_leaf->pvs[dst_leaf->leaf_index >> 3] |= 1 << (dst_leaf->leaf_index % 8);	
+		
+	//return;	
+//	printf(">>>leaf %d\n", dst_leaf->leaf_index);
+	
+	//pvs_for_leaf_stack.recursive_stack_pointer++;
+	
+	//assert(pvs_for_leaf_stack->recursive_stack_pointer + 1 < MAX_RECURSIVE_PVS_STACK_DEPTH);
+	
+	
+	
+	//stack = pvs_for_leaf_stack->recursive_stack + pvs_for_leaf_stack->recursive_stack_pointer + 1;
+	
+	//stack->src_leaf = src_leaf;
+	//src_portal = src_portal;
+	src_portal_polygon = src_portal->portal_polygon;
+	src_poly_vert_count = src_portal_polygon->vert_count;
+	
+	
+	//stack->dst_leaf = dst_leaf;
+	
+	
+	//pvs_for_leaf_stack->recursive_stack_pointer++;
+	
+	
+	//valid_portals = stack->valid_portals;
+	//out_valid_dst_portals = stack->out_valid_dst_portals;
+	//clipplanes = stack->clipplanes;
+	/* alloc this stuff in the heap given that deep enough trees
+	will actually cause a stack overflow... */
+	
+	valid_portals = malloc(sizeof(bsp_portal_t ) * (512));
+	out_valid_dst_portals = malloc(sizeof(bsp_portal_t *) * (512));
+	clipplanes = malloc(sizeof(bsp_clipplane_t ) * (512));
+		
+	for(i = 0; i < in_valid_dst_portal_count; i++)
+	{
+		
+		/*if(b_draw_pvs_steps)
+			bsp_Lock();*/
+		
+		clipplane_count = 0;
+		out_valid_dst_portal_count = 0;
+		
+		
+		dst_portal = in_valid_dst_portals[i];
+		dst_portal_polygon = dst_portal->portal_polygon;
+		
+		dst_poly_vert_count = dst_portal_polygon->vert_count;
+		
+		/*if(b_draw_pvs_steps)
+			bsp_Unlock();*/
+		
+	//	if(b_step)
+		//	bsp_Wait();
+		
+		/* skip coplanar portals... */
+		switch(bsp_ClassifyPolygon(dst_portal_polygon, src_portal_polygon->vertices[0].position, src_portal_polygon->normal))
+		{
+			case POLYGON_CONTAINED_BACK:
+			case POLYGON_CONTAINED_FRONT:
+				continue;
+			break;
+		}
+		
+				
+		/* build clipping planes... */
+		for(j = 0; j < src_poly_vert_count; j++)
+		{
+			
+			assert(src_poly_vert_count > 2);
+			
+			for(k = 0; k < dst_poly_vert_count; k++)
+			{
+				
+				assert(dst_poly_vert_count > 2);
+				point = src_portal_polygon->vertices[j].position;
+						
+				v0.x = point.x - dst_portal_polygon->vertices[k].position.x;
+				v0.y = point.y - dst_portal_polygon->vertices[k].position.y;
+				v0.z = point.z - dst_portal_polygon->vertices[k].position.z;
+			
+				edge0.x = -v0.x;
+				edge0.y = -v0.y;
+				edge0.z = -v0.z;
+				
+				
+				//point3 = stack->dst_portal_polygon->vertices[(k + 1) % dst_poly_vert_count].position;
+				
+				v1.x = dst_portal_polygon->vertices[(k + 1) % dst_poly_vert_count].position.x - dst_portal_polygon->vertices[k].position.x;
+				v1.y = dst_portal_polygon->vertices[(k + 1) % dst_poly_vert_count].position.y - dst_portal_polygon->vertices[k].position.y;
+				v1.z = dst_portal_polygon->vertices[(k + 1) % dst_poly_vert_count].position.z - dst_portal_polygon->vertices[k].position.z;
+				
+				edge1.x = dst_portal_polygon->vertices[(k + 1) % dst_poly_vert_count].position.x - point.x;
+				edge1.y = dst_portal_polygon->vertices[(k + 1) % dst_poly_vert_count].position.y - point.y;
+				edge1.z = dst_portal_polygon->vertices[(k + 1) % dst_poly_vert_count].position.z - point.z;
+				
+				
+				if(fabs(dot3(v0, dst_portal_polygon->normal)) < FUZZY_ZERO)
+				{
+					continue;
+					//normal = dst_portal_polygon->normal;
+					//goto _add_plane0;
+				}
+				
+				
+				normal = cross(v0, v1);
+				normal = normalize3(normal);
+				
+				/* is this still necessary? */
+			//	if(normal.x == 0.0 && normal.y == 0.0 && normal.z == 0.0)
+			//		continue;
+					
+				
+				d0 = dot3(src_portal_polygon->normal, edge0);
+				d1 = dot3(src_portal_polygon->normal, edge1);
+					
+					
+				src_side = bsp_ClassifyPolygon(src_portal_polygon, point, normal);	
+				dst_side = bsp_ClassifyPolygon(dst_portal_polygon, point, normal);
+				
+				cls = src_side | dst_side;
+				
+				switch(cls)
+				{
+					case POLYGON_FRONT | POLYGON_BACK:
+						
+						_add_plane0:
+						
+						clipplanes[clipplane_count].point = point;
+						clipplanes[clipplane_count].edge0 = edge0;
+						clipplanes[clipplane_count].edge1 = edge1;
+						clipplanes[clipplane_count].normal = normal;
+						clipplane_count++;
+					
+					break;
+							
+				}
+			}
+			
+			//if(k < dst_poly_vert_count)
+			//	break;
+		}
+		
+		
+		
+		
+		#if 1
+		
+		/* build clipping planes... */
+		for(j = 0; j < dst_poly_vert_count; j++)
+		{
+			
+			//assert(src_poly_vert_count > 2);
+			
+			for(k = 0; k < src_poly_vert_count; k++)
+			{
+				
+				//assert(dst_poly_vert_count > 2);
+				point = dst_portal_polygon->vertices[j].position;
+				
+				//point2 = stack->dst_portal_polygon->vertices[k].position;
+				
+				v0.x = point.x - src_portal_polygon->vertices[k].position.x;
+				v0.y = point.y - src_portal_polygon->vertices[k].position.y;
+				v0.z = point.z - src_portal_polygon->vertices[k].position.z;
+				
+				
+				edge0.x = v0.x;
+				edge0.y = v0.y;
+				edge0.z = v0.z;
+
+				
+				//point3 = stack->dst_portal_polygon->vertices[(k + 1) % dst_poly_vert_count].position;
+				
+				v1.x = src_portal_polygon->vertices[(k + 1) % src_poly_vert_count].position.x - src_portal_polygon->vertices[k].position.x;
+				v1.y = src_portal_polygon->vertices[(k + 1) % src_poly_vert_count].position.y - src_portal_polygon->vertices[k].position.y;
+				v1.z = src_portal_polygon->vertices[(k + 1) % src_poly_vert_count].position.z - src_portal_polygon->vertices[k].position.z;
+				
+				edge1.x = point.x - src_portal_polygon->vertices[(k + 1) % src_poly_vert_count].position.x;
+				edge1.y = point.y - src_portal_polygon->vertices[(k + 1) % src_poly_vert_count].position.y;
+				edge1.z = point.z - src_portal_polygon->vertices[(k + 1) % src_poly_vert_count].position.z;
+				
+				
+				if(fabs(dot3(v0, src_portal_polygon->normal)) < FUZZY_ZERO)
+				{
+					continue;
+					//normal = src_portal_polygon->normal;
+					//goto _add_plane1;
+				}
+				
+				normal = cross(v0, v1);
+				normal = normalize3(normal);
+				
+				d0 = dot3(dst_portal_polygon->normal, edge0);
+				d1 = dot3(dst_portal_polygon->normal, edge1);	
+					
+				src_side = bsp_ClassifyPolygon(src_portal_polygon, point, normal);	
+				dst_side = bsp_ClassifyPolygon(dst_portal_polygon, point, normal);
+				
+				cls = src_side | dst_side;
+				
+				switch(cls)
+				{
+					case POLYGON_FRONT | POLYGON_BACK:
+						_add_plane1:
+						
+						clipplanes[clipplane_count].point = point;
+						clipplanes[clipplane_count].edge0 = edge0;
+						clipplanes[clipplane_count].edge1 = edge1;
+						clipplanes[clipplane_count].normal = normal;
+						clipplane_count++;
+					
+					break;
+								
+				}
+			}
+		}
+		
+		
+		#endif
+		
+		
+		
+		
+		src_leaf_side = bsp_ClassifyPoint(src_leaf->center, src_portal->portal_polygon->vertices[0].position, src_portal->portal_polygon->normal);
+		dst_leaf_side = bsp_ClassifyPoint(dst_leaf->center, dst_portal->portal_polygon->vertices[0].position, dst_portal->portal_polygon->normal);
+		
+		//if(stack->clipplane_count < stack->dst_portal_polygon->vert_count)
+		//	continue;
+	
+		//if(b_step)
+		//	bsp_Wait();
+			
+			
+		
+		/*if(!clipplane_count)
+			printf("no clip planes!\n");
+		else 
+			printf("clip planes!\n");*/
+			
+		/*if(!clipplane_count)
+			continue;	
+		
+		if(clipplane_count < 3)
+			continue;*/
+			
+		//assert(clipplane_count > 2);	
+		
+		
+		
+	/*	if(b_step)
+		{
+			printf("portal from %d to %d generated %d planes\n", stack->src_leaf->leaf_index, stack->dst_leaf->leaf_index, stack->clipplane_count);
+			bsp_Wait();
+		}*/
+			
+		
+		if(dst_portal->leaf0 == dst_leaf)
+		{
+			dst_dst_leaf = dst_portal->leaf1;
+		}
+		else
+		{
+			dst_dst_leaf = dst_portal->leaf0;
+		}
+		
+		
+		
+		/*if(b_step)
+		{
+			printf("generator leaf %d has %d generator portals\n", stack->dst_dst_leaf->leaf_index, stack->dst_dst_leaf->portal_count);
+			bsp_Wait();
+		}*/
+			
+		
+		
+		//printf("portal from leaf %d to leaf %d generated %d planes\n", dst_leaf->leaf_index, stack->dst_dst_leaf->leaf_index, stack->clipplane_count);	
+			
+		
+		/* skip this leaf if it's already in the pvs... */
+	/*	if(src_leaf->pvs[dst_dst_leaf->leaf_index >> 3] & (1 << (dst_dst_leaf->leaf_index % 8)))
+			continue;*/
+		
+		/* skip this leaf if we recursed through it and didn't return yet... */
+		if(dst_dst_leaf->pvs[dst_dst_leaf->leaf_index >> 3] & (1 << (dst_dst_leaf->leaf_index % 8)))
+			continue;
+		
+		dst_dst_leaf_portal_count = dst_dst_leaf->portal_count;
+		
+		
+			
+		for(j = 0; j < dst_dst_leaf_portal_count; j++)
+		{
+			dst_dst_portal = dst_dst_leaf->portals[j];
+			
+			/* skip coplanar portals... */
+			switch(bsp_ClassifyPolygon(dst_dst_portal->portal_polygon, dst_portal->portal_polygon->vertices[0].position, dst_portal->portal_polygon->normal))
+			{
+				case POLYGON_CONTAINED_FRONT:
+				case POLYGON_CONTAINED_BACK:
+					continue;
+				break;
+			}
+			
+			/*if(dst_dst_portal->leaf0 == dst_dst_leaf)
+				if(src_leaf->pvs[dst_dst_portal->leaf1->leaf_index >> 3] & (1 << (dst_dst_portal->leaf1->leaf_index % 8)))
+					continue;
+			
+			if(dst_dst_portal->leaf1 == dst_dst_leaf)
+				if(src_leaf->pvs[dst_dst_portal->leaf0->leaf_index >> 3] & (1 << (dst_dst_portal->leaf0->leaf_index % 8)))
+					continue;*/
+			 
+			/* skip this portal if it leads to a leaf
+			we recursed through and didn't return from yet...  */
+			if(dst_dst_portal->leaf0 == dst_dst_leaf)
+				if(dst_dst_portal->leaf1->pvs[dst_dst_portal->leaf1->leaf_index >> 3] & (1 << (dst_dst_portal->leaf1->leaf_index % 8)))
+					continue;
+				
+			
+			/* skip this portal if it leads to a leaf
+			we recursed through and didn't return from yet... */		
+			if(dst_dst_portal->leaf1 == dst_dst_leaf)
+				if(dst_dst_portal->leaf0->pvs[dst_dst_portal->leaf0->leaf_index >> 3] & (1 << (dst_dst_portal->leaf0->leaf_index % 8)))
+					continue;
+					
+			/* HACK HACK HACK -- skip this portal if we already went through it... */
+		//	if(stack->dst_dst_portal->go_through == src_leaf->leaf_index)
+		//		continue;	
+			
+			
+			/* skip this portal if it leads to the source leaf... */				
+			if(dst_dst_portal->leaf0 == src_leaf || dst_dst_portal->leaf1 == src_leaf)
+				continue;
+			
+			
+			/* NOTE: if a generator portal straddles the source portal plane, the 
+			generator portal should be clipped, and only the portion 'outside' the leaf should be
+			used, given that the source portal cannot look towards the general direction
+			of the source leaf... */
+			
+			/* NOTE: THIS CODE IS FAILING!!!! */
+			dst_dst_portal_side = bsp_ClassifyPolygon(dst_dst_portal->portal_polygon, src_portal->portal_polygon->vertices[0].position, src_portal->portal_polygon->normal);
+			
+			if(dst_dst_portal_side == POLYGON_FRONT)
+			{
+				if(src_leaf_side == POINT_FRONT)
+					continue;
+			}
+			else if(dst_dst_portal_side == POLYGON_BACK)
+			{
+				if(src_leaf_side == POINT_BACK)
+					continue;
+			}
+			
+			dst_dst_portal_side = bsp_ClassifyPolygon(dst_dst_portal->portal_polygon, dst_portal->portal_polygon->vertices[0].position, dst_portal->portal_polygon->normal);
+			
+			
+			if(dst_dst_portal_side == POLYGON_FRONT)
+			{
+				if(dst_leaf_side == POINT_FRONT)
+					continue;
+			}
+			else if(dst_dst_portal_side == POLYGON_BACK)
+			{
+				if(dst_leaf_side == POINT_BACK)
+					continue;
+			}
+				
+			
+			valid_portals[out_valid_dst_portal_count].leaf0 = dst_dst_portal->leaf0;
+			valid_portals[out_valid_dst_portal_count].leaf1 = dst_dst_portal->leaf1;
+			
+			/*if(b_draw_pvs_steps)
+				bsp_Lock();*/
+			
+			valid_portals[out_valid_dst_portal_count].portal_polygon = bsp_DeepCopyPolygon(dst_dst_portal->portal_polygon);
+			
+			
+			/* NOTE: even if the clipping planes form a closed clipping volume, portals outside it can be considered
+			valid if they get tested against a clipping plane that contains the source portal... */
+				
+			for(k = 0; k < clipplane_count; k++)
+			{
+				src_side = bsp_ClassifyPolygon(src_portal_polygon, clipplanes[k].point, clipplanes[k].normal);
+				dst_side = bsp_ClassifyPolygon(valid_portals[out_valid_dst_portal_count].portal_polygon, clipplanes[k].point, clipplanes[k].normal);
+				
+				if(src_side == dst_side)
+				{
+					
+					_drop_portal:
+					
+					free(valid_portals[out_valid_dst_portal_count].portal_polygon->vertices);
+					free(valid_portals[out_valid_dst_portal_count].portal_polygon);
+					break;
+				}
+				
+				if(dst_side == POLYGON_STRADDLING)
+				{
+						
+					bsp_SplitPolygon(valid_portals[out_valid_dst_portal_count].portal_polygon, clipplanes[k].point, clipplanes[k].normal, &front_split, &back_split);
+					free(valid_portals[out_valid_dst_portal_count].portal_polygon->vertices);
+					free(valid_portals[out_valid_dst_portal_count].portal_polygon);
+										
+					if(src_side == POLYGON_FRONT)
+					{
+						free(front_split->vertices);
+						free(front_split);
+						valid_portals[out_valid_dst_portal_count].portal_polygon = back_split;
+					}
+					else
+					{
+						//assert(src_side == POLYGON_BACK);
+						
+						free(back_split->vertices);
+						free(back_split);
+						valid_portals[out_valid_dst_portal_count].portal_polygon = front_split;
+					}
+				}
+				else
+				{
+					/*if(src_side == POLYGON_CONTAINED_BACK)
+						if(dst_side == POLYGON_BACK)
+							goto _drop_portal;
+							
+					if(src_side == POLYGON_CONTAINED_FRONT)
+						if(dst_side == POLYGON_FRONT)
+							goto _drop_portal;	
+					
+					if(dst_side == POLYGON_CONTAINED_FRONT)
+						if(src_side == POLYGON_FRONT)
+							goto _drop_portal;
+						
+					if(dst_side == POLYGON_CONTAINED_BACK)
+						if(src_side == POLYGON_BACK)
+							goto _drop_portal;	*/		
+					
+				}
+				
+					
+			}
+			
+			if(k >= clipplane_count)
+			{
+				/* TODO: Check to see if the portal has an acceptable area. If it has
+				check if it has an acceptable ratio between the sides of it's bounding box. If it
+				has, keep it. Drop it, otherwise. */
+				
+			//	leaf0 = valid_portals[out_valid_dst_portal_count].leaf0;
+			//	leaf1 = valid_portals[out_valid_dst_portal_count].leaf1;
+				
+				
+				/* make the leaves on both sides of this portal see each other
+				(just so the map becomes visible faster)... */
+			//	leaf0->pvs[leaf1->leaf_index >> 3] |= (1 << (leaf1->leaf_index % 8));
+			//	leaf1->pvs[leaf0->leaf_index >> 3] |= (1 << (leaf0->leaf_index % 8));
+				
+				
+			//	valid_portals[out_valid_dst_portal_count].go_through = src_leaf->leaf_index;
+				out_valid_dst_portal_count++;
+			}
+			
+			/*if(b_draw_pvs_steps)
+				bsp_Unlock();*/
+		}
+		
+		/*if(b_draw_pvs_steps)
+			bsp_Lock();*/
+				
+		for(j = 0; j < out_valid_dst_portal_count; j++)
+		{
+			out_valid_dst_portals[j] = &valid_portals[j];
+		}
+		
+		
+		/*if(b_draw_pvs_steps)
+			bsp_Unlock();*/
+		
+		
+		/*if(b_step)
+		{
+			printf("%d valid portals\n", stack->out_valid_dst_portal_count);
+			bsp_Wait();
+		}*/
+			
+		 
+	//	printf("dst_leaf: %d  generator_leaf: %d\n", stack->dst_leaf->leaf_index, stack->dst_dst_leaf->leaf_index);
+		
+		//if(stack->out_valid_dst_portal_count)
+		//{
+		//	printf("leaf %d to leaf %d\n", stack->dst_leaf->leaf_index, stack->dst_dst_leaf->leaf_index);
+		//}
+		//printf("dst_dst_leaf: %d\n", stack->dst_dst_leaf->leaf_index);
+		
+		
+		
+		rtrn = bsp_RecursivePvsForLeaf(src_leaf, src_portal, dst_dst_leaf, out_valid_dst_portals, out_valid_dst_portal_count, time_out);
+		
+		/*if(b_draw_pvs_steps)
+			bsp_Lock();*/
+		
+		for(j = 0; j < out_valid_dst_portal_count; j++)
+		{
+			free(valid_portals[j].portal_polygon->vertices);
+			free(valid_portals[j].portal_polygon);
+		}
+		
+		out_valid_dst_portal_count = 0;
+		/*
+		if(b_draw_pvs_steps)
+			bsp_Unlock();*/
+		
+		if(rtrn < 0)
+			break;
+		
+	}
+	
+	dst_leaf->pvs[dst_leaf->leaf_index >> 3] &= ~(1 << (dst_leaf->leaf_index % 8));
+	
+	_bail:
+		
+	//assert(valid_portals);
+	//assert(out_valid_dst_portals);
+	//assert(clipplanes);	
+	
+	free(valid_portals);
+	free(out_valid_dst_portals);
+	free(clipplanes);
+	
+		
+	/*
+	if(b_draw_pvs_steps)
+		bsp_Lock();
+	
+	pvs_for_leaf_stack->recursive_stack_pointer--;
+	
+	stack->dst_dst_leaf = NULL;
+	stack->dst_leaf = NULL;
+	stack->dst_dst_portal = NULL;
+	stack->dst_portal = NULL;
+	stack->out_valid_dst_portals[0] = NULL;
+	stack->out_valid_dst_portal_count = 0;
+	stack->clipplane_count = 0;
+	
+	if(b_draw_pvs_steps)
+		bsp_Unlock();*/
+	
+//	printf("<<<leaf %d\n", dst_leaf->leaf_index);
+	
+	return rtrn;
+	
+	/* clear this leaf's bit from it's own pvs, to signal we're done recursing
+	through this leaf, and it's safe to go through it again if so is needed... */
+	
+	
+	
+}
+
+
+
+#if 0
 
 void bsp_PvsForLeaf(bsp_leaf_t *leaf)
 {
@@ -1830,6 +2543,8 @@ void bsp_PvsForLeaf(bsp_leaf_t *leaf)
 	
 	int j;
 	int k;
+	
+	float elapsed;
 	
 	int leaf_index;
 	//bsp_portal_t **portals;
@@ -1840,7 +2555,9 @@ void bsp_PvsForLeaf(bsp_leaf_t *leaf)
 	
 	c = leaf->portal_count;
 	
-	pvs_for_leaf_stack.portals = leaf->portals;
+	//pvs_for_leaf_stack.portals = leaf->portals;
+	pvs_for_leaf_stack = leaf->stack;
+	pvs_for_leaf_stack->portals = leaf->portals;
 	
 	
 	
@@ -1865,13 +2582,13 @@ void bsp_PvsForLeaf(bsp_leaf_t *leaf)
 			bsp_Wait();
 		}
 		
-		if(pvs_for_leaf_stack.portals[i]->leaf0 != leaf)
+		if(pvs_for_leaf_stack->portals[i]->leaf0 != leaf)
 		{
-			pvs_for_leaf_stack.dst_leaf = pvs_for_leaf_stack.portals[i]->leaf0;
+			pvs_for_leaf_stack->dst_leaf = pvs_for_leaf_stack->portals[i]->leaf0;
 		}
 		else
 		{
-			pvs_for_leaf_stack.dst_leaf = pvs_for_leaf_stack.portals[i]->leaf1;
+			pvs_for_leaf_stack->dst_leaf = pvs_for_leaf_stack->portals[i]->leaf1;
 		}
 		
 		/* add the leaf connected to this portal to the
@@ -1879,18 +2596,18 @@ void bsp_PvsForLeaf(bsp_leaf_t *leaf)
 		//leaf_index = dst_leaf->leaf_index;
 		//leaf->pvs[leaf_index >> 3] |= 1 << (leaf_index % 8);
 		
-		pvs_for_leaf_stack.in_dst_portal_count = 0;
-		k = pvs_for_leaf_stack.dst_leaf->portal_count;
+		pvs_for_leaf_stack->in_dst_portal_count = 0;
+		k = pvs_for_leaf_stack->dst_leaf->portal_count;
 		
 		for(j = 0; j < k; j++)
 		{
-			if(pvs_for_leaf_stack.dst_leaf->portals[j] != pvs_for_leaf_stack.portals[i])
+			if(pvs_for_leaf_stack->dst_leaf->portals[j] != pvs_for_leaf_stack->portals[i])
 			{
-				pvs_for_leaf_stack.in_dst_portals[pvs_for_leaf_stack.in_dst_portal_count] = pvs_for_leaf_stack.dst_leaf->portals[j];
+				pvs_for_leaf_stack->in_dst_portals[pvs_for_leaf_stack->in_dst_portal_count] = pvs_for_leaf_stack->dst_leaf->portals[j];
 				
 				//printf("%x\n", in_dst_portals[in_dst_portal_count]);
 				
-				pvs_for_leaf_stack.in_dst_portal_count++;
+				pvs_for_leaf_stack->in_dst_portal_count++;
 				
 			}
 		}
@@ -1898,7 +2615,7 @@ void bsp_PvsForLeaf(bsp_leaf_t *leaf)
 		if(b_step)
 		{
 			bsp_Wait();
-			printf("dst_leaf: %d\n", pvs_for_leaf_stack.dst_leaf->leaf_index);
+			printf("dst_leaf: %d\n", pvs_for_leaf_stack->dst_leaf->leaf_index);
 		}
 			
 		
@@ -1907,7 +2624,7 @@ void bsp_PvsForLeaf(bsp_leaf_t *leaf)
 		if(b_step)
 			bsp_Wait();
 		
-		if(bsp_RecursivePvsForLeaf(leaf, pvs_for_leaf_stack.portals[i], pvs_for_leaf_stack.dst_leaf, pvs_for_leaf_stack.in_dst_portals, pvs_for_leaf_stack.in_dst_portal_count) < 0)
+		if(bsp_RecursivePvsForLeaf(leaf, pvs_for_leaf_stack->portals[i], pvs_for_leaf_stack->dst_leaf, pvs_for_leaf_stack->in_dst_portals, pvs_for_leaf_stack->in_dst_portal_count) < 0)
 		{
 			printf("timed out!\n", leaf->leaf_index);
 			return;
@@ -1916,13 +2633,121 @@ void bsp_PvsForLeaf(bsp_leaf_t *leaf)
 	
 	}
 	
-	printf("ok!\n");
+	elapsed = bsp_DeltaTime();
+	
+	printf("ok! (%f s)\n", elapsed / 1000.0);
 }
+
+#endif
+
+
+
+int bsp_PvsForLeaf(bsp_leaf_t *leaf, float time_out, int portal_index)
+{
+	int i;
+	int c;
+	
+	int j;
+	int k;
+	
+	float elapsed;
+	
+	int leaf_index;
+	bsp_portal_t **portals;
+	bsp_leaf_t *dst_leaf;
+	
+	int in_dst_portal_count = 0;
+	bsp_portal_t *in_dst_portals[512];	
+	
+	c = leaf->portal_count;
+	
+	//pvs_for_leaf_stack.portals = leaf->portals;
+	//pvs_for_leaf_stack = leaf->stack;
+	portals = leaf->portals;
+	
+	
+	
+	printf("leaf %d... ", leaf->leaf_index);
+	
+	/*for(i = 0; i < leaf->pvs_size; i++)
+	{
+		leaf->pvs[i] = 0;
+	}*/
+	
+	bsp_InitPvsTimer();
+	
+	//leaf->pvs[leaf->leaf_index >> 3] &= ~(1 << (leaf->leaf_index % 8));
+	
+	
+	for(i = portal_index; i < c; i++)
+	{
+		//portal_clip_plane_count = 0;
+		
+		if(b_step)
+		{
+			bsp_Wait();
+		}
+		
+		if(portals[i]->leaf0 != leaf)
+		{
+			dst_leaf = portals[i]->leaf0;
+		}
+		else
+		{
+			dst_leaf = portals[i]->leaf1;
+		}
+		
+		in_dst_portal_count = 0;
+		k = dst_leaf->portal_count;
+		
+		for(j = 0; j < k; j++)
+		{
+			if(dst_leaf->portals[j] != portals[i])
+			{
+				in_dst_portals[in_dst_portal_count] = dst_leaf->portals[j];
+				
+				//printf("%x\n", in_dst_portals[in_dst_portal_count]);
+				
+				in_dst_portal_count++;
+				
+			}
+		}
+		
+		/*if(b_step)
+		{
+			bsp_Wait();
+			printf("dst_leaf: %d\n", dst_leaf->leaf_index);
+		}*/
+			
+		
+		
+		
+		/*if(b_step)
+			bsp_Wait();*/
+		
+		if(bsp_RecursivePvsForLeaf(leaf, portals[i], dst_leaf, in_dst_portals, in_dst_portal_count, time_out) < 0)
+		{			
+			//printf("timed out! (%.02f s)\n", time_out / 1000.0);
+			return i;
+			/* this leaf timed out... */
+		}
+	
+	}
+	
+	elapsed = bsp_DeltaTime();
+	
+	printf("ok! (%.02f s)\n", elapsed / 1000.0);
+	
+	return -1;
+	
+}
+
+
 
 
 void bsp_RecursivePvsForLeaves(bsp_node_t *bsp)
 {
-	bsp_leaf_t *leaf;
+	/*bsp_leaf_t *leaf;
 	
 	if(bsp->type == BSP_LEAF)
 	{
@@ -1936,7 +2761,8 @@ void bsp_RecursivePvsForLeaves(bsp_node_t *bsp)
 	{
 		bsp_RecursivePvsForLeaves(bsp->front);
 		bsp_RecursivePvsForLeaves(bsp->back);
-	}
+	}*/
+	
 }
 
 void bsp_PvsForLeaves(bsp_node_t *bsp, bsp_portal_t *portals)
@@ -1949,38 +2775,81 @@ void bsp_PvsForLeaves(bsp_node_t *bsp, bsp_portal_t *portals)
 	bsp_portal_t *portal = portals;
 	bsp_leaf_t *leaf0;
 	bsp_leaf_t *leaf1;
+	bsp_leaf_t *leaf;
+	pvs_job_t *job;
 	
-/*	bsp_CountNodesAndLeaves(bsp, &leaf_count, &node_count);
-	pvs_size = 4 + (leaf_count >> 3);
+	//SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
 	
-	while(portal)
+	//while(leaf = bsp_GetNextLeaf())
+	while(job =  bsp_GetNextJob())
 	{
-		leaf0 = portal->leaf0;
-		leaf1 = portal->leaf1;
 		
-		if(!leaf0->pvs)
+ 		i = bsp_PvsForLeaf(job->leaf, job->time_out, job->src_portal_index);
+		
+		if(i > -1)
 		{
-			leaf0->pvs = malloc(pvs_size);
-			for(i = 0; i < pvs_size; i++)
-			{
-				leaf0->pvs[i] = 0;
-			}
+			job->src_portal_index = i;
+			printf("timed out after %.02fs and has been requeued...\n", job->time_out / 1000.0);
+			bsp_RequeueJob(job);
+			
+			//printf("leaf %d requeued, will restart on portal %d...\n", job->leaf->leaf_index, i);
+		}
+		else
+		{
+			free(job);
 		}
 		
-		if(!leaf1->pvs)
+		if(b_stop)
 		{
-			leaf1->pvs = malloc(pvs_size);
-			for(i = 0; i < pvs_size; i++)
-			{
-				leaf1->pvs[i] = 0;
-			}
-		}	
+			printf("pvs calculation stopped!\n");
+			return;
+		}
 			
-		portal = portal->next;
-	}	*/
-	
-	bsp_RecursivePvsForLeaves(bsp);
 		
+		//SDL_SetThreadPriority(SDL_THREAD_PRIORITY_NORMAL);
+	}
+	
+	//SDL_SetThreadPriority(SDL_THREAD_PRIORITY_NORMAL);
+	
+	//bsp_RecursivePvsForLeaves(bsp);
+		
+}
+
+int bsp_PvsForLeavesThreadFn(void *data)
+{
+	int leaf_count = 0;
+	int node_count = 0;
+	int pvs_size;
+	int i;
+	//bsp_portal_t *portal = portals;
+	bsp_leaf_t *leaf0;
+	bsp_leaf_t *leaf1;
+	bsp_leaf_t *leaf;
+	pvs_job_t *job;
+	
+	while(job =  bsp_GetNextJob())
+	{
+		
+		i = bsp_PvsForLeaf(job->leaf, job->time_out, job->src_portal_index);
+		
+		if(i > -1)
+		{
+			job->src_portal_index = i;
+			bsp_RequeueJob(job);
+			printf("leaf %d requeued, will restart on portal %d...\n", job->leaf->leaf_index, i);
+		}
+		else
+		{
+			free(job);
+		}
+		
+		if(b_stop)
+		{
+			printf("pvs calculation stopped!\n");
+			return;
+		}
+	}
+
 }
 
 
@@ -2002,17 +2871,28 @@ void bsp_CalculatePvs(bsp_node_t *bsp)
 	bsp_leaf_t *leaf1;
 	int leaf_count = 0;
 	int node_count = 0;
-	timedout_leaf_t *timedout = timed_out_leaves;
-	timedout_leaf_t *next;
+	int cpu_count;
+	//timedout_leaf_t *timedout = timed_out_leaves;
+	//timedout_leaf_t *next;
 	//c = leaf_count;
 	
 	//pvs_size = 1 + c >> 5;
 	
 	b_calculating_pvs = 1;
+	b_stop = 0;
 	
 	
-	pvs_for_leaf_stack.recursive_stack = malloc(sizeof(recursive_pvs_for_leaf_stack_t) * MAX_RECURSIVE_PVS_STACK);
-	pvs_for_leaf_stack.recursive_stack_pointer = -1;
+	/*if(!stop_flag_mutex)
+	{
+		stop_flag_mutex = SDL_CreateMutex(); 
+	}*/
+	
+	job_list_mutex = SDL_CreateMutex();
+	cpu_count = SDL_GetCPUCount();
+	
+	
+	//pvs_for_leaf_stack.recursive_stack = malloc(sizeof(recursive_pvs_for_leaf_stack_t) * MAX_RECURSIVE_PVS_STACK);
+	//pvs_for_leaf_stack.recursive_stack_pointer = -1;
 	//step_mutex = SDL_CreateMutex();
 	//step_semaphore = SDL_CreateSemaphore(0);
 	
@@ -2022,17 +2902,22 @@ void bsp_CalculatePvs(bsp_node_t *bsp)
 	
 	
 	bsp_GeneratePortals(bsp, &world_portals);	
+	bsp_BuildPvsJobList(bsp);
 	bsp_PvsForLeaves(bsp, world_portals);
+	bsp_DeletePvsJobList();
 	
 	
-	while(timedout)
+	
+	SDL_DestroyMutex(job_list_mutex);
+	/*while(timedout)
 	{
 		next = (timedout_leaf_t *)timedout->next;
 		free(timedout);
 		timedout = next;
 	}
+	*/
 	
-	free(pvs_for_leaf_stack.recursive_stack);
+	//free(pvs_for_leaf_stack->recursive_stack);
 	
 	//SDL_DestroyMutex(step_mutex);
 	//SDL_DestroySemaphore(step_semaphore);
@@ -2044,9 +2929,182 @@ void bsp_CalculatePvs(bsp_node_t *bsp)
 
 int bsp_CalculatePvsAssync(void *data)
 {
+	printf("pvs thread has started\n");
 	bsp_CalculatePvs((bsp_node_t *)data);
 	light_ClearLightLeaves();
+	
+	printf("pvs thread has returned\n");
+	
 	return 0;
+}
+
+void bsp_BuildPvsJobList(bsp_node_t *bsp)
+{
+	pvs_job_t *job;
+	bsp_leaf_t *leaf;
+	if(bsp->type == BSP_LEAF)
+	{
+		leaf = (bsp_leaf_t *)bsp;
+		if(!(leaf->bm_flags & BSP_SOLID))
+		{
+			job = malloc(sizeof(pvs_job_t));
+			job->leaf = leaf;
+			job->time_out = SMALL_START_TIME_OUT;
+			job->src_portal_index = 0;
+			//job->last_time_out = 0.0;
+			job->next = NULL;
+			
+			if(!pvs_jobs)
+			{
+				pvs_jobs = job;
+			}
+			else
+			{
+				last_job->next = job;
+			} 
+			
+			last_job = job;
+			
+			//leaf->stack = malloc(sizeof(pvs_for_leaf_stack_t));
+			
+			//leaf->stack->recursive_stack_pointer = -1;
+			//leaf->stack->recursive_stack = malloc(sizeof(recursive_pvs_for_leaf_stack_t) * MAX_RECURSIVE_PVS_STACK_DEPTH);
+			
+			//assert(leaf->stack->recursive_stack);
+		}
+	}
+	else
+	{
+		bsp_BuildPvsJobList(bsp->front);
+		bsp_BuildPvsJobList(bsp->back);
+	}
+	
+}
+
+bsp_leaf_t *bsp_GetNextLeaf()
+{
+	bsp_leaf_t *leaf = NULL;
+	pvs_job_t *next;
+	
+	if(pvs_jobs)
+	{
+		leaf = pvs_jobs->leaf;
+		next = pvs_jobs->next;
+		free(pvs_jobs);
+		pvs_jobs = next;
+		
+		if(!pvs_jobs)
+			last_job = NULL;
+		
+	}
+	
+	return leaf;
+}
+
+pvs_job_t *bsp_GetNextJob()
+{
+	//bsp_leaf_t *leaf = NULL;
+	pvs_job_t *next;
+	pvs_job_t *job = NULL;
+	
+	SDL_LockMutex(job_list_mutex);
+	
+	if(pvs_jobs)
+	{
+		job = pvs_jobs;
+		pvs_jobs = pvs_jobs->next;
+		
+		job->next = NULL;
+		
+		if(!pvs_jobs)
+			last_job = NULL;
+	}
+	
+	SDL_UnlockMutex(job_list_mutex);
+	
+	return job;
+}
+
+void bsp_RequeueLeaf(bsp_leaf_t *leaf)
+{
+	pvs_job_t *job;
+	if(leaf)
+	{
+		SDL_LockMutex(job_list_mutex);
+		
+		if(pvs_jobs)
+		{
+			job = malloc(sizeof(pvs_job_t));
+			job->next = NULL;
+			job->leaf = leaf;
+			job->src_portal_index = -1;
+			
+			if(!pvs_jobs)
+			{
+				pvs_jobs = job;
+			}
+			else
+			{
+				last_job->next = job;
+			}
+			last_job = job;
+		}
+		
+		SDL_UnlockMutex(job_list_mutex);
+	}
+}
+
+void bsp_RequeueJob(pvs_job_t *job)
+{
+	if(job)
+	{
+		if(job->time_out < START_TIME_OUT)
+		{
+			job->time_out += SMALL_TIME_OUT_INCREMENT;
+		}
+		else
+		{
+			job->time_out += TIME_OUT_INCREMENT;
+		}
+		
+		
+		if(job->time_out > MAX_TIME_OUT)
+		{
+			free(job);
+			return;
+		}
+		
+		if(pvs_jobs)
+		{
+			last_job->next = job;
+			last_job = job;
+		}
+		else
+		{
+			pvs_jobs = job;
+			last_job = job;
+		}
+	}
+}
+
+void bsp_DeletePvsJobList()
+{
+	while(pvs_jobs)
+	{
+		last_job = pvs_jobs->next;
+		//free(pvs_jobs->leaf->stack->recursive_stack);
+		//free(pvs_jobs->leaf->stack);
+		free(pvs_jobs);
+		pvs_jobs = last_job;
+	}
+	
+	pvs_jobs = NULL;
+	last_job = NULL;
+}
+
+void bsp_Stop()
+{
+	b_stop = 1;
 }
 
 

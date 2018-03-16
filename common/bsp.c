@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
-
+ 
 #include "GL\glew.h"
 
 #include "bsp.h"
@@ -134,12 +134,14 @@ void bsp_ClipVelocityToPlane(vec3_t normal, vec3_t velocity, vec3_t *new_velocit
 	l = dot3(normal, velocity) * overbounce;
 	
 	normal.x *= l;
-	normal.y *= l;
+	normal.y *= l; 
 	normal.z *= l;
 	
 	new_velocity->x = velocity.x - normal.x;
 	new_velocity->y = velocity.y - normal.y;
 	new_velocity->z = velocity.z - normal.z;
+	
+	//printf("[%f %f %f]     [%f %f %f]\n", velocity.x, velocity.y, velocity.z, normal.x, normal.y, normal.z);
 	
 }
 

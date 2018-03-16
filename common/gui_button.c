@@ -1,18 +1,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "gui.h"
 #include "gui_button.h"
 
 button_t *gui_CreateButton(char *name, short x, short y, short w, short h, short bm_flags, void (*button_callback)(widget_t *widget))
 {
 	button_t *button = NULL;
 		
-	button = malloc(sizeof(button_t));
+	//button = malloc(sizeof(button_t));
 	
-	if(w < WIDGET_MIN_SIZE) w = WIDGET_MIN_SIZE;
-	if(h < WIDGET_MIN_SIZE) h = WIDGET_MIN_SIZE;
+	/*if(w < WIDGET_MIN_SIZE) w = WIDGET_MIN_SIZE;
+	if(h < WIDGET_MIN_SIZE) h = WIDGET_MIN_SIZE;*/
 		
-	button->widget.last_nestled = NULL;
+/*	button->widget.last_nestled = NULL;
 	button->widget.nestled = NULL;
 	button->widget.next = NULL;
 	button->widget.prev = NULL;
@@ -25,8 +26,14 @@ button_t *gui_CreateButton(char *name, short x, short y, short w, short h, short
 	button->widget.name = strdup(name);
 	button->widget.parent = NULL;
 	button->widget.widget_callback = button_callback;
+	button->widget.rendered_name = NULL;
+	button->widget.process_callback = NULL;*/
 	
-			
+	button = (button_t *)gui_CreateWidget(name, x, y, w, h, WIDGET_BUTTON);
+	
+	button->widget.bm_flags = WIDGET_RENDER_TEXT;
+	button->widget.widget_callback = button_callback;
+		
 	button->bm_button_flags = bm_flags & (~BUTTON_PRESSED);
 	button->rendered_text = NULL;
 	

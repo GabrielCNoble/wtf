@@ -9,7 +9,7 @@
 
 #include "GL\glew.h"
 //#include "draw.h"
-
+ 
 //tern renderer_t renderer;
 //extern camera_array camera_a;
 
