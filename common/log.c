@@ -9,6 +9,12 @@ char log_path[256];
 
 FILE *log_file;
 
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void log_Init()
 {
 	log_file = fopen("massacre.log", "w");
@@ -54,7 +60,9 @@ void log_FlushLog()
 	log_file = fopen("massacre.log", "a");
 }
 
-
+#ifdef __cplusplus
+}
+#endif
 
 
 

@@ -1,4 +1,5 @@
 #include "gui_text_field.h"
+#include "memory.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -17,13 +18,21 @@ extern widget_t *widgets;
 extern widget_t *last_widget;
 extern int gui_widget_unique_index;
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 text_field_t *gui_AddTextField(widget_t *widget, char *name, short x, short y, short w, short bm_flags, void (*text_field_callback)(widget_t *))
 {
 	text_field_t *field;
 	 
 	int i;
 	
-	field = malloc(sizeof(text_field_t));
+	field = (text_field_t *) gui_CreateWidget(name, x, y, w, OPTION_HEIGHT, WIDGET_TEXT_FIELD);
+	field->widget.widget_callback = text_field_callback;
+	field->widget.parent = widget;
+	/*field = malloc(sizeof(text_field_t));
 	
 	
 	field->widget.x = x;
@@ -40,7 +49,7 @@ text_field_t *gui_AddTextField(widget_t *widget, char *name, short x, short y, s
 	field->widget.bm_flags = 0;
 	field->widget.rendered_name = NULL;
 	field->widget.unique_index = gui_widget_unique_index++;
-	field->widget.process_callback = NULL;
+	field->widget.process_callback = NULL;*/
 	
 	
 	field->bm_text_field_flags = bm_flags & (~TEXT_FIELD_UPDATED);
@@ -48,8 +57,10 @@ text_field_t *gui_AddTextField(widget_t *widget, char *name, short x, short y, s
 	field->text_buffer_size = TEXT_FIELD_BUFFER_SIZE;
 	field->text_buffer_cursor = 0;
 	field->text_cursor = 0;
-	field->text = malloc(TEXT_FIELD_BUFFER_SIZE);
+	//field->text = malloc(TEXT_FIELD_BUFFER_SIZE);
+	field->text = memory_Malloc(TEXT_FIELD_BUFFER_SIZE, "gui_AddTextField");
 	field->rendered_text = NULL;
+	field->rendered_string = -1;
 	
 	
 	for(i = 0; i < TEXT_FIELD_BUFFER_SIZE; i++)
@@ -111,6 +122,7 @@ void gui_SetText(widget_t *widget, char *text)
 		}
 		
 		field->text[field->text_buffer_cursor] = '\0';
+		widget->bm_flags |= WIDGET_RENDER_TEXT;
 	}
 }
 
@@ -167,7 +179,7 @@ void gui_UpdateTextField(widget_t *widget)
 						field->text[field->text_buffer_cursor] = '\0';
 						field->text_buffer_cursor--;
 					}
-					field->text[field->text_buffer_cursor] = ' ';
+					field->text[field->text_buffer_cursor] = '\0';
 				break;
 					
 				case SDLK_RETURN:
@@ -237,10 +249,10 @@ void gui_UpdateTextField(widget_t *widget)
 			if(field->bm_text_field_flags & TEXT_FIELD_RECEIVING_TEXT)
 			{
 				field->bm_text_field_flags |= TEXT_FIELD_UPDATED;
-				if(field->widget.widget_callback)
+				if(widget->widget_callback)
 				{
 					//printf("callback\n");
-					field->widget.widget_callback(widget);
+					widget->widget_callback(widget);
 				}
 			}
 					
@@ -250,8 +262,13 @@ void gui_UpdateTextField(widget_t *widget)
 		}
 	}
 	
-	//else
-	if(widget->bm_flags & WIDGET_TRACK_VAR)
+	if(widget->process_callback)
+	{
+		widget->process_callback(widget);
+	}
+	
+	
+	/*if(widget->bm_flags & WIDGET_TRACK_VAR)
 	{
 		var = widget->var;
 		
@@ -290,14 +307,6 @@ void gui_UpdateTextField(widget_t *widget)
 					sprintf(field->text, "%d", *((unsigned char *)var->addr));
 				break;
 				
-				/*case GUI_VAR_POINTER_TO_UNSIGNED_CHAR:
-					if(field->bm_text_field_flags & TEXT_FIELD_UPDATED)
-					{
-						uc_ptr = (unsigned char **)var->addr;
-						*uc = (unsigned char)atoi()
-					}
-				break;*/
-				
 				case GUI_VAR_ALLOCD_STRING:
 					if(field->bm_text_field_flags & TEXT_FIELD_UPDATED)
 					{
@@ -319,7 +328,7 @@ void gui_UpdateTextField(widget_t *widget)
 			var->bm_flags &= ~GUI_VAR_VALUE_HAS_CHANGED;
 			widget->bm_flags |= WIDGET_RENDER_TEXT;
 		}
-	}
+	}*/
 	
 	
 	
@@ -332,7 +341,9 @@ void gui_PostUpdateTextField(widget_t *widget)
 	
 }
 
-
+#ifdef __cplusplus
+}
+#endif
 
 
 

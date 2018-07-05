@@ -11,7 +11,7 @@
 
 #define LIGHT_CACHE_SIZE 32				/* !!! if this gets changed, it has to be updated on forward_pass.frag !!! */
 #define MAX_INDEXES_PER_FRUSTUM (3*1024)		/* 512 triangles... */
-#define MAX_INDEXES_PER_GROUP 1536			/* 512 triangles */
+#define MAX_INDEXES_PER_GROUP 1536				/* 512 triangles */
 #define MAX_TRIANGLES_PER_LIGHT (MAX_INDEXES_PER_FRUSTUM*2)
 
 
@@ -31,11 +31,23 @@
 #define LIGHT_RADIUS(radius) (LIGHT_MIN_RADIUS+(LIGHT_MAX_RADIUS-LIGHT_MIN_RADIUS)*((float)((unsigned short)radius)/(float)0xffff))
 #define LIGHT_ENERGY(energy) (LIGHT_MIN_ENERGY+(LIGHT_MAX_ENERGY-LIGHT_MIN_ENERGY)*((float)((unsigned short)energy)/(float)0xffff))
 
+#define SET_LIGHT_RADIUS(radius) ((unsigned short)(0xffff * (radius / (LIGHT_MAX_RADIUS - LIGHT_MIN_RADIUS))))
+#define SET_LIGHT_ENERGY(energy) ((unsigned short)(0xffff * (energy / LIGHT_MAX_ENERGY)))
+
 #define PACK_CLUSTER_INDEXES(x, y, z) ((z<<24)|(x<<16)|(y))
 #define UNPACK_CLUSTER_INDEXES(x, y, z, index) y=((index)&0x000000ff);x=((index>>16)&0x000000ff);z=((index>>24)&0x000000ff)
 
+#define PACK_CLUSTER_INDEXES2(x0, y0, z0, x1, y1, z1) ((z1<<27)|(y1<<22)|(x1<<16)|(z0<<11)|(y0<<6)|x0)
 
-#define LIGHT_MAX_NAME_LEN 32	/* including trailing null... */
+#define UNPACK_CLUSTER_INDEXES2(x0, y0, z0, x1, y1, z1, packed_clusters) z1=((packed_clusters>>27)&0x0000001f); \
+																		 y1=((packed_clusters>>22)&0x0000001f); \
+																		 x1=((packed_clusters>>16)&0x0000003f); \
+																		 z0=((packed_clusters>>11)&0x0000001f); \
+																		 y0=((packed_clusters>>6)&0x0000001f);	\
+																		 x0=(packed_clusters&0x0000003f);
+
+
+#define LIGHT_MAX_NAME_LEN 16	/* including trailing null... */
 
 
 enum LIGHT_FRUSTUM

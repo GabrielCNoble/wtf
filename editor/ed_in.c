@@ -49,17 +49,21 @@ extern int bm_mouse;
 extern int brush_count;
 extern brush_t *brushes;
 
+#include "ed_globals.h"
 
 /* from editor.c */
-extern int bm_handle_3d_flags;
-extern int ed_handle_3d_mode;
-extern int handle_3d_position_mode;
-extern vec3_t handle_3d_position;
-extern int selection_count;
-extern pick_record_t *selections;
+//extern int ed_3d_handle_flags;
+//extern int ed_3d_handle_transform_mode;
+//extern int handle_3d_position_mode;
+//extern vec3_t ed_3d_handle_position;
+
+
+//extern int selection_count;
+//extern pick_record_t *selections;
+
 extern int editor_state;
 extern int ed_editing_mode;
-extern int ed_handle_3d_tranform_mode;
+//extern int ed_handle_3d_tranform_mode;
 extern int ed_selected_brush_polygon_index;
 extern float ed_editor_linear_snap_value;
 extern float ed_editor_angular_snap_value;
@@ -116,9 +120,9 @@ void editor_ProcessMouse(float delta_time)
 	static float prev_dy;
 	
 	float amount;
-	float z;
+	float z; 
 	
-	if(editor_state == EDITOR_EDITING)
+/*	if(editor_state == EDITOR_EDITING)
 	{
 		if(bm_mouse & MOUSE_OVER_WIDGET)
 			return;
@@ -127,22 +131,23 @@ void editor_ProcessMouse(float delta_time)
 		{
 			if(!(bm_mouse & MOUSE_OVER_WIDGET))
 			{
-				editor_Check3dHandle();		
+				ed_3d_handle_flags = editor_Check3dHandle(normalized_mouse_x, normalized_mouse_y);		
 			
-				if(!bm_handle_3d_flags)
+				if(!ed_3d_handle_flags)
 				{
-					editor_Position3dCursor();
+					editor_Position3dCursor(normalized_mouse_x, normalized_mouse_y);
 				}
 			}
 		}
+	}*/
 		
-		if(!(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED))
+		/*if(!(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED))
 		{
-			bm_handle_3d_flags = 0;
+			ed_3d_handle_flags = 0;
 		}
-		else if(bm_handle_3d_flags)
+		else if(ed_3d_handle_flags)
 		{
-			p.vec3 = handle_3d_position;
+			p.vec3 = ed_3d_handle_position;
 			p.w = 1.0;
 			mat4_t_mult_fast(&model_view_projection_matrix, &active_camera->world_to_camera_matrix, &active_camera->projection_matrix);
 			mat4_t_vec4_t_mult(&model_view_projection_matrix, &p);
@@ -154,7 +159,7 @@ void editor_ProcessMouse(float delta_time)
 				
 			if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
 			{
-				if(ed_handle_3d_mode == HANDLE_3D_SCALE || ed_handle_3d_mode == HANDLE_3D_TRANSLATION)
+				if(ed_3d_handle_transform_mode == ED_3D_HANDLE_TRANSFORM_MODE_SCALE || ed_3d_handle_transform_mode == ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION)
 				{
 					grab_screen_offset_x = normalized_mouse_x - p.x;
 					grab_screen_offset_y = normalized_mouse_y - p.y;
@@ -177,23 +182,23 @@ void editor_ProcessMouse(float delta_time)
 			
 			//amount = sqrt(screen_dx * screen_dx + screen_dy * screen_dy);
 			
-			if(bm_handle_3d_flags & HANDLE_3D_GRABBED_X_AXIS)
+			if(ed_3d_handle_flags & ED_3D_HANDLE_X_AXIS_GRABBED)
 			{
 				direction = vec3(1.0, 0.0, 0.0);
 				//direction = active_camera->world_to_camera_matrix.r_axis;
 			}
-			else if(bm_handle_3d_flags & HANDLE_3D_GRABBED_Y_AXIS)
+			else if(ed_3d_handle_flags & ED_3D_HANDLE_Y_AXIS_GRABBED)
 			{
 				direction = vec3(0.0, 1.0, 0.0);
 				//direction = active_camera->world_to_camera_matrix.u_axis;
 			}
-			else if(bm_handle_3d_flags & HANDLE_3D_GRABBED_Z_AXIS)
+			else if(ed_3d_handle_flags & ED_3D_HANDLE_Z_AXIS_GRABBED)
 			{
 				direction = vec3(0.0, 0.0, 1.0);
 				//direction = active_camera->world_to_camera_matrix.f_axis;
 			}
 			
-			if(ed_handle_3d_mode == HANDLE_3D_SCALE || ed_handle_3d_mode == HANDLE_3D_TRANSLATION)
+			if(ed_3d_handle_transform_mode == ED_3D_HANDLE_TRANSFORM_MODE_SCALE || ed_3d_handle_transform_mode == ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION)
 			{
 				sp = p;	
 				p.vec3 = direction;
@@ -221,7 +226,7 @@ void editor_ProcessMouse(float delta_time)
 				
 				if(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED)
 				{
-					if(ed_handle_3d_mode == HANDLE_3D_SCALE)
+					if(ed_3d_handle_transform_mode == ED_3D_HANDLE_TRANSFORM_MODE_SCALE)
 					{
 						if(fabs(amount) > 0.0)
 						{
@@ -283,17 +288,17 @@ void editor_ProcessMouse(float delta_time)
 			 
 			if(ed_editing_mode == EDITING_MODE_OBJECT)
 			{
-				switch(ed_handle_3d_mode)
+				switch(ed_3d_handle_transform_mode)
 				{
-					case HANDLE_3D_TRANSLATION:
+					case ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION:
 						editor_TranslateSelections(direction, amount);		
 					break;
 					
-					case HANDLE_3D_ROTATION:
+					case ED_3D_HANDLE_TRANSFORM_MODE_ROTATION:
 						editor_RotateSelections(direction, amount);
 					break;
 					
-					case HANDLE_3D_SCALE:
+					case ED_3D_HANDLE_TRANSFORM_MODE_SCALE:
 						editor_ScaleSelections(direction, amount);
 					break;
 				}
@@ -311,7 +316,7 @@ void editor_ProcessMouse(float delta_time)
 		{
 			if(ed_editing_mode == EDITING_MODE_OBJECT)
 			{
-				editor_PickObject();	
+				editor_PickObject(normalized_mouse_x, normalized_mouse_y);	
 			}
 			else
 			{
@@ -319,13 +324,13 @@ void editor_ProcessMouse(float delta_time)
 				{
 					editor_CloseBrushFaceUVWindow();
 				}
-				i = selections[selection_count - 1].index0;
+				i = ed_selections[ed_selection_count - 1].index0;
 				
 				editor_PickOnBrush(&brushes[i]);
 			}
 			
 		}
-	}
+	}*/
 	
 	
 }
@@ -372,15 +377,15 @@ void editor_ProcessKeyboard(float delta_time)
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_G) & KEY_JUST_PRESSED)
 		{
-			editor_Set3dHandleMode(HANDLE_3D_TRANSLATION);
+			editor_Set3dHandleTransformMode(ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION);
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_R) & KEY_JUST_PRESSED)
 		{
-			editor_Set3dHandleMode(HANDLE_3D_ROTATION);
+			editor_Set3dHandleTransformMode(ED_3D_HANDLE_TRANSFORM_MODE_ROTATION);
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_S) & KEY_JUST_PRESSED)
 		{
-			editor_Set3dHandleMode(HANDLE_3D_SCALE);
+			editor_Set3dHandleTransformMode(ED_3D_HANDLE_TRANSFORM_MODE_SCALE);
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_A) & KEY_JUST_PRESSED)
 		{
@@ -412,9 +417,9 @@ void editor_ProcessKeyboard(float delta_time)
 			}
 			else
 			{
-				if(selection_count)
+				if(ed_selection_count)
 				{
-					if(selections[selection_count - 1].type == PICK_BRUSH)
+					if(ed_selections[ed_selection_count - 1].type == PICK_BRUSH)
 					{
 						editor_SetEditingMode(EDITING_MODE_BRUSH);
 					}

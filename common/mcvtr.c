@@ -973,7 +973,7 @@ int convert(char *file_name)
 					
 					mpk_file_buffer_cursor += sizeof(vertex_t); 
 					
-					/* mark the indexes used to allow finding indigent vertices later... */
+					/* mark this index as used to allow finding indigent vertices later... */
 					face_indexes[j].used = 1;
 				}
 			}
@@ -981,7 +981,7 @@ int convert(char *file_name)
 		
 		
 		/* although found, this material wasn't 
-		referenced by any vertice, so drop it
+		referenced by any vertice, so drop
 		the record... */
 		if(!vertex_record->vertice_count)
 		{

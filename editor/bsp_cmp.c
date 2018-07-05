@@ -7,6 +7,9 @@
 #include "camera.h"
 #include "player.h"
 #include "engine.h"
+#include "physics.h"
+
+#include "memory.h"
  
 #include <float.h>
 
@@ -15,6 +18,15 @@
 #include "SDL2\SDL.h"
 #include "GL\glew.h"
 
+
+#define USE_MEMORY_MALLOC
+
+#ifdef USE_MEMORY_MALLOC
+#define malloc ((void *)0)
+#define free ((void *)0)
+#define calloc ((void *)0)
+#define strdup ((void *)0)
+#endif
 
 
 /* from brush.c */
@@ -36,17 +48,21 @@ extern vec3_t cube_bmodel_collision_normals[];
 /* from world.c */
 bsp_node_t *world_bsp = NULL;
 bsp_node_t *collision_bsp = NULL;
-extern int world_vertices_count;
-extern vertex_t *world_vertices;
-extern int world_triangle_group_count;
-extern triangle_group_t *world_triangle_groups;
-extern int world_nodes_count;
-extern bsp_pnode_t *world_nodes;
-extern int collision_nodes_count;
-extern bsp_pnode_t *collision_nodes;
+extern int w_world_vertices_count;
+extern vertex_t *w_world_vertices;
+extern unsigned int w_max_visible_indexes;
+extern unsigned int w_max_visible_batches;
+//extern int world_triangle_group_count;
+//extern triangle_group_t *world_triangle_groups;
+extern int w_world_batch_count;
+extern batch_t *w_world_batches;
+extern int w_world_nodes_count;
+extern bsp_pnode_t *w_world_nodes;
+//extern int collision_nodes_count;
+//extern bsp_pnode_t *collision_nodes;
 //extern bsp_polygon_t *node_polygons;			/* necessary to quickly build portals... */
-extern int world_leaves_count;
-extern bsp_dleaf_t *world_leaves;
+extern int w_world_leaves_count;
+extern bsp_dleaf_t *w_world_leaves;
 extern int visited_leaves_count;
 extern bsp_dleaf_t *visited_leaves;
 
@@ -126,68 +142,6 @@ int bsp_ClassifyPoint(vec3_t point, vec3_t splitter_point, vec3_t splitter_norma
 	}*/
 }
 
-/*
-==============
-bsp_ClassifyTriangle
-==============
-*/
-int bsp_ClassifyTriangle(bsp_triangle_t *triangle, vec3_t point, vec3_t normal)
-{
-	int a;
-	int b;
-	int c;
-	
-	int r = 0;
-	
-	a = bsp_ClassifyPoint(triangle->a.position, point, normal);
-	b = bsp_ClassifyPoint(triangle->b.position, point, normal);
-	c = bsp_ClassifyPoint(triangle->c.position, point, normal);
-	
-	vec3_t n;
-	
-	switch(a | b | c)
-	{
-		case POINT_FRONT:
-		case POINT_FRONT | POINT_CONTAINED:
-			return TRIANGLE_FRONT;
-		break;
-		
-		case POINT_BACK:
-		case POINT_BACK | POINT_CONTAINED:
-			return TRIANGLE_BACK;
-		break;
-		
-		case POINT_FRONT | POINT_BACK:
-		case POINT_FRONT | POINT_BACK | POINT_CONTAINED:
-			return TRIANGLE_STRADDLING;
-		break;
-		
-		case POINT_CONTAINED:
-			
-			/*v.x = triangle->a.position.x - point.x;
-			v.y = triangle->a.position.y - point.y;
-			v.z = triangle->a.position.z - point.z;*/
-			
-			n.x = (triangle->a.normal.x + triangle->b.normal.x + triangle->c.normal.x) / 3.0;
-			n.y = (triangle->a.normal.y + triangle->b.normal.y + triangle->c.normal.y) / 3.0;
-			n.z = (triangle->a.normal.z + triangle->b.normal.z + triangle->c.normal.z) / 3.0;
-			
-			
-			//n = normalize3(n);
-			
-			if(dot3(n, normal) >= 0.0)
-			{
-				return TRIANGLE_CONTAINED_FRONT;
-			}
-			else
-			{
-				return TRIANGLE_CONTAINED_BACK;
-			}
-		break;
-		
-	}
-
-}
 
 /*
 ==============
@@ -303,287 +257,6 @@ int bsp_ClipEdge(vec3_t a, vec3_t b, vec3_t point, vec3_t normal, vec3_t *clip_v
 }
 
 
-/*
-==============
-bsp_SplitTriangle
-==============
-*/
-int bsp_SplitTriangle(bsp_triangle_t *triangle, vec3_t point, vec3_t normal, bsp_triangle_t **front, bsp_triangle_t **back)
-{
-	
-	//printf("start of bsp_SplitTriangle\n");
-	
-	int i;
-	int r;
-	
-	vertex_t tri_verts[3];
-	//vec3_t normal;
-	//vec3_t tangent;
-	//vec2_t tex_coord;
-	
-	vec3_t clip_normal;
-	vec3_t clip_tangent;
-	vec2_t clip_tex_coord;
-	
-	vec3_t splitter_point;
-	vec3_t splitter_normal;
-	
-	int clip_vertex_count = 0;
-	vec3_t clip_vertex;
-	
-	int front_vertex_count = 0;
-	vertex_t front_vertexes[6];
-	
-	int back_vertex_count = 0;
-	vertex_t back_vertexes[6];
-	
-	int cur_side;
-	
-	float time;
-	
-	bsp_triangle_t *f;
-	bsp_triangle_t *b;
-	bsp_triangle_t *t;
-	
-	
-	tri_verts[0] = triangle->a;
-	tri_verts[1] = triangle->b;
-	tri_verts[2] = triangle->c;
-	
-	int pa;
-	int pb;
-	int pc;
-	
-	
-	
-	pa = bsp_ClassifyPoint(tri_verts[0].position, point, normal);
-	pb = bsp_ClassifyPoint(tri_verts[1].position, point, normal);
-	pc = bsp_ClassifyPoint(tri_verts[2].position, point, normal);
-	
-	//printf("pa: %d    pb: %d    pc: %d\n", pa, pb, pc);
-	
-	switch(pa | pb | pc)
-	{
-		case POINT_FRONT:
-		case POINT_CONTAINED | POINT_FRONT:
-			
-			//printf("triangle on front\n");
-			
-			_return_front_triangle:
-			
-			f = malloc(sizeof(bsp_triangle_t));
-			*f = *triangle;
-			*front = f;
-			*back = NULL;
-			return;
-		break;
-		
-		
-		case POINT_BACK:
-		case POINT_CONTAINED | POINT_BACK:
-			
-			//printf("triangle on back\n");
-			
-			_return_back_triangle:
-				
-			f = malloc(sizeof(bsp_triangle_t));
-			*f = *triangle;
-			*front = NULL;
-			*back = f;
-			return;
-		break;
-		
-		
-		case POINT_CONTAINED:
-			clip_vertex.x = triangle->a.position.x - point.x;
-			clip_vertex.y = triangle->a.position.y - point.y;
-			clip_vertex.z = triangle->a.position.z - point.z;
-			
-			//printf("triangle contained\n");
-			
-			if(dot3(clip_vertex, normal) >= 0.0)
-			{
-				goto _return_front_triangle;
-			}
-			else
-			{
-				goto _return_back_triangle;
-			}
-		break;
-		
-		case POINT_FRONT | POINT_BACK:
-		case POINT_FRONT | POINT_BACK | POINT_CONTAINED:
-		
-			//printf("triangle straddling\n");
-			
-			if(pa == POINT_CONTAINED)
-			{
-				cur_side = pb;
-			}
-			else
-			{
-				cur_side = pa;
-			}
-						
-			for(i = 0; i < 3; i++)
-			{
-				
-				r = (i + 1) % 3;
-				
-				pa = bsp_ClassifyPoint(tri_verts[i].position, point, normal);
-				pb = bsp_ClassifyPoint(tri_verts[r].position, point, normal);
-				
-				if((pa | pb) == (POINT_FRONT | POINT_BACK))
-				{
-					bsp_ClipEdge(tri_verts[i].position, tri_verts[r].position, point, normal, &clip_vertex, &time);
-					
-					//if(time < 0.0 || time > 1.0)
-					//{
-					//printf("%f\n", time);
-					//}
-					
-				//	assert(time >= 0.0 && time <= 1.0);
-					
-					clip_normal.x = (1.0 - time) * tri_verts[i].normal.x + time * tri_verts[r].normal.x;
-					clip_normal.y = (1.0 - time) * tri_verts[i].normal.y + time * tri_verts[r].normal.y;
-					clip_normal.z = (1.0 - time) * tri_verts[i].normal.z + time * tri_verts[r].normal.z;
-					
-					
-					clip_tangent.x = (1.0 - time) * tri_verts[i].tangent.x + time * tri_verts[r].tangent.x;
-					clip_tangent.y = (1.0 - time) * tri_verts[i].tangent.y + time * tri_verts[r].tangent.y;
-					clip_tangent.z = (1.0 - time) * tri_verts[i].tangent.z + time * tri_verts[r].tangent.z;
-					
-					clip_tex_coord.x = (1.0 - time) * tri_verts[i].tex_coord.x + time * tri_verts[r].tex_coord.x;
-					clip_tex_coord.y = (1.0 - time) * tri_verts[i].tex_coord.y + time * tri_verts[r].tex_coord.y;
-				
-					
-					if(cur_side == POINT_FRONT)
-					{						
-						cur_side = POINT_BACK;
-					
-						front_vertexes[front_vertex_count++] = tri_verts[i];
-						front_vertexes[front_vertex_count].position = clip_vertex;
-						front_vertexes[front_vertex_count].normal = clip_normal;
-						front_vertexes[front_vertex_count].tangent = clip_tangent;
-						front_vertexes[front_vertex_count++].tex_coord = clip_tex_coord;
-						
-						back_vertexes[back_vertex_count].position = clip_vertex;	
-						back_vertexes[back_vertex_count].normal = clip_normal;
-						back_vertexes[back_vertex_count].tangent = clip_tangent;
-						back_vertexes[back_vertex_count++].tex_coord = clip_tex_coord;
-					}
-					else
-					{
-						cur_side = POINT_FRONT;
-						
-						back_vertexes[back_vertex_count++] = tri_verts[i];
-						back_vertexes[back_vertex_count].position = clip_vertex;
-						back_vertexes[back_vertex_count].normal = clip_normal;
-						back_vertexes[back_vertex_count].tangent = clip_tangent;
-						back_vertexes[back_vertex_count++].tex_coord = clip_tex_coord;
-						
-						front_vertexes[front_vertex_count].position = clip_vertex;
-						front_vertexes[front_vertex_count].normal = clip_normal;
-						front_vertexes[front_vertex_count].tangent = clip_tangent;
-						front_vertexes[front_vertex_count++].tex_coord = clip_tex_coord;
-					}
-					
-					clip_vertex_count++;
-				}
-				else
-				{					
-					if(cur_side == POINT_FRONT)
-					{
-						front_vertexes[front_vertex_count++] = tri_verts[i];
-						
-						if(pa == POINT_CONTAINED)
-						{
-							back_vertexes[back_vertex_count++] = tri_verts[i];
-							cur_side = pb;
-						}
-					}
-					else
-					{
-						back_vertexes[back_vertex_count++] = tri_verts[i];
-						
-						if(pa == POINT_CONTAINED)
-						{
-							front_vertexes[front_vertex_count++] = tri_verts[i];
-							cur_side = pb;
-						}
-					}
-					
-				}
-				
-			}
-			
-		break;
-		
-	}
-	
-	//printf("front: %d   back: %d\n", front_vertex_count, back_vertex_count);
-	
-	assert(front_vertex_count >= 3);
-	assert(back_vertex_count >= 3);
-	
-	
-	f = malloc(sizeof(bsp_triangle_t));
-	b = malloc(sizeof(bsp_triangle_t));
-	
-	f->a = front_vertexes[0];
-	f->b = front_vertexes[1];
-	f->c = front_vertexes[2];
-	//f->plane_normal = triangle->plane_normal;
-	//f->b_used = triangle->b_used;
-	f->material_index = triangle->material_index;
-	f->next = NULL;
-	
-	b->a = back_vertexes[0];
-	b->b = back_vertexes[1];
-	b->c = back_vertexes[2];
-	//b->plane_normal = triangle->plane_normal;
-	//b->b_used = triangle->b_used;
-	b->material_index = triangle->material_index;
-	b->next = NULL;
-	
-	/* this triangle had two of it's edges clipped,
-	so one of the sides has a quad that need to 
-	be triangulated... */
-	if(front_vertex_count != back_vertex_count)
-	{
-		t = malloc(sizeof(bsp_triangle_t));
-		
-		/* front side has four vertices... */
-		if(front_vertex_count > back_vertex_count)
-		{
-			t->a = front_vertexes[2];
-			t->b = front_vertexes[3];
-			t->c = front_vertexes[0];	
-			f->next = t;
-		}
-		else
-		{
-			t->a = back_vertexes[2];
-			t->b = back_vertexes[3];
-			t->c = back_vertexes[0];
-			b->next = t;
-		}
-		
-		
-		t->next = NULL;
-		t->material_index = triangle->material_index;
-		//t->b_used = triangle->b_used;
-		//t->plane_normal = triangle->plane_normal;
-	}
-	
-	//printf("%x %x\n", f, b);	
-	
-	*front = f;
-	*back = b;
-	
-	//printf("end of bsp_SplitTriangle\n\n");
-}
-
 
 /*
 ==============
@@ -643,6 +316,8 @@ int bsp_SplitPolygon(bsp_polygon_t *polygon, vec3_t point, vec3_t normal, bsp_po
 	
 	//assert(pa != pb);
 	assert(c > 2);
+	
+	assert(c < 128);
 
 
 	if(pa == POINT_CONTAINED)
@@ -735,14 +410,36 @@ int bsp_SplitPolygon(bsp_polygon_t *polygon, vec3_t point, vec3_t normal, bsp_po
 	assert(back_vertex_count > 2);
 	assert(front_vertex_count > 2);
 	
+	/*if(back_vertex_count > 4)
+	{
+		printf("%d\n", back_vertex_count);
+		assert(back_vertex_count <= 4);
+	}
+	
+	if(front_vertex_count > 4)
+	{
+		printf("%d\n", front_vertex_count);
+		assert(front_vertex_count <= 4);
+	}*/
+	
 	//printf("front: %d   back: %d\n", front_vertex_count, back_vertex_count);
 	
 	//assert(clip_vertex_count > 0);
 	
+	#ifndef USE_MEMORY_MALLOC
 	f = malloc(sizeof(bsp_polygon_t ));
+	#else
+	f = memory_Malloc(sizeof(bsp_polygon_t ), "bsp_SplitPolygon: f");
+	#endif
 	f->normal = polygon->normal;
 	f->vert_count = front_vertex_count;
+	
+	#ifndef USE_MEMORY_MALLOC
 	f->vertices = malloc(sizeof(vertex_t) * (f->vert_count));
+	#else
+	f->vertices = memory_Malloc(sizeof(vertex_t) * f->vert_count, "bsp_SplitPolygon: f->vertices");
+	#endif
+	
 	f->b_used = polygon->b_used;
 	f->next = NULL;
 	f->material_index = polygon->material_index;
@@ -754,11 +451,21 @@ int bsp_SplitPolygon(bsp_polygon_t *polygon, vec3_t point, vec3_t normal, bsp_po
 		f->vertices[i] = front_vertexes[i];
 	}
 	
-	
+	#ifndef USE_MEMORY_MALLOC
 	b = malloc(sizeof(bsp_polygon_t ));
+	#else
+	b = memory_Malloc(sizeof(bsp_polygon_t ), "bsp_SplitPolygon: b");
+	#endif
 	b->normal = polygon->normal;
 	b->vert_count = back_vertex_count;
+	
+	
+	#ifndef USE_MEMORY_MALLOC
 	b->vertices = malloc(sizeof(vertex_t) * (b->vert_count));
+	#else
+	b->vertices = memory_Malloc(sizeof(vertex_t) * b->vert_count, "bsp_SplitPolygon: b->vertices");
+	#endif
+	
 	b->next = NULL;
 	b->b_used = polygon->b_used;
 	b->material_index = polygon->material_index;
@@ -911,8 +618,13 @@ int bsp_TrimPolygon(bsp_polygon_t *polygon, vec3_t point, vec3_t normal)
 	
 	if(front_vertex_count > polygon->vert_count)
 	{
+		#ifndef USE_MEMORY_MALLOC
 		free(polygon->vertices);
 		polygon->vertices = malloc(sizeof(vertex_t) * front_vertex_count);
+		#else
+		memory_Free(polygon->vertices);
+		polygon->vertices = memory_Malloc(sizeof(vertex_t) * front_vertex_count, "bsp_TrimPolygon: polygon->vertices");
+		#endif
 		polygon->vert_count = front_vertex_count;
 	}
 	
@@ -925,6 +637,89 @@ int bsp_TrimPolygon(bsp_polygon_t *polygon, vec3_t point, vec3_t normal)
 	
 }
 
+int bsp_ClipCoplanarPolygonToPolygonEdges(bsp_polygon_t *polygon, bsp_polygon_t *splitter, bsp_polygon_t **clips)
+{
+	vec3_t edge_plane_normal;
+	vec3_t edge_plane_point;
+	
+
+	vec3_t r;
+	vec3_t s;
+	
+	
+	bsp_polygon_t *clipped = NULL;
+	bsp_polygon_t *front = NULL;
+	bsp_polygon_t *back = NULL;
+	bsp_polygon_t *q = NULL;
+	bsp_polygon_t *t = NULL;
+	bsp_polygon_t *h = NULL;
+
+	int i;
+	int c;
+	
+	c = splitter->vert_count;
+	q = polygon;
+	for(i = 0; i < splitter->vert_count; i++)
+	{
+		edge_plane_point = splitter->vertices[i].position;
+		r = splitter->vertices[(i + 1) % c].position;
+		
+		s.x = r.x - edge_plane_point.x;
+		s.y = r.y - edge_plane_point.y;
+		s.z = r.z - edge_plane_point.z;
+		
+		edge_plane_normal = normalize3(cross(s, splitter->normal));
+		
+		while(q)
+		{
+			if(bsp_ClassifyPolygon(q, edge_plane_point, edge_plane_normal) == POLYGON_STRADDLING)
+			{
+				bsp_SplitPolygon(q, edge_plane_point, edge_plane_normal, &front, &back);
+				h = NULL;
+				
+				if(front)
+				{
+					t = front;
+					while(t->next) t = t->next;
+					t->next = back;
+					h = front;
+				}
+				
+				if(back)
+				{
+					t = back;
+					while(t->next) t = t->next;
+					if(!h) h = back;
+				}
+				
+				if(t)
+				{
+					t->next = clipped;
+					clipped = h;
+					break;
+				}							
+			}
+			
+			q = q->next;
+		}
+		
+		if(!clipped)
+			q = polygon;
+		else
+			q = clipped;
+	}
+	
+	if(!clipped)
+	{
+		return 0;
+		//*clips = bsp_DeepCopyPolygon(polygon);
+	}
+	
+	return 1;
+}
+
+
+
 
 bsp_polygon_t *bsp_DeepCopyPolygon(bsp_polygon_t *src)
 {
@@ -933,14 +728,30 @@ bsp_polygon_t *bsp_DeepCopyPolygon(bsp_polygon_t *src)
 	
 	if(src)
 	{
-		p = malloc(sizeof(bsp_polygon_t) * 10);
+		#ifndef USE_MEMORY_MALLOC
+		p = malloc(sizeof(bsp_polygon_t));
+		#else
+		p = memory_Malloc(sizeof(bsp_polygon_t), "bsp_DeepCopyPolygon: p");
+		#endif
+		
 		p->normal = src->normal;
 		p->brush_index = src->brush_index;
 		p->b_used = src->b_used;
 		//p->next = src->next;
 		p->next = NULL;
 		p->vert_count = src->vert_count;
-		p->vertices = malloc(sizeof(vertex_t) * p->vert_count * 10);
+		
+		/*if(src->vert_count > 10)
+		{
+			engine_BreakPoint();
+		}*/
+		
+		#ifndef USE_MEMORY_MALLOC
+		p->vertices = malloc(sizeof(vertex_t) * p->vert_count);
+		#else
+		p->vertices = memory_Malloc(sizeof(vertex_t) * p->vert_count, "bsp_DeepCopyPolygon: p->vertices");
+		#endif
+		
 		p->material_index = src->material_index;
 		p->triangle_group = src->triangle_group;
 		
@@ -965,13 +776,23 @@ bsp_polygon_t *bsp_DeepCopyPolygons(bsp_polygon_t *src)
 	
 	while(src)
 	{
-		r = malloc(sizeof(bsp_polygon_t ) * 10);
+		#ifndef USE_MEMORY_MALLOC
+		r = malloc(sizeof(bsp_polygon_t ));
+		#else
+		r = memory_Malloc(sizeof(bsp_polygon_t ), "bsp_DeepCopyPolygons: r");
+		#endif
 		
 		r->brush_index = src->brush_index;
 		r->b_used = src->b_used;
 		r->normal = src->normal;
 		r->vert_count = src->vert_count;
-		r->vertices = malloc(sizeof(vertex_t) * r->vert_count * 10);
+		
+		#ifndef USE_MEMORY_MALLOC
+		r->vertices = malloc(sizeof(vertex_t) * r->vert_count);
+		#else
+		r->vertices = memory_Malloc(sizeof(vertex_t) * r->vert_count, "bsp_DeepCopyPolygons: r->vertices");
+		#endif
+		
 		r->material_index = src->material_index;
 		r->triangle_group = src->triangle_group;
 		
@@ -1009,8 +830,13 @@ bsp_polygon_t *bsp_DeepCopyPolygonsContiguous(bsp_polygon_t *src)
 		r = r->next;
 	}
 	
+	#ifndef USE_MEMORY_MALLOC
 	out = malloc(sizeof(bsp_polygon_t ) * polygon_count);
-	vertices = malloc(sizeof(vertex_t) * vert_count);
+	vertices = malloc(sizeof(vertex_t) * vert_count );
+	#else
+	out = memory_Malloc(sizeof(bsp_polygon_t ) * polygon_count, "bsp_DeepCopyPolygonsContiguous: out");
+	vertices = memory_Malloc(sizeof(vertex_t) * vert_count, "bsp_DeepCopyPolygonsContiguous: vertices" );
+	#endif
 	
 	i = 0;
 	
@@ -1037,14 +863,16 @@ bsp_polygon_t *bsp_DeepCopyPolygonsContiguous(bsp_polygon_t *src)
 			out[i].vertices[j] = r->vertices[j];
 		}
 		
+		out[i].next = out + i + 1;
+		
 		i++;
 		r = r->next;
 	}
 	
-	for(i = 0; i < polygon_count; i++)
+	/*for(i = 0; i < polygon_count; i++)
 	{
 		out[i].next = out + i + 1;
-	}
+	}*/
 	
 	out[i - 1].next = NULL;
 	
@@ -1059,8 +887,13 @@ void bsp_DeletePolygons(bsp_polygon_t *polygons)
 	while(polygons)
 	{
 		next = polygons->next;
+		#ifndef USE_MEMORY_MALLOC
 		free(polygons->vertices);
 		free(polygons);
+		#else
+		memory_Free(polygons->vertices);
+		memory_Free(polygons);
+		#endif
 		polygons = next;
 	}	
 }
@@ -1069,8 +902,13 @@ void bsp_DeletePolygonsContiguous(bsp_polygon_t *polygons)
 {
 	if(polygons)
 	{
+		#ifndef USE_MEMORY_MALLOC
 		free(polygons->vertices);
 		free(polygons);
+		#else
+		memory_Free(polygons->vertices);
+		memory_Free(polygons);
+		#endif
 	}
 	
 }
@@ -1098,7 +936,7 @@ int bsp_RecursiveTriangulate(vertex_t *in_verts, int in_vert_count, vertex_t *ou
 	
 	vec3_t a;
 	vec3_t b;
-	vec3_t fn;
+	vec3_t face_normal;
 	vec3_t h;
 	
 	vec3_t s;
@@ -1142,12 +980,14 @@ int bsp_RecursiveTriangulate(vertex_t *in_verts, int in_vert_count, vertex_t *ou
 	t.y = h.y - a.y;
 	t.z = h.z - a.z;
 	
-	fn = cross(s, t);
+	face_normal = cross(s, t);
 	
 	for(i = 2; i < c; i++)
 	{
 		b = in_verts[i].position;
 		
+		/* for each vertex in the polygon
+		face, build an egde... */
 		s.x = b.x - a.x;
 		s.y = b.y - a.y;
 		s.z = b.z - a.z;
@@ -1156,13 +996,17 @@ int bsp_RecursiveTriangulate(vertex_t *in_verts, int in_vert_count, vertex_t *ou
 		{
 			if(j == i) continue;
 			h = in_verts[j].position;
+			
 			t.x = h.x - a.x; 
 			t.y = h.y - a.y;
 			t.z = h.z - a.z;
 			
 			h = cross(s, t);
 			
-			if(dot3(h, fn) < 0.0)
+			/* the dot product signal
+			will depend in which side of the
+			splitting edge the vertices are... */
+			if(dot3(h, face_normal) < 0.0)
 			{
 				p--;
 			}
@@ -1172,6 +1016,10 @@ int bsp_RecursiveTriangulate(vertex_t *in_verts, int in_vert_count, vertex_t *ou
 			}
 		}
 		p = abs(p);
+		/* keep the edge that
+		splits the polygon more
+		evenly (and the index of
+		it's first vertex)... */
 		if(p < best)
 		{
 			best = p;
@@ -1181,11 +1029,20 @@ int bsp_RecursiveTriangulate(vertex_t *in_verts, int in_vert_count, vertex_t *ou
 	}
 	
 	k = in_vert_count >> 1;
-	vin = malloc(sizeof(vertex_t) * in_vert_count * 10);
+	
+	#ifndef USE_MEMORY_MALLOC
+	vin = malloc(sizeof(vertex_t) * in_vert_count);
+	#else
+	vin = memory_Malloc(sizeof(vertex_t) * in_vert_count, "bsp_RecursiveTriangulate: vin");
+	#endif
 	
 	if(out_indexes)
 	{
-		iin = malloc(sizeof(int) * in_vert_count * 10);
+		#ifndef USE_MEMORY_MALLOC
+		iin = malloc(sizeof(int) * in_vert_count);
+		#else
+		iin = memory_Malloc(sizeof(int) * in_vert_count, "bsp_RecursiveTriangulate: inn");
+		#endif
 		
 		for(i = 0; i < bi + 1; i++)
 		{
@@ -1214,11 +1071,21 @@ int bsp_RecursiveTriangulate(vertex_t *in_verts, int in_vert_count, vertex_t *ou
 	}
 	bsp_RecursiveTriangulate(vin, in_vert_count - bi + 1, out_verts, out_vert_count, iin, out_indexes);
 
+	#ifndef USE_MEMORY_MALLOC
 	free(vin);
+	#else
+	memory_Free(vin);
+	#endif
 	
-	//if(out_indexes)
-	//	free(iin);
-	
+	if(out_indexes)
+	{
+		#ifndef USE_MEMORY_MALLOC
+		free(iin);
+		#else
+		memory_Free(iin);
+		#endif
+	}
+
 	return 1;
 }
 
@@ -1231,7 +1098,11 @@ void bsp_TriangulatePolygon(bsp_polygon_t *polygon, vertex_t **vertices, int *ve
 	
 	if(polygon->vert_count >= 3)
 	{
-		verts = malloc(sizeof(vertex_t ) * (polygon->vert_count - 2) * 3 * 10);
+		#ifndef USE_MEMORY_MALLOC
+		verts = malloc(sizeof(vertex_t ) * (polygon->vert_count - 2) * 3);
+		#else
+		verts = memory_Malloc(sizeof(vertex_t ) * (polygon->vert_count - 2) * 3, "bsp_TriangulatePolygon: verts");
+		#endif
 		
 		if(polygon->vert_count == 3)
 		{
@@ -1266,7 +1137,12 @@ void bsp_TriangulatePolygonIndexes(bsp_polygon_t *polygon, int **indexes, int *i
 	if(polygon->vert_count >= 3)
 	{
 		out_index_count = (polygon->vert_count - 2) * 3;
-		out_indexes = malloc(sizeof(int ) * out_index_count * 10);
+		
+		#ifndef USE_MEMORY_MALLOC
+		out_indexes = malloc(sizeof(int ) * out_index_count);
+		#else
+		out_indexes = memory_Malloc(sizeof(int ) * out_index_count, "bsp_TriangulatePolygonIndexes: out_indexes");
+		#endif
 		
 		/* avoid the whole thing if the polygon is a triangle... */
 		if(polygon->vert_count == 3)
@@ -1284,8 +1160,13 @@ void bsp_TriangulatePolygonIndexes(bsp_polygon_t *polygon, int **indexes, int *i
 		
 		/* not a triangle... */
 		
-		verts = malloc(sizeof(vertex_t ) * (polygon->vert_count - 2) * 3 * 10);
-		in_indexes = malloc(sizeof(int) * polygon->vert_count * 10);
+		#ifndef USE_MEMORY_MALLOC
+		verts = malloc(sizeof(vertex_t ) * (polygon->vert_count - 2) * 3);
+		in_indexes = malloc(sizeof(int) * polygon->vert_count);
+		#else
+		verts = memory_Malloc(sizeof(vertex_t ) * (polygon->vert_count - 2) * 3, "bsp_TriangulatePolygonIndexes: verts");
+		in_indexes = memory_Malloc(sizeof(int) * polygon->vert_count, "bsp_TriangulatePolygonIndexes: in_indexes");
+		#endif
 		
 		c = polygon->vert_count;
 		
@@ -1297,9 +1178,14 @@ void bsp_TriangulatePolygonIndexes(bsp_polygon_t *polygon, int **indexes, int *i
 		bsp_RecursiveTriangulate(polygon->vertices, polygon->vert_count, verts, &count, in_indexes, out_indexes);
 		
 		/* welp, fuck this... */
-		free(verts);
 		
+		#ifndef USE_MEMORY_MALLOC
+		free(verts);
 		free(in_indexes);
+		#else
+		memory_Free(verts);
+		memory_Free(in_indexes);
+		#endif
 	}
 	
 	*indexes = out_indexes;
@@ -1321,6 +1207,10 @@ void bsp_TriangulatePolygonsIndexes(bsp_polygon_t *polygons, int **indexes, int 
 	int *out_indexes = NULL;
 	bsp_polygon_t *polygon;
 	int out_index_count = 0;
+	int in_index_count = 0;
+	int prev_last_index = 0;
+	int vert_count;
+	
 	
 	
 	polygon = polygons;
@@ -1341,20 +1231,28 @@ void bsp_TriangulatePolygonsIndexes(bsp_polygon_t *polygons, int **indexes, int 
 	
 	if(!(*indexes))
 	{
+		#ifndef USE_MEMORY_MALLOC
 		out_indexes = malloc(sizeof(int) * count * 2);
+		#else
+		out_indexes = memory_Malloc(sizeof(int) * count * 2, "bsp_TriangulatePolygonsIndexes: out_indexes");
+		#endif
 	}
 	else
 	{
 		out_indexes = *indexes;
 	}
 	
-	
+	#ifndef USE_MEMORY_MALLOC
 	in_indexes = malloc(sizeof(int) * max_verts * 3);
 	verts = malloc(sizeof(vertex_t) * (max_verts - 2) * 3);
-	
+	#else
+	in_indexes = memory_Malloc(sizeof(int) * max_verts * 3, "bsp_TriangulatePolygonsIndexes: in_indexes");
+	verts = memory_Malloc(sizeof(vertex_t) * (max_verts - 2) * 3, "bsp_TriangulatePolygonsIndexes: verts");
+	#endif	
 	polygon = polygons;
 	
 	count = 0;
+	out_index_count = 0;
 	r = 0;
 	
 	while(polygon)
@@ -1364,41 +1262,45 @@ void bsp_TriangulatePolygonsIndexes(bsp_polygon_t *polygons, int **indexes, int 
 		{
 			for(i = 0; i < 3; i++)
 			{
-				out_indexes[i + cursor] = i + cursor;
+				out_indexes[i + cursor] = i + prev_last_index;
 			}
-		
+			
+			prev_last_index += 3;
 			cursor += 3;
 		}
 		else
 		{
-			c = polygon->vert_count;
-		
-			for(i = 0; i < c; i++)
+			//c = polygon->vert_count;
+			
+			vert_count = polygon->vert_count;
+			
+			for(i = 0; i < vert_count; i++)
 			{
 				in_indexes[i] = i;
 			}
 			
-			count = 0;
+			out_index_count = 0;
 					
-			bsp_RecursiveTriangulate(polygon->vertices, polygon->vert_count, verts, &count, in_indexes, out_indexes + cursor);
+			bsp_RecursiveTriangulate(polygon->vertices, polygon->vert_count, verts, &out_index_count, in_indexes, out_indexes + cursor);
 			
-			//c = count;
-			
-			
-			for(i = 0; i < count; i++)
+			for(i = 0; i < out_index_count; i++)
 			{
-				out_indexes[i + cursor] += r;
+				out_indexes[i + cursor] += prev_last_index;
 			}
-			r += c;
-			
-			cursor += count;
+			prev_last_index += vert_count;
+			cursor += out_index_count;
 		}
 		
 		polygon = polygon->next;
 	}
 	
+	#ifndef USE_MEMORY_MALLOC
 	free(verts);
 	free(in_indexes);
+	#else
+	memory_Free(verts);
+	memory_Free(in_indexes);
+	#endif
 	
 	*indexes = out_indexes;
 	*index_count = cursor;
@@ -1865,8 +1767,11 @@ void bsp_RecursiveQuickHull(vec2_t *in_verts, int in_vert_count, vec2_t *hull_ve
 		return;
 	}
 	
-	
+	#ifndef USE_MEMORY_MALLOC
 	out = malloc(sizeof(vec2_t ) * in_vert_count);
+	#else
+	out = memory_Malloc(sizeof(vec2_t ) * in_vert_count, "bsp_RecursiveQuickHull: out");
+	#endif
 	
 	
 	/* get farthest vertex from the current edge... */	
@@ -1956,7 +1861,11 @@ void bsp_RecursiveQuickHull(vec2_t *in_verts, int in_vert_count, vec2_t *hull_ve
 	
 	bsp_RecursiveQuickHull(out, out_count, hull_verts, hull_vert_count, out_a, out_b, out_dir);
 	
+	#ifndef USE_MEMORY_MALLOC
 	free(out);
+	#else
+	memory_Free(out);
+	#endif
 	
 }
 
@@ -1994,7 +1903,11 @@ void bsp_QuickHull(vec2_t *in_verts, int in_vert_count, vec2_t **hull_verts, int
 	
 	if(in_vert_count == 3)
 	{
+		#ifndef USE_MEMORY_MALLOC
 		*hull_verts = malloc(sizeof(vec2_t) * 3);
+		#else
+		*hull_verts = memory_Malloc(sizeof(vec2_t) * 3, "bsp_QuickHull: hull_verts");
+		#endif
 		(*hull_verts)[0] = in_verts[0];
 		(*hull_verts)[1] = in_verts[1];
 		(*hull_verts)[2] = in_verts[2];
@@ -2011,9 +1924,13 @@ void bsp_QuickHull(vec2_t *in_verts, int in_vert_count, vec2_t **hull_verts, int
 	}
 		
 	
-	
+	#ifndef USE_MEMORY_MALLOC
 	out = malloc(sizeof(vec2_t ) * in_vert_count);
 	hull = malloc(sizeof(vec2_t ) * in_vert_count * 2);
+	#else
+	out = memory_Malloc(sizeof(vec2_t ) * in_vert_count, "bsp_QuickHull: out");
+	hull = memory_Malloc(sizeof(vec2_t ) * in_vert_count * 2, "bsp_QuickHull: hull");
+	#endif
 	
 	for(i = 0; i < in_vert_count; i++)
 	{
@@ -2113,8 +2030,11 @@ void bsp_QuickHull(vec2_t *in_verts, int in_vert_count, vec2_t **hull_verts, int
 	bsp_RecursiveQuickHull(out, out_count, hull, &hull_count, b, a, ab);
 	
 	
-	
+	#ifndef USE_MEMORY_MALLOC
 	*hull_verts = malloc(sizeof(vec2_t ) * hull_count);
+	#else
+	*hull_verts = memory_Malloc(sizeof(vec2_t ) * hull_count, "bsp_QuickHull");
+	#endif
 	*hull_vert_count = hull_count;
 	
 	t = *hull_verts;
@@ -2125,9 +2045,13 @@ void bsp_QuickHull(vec2_t *in_verts, int in_vert_count, vec2_t **hull_verts, int
 	}
 	
 	
-	
+	#ifndef USE_MEMORY_MALLOC
 	free(hull);
 	free(out);
+	#else
+	memory_Free(hull);
+	memory_Free(out);
+	#endif
 	
 	
 	
@@ -2329,7 +2253,7 @@ bsp_BuildPolygonsFromBrush
 */
 bsp_polygon_t *bsp_BuildPolygonsFromBrush(brush_t *brush)
 {
-	int i;
+	/*int i;
 	int c;
 	
 	int j;
@@ -2426,88 +2350,15 @@ bsp_polygon_t *bsp_BuildPolygonsFromBrush(brush_t *brush)
 	
 	
 	
-	return polygons;
+	return polygons;*/
 	
 }
 
 #endif
 
 
-bsp_polygon_t *bsp_BuildPolygonsFromTriangles(bsp_triangle_t *triangles)
-{
-	bsp_triangle_t *t;
-	
-	t = triangles;
-	
-	
-	while(t)
-	{
-		
-		
-		t = t->next;
-	}
-	
-}
 
 
-
-bsp_triangle_t *bsp_BuildTrianglesFromBrushes()
-{
-	bsp_triangle_t *triangles = NULL;
-	bsp_triangle_t *r = NULL;
-	bsp_triangle_t *t;
-	bsp_polygon_t *polygon;
-	brush_t *brush;
-	
-	int i;
-	int c = brush_count;
-	int j;
-	int k;
-	
-	
-	for(i = 0; i < c; i++)
-	{
-		
-		brush = &brushes[i];
-		
-		if(brush->type == BRUSH_INVALID)
-			continue;
-		
-		if(brush->type == BRUSH_BOUNDS)
-			continue;	
-			
-		
-		//bsp_TriangulateP
-		
-		
-		
-		k = brush->index_count;
-		
-		for(j = 0; j < k;)
-		{
-			r = malloc(sizeof(bsp_triangle_t));
-		
-			r->material_index = 0;
-			
-			r->a = brush->vertices[brush->indexes[j]];
-			j++;
-			
-			r->b = brush->vertices[brush->indexes[j]];
-			j++;
-			
-			r->c = brush->vertices[brush->indexes[j]];
-			j++;
-			
-			r->next = triangles;
-			triangles = r;
-		}
-		
-	}
-	
-	return triangles;
-	
-	
-}
 
 /*
 ==============
@@ -2539,9 +2390,14 @@ bsp_polygon_t *bsp_ClipPolygonToBsp(bsp_node_t *bsp, bsp_polygon_t *polygon, int
 			polygon, meaning it doesn't belong to any bsp tree,
 			so it's safe to get rid of it here... */
 			if(!copy)
-			{				
+			{	
+				#ifndef USE_MEMORY_MALLOC			
 				free(polygon->vertices);
 				free(polygon);	
+				#else
+				memory_Free(polygon->vertices);
+				memory_Free(polygon);	
+				#endif
 			}
 			return NULL;
 		}
@@ -2589,8 +2445,13 @@ bsp_polygon_t *bsp_ClipPolygonToBsp(bsp_node_t *bsp, bsp_polygon_t *polygon, int
 				
 				if(!copy)
 				{	
+					#ifndef USE_MEMORY_MALLOC
 					free(polygon->vertices);
 					free(polygon);
+					#else
+					memory_Free(polygon->vertices);
+					memory_Free(polygon);
+					#endif
 				}
 				
 				/*... so tell any recursive call that it isn't necessary 
@@ -2675,23 +2536,23 @@ bsp_polygon_t *bsp_ClipPolygonsToBsp(bsp_node_t *bsp, bsp_polygon_t *polygons, i
 
 }
 
-bsp_polygon_t *bsp_ClipContiguousPolygonsToBsp(bsp_node_t *bsp, bsp_polygon_t *polygons, int do_copy)
+bsp_polygon_t *bsp_ClipContiguousPolygonsToBsp(int op, bsp_node_t *bsp0, bsp_node_t *bsp1, bsp_polygon_t *polygons0, bsp_polygon_t *polygons1, int do_copy)
 {
-	bsp_polygon_t *p; // = bsp_DeepCopyPolygons(polygons_a);	
-	bsp_polygon_t *r;
-	bsp_polygon_t *s;
-	bsp_polygon_t *clipped;
-	//bsp_BuildSolid(&bsp_a, polygons_a, 0, 0);
+	bsp_polygon_t *p = NULL; 
+	bsp_polygon_t *r = NULL;
+	bsp_polygon_t *s = NULL;
+	bsp_polygon_t *clipped = NULL;
 
-	r = bsp_DeepCopyPolygons(polygons);
-
-	clipped = NULL;
-	//polygons_c = NULL;
-	//polygons_b = NULL;
+	/* this convert the polygons from a contiguous list to a linked list... */
+	r = bsp_DeepCopyPolygons(polygons0);
 	while(r)
 	{
 		p = r->next;
-		r = bsp_ClipPolygonToBsp(bsp, r, 0);
+		r->next = NULL;
+		
+		/* first clip the current brush polygons against the 
+		other brush... */
+		r = bsp_OpPolygonToBsp(CSG_OP_UNION, bsp0, r, 0);
 			
 		if(r)
 		{
@@ -2705,10 +2566,50 @@ bsp_polygon_t *bsp_ClipContiguousPolygonsToBsp(bsp_node_t *bsp, bsp_polygon_t *p
 		r = p;	
 	}
 	
-	bsp_DeletePolygonsContiguous(polygons);
-	r = bsp_DeepCopyPolygonsContiguous(clipped);
-	bsp_DeletePolygons(clipped);
+	if(op == CSG_OP_SUBTRACTION)
+	{
+		r = bsp_DeepCopyPolygons(polygons1);
+		
+		/* HACK: necessary so multiple subtractive brushes can properly act on normal brushes. The
+		problem happens because when clipping the subtractive brush against the original brush
+		(in order to obtain the inside polygons), the original brush's bsp is used (which is built
+		with the base polygons). This bsp does not reflect the result of past subtraction operations,
+		and so the inside polygons gets generated without taking into account the result of previous
+		subtractive clips. To solve this, we build a temporary bsp using the clipped polygons from
+		the brush. This way, this subtraction operation will see previous subtractions... */
+		s = bsp_DeepCopyPolygons(polygons0);
+		bsp1 = bsp_SolidBsp(s);
+		
+		while(r)
+		{
+			p = r->next;
+			r->next = NULL;
+			/* if we're doing a subtraction, take the original polygons
+			of the second brush and do a subtraction against the first
+			brush bsp... */
+			r = bsp_OpPolygonToBsp(CSG_OP_SUBTRACTION, bsp1, r, 0);
+			
+			if(r)
+			{
+				s = r;
+				while(s->next) s = s->next;
+				
+				s->next = clipped;
+				clipped = r;
+			}
+				
+			r = p;
+		}
+		
+		bsp_DeleteSolidBsp(bsp1);	
+	}
 	
+	if(clipped)
+	{
+		bsp_DeletePolygonsContiguous(polygons0);
+		r = bsp_DeepCopyPolygonsContiguous(clipped);
+		bsp_DeletePolygons(clipped);
+	}
 	return r;
 }
 
@@ -2786,13 +2687,13 @@ struct bsp_ClipBspToBspInputData
 
 int bsp_ClipBspToBspAssyncFn(void *data)
 {
-	SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
+	/*SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
 	struct bsp_ClipBspToBspInputData *in = (struct bsp_ClipBspToBspInputData *)data;	
 	*(in->polygons) = bsp_ClipBspToBsp(in->bsp, in->input);
 	SDL_SemPost(in->semaphore);
 	free(in);
 	SDL_SetThreadPriority(SDL_THREAD_PRIORITY_NORMAL);
-	return 0;
+	return 0;*/
 }
 
 
@@ -2802,13 +2703,13 @@ int bsp_ClipBspToBspAssyncFn(void *data)
 void bsp_ClipBspToBspAssync(bsp_polygon_t **polygons, bsp_node_t *bsp, bsp_node_t *input, SDL_sem *semaphore)
 {
 	
-	struct bsp_ClipBspToBspInputData *in = malloc(sizeof(struct bsp_ClipBspToBspInputData));
+	/*struct bsp_ClipBspToBspInputData *in = malloc(sizeof(struct bsp_ClipBspToBspInputData));
 	in->bsp = bsp;
 	in->input = input;
 	in->semaphore = semaphore;
 	in->polygons = polygons;
 	
-	SDL_DetachThread(SDL_CreateThread(bsp_ClipBspToBspAssyncFn, "clip bsp to bsp thread", in));
+	SDL_DetachThread(SDL_CreateThread(bsp_ClipBspToBspAssyncFn, "clip bsp to bsp thread", in));*/
 	
 	//printf("bsp_ClipBspToBspAsssync: %x\n", semaphore);
 	
@@ -2839,9 +2740,14 @@ bsp_polygon_t *bsp_IntersectPolygonToBsp(bsp_node_t *bsp, bsp_polygon_t *polygon
 			polygon, meaning it doesn't belong to any bsp tree,
 			so it's safe to get rid of it here... */
 			if(!copy)
-			{				
+			{	
+				#ifndef USE_MEMORY_MALLOC			
 				free(polygon->vertices);
 				free(polygon);	
+				#else
+				memory_Free(polygon->vertices);
+				memory_Free(polygon);	
+				#endif
 			}
 			return NULL;
 		}
@@ -2886,8 +2792,13 @@ bsp_polygon_t *bsp_IntersectPolygonToBsp(bsp_node_t *bsp, bsp_polygon_t *polygon
 				
 				if(!copy)
 				{	
+					#ifndef USE_MEMORY_MALLOC
 					free(polygon->vertices);
 					free(polygon);
+					#else
+					memory_Free(polygon->vertices);
+					memory_Free(polygon);
+					#endif
 				}
 				
 				/*... so tell any recursive call that it isn't necessary 
@@ -3015,8 +2926,8 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brush_list, int brush_list_count)
 	SDL_sem *sem1;
 	
 	
-	sem0 = SDL_CreateSemaphore(0);
-	sem1 = SDL_CreateSemaphore(0);
+	//sem0 = SDL_CreateSemaphore(0);
+	//sem1 = SDL_CreateSemaphore(0);
 	
 	float start;
 	float end;	
@@ -3043,7 +2954,7 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brush_list, int brush_list_count)
 			if(brush_list[i].type == BRUSH_INVALID)
 				continue;
 				
-			polygons_a = bsp_DeepCopyPolygons(brush_list[i].polygons);
+			polygons_a = bsp_DeepCopyPolygons(brush_list[i].base_polygons);
 	
 			i++;
 			
@@ -3053,11 +2964,11 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brush_list, int brush_list_count)
 			
 		for(; i < c; i++)
 		{
-			printf("%d/%d\n", i, c);
+			//printf("%d/%d\n", i, c);
 			if(brush_list[i].type == BRUSH_INVALID)
 				continue;
 				
-			polygons_b = bsp_DeepCopyPolygons(brush_list[i].polygons);
+			polygons_b = bsp_DeepCopyPolygons(brush_list[i].base_polygons);
 			
 			if(!polygons_b)
 				continue;
@@ -3071,28 +2982,7 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brush_list, int brush_list_count)
 			bsp_b = NULL;
 			/* build the bsp for the polygons of brush B... */
 			bsp_BuildSolid(&bsp_b, polygons_b, 0, 0);
-			
-			//#define MULTI_THREADS
-
-			#ifdef MULTI_THREADS
-			/* clip the polygons that belong to bsp_a against
-			bsp_b... */
-			bsp_ClipBspToBspAssync(&polygons_a, bsp_b, bsp_a, sem0);	
-			//printf("thread 0\n");	
-			
-			/* clip the polygons that belong to bsp_b against
-			bsp_a... */
-			SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
-			polygons_b = bsp_ClipBspToBsp(bsp_a, bsp_b);
-			SDL_SetThreadPriority(SDL_THREAD_PRIORITY_NORMAL);
-			//bsp_ClipBspToBspAssync(&polygons_b, bsp_a, bsp_b, sem1);
-			//printf("thread 1\n");
-			
-			SDL_SemWait(sem0);
-			//SDL_SemWait(sem1);
-			
-			#else
-		
+					
 			/* clip the polygons that belong to bsp_a against
 			bsp_b... */
 			polygons_a = bsp_ClipBspToBsp(bsp_b, bsp_a);	
@@ -3102,7 +2992,6 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brush_list, int brush_list_count)
 			bsp_a... */
 			polygons_b = bsp_ClipBspToBsp(bsp_a, bsp_b);
 			
-			#endif
 			
 			
 			/* get rid of those bsp's, they're 
@@ -3111,9 +3000,6 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brush_list, int brush_list_count)
 			bsp_DeleteSolidBsp(bsp_a);
 			bsp_DeleteSolidBsp(bsp_b);
 			
-			//bsp_DeleteSolidBspAssync(bsp_a);
-			//bsp_DeleteSolidBspAssync(bsp_b);
-
 			p = polygons_a;
 			
 			/* link the two lists of polygons... */	
@@ -3142,8 +3028,8 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brush_list, int brush_list_count)
 	
 	printf("clipping took %f\n", end - start);
 	
-	SDL_DestroySemaphore(sem0);
-	SDL_DestroySemaphore(sem1);
+	//SDL_DestroySemaphore(sem0);
+	//SDL_DestroySemaphore(sem1);
 	
 	
 	
@@ -3196,7 +3082,7 @@ bsp_polygon_t *bsp_ClipBrushes2(brush_t *brush_list, int brush_list_count)
 			if(brush_list[i].type == BRUSH_INVALID)
 				continue;
 				
-			p = bsp_DeepCopyPolygons(brush_list[i].polygons);
+			p = bsp_DeepCopyPolygons(brush_list[i].base_polygons);
 			brush_list[i].bm_flags &= ~BRUSH_MOVED;
 			
 			if(p)
@@ -3262,117 +3148,222 @@ bsp_polygon_t *bsp_SubtractBrush(brush_t *brush, brush_t *subtractive)
 	
 }
 
-
-
-/*
-==============
-bsp_ClipTriangleToSolidLeaves
-==============
-*/
-void bsp_ClipTriangleToSolidLeaves(bsp_node_t *root, bsp_triangle_t *triangle)
+bsp_polygon_t *bsp_OpPolygonToBsp(int op, bsp_node_t *bsp, bsp_polygon_t *polygon, int copy)
 {
-	bsp_triangle_t *front = NULL;
-	bsp_triangle_t *back = NULL;
-	bsp_triangle_t *t = NULL;
-	bsp_triangle_t *n;
-	bsp_leaf_t *leaf;
+	bsp_polygon_t *frags = NULL;
+	bsp_polygon_t *f = NULL;
+	bsp_polygon_t *r = NULL;
+	bsp_polygon_t *n;
+	bsp_polygon_t *s;
+	bsp_polygon_t *front = NULL;
+	bsp_polygon_t *back = NULL;
 	
-	int s;
+	vertex_t v;
+		
+	int i;
 	int c;
 	
-	if(root->type == BSP_LEAF)
+	/* A (subtraction) B == A (intersection) (~B) */
+	if(op == CSG_OP_SUBTRACTION)
 	{
-		if(!(root->bm_flags & BSP_SOLID))
-		{			
-			/* add this triangle to the leaf... */
-			leaf = (bsp_leaf_t *)root;
-			triangle->next = leaf->triangles;
-			leaf->triangles = triangle;
-			leaf->triangle_count++;
-			return;	
+		c = polygon->vert_count;
+		
+		/* ~B... */
+		polygon->normal.x = -polygon->normal.x;
+		polygon->normal.y = -polygon->normal.y;
+		polygon->normal.z = -polygon->normal.z;
+		
+		for(i = 0; i < c >> 1; i++)
+		{
+			v = polygon->vertices[i];
+			
+			v.normal.x = -v.normal.x;
+			v.normal.y = -v.normal.y;
+			v.normal.z = -v.normal.z;
+			
+			v.tangent.x = -v.tangent.x;
+			v.tangent.y = -v.tangent.y;
+			v.tangent.z = -v.tangent.z;
+			
+			polygon->vertices[i] = polygon->vertices[c - i - 1];
+			polygon->vertices[c - i - 1] = v;
+			
+			v = polygon->vertices[i];
+			
+			v.normal.x = -v.normal.x;
+			v.normal.y = -v.normal.y;
+			v.normal.z = -v.normal.z;
+			
+			v.tangent.x = -v.tangent.x;
+			v.tangent.y = -v.tangent.y;
+			v.tangent.z = -v.tangent.z;
+			
+			polygon->vertices[i] = v;
 		}
 		
-		/* this triangle ended up inside solid space, so
-		get rid of it... */
-		free(triangle);
-		return;
+		op = CSG_OP_INTERSECTION;
 	}
 	
-	s = bsp_ClassifyTriangle(triangle, root->point, root->normal);
 	
-	switch(s)
+	
+	if(bsp->type == BSP_LEAF)
 	{
-		case TRIANGLE_FRONT:
-		case TRIANGLE_CONTAINED_FRONT:
-			bsp_ClipTriangleToSolidLeaves(root->front, triangle);
-		break;
+		switch(op)
+		{
+			case CSG_OP_UNION:
+				if(bsp->bm_flags & BSP_SOLID)
+				{
+					/* (!copy) means that it's not necessary to copy this
+					polygon, meaning it doesn't belong to any bsp tree,
+					so it's safe to get rid of it here... */
+					if(!copy)
+					{	
+						#ifndef USE_MEMORY_MALLOC			
+						free(polygon->vertices);
+						free(polygon);	
+						#else
+						memory_Free(polygon->vertices);
+						memory_Free(polygon);	
+						#endif
+					}
+					return NULL;
+				}
+				
 		
-		case TRIANGLE_BACK:
-		case TRIANGLE_CONTAINED_BACK:
-			bsp_ClipTriangleToSolidLeaves(root->back, triangle);
-		break;
+				/* return a new copy of this polygon if this polygon
+				didn't come from a split... */
+				if(copy)
+				{					
+					front = bsp_DeepCopyPolygon(polygon);
+					return front;
+				}
+				else
+				{
+					polygon->next = NULL;
+					return polygon;
+				}
+			break;
+			
+			case CSG_OP_INTERSECTION:
+				if(bsp->bm_flags & BSP_SOLID)
+				{
+					/* return a new copy of this polygon if this polygon
+					didn't come from a split... */
+					if(copy)
+					{					
+						front = bsp_DeepCopyPolygon(polygon);
+						return front;
+					}
+					else
+					{
+						polygon->next = NULL;
+						return polygon;
+					}
+					
+				}
+				
+				/* (!copy) means that it's not necessary to copy this
+				polygon, meaning it doesn't belong to any bsp tree,
+				so it's safe to get rid of it here... */
+				if(!copy)
+				{	
+					#ifndef USE_MEMORY_MALLOC			
+					free(polygon->vertices);
+					free(polygon);	
+					#else
+					memory_Free(polygon->vertices);
+					memory_Free(polygon);	
+					#endif
+				}
+				return NULL;
+			break;
+		}
 		
-		case TRIANGLE_STRADDLING:
-			bsp_SplitTriangle(triangle, root->point, root->normal, &front, &back);
-				
-			/* front can contain one or two triangles, so... */
-			t = front;
-			do
-			{
-				/* get the next before the call, as it
-				can either unlink the triangle or free it... */
-				n = t->next;
-				
-				bsp_ClipTriangleToSolidLeaves(root->front, t);
-
-				t = n;
-			}while(t);
-			
-			/* back can contain one or two triangles, so... */
-			t = back;
-			do
-			{
-				/* get the next before the call, as it
-				can either unlink the triangle or free it... */
-				n = t->next;
-				
-				bsp_ClipTriangleToSolidLeaves(root->back, t);
-				
-				t = n;
-			}while(t);
-			
-			
-			free(triangle);
-			
-		break;	
+		
 	}
+	else
+	{
+		i = bsp_ClassifyPolygon(polygon, bsp->splitter->vertices[0].position, bsp->splitter->normal);
+		
+		switch(i)
+		{
+			case POLYGON_CONTAINED_FRONT:
+				/* HACK: this is here to avoid the case where the polygon of a subtractive brush
+				ends up being thrown away when it should instead be the inside polygon of the other
+				brush. This happens when the subtractive brush's face is coplanar with the face
+				of the other brush. Since the subtractive brush's face gets flipped, it's considered
+				to be contained and facing the same direction of the other brush, which makes it end
+				up inside empty space. Given that the intersection operation throws away faces in 
+				empty space and keeps faces in solid space, everytime we do an intersection operation
+				and find a face being coplanar and facing the same direction as the splitting plane, 
+				we'll send it to the opposite subtree instead. This guarantees that there won't be no
+				missing faces when two brushes are touching each other...  */
+				if(op == CSG_OP_INTERSECTION) return bsp_OpPolygonToBsp(op, bsp->back, polygon, copy);
+			case POLYGON_FRONT:
+				return bsp_OpPolygonToBsp(op, bsp->front, polygon, copy);
+			break;
+			
+			case POLYGON_CONTAINED_BACK:
+				if(op == CSG_OP_INTERSECTION) return bsp_OpPolygonToBsp(op, bsp->front, polygon, copy);
+			case POLYGON_BACK:
+				return bsp_OpPolygonToBsp(op, bsp->back, polygon, copy);
+			break;
+
+			
+			case POLYGON_STRADDLING:
+				
+				/* bsp_SplitPolygon allocates two new polygons... */
+				bsp_SplitPolygon(polygon, bsp->splitter->vertices[0].position, bsp->splitter->normal, &front, &back);
+				
+				if(!copy)
+				{	
+					#ifndef USE_MEMORY_MALLOC
+					free(polygon->vertices);
+					free(polygon);
+					#else
+					memory_Free(polygon->vertices);
+					memory_Free(polygon);
+					#endif
+				}
+				
+				/*... so tell any recursive call that it isn't necessary 
+				to make a copy before returning the polygon when it falls 
+				within an out leaf (or freeing it when it falls in solid
+				space)... */
+				front = bsp_OpPolygonToBsp(op, bsp->front, front, 0);
+				back = bsp_OpPolygonToBsp(op, bsp->back, back, 0);
+				
+				if(front)
+				{
+					frags = front;
+					r = front;
+					while(r->next)
+					{
+						r = r->next;
+					}
+					r->next = back;
+				}
+				else
+				{
+					frags = back;
+				}
+				
+				return frags;
+				
+				//assert(front);
+				/* link those splits (and any other polygons from recursive calls)... */
+				
+			break;
+			
+			default:
+				assert("holy" == "shit...");
+			break;
+		}
+	}
+		
+	return NULL;
 }
 
-
-/*
-==============
-bsp_ClipTrianglesToSolidLeaves
-==============
-*/
-void bsp_ClipTrianglesToSolidLeaves(bsp_node_t *root, bsp_triangle_t *triangles)
-{
-	bsp_triangle_t *t;
-	bsp_triangle_t *n;
-		
-	t = triangles;
-	
-	while(t)
-	{
-		n = t->next;
-		
-		bsp_ClipTriangleToSolidLeaves(root, t);
-		
-		t = n;
-	}
-	
-	//bsp_LinearizeLeaves(root);
-	
-}
 
 void bsp_TriangulateLeafPolygons(bsp_node_t *node)
 {
@@ -3408,7 +3399,11 @@ void bsp_TriangulateLeafPolygons(bsp_node_t *node)
 				
 				for(i = 0; i < vertice_count;)
 				{
+					#ifndef USE_MEMORY_MALLOC
 					triangle = malloc(sizeof(bsp_triangle_t));
+					#else
+					triangle = memory_Malloc(sizeof(bsp_triangle_t), "bsp_TriangulateLeafPolygons: triangle");
+					#endif
 					
 					triangle->a = vertices[i];
 					i++;
@@ -3440,6 +3435,8 @@ void bsp_TriangulateLeafPolygons(bsp_node_t *node)
 		bsp_TriangulateLeafPolygons(node->front);
 		bsp_TriangulateLeafPolygons(node->back);
 	}
+	
+	
 }
 
 /*
@@ -3483,10 +3480,10 @@ void bsp_CountNodesAndLeaves(bsp_node_t *bsp, int *leaves, int *nodes)
 bsp_BuildTriangleGroups
 ==============
 */
-void bsp_BuildTriangleGroups(bsp_node_t *root, triangle_group_t **groups, int *count)
+void bsp_BuildTriangleGroups(bsp_node_t *root, batch_t **groups, int *count)
 {
-	triangle_group_t *g = NULL;
-	triangle_group_t *n = NULL;
+	batch_t *g = NULL;
+	batch_t *n = NULL;
 	bsp_triangle_t *triangle = NULL;
 	
 	bsp_leaf_t *leaf = NULL;
@@ -3526,7 +3523,11 @@ void bsp_BuildTriangleGroups(bsp_node_t *root, triangle_group_t **groups, int *c
 				/* this material hasn't been added to the list... */
 				if(k >= c)
 				{
-					n = malloc(sizeof(triangle_group_t) * (c + 1));
+					#ifndef USE_MEMORY_MALLOC
+					n = malloc(sizeof(batch_t) * (c + 1));
+					#else
+					n = memory_Malloc(sizeof(batch_t) * (c + 1), "bsp_BuildTriangleGroups: n");
+					#endif
 					
 					/* copy everything before it... */
 					for(k = 0; k < c; k++)
@@ -3553,7 +3554,11 @@ void bsp_BuildTriangleGroups(bsp_node_t *root, triangle_group_t **groups, int *c
 					
 					if(g)
 					{
+						#ifndef USE_MEMORY_MALLOC
 						free(g);
+						#else
+						memory_Free(g);
+						#endif
 					}
 					
 					g = n;
@@ -3600,7 +3605,7 @@ bsp_RecursiveLinearizeBsp
 
 //#define LEAK_FOR_FUN
 
-void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_count, bsp_pnode_t *lnodes, int *lnode_count, bsp_dleaf_t *lleaves, int *lleaves_count, triangle_group_t *groups, int tri_group_count, int create_leaves, int pvs_size)
+void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_count, bsp_pnode_t *lnodes, int *lnode_count, bsp_dleaf_t *lleaves, int *lleaves_count, batch_t *groups, int tri_group_count, int create_leaves, int pvs_size, int *debug_vertex_count)
 {
 	bsp_leaf_t *leaf;
 	bsp_pnode_t *pnode;
@@ -3664,18 +3669,31 @@ void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_
 			
 			
 			dleaf->tris_count = leaf->triangle_count;
+			//dleaf->tris_count = 0;
+			
+			#ifndef USE_MEMORY_MALLOC
 			dleaf->tris = malloc(sizeof(bsp_striangle_t ) * dleaf->tris_count);
+			#else
+			dleaf->tris = memory_Malloc(sizeof(bsp_striangle_t ) * dleaf->tris_count, "bsp_RecursiveLinearizeBsp: dleaf->tris");
+			#endif
 			//dleaf->pvs = leaf->pvs;
-			dleaf->pvs = malloc(pvs_size);
+			
+			#ifndef USE_MEMORY_MALLOC
+			dleaf->pvs = calloc(pvs_size, 1);
+			#else
+			dleaf->pvs = memory_Calloc(pvs_size, 1, "bsp_RecursiveLinearizeBsp: dleaf->pvs");
+			#endif
 			leaf->pvs = dleaf->pvs;
 			
-			for(i = 0; i < pvs_size; i++)
+			/* this is causing a crash... find out why... */
+			/*for(i = 0; i < pvs_size; i++)
 			{
 				dleaf->pvs[i] = 0x0;
-			}
+			}*/
 			
-			dleaf->leaf_index = leaf->leaf_index;
+			//dleaf->leaf_index = leaf->leaf_index;
 			
+			//return;
 			
 			triangle = leaf->triangles;
 			tris_index = 0;
@@ -3696,8 +3714,8 @@ void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_
 				
 				/* index to the first vertex of this triangle... */
 				dleaf->tris[tris_index].first_vertex = k + groups[i].next;
-				/* ...and which triangle group it belongs to... */
-				dleaf->tris[tris_index].triangle_group = i;
+				/* ...and which batch it belongs to... */
+				dleaf->tris[tris_index].batch = i;
 				
 				tris_index++;
 				
@@ -3733,8 +3751,14 @@ void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_
 				if(triangle->c.position.z < z_min) z_min = triangle->c.position.z;
 				groups[i].next++;
 				
+				*(debug_vertex_count) += 3;
+				
 				next_triangle = triangle->next;
+				#ifndef USE_MEMORY_MALLOC
 				free(triangle);
+				#else
+				memory_Free(triangle);
+				#endif
 				triangle = next_triangle;
 			}
 			
@@ -3747,19 +3771,6 @@ void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_
 			dleaf->extents.x = x_max - dleaf->center.x;
 			dleaf->extents.y = y_max - dleaf->center.y;
 			dleaf->extents.z = z_max - dleaf->center.z;
-			
-			
-			/* get rid of the polygons stored on this leaf,
-			since this pointer based bsp is useless now... */
-			/*polygon = leaf->polygons;
-			while(polygon)
-			{
-				next_polygon = polygon->next;
-				free(polygon->vertices);
-				free(polygon);
-				polygon = next_polygon;
-			}*/
-			
 		}
 		else
 		{
@@ -3793,10 +3804,10 @@ void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_
 		
 		/* relative displacement... */
 		pnode->child[0] = (*lnode_count) - node_index;
-		bsp_RecursiveLinearizeBsp(bsp->front, vertices, vertex_count, lnodes, lnode_count, lleaves, lleaves_count, groups, tri_group_count, create_leaves, pvs_size);
+		bsp_RecursiveLinearizeBsp(bsp->front, vertices, vertex_count, lnodes, lnode_count, lleaves, lleaves_count, groups, tri_group_count, create_leaves, pvs_size, debug_vertex_count);
 		
 		pnode->child[1] = (*lnode_count) - node_index;
-		bsp_RecursiveLinearizeBsp(bsp->back, vertices, vertex_count, lnodes, lnode_count, lleaves, lleaves_count, groups, tri_group_count, create_leaves, pvs_size);
+		bsp_RecursiveLinearizeBsp(bsp->back, vertices, vertex_count, lnodes, lnode_count, lleaves, lleaves_count, groups, tri_group_count, create_leaves, pvs_size, debug_vertex_count);
 		
 		#ifndef LEAK_FOR_FUN
 		//free(bsp);
@@ -3807,12 +3818,51 @@ void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_
 
 
 
+void bsp_RecursiveAllocPvsForLeaves(bsp_node_t *bsp, int pvs_size)
+{
+	bsp_leaf_t *leaf;
+	if(bsp->type == BSP_LEAF)
+	{
+		leaf = (bsp_leaf_t *)bsp;
+		if(!(leaf->bm_flags & BSP_SOLID))
+		{
+			#ifndef USE_MEMORY_MALLOC
+			leaf->pvs = calloc(pvs_size, 1);
+			#else
+			leaf->pvs = memory_Calloc(pvs_size, 1, "bsp_RecursiveAllocPvsForLeaves: leaf->pvs");
+			#endif
+		}
+	}
+	else
+	{
+		bsp_RecursiveAllocPvsForLeaves(bsp->front, pvs_size);
+		bsp_RecursiveAllocPvsForLeaves(bsp->back, pvs_size);
+	}
+}
+
+
+
+void bsp_AllocPvsForLeaves(bsp_node_t *bsp)
+{
+	int leaves = 0;
+	int nodes = 0;
+	int pvs_size = 0;
+	
+	if(bsp)
+	{
+		bsp_CountNodesAndLeaves(bsp, &leaves, &nodes);
+		pvs_size = 4 + (leaves >> 3);
+		bsp_RecursiveAllocPvsForLeaves(bsp, pvs_size);
+	}
+}
+
+
 /*
 ==============
 bsp_LinearizeBsp
 ==============
 */
-void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, bsp_pnode_t **lnodes, int *lnode_count, bsp_dleaf_t **lleaves, int *lleaves_count, triangle_group_t *groups, int tri_group_count, int create_leaves)
+void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, bsp_pnode_t **lnodes, int *lnode_count, bsp_dleaf_t **lleaves, int *lleaves_count, batch_t *groups, int tri_group_count, int create_leaves)
 {
 	
 	int i;
@@ -3825,13 +3875,18 @@ void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, b
 	bsp_pnode_t *nodes = NULL;
 	bsp_dleaf_t *leaves = NULL;
 	vertex_t *v;
+	int debug_vertex_count = 0;
 	
 	int pvs_size = 0;
 	
 	if(vertex_count)
 	{
 		*vertex_count = groups[tri_group_count - 1].start + groups[tri_group_count - 1].next;
+		#ifndef USE_MEMORY_MALLOC
 		v = malloc(sizeof(vertex_t) * (*vertex_count));
+		#else
+		v = memory_Malloc(sizeof(vertex_t) * (*vertex_count), "bsp_LinearizeBsp: v");
+		#endif
 	}
 		
 	
@@ -3839,13 +3894,19 @@ void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, b
 	
 	bsp_CountNodesAndLeaves(bsp, &l, &n);
 	
-//	printf("%d %d\n", l, n);
-	
+	#ifndef USE_MEMORY_MALLOC
 	nodes = malloc(sizeof(bsp_pnode_t) * n);
+	#else
+	nodes = memory_Malloc(sizeof(bsp_pnode_t) * n, "bsp_LinearizeBsp: nodes");
+	#endif
 	
 	if(lleaves)
 	{
-		leaves = malloc(sizeof(bsp_dleaf_t) * (l + 200));
+		#ifndef USE_MEMORY_MALLOC
+		leaves = malloc(sizeof(bsp_dleaf_t) * l);
+		#else
+		leaves = memory_Malloc(sizeof(bsp_dleaf_t) * l, "bsp_LinearizeBsp: leaves");
+		#endif
 		pvs_size = 4 + (l >> 3);
 	}
 		
@@ -3860,7 +3921,9 @@ void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, b
 		groups[i].next = 0;
 	}
 	
-	bsp_RecursiveLinearizeBsp(bsp, v, &i, nodes, &n, leaves, &l, groups, tri_group_count, create_leaves, pvs_size);
+	bsp_RecursiveLinearizeBsp(bsp, v, &i, nodes, &n, leaves, &l, groups, tri_group_count, create_leaves, pvs_size, &debug_vertex_count);
+	
+	
 	
 	//visited_leaves = malloc(sizeof(bsp_dleaf_t *) * l);
 	
@@ -3985,8 +4048,11 @@ bsp_edge_t *bsp_BuildBevelEdges(bsp_polygon_t *brush_polygons)
 							
 							#endif
 						
-							
+							#ifndef USE_MEMORY_MALLOC
 							edge = malloc(sizeof(bsp_edge_t) );
+							#else
+							edge = memory_Malloc(sizeof(bsp_edge_t), "bsp_BuildBevelEdges");
+							#endif
 							edge->v0 = p0;
 							edge->v1 = p1;
 							edge->v0_p0 = i;
@@ -4020,36 +4086,10 @@ bsp_edge_t *bsp_BuildBevelEdges(bsp_polygon_t *brush_polygons)
 	
 }
 
-bsp_edge_t *bsp_BuildEdgesFromBrushes()
-{
-	
-	/*int i;
-	
-	bsp_edge_t *edge_list = NULL;
-	bsp_edge_t *partial_edge_list = NULL;
-	bsp_edge_t *r = NULL;
-	for(i = 0; i < brush_count; i++)
-	{
-		partial_edge_list = bsp_BuildEdgesFromBrush(&brushes[i]);
-		
-		assert(partial_edge_list);
-		
-		r = partial_edge_list;
-		
-		while(r->next)
-		{
-			r = r->next;
-		}
-		
-		r->next = edge_list;
-		edge_list = partial_edge_list;
-	}
-	
-	return edge_list;*/
-}
 
 void bsp_ExpandBrushes(vec3_t box_extents)
 {
+	#if 0
 	int i;
 	int j;
 	int c;
@@ -4077,59 +4117,46 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 	{
 		for(i = 0; i < expanded_brush_count; i++)
 		{
-			polygons = expanded_brushes[i].polygons;
+			polygons = expanded_brushes[i].base_polygons;
 			
 			while(polygons)
 			{
 				polygon = polygons->next;
+				#ifndef USE_MEMORY_MALLOC
 				free(polygons->vertices);
 				free(polygons);
+				#else
+				memory_Free(polygons->vertices);
+				memory_Free(polygons);
+				#endif
 				polygons = polygon;
 			}
 			
 		}
 		
+		#ifndef USE_MEMORY_MALLOC
 		free(expanded_brushes);
+		#else
+		memory_Free(expanded_brushes);
+		#endif
 		
 	}
 	
 	
-	
+	#ifndef USE_MEMORY_MALLOC
 	expanded_brushes = malloc(sizeof(brush_t) * brush_list_size);
-/*	
-	#ifdef DRAW_BEVEL_EDGES
-		
-	if(bevel_edges)
-	{
-		edges = bevel_edges;
-		while(edges)
-		{
-			edge = edges->next;
-			free(edges);
-			edges = edge;
-		}
-		
-		bevel_edges = NULL;
-	}
-	
-	#endif*/
-	
+	#else
+	expanded_brushes = memory_Malloc(sizeof(brush_t) * brush_list_size, "bsp_ExpandBrushes");
+	#endif
 	
 		
 	for(i = 0, c = 0; i < brush_count; i++)
-	{
-		//edges = bsp_BuildEdgesFromBrush(&brushes[i]);
-		
+	{		
 		if(brushes[i].type == BRUSH_INVALID)
 			continue;
 		
 		
-		
-		
-	//	#if 0
-		
-		//polygons = bsp_BuildPolygonsFromBrush(&brushes[i]);
-		polygons = bsp_DeepCopyPolygons(brushes[i].polygons);
+		polygons = bsp_DeepCopyPolygons(brushes[i].base_polygons);
 		
 		if(!polygons)
 			continue;
@@ -4137,7 +4164,7 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 		edges = bsp_BuildBevelEdges(polygons);
 		
 		expanded_brushes[c] = brushes[i];
-		expanded_brushes[c].polygons = polygons;
+		expanded_brushes[c].base_polygons = polygons;
 		expanded_brushes[c].type = BRUSH_CUBE;	
 		
 		polygon = polygons;
@@ -4288,7 +4315,11 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 		while(edges)
 		{
 			edge = edges->next;
+			#ifndef USE_MEMORY_MALLOC
 			free(edges);
+			#else
+			memory_Free(edges);
+			#endif
 			edges = edge;
 		}
 		
@@ -4301,11 +4332,13 @@ void bsp_ExpandBrushes(vec3_t box_extents)
 	
 	expanded_brush_count = c;
 	
+	#endif
+	
 }
 
 void bsp_BuildCollisionBsp()
 {
-	
+	#if 0
 	bsp_polygon_t *polygons;
 	bsp_polygon_t *p;
 	bsp_polygon_t *r;
@@ -4352,324 +4385,15 @@ void bsp_BuildCollisionBsp()
 	//printf("bsp_BuildSolidLeaf\n");
 	
 //	printf("bsp_BuildCollisionBsp: bsp_LinearizeBsp... ");
-	bsp_LinearizeBsp(collision_bsp, NULL, NULL, &collision_nodes, &collision_nodes_count, NULL, NULL, NULL, 0, 0);
+//	bsp_LinearizeBsp(collision_bsp, NULL, NULL, &collision_nodes, &collision_nodes_count, NULL, NULL, NULL, 0, 0);
 //	printf("done\n");
 	//printf("bsp_LinearizeBsp\n");
 	
-}
-
-
-/*
-==============
-bsp_MergeLeafTriangles
-==============
-*/
-void bsp_MergeLeafTriangles(bsp_node_t *root)
-{
-	bsp_leaf_t *leaf;
-	bsp_triangle_t *triangles;
-	bsp_triangle_t *t;
-	bsp_triangle_t *pt = NULL;
-	bsp_triangle_t *n;
-	bsp_triangle_t *pn = NULL;
-	bsp_triangle_t *q;
-	//bsp_triangle_t *r;
-	
-	int new_triangle_vert_count = 0;
-	bsp_triangle_t new_triangle;
-	
-	vertex_t vertexes[6];
-	
-	vec3_t e0;
-	vec3_t e1;
-	
-	/*vec3_t center;
-	
-	vec3_t proj_x;
-	vec3_t proj_y;*/
-	
-	int i;
-	int c;
-	
-	int j;
-	int k;
-	int r;
-	
-	int s0;
-	int s1;
-	int shared_end0;
-	int shared_end1;
-	int l0;
-	int l1;
-	float d;
-	
-	int removed_tris = 0;
-	 
-	/*vec2_t proj_verts[6];
-	vec2_t proj_vec;
-	vec2_t edge_vec;
-	
-	vec3_t verts[6];*/
-	
-	vertex_t t0_verts[3];
-	vertex_t t1_verts[3];
-	
-/*	float max_x = -999999999999.0;
-	float min_x = 999999999999.0;
-	int max_x_index;
-	int min_x_index;*/
-	
-	if(!root)
-		return;
-	
-	if(root->type == BSP_LEAF)
-	{
-		leaf = (bsp_leaf_t *)root;
-		if(!(leaf->bm_flags & BSP_SOLID))
-		{
-			
-			_go_all_over_again:
-							
-			triangles = leaf->triangles;
-			t = triangles;
-			removed_tris = 0;
-			while(t)
-			{
-				
-				_restart_search:
-					
-				t0_verts[0] = t->a;
-				t0_verts[1] = t->b;
-				t0_verts[2] = t->c;
-							
-				//n = triangles;
-				
-				
-				n = t->next;
-				pn = t;
-				//n = triangles;
-				//pn = NULL;
-				
-				_next_tris:
-				while(n)
-				{				
-					
-					
-					/*if(t == n)
-					{
-						pn = n;
-						n = n->next;
-						continue;
-					}*/
-					
-					t1_verts[0] = n->a;
-					t1_verts[1] = n->b;
-					t1_verts[2] = n->c;
-					
-					
-					
-					if(t->material_index == n->material_index)
-					{
-						e0.x = t->a.normal.x + t->b.normal.x + t->c.normal.x;
-						e0.y = t->a.normal.y + t->b.normal.y + t->c.normal.y;
-						e0.z = t->a.normal.z + t->b.normal.z + t->c.normal.z;
-						
-						
-						e1.x = n->a.normal.x + n->b.normal.x + n->c.normal.x;
-						e1.y = n->a.normal.y + n->b.normal.y + n->c.normal.y;
-						e1.z = n->a.normal.z + n->b.normal.z + n->c.normal.z;
-						
-						
-						e0 = normalize3(e0);
-						e1 = normalize3(e1);
-						
-						if(dot3(e0, e1) == 1.0)
-						{
-							/* find a coincident edge... */
-							for(j = 0; j < 3; j++)
-							{
-								
-								e0.x = fabs(t0_verts[(j + 1) % 3].position.x - t0_verts[j].position.x);
-								e0.y = fabs(t0_verts[(j + 1) % 3].position.y - t0_verts[j].position.y);
-								e0.z = fabs(t0_verts[(j + 1) % 3].position.z - t0_verts[j].position.z);
-								
-								for(k = 0; k < 3; k++)
-								{
-									
-									e1.x = fabs(t1_verts[(k + 1) % 3].position.x - t1_verts[k].position.x);
-									e1.y = fabs(t1_verts[(k + 1) % 3].position.y - t1_verts[k].position.y);
-									e1.z = fabs(t1_verts[(k + 1) % 3].position.z - t1_verts[k].position.z);
-									
-									#define SMALL_EPSILON 0.0004
-
-									if(e0.x <= e1.x + SMALL_EPSILON && e0.x >= e1.x - SMALL_EPSILON) 
-									{
-										if(e0.y <= e1.y + SMALL_EPSILON && e0.y >= e1.y - SMALL_EPSILON)
-										{
-											if(e0.z <= e1.z + SMALL_EPSILON && e0.z >= e1.z - SMALL_EPSILON)
-											{
-												e0 = t0_verts[j].position;
-												e1 = t1_verts[(k + 1) % 3].position;
-																			
-												if(e0.x <= e1.x + SMALL_EPSILON && e0.x >= e1.x - SMALL_EPSILON) 
-												{
-													if(e0.y <= e1.y + SMALL_EPSILON && e0.y >= e1.y - SMALL_EPSILON)
-													{
-														if(e0.z <= e1.z + SMALL_EPSILON && e0.z >= e1.z - SMALL_EPSILON)
-														{
-															e0 = t0_verts[(j + 1) % 3].position;
-															e1 = t1_verts[k].position;
-															
-															/* in the blue corner: the ugliest if sequence on the world! */															
-															if(e0.x <= e1.x + SMALL_EPSILON && e0.x >= e1.x - SMALL_EPSILON) 
-															{
-																if(e0.y <= e1.y + SMALL_EPSILON && e0.y >= e1.y - SMALL_EPSILON)
-																{
-																	if(e0.z <= e1.z + SMALL_EPSILON && e0.z >= e1.z - SMALL_EPSILON)
-																	{
-																		l0 = ((j + 1) * 2 - j) % 3;		
-																		l1 = ((k + 1) * 2 - k) % 3;			
-																		break;
-																	}
-																}
-															}
-														}
-													}
-												}
-											}
-										}											
-									}
-								}
-								
-								if(k < 3)
-								{
-									break;
-								}
-								
-								
-							}
-							
-							if(j < 3)
-							{
-								for(j = 0; j < 3; j++)
-								{
-									
-									e0.x = t0_verts[(j + 1) % 3].position.x - t0_verts[j].position.x;
-									e0.y = t0_verts[(j + 1) % 3].position.y - t0_verts[j].position.y;
-									e0.z = t0_verts[(j + 1) % 3].position.z - t0_verts[j].position.z;
-									
-									e0 = normalize3(e0);
-									
-									for(k = 0; k < 3; k++)
-									{
-										e1.x = t1_verts[(k + 1) % 3].position.x - t1_verts[k].position.x;
-										e1.y = t1_verts[(k + 1) % 3].position.y - t1_verts[k].position.y;
-										e1.z = t1_verts[(k + 1) % 3].position.z - t1_verts[k].position.z;
-										
-										e1 = normalize3(e1);
-
-										
-										/* set fpu precision to 64 bits of mantissa
-										(80 bit floats) before calling dot3. This
-										avoid really thin but not mergeable triangles
-										to get merged... */
-										
-										/* what a dodgy fix... */
-										_control87(_PC_64, _MCW_PC);				
-										
-										if(dot3(e0, e1) == 1.0)
-										{
-											
-											e0 = t0_verts[(j + 1) % 3].position;
-											e1 = t1_verts[k].position;
-											
-											if(e0.x <= e1.x + SMALL_EPSILON && e0.x >= e1.x - SMALL_EPSILON)
-											{
-												if(e0.y <= e1.y + SMALL_EPSILON && e0.y >= e1.y - SMALL_EPSILON)
-												{
-													if(e0.z <= e1.z + SMALL_EPSILON && e0.z >= e1.z - SMALL_EPSILON)
-													{
-														e0 = t0_verts[(j + 1) % 3].position;
-														e1 = t1_verts[k].position;
-													}
-												}
-											} 							
-											
-											
-											new_triangle_vert_count = 0;
-											
-											removed_tris++;
-											
-											vertexes[new_triangle_vert_count++] = t0_verts[l0];
-		
-											/* if l0 == j, then l0 + 1 is the vertex
-											we're trying to get rid of...  */
-											if(l0 != j)
-											{
-												vertexes[new_triangle_vert_count++] = t0_verts[(l0 + 1) % 3];
-											}
-											
-											vertexes[new_triangle_vert_count++] = t1_verts[l1];
-											
-											if(new_triangle_vert_count < 3)
-											{
-												vertexes[new_triangle_vert_count++] = t1_verts[(l1 + 1) % 3];
-											}
-										
-											leaf->triangle_count--;
-										
-											t->a = vertexes[0];
-											t->b = vertexes[1];
-											t->c = vertexes[2];
-											
-											
-											pn->next = n->next;	
-														
-											free(n);
-											
-											goto _restart_search;
-											
-											
-											//q = n->next;
-											//free(n);
-											//n = q;
-											
-											//goto _next_tris;
-											
-										}
-																	
-									}
-								}
-							}
-						}
-					}
-					
-					pn = n;
-					n = n->next;
-				}
-				t = t->next;
-			}
-			
-			t = leaf->triangles;
-						
-		}
-		
-		/* this last passage over the list removed triangles. 
-		Go over it once more to make sure no more merging is
-		possible... */
-		if(removed_tris)
-		{
-			//printf("repeat\n");
-			goto _go_all_over_again;
-		}
-	}
-	else
-	{
-		bsp_MergeLeafTriangles(root->front);
-		bsp_MergeLeafTriangles(root->back);
-	}
+	#endif
 	
 }
+
+
 
 
 /*
@@ -4711,7 +4435,11 @@ void bsp_BuildSolid(bsp_node_t **root, bsp_polygon_t *polygons, int ignore_used,
 		return;
 	}
 	
+	#ifndef USE_MEMORY_MALLOC
 	*root = malloc(sizeof(bsp_node_t));
+	#else
+	*root = memory_Malloc(sizeof(bsp_node_t), "bsp_BuildSolid: root");
+	#endif
 	
 	p = *root;
 	p->front = NULL;
@@ -4748,7 +4476,6 @@ void bsp_BuildSolid(bsp_node_t **root, bsp_polygon_t *polygons, int ignore_used,
 			break;
 				
 			case POLYGON_BACK:	
-			//case POLYGON_CONTAINED_BACK:
 				cur_polygon->next = back_list;
 				back_list = cur_polygon;
 			break;
@@ -4757,8 +4484,13 @@ void bsp_BuildSolid(bsp_node_t **root, bsp_polygon_t *polygons, int ignore_used,
 
 				bsp_SplitPolygon(cur_polygon, p->splitter->vertices[0].position, p->splitter->normal, &front_split, &back_split);
 				
+				#ifndef USE_MEMORY_MALLOC
 				free(cur_polygon->vertices);
 				free(cur_polygon);
+				#else
+				memory_Free(cur_polygon->vertices);
+				memory_Free(cur_polygon);
+				#endif
 					
 				front_split->next = front_list;
 				front_list = front_split;
@@ -4773,7 +4505,11 @@ void bsp_BuildSolid(bsp_node_t **root, bsp_polygon_t *polygons, int ignore_used,
 
 	if(!front_list)
 	{
+		#ifndef USE_MEMORY_MALLOC
 		p->front = malloc(sizeof(bsp_leaf_t));
+		#else
+		p->front = memory_Malloc(sizeof(bsp_leaf_t), "bsp_BuildSolid: p->front");
+		#endif
 		
 		leaf = (bsp_leaf_t *)p->front;
 		
@@ -4792,7 +4528,11 @@ void bsp_BuildSolid(bsp_node_t **root, bsp_polygon_t *polygons, int ignore_used,
 		
 	if(!back_list)
 	{
+		#ifndef USE_MEMORY_MALLOC
 		p->back = malloc(sizeof(bsp_leaf_t));
+		#else
+		p->back = memory_Malloc(sizeof(bsp_leaf_t), "bsp_BuildSolid: p->back");
+		#endif
 		
 		leaf = (bsp_leaf_t *)p->back;
 		
@@ -4870,7 +4610,11 @@ void bsp_BuildSolidLeaf(bsp_node_t **root, bsp_polygon_t *polygons)
 	if(splitter)
 	{
 		
+		#ifndef USE_MEMORY_MALLOC
 		*root = malloc(sizeof(bsp_node_t));
+		#else
+		*root = memory_Malloc(sizeof(bsp_node_t), "bsp_BuildSolidLeaf: root");
+		#endif
 		node = *root;
 		
 		node->type = BSP_NODE;
@@ -4927,8 +4671,13 @@ void bsp_BuildSolidLeaf(bsp_node_t **root, bsp_polygon_t *polygons)
 	
 					bsp_SplitPolygon(cur_polygon, splitter->vertices[0].position, splitter->normal, &front_split, &back_split);
 					
+					#ifndef USE_MEMORY_MALLOC
 					free(cur_polygon->vertices);	
 					free(cur_polygon);
+					#else
+					memory_Free(cur_polygon->vertices);	
+					memory_Free(cur_polygon);
+					#endif
 					
 					front_split->next = front_list;
 					front_list = front_split;
@@ -4961,8 +4710,11 @@ void bsp_BuildSolidLeaf(bsp_node_t **root, bsp_polygon_t *polygons)
 	}
 	else
 	{
-		
+		#ifndef USE_MEMORY_MALLOC
 		*root = malloc(sizeof(bsp_leaf_t));
+		#else
+		*root = memory_Malloc(sizeof(bsp_leaf_t), "bsp_BuildSolidLeaf: root");
+		#endif
 		leaf = (bsp_leaf_t *)*root;
 		
 		leaf->type = BSP_LEAF;
@@ -5196,13 +4948,23 @@ void bsp_DeleteSolidBsp(bsp_node_t *bsp)
 	
 	if(bsp->type == BSP_NODE)
 	{
+		#ifndef USE_MEMORY_MALLOC
 		free(bsp->splitter->vertices);
 		free(bsp->splitter);
+		#else
+		memory_Free(bsp->splitter->vertices);
+		memory_Free(bsp->splitter);
+		#endif
 		bsp_DeleteSolidBsp(bsp->front);
 		bsp_DeleteSolidBsp(bsp->back);
 		
 	}
+	
+	#ifndef USE_MEMORY_MALLOC
 	free(bsp);
+	#else
+	memory_Free(bsp);
+	#endif
 }
 
 int bsp_DeleteSolidBspAssyncFn(void *bsp)
@@ -5240,8 +5002,13 @@ void bsp_DeleteSolidLeafBsp(bsp_node_t *bsp)
 		while(polygon)
 		{
 			next = polygon->next;
+			#ifndef USE_MEMORY_MALLOC
 			free(polygon->vertices);
 			free(polygon);
+			#else
+			memory_Free(polygon->vertices);
+			memory_Free(polygon);
+			#endif
 			polygon = next;
 		}
 			
@@ -5271,7 +5038,11 @@ void bsp_DeleteSolidLeafBsp(bsp_node_t *bsp)
 		bsp_DeleteSolidLeafBsp(bsp->back);
 	}
 	
+	#ifndef USE_MEMORY_MALLOC
 	free(bsp);
+	#else
+	memory_Free(bsp);
+	#endif
 }
 
 void bsp_NegateBsp(bsp_node_t *bsp)
@@ -5329,116 +5100,6 @@ void bsp_NegateBsp(bsp_node_t *bsp)
 }
 
 
-void bsp_InitPool()
-{
-	
-	int i;
-
-	if(!node_pool)
-	{
-		node_pool = malloc(sizeof(bsp_node_t) * BSP_POOL_SIZE);
-	}
-	else
-	{
-		for(i = 0; i < node_pool_cursor; i++)
-		{
-			if(node_pool[i].splitter)
-			{
-				free(node_pool[i].splitter->vertices);
-				free(node_pool[i].splitter);
-				
-				node_pool[i].splitter = NULL;
-			}
-		}
-	}
-	
-	node_pool_cursor = 0;
-	
-	
-	if(!leaf_pool)
-	{
-		leaf_pool = malloc(sizeof(bsp_leaf_t) * BSP_POOL_SIZE);
-	}
-	else
-	{
-		for(i = 0; i < leaf_pool_cursor; i++)
-		{
-			if(leaf_pool[i].polygons)
-			{
-				bsp_DeletePolygons(leaf_pool[i].polygons);
-				leaf_pool[i].polygons = NULL;
-			}
-			
-			if(leaf_pool[i].pvs)
-			{
-				free(leaf_pool[i].pvs);
-			}
-		}
-	}
-	
-	leaf_pool_cursor = 0;
-}
-
-void bsp_FinishPool()
-{
-	int i;
-	
-	for(i = 0; i < node_pool_cursor; i++)
-	{
-		if(node_pool[i].splitter)
-		{
-			free(node_pool[i].splitter->vertices);
-			free(node_pool[i].splitter);
-				
-			node_pool[i].splitter = NULL;
-		}
-	}
-	
-	for(i = 0; i < leaf_pool_cursor; i++)
-	{
-		if(leaf_pool[i].polygons)
-		{
-			bsp_DeletePolygons(leaf_pool[i].polygons);
-			leaf_pool[i].polygons = NULL;
-		}
-			
-		if(leaf_pool[i].pvs)
-		{
-			free(leaf_pool[i].pvs);
-		}
-	}
-	if(node_pool)
-	{
-		free(node_pool);
-		node_pool = NULL;
-	}
-		
-		
-	if(leaf_pool)
-	{
-		free(leaf_pool);
-		leaf_pool = NULL;
-	}	
-		
-}
-
-
-
-
-bsp_node_t *bsp_NewNode()
-{
-	assert(node_pool_cursor < BSP_POOL_SIZE);
-	
-	return &node_pool[node_pool_cursor++];
-}
-
-
-bsp_leaf_t *bsp_NewLeaf()
-{
-	assert(leaf_pool_cursor < BSP_POOL_SIZE);
-	
-	return &leaf_pool[leaf_pool_cursor++];
-}
 
 /*
 ==============
@@ -5457,6 +5118,8 @@ void bsp_CompileBsp(int remove_outside)
 	bsp_polygon_t *s;
 	bsp_node_t *bsp;
 	
+	_HEAPINFO heap_info;
+	
 	
 	if(b_compiling || b_calculating_pvs)
 	{
@@ -5466,33 +5129,7 @@ void bsp_CompileBsp(int remove_outside)
 	
 	b_compiling = 1;	
 		
-	if(world_triangle_groups)
-	{
-		free(world_triangle_groups);
-		world_triangle_groups = NULL;
-		world_triangle_group_count = 0;
-	}
-	
-	if(world_vertices)
-	{
-		free(world_vertices);
-		world_vertices = NULL;
-	}
-	
-	if(world_nodes)
-	{
-		free(world_nodes);
-		free(collision_nodes);
-		
-		world_nodes = NULL;
-		collision_nodes = NULL;
-	}
-	
-	if(world_leaves)
-	{
-		free(world_leaves);
-		world_leaves = NULL;
-	}
+	world_Clear();
 	
 	if(world_bsp)
 	{
@@ -5504,21 +5141,31 @@ void bsp_CompileBsp(int remove_outside)
 		
 	
 	
-	bsp_BuildCollisionBsp();
+	//bsp_BuildCollisionBsp();
 
 	
-		
+	polygons = brush_BuildPolygonListFromBrushes();	
 	//polygons = bsp_ClipBrushes(brushes, brush_count); 
 	
-	//printf("")
-	for(i = 0; i < brush_count; i++)
+	//memory_CheckCorrupted();
+	
+/*	heap_info._pentry = polygons;
+	heap_info._size = 0;
+	heap_info._useflag = 0;
+	
+	printf("%d\n", _heapwalk(&heap_info));*/
+	
+	/*r = polygons;
+	
+	while(r)
 	{
-		r = bsp_DeepCopyPolygons(brushes[i].clipped_polygons);
-		s = r;
-		while(s->next) s = s->next;
-		s->next = polygons;
-		polygons = r;
-	}
+		if(r->vert_count > 10)
+		{
+			engine_BreakPoint();
+		}
+		
+		r = r->next;
+	}*/
 		
 	if(!polygons)
 	{
@@ -5532,39 +5179,43 @@ void bsp_CompileBsp(int remove_outside)
 	world_bsp = bsp_SolidLeafBsp(polygons);
 	printf("done\n");
 	
-
-	//triangles = bsp_BuildTrianglesFromBrushes();
 	
 	printf("bsp_CompileBsp: bsp_TriangulateLeafPolygons... ");
 	bsp_TriangulateLeafPolygons(world_bsp);
 	printf("done\n");
 	
-	//bsp_ClipTrianglesToSolidLeaves(world_bsp, triangles);
-
-	
-
-	//bsp_MergeLeafTriangles(world_bsp);
-
-	
+		
 	printf("bsp_CompileBsp: bsp_BuildTriangleGroups... ");
-	bsp_BuildTriangleGroups(world_bsp, &world_triangle_groups, &world_triangle_group_count);
+	bsp_BuildTriangleGroups(world_bsp, &w_world_batches, &w_world_batch_count);
 	printf("done\n");
+	
 	
 	printf("bsp_CompileBsp: bsp_LinearizeBsp... ");
-	bsp_LinearizeBsp(world_bsp, &world_vertices, &world_vertices_count, &world_nodes, &world_nodes_count, &world_leaves, &world_leaves_count, world_triangle_groups, world_triangle_group_count, 1);
+	bsp_LinearizeBsp(world_bsp, &w_world_vertices, &w_world_vertices_count, &w_world_nodes, &w_world_nodes_count, &w_world_leaves, &w_world_leaves_count, w_world_batches, w_world_batch_count, 1);
 	printf("done\n");
 	
-	//bsp_CalculatePvsAssync(world_bsp);
+	
+	//bsp_AllocPvsForLeaves(world_bsp);
+	
+	printf("before world_Update...\n");
+	log_LogMessage(LOG_MESSAGE_NOTIFY, "before world_Update...");
+	memory_CheckCorrupted();
 	
 	world_Update();
 	
+	printf("after world_Update...\n");
+	log_LogMessage(LOG_MESSAGE_NOTIFY, "after world_Update...");
+	memory_CheckCorrupted();
+	
+	//memory_CheckCorrupted();
+	
 	 
-	if(!step_semaphore)
+/*	if(!step_semaphore)
 	{
 		step_semaphore = SDL_CreateSemaphore(0);
 		polygon_copy_mutex = SDL_CreateMutex();
 	}
-	
+	*/
 	
 	bsp_build_thread = SDL_CreateThread(bsp_CalculatePvsAssync, "calculate pvs thread", world_bsp);
 	SDL_DetachThread(bsp_build_thread);
@@ -5622,203 +5273,6 @@ int bsp_CompileBspAsync(void *param)
 	
 }
 
-void bsp_DrawExpandedBrushes()
-{
-	#ifdef DRAW_EXPANDED_BRUSHES
-	int i;
-	int j;
-	int c;
-	bsp_polygon_t *polygon;
-	camera_t *active_camera;
-	
-	
-	if(!expanded_brushes)
-		return;
-		
-		
-		
-	active_camera = camera_GetActiveCamera();
-	
-	glUseProgram(0);
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
-	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);	
-	glLineWidth(2.0);
-	glBegin(GL_LINES);
-	glColor3f(1.0, 1.0 ,1.0);	
-	
-	polygon = expanded_polygons;
-	
-	while(polygon)
-	{
-		c = polygon->vert_count;
-		
-		for(j = 0; j < c;)
-		{
-			glVertex3f(polygon->vertices[j % c].position.x, polygon->vertices[j % c].position.y, polygon->vertices[j % c].position.z);
-			j++;
-			glVertex3f(polygon->vertices[j % c].position.x, polygon->vertices[j % c].position.y, polygon->vertices[j % c].position.z);
-		}	
-		
-		polygon = polygon->next;
-	}
-	
-		
-	/*for(i = 0; i < brush_count; i++)
-	{
-		polygon = expanded_brushes[i].polygons;
-		
-		while(polygon)
-		{
-			c = polygon->vert_count;
-			
-			for(j = 0; j < c;)
-			{
-				glVertex3f(polygon->vertices[j % c].x, polygon->vertices[j % c].y, polygon->vertices[j % c].z);
-				j++;
-				glVertex3f(polygon->vertices[j % c].x, polygon->vertices[j % c].y, polygon->vertices[j % c].z);
-			}	
-		
-			polygon = polygon->next;
-		}
-		
-	}*/
-	
-	glEnd();	
-	
-	glLineWidth(1.0);
-	
-	glPopMatrix();
-	
-	#endif
-	
-}
-
-
-
-
-
-
-void bsp_DrawBevelEdges()
-{
-	
-	#ifdef DRAW_BEVEL_EDGES
-	
-	bsp_edge_t *edge;
-	camera_t *active_camera = camera_GetActiveCamera();
-	
-	
-	if(!bevel_edges)
-		return;
-	
-	glUseProgram(0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
-	
-	
-	edge = bevel_edges;
-	
-	glLineWidth(4.0);
-	glColor3f(1.0, 0.0, 0.0);
-	glBegin(GL_LINES);
-	
-	while(edge)
-	{
-		glVertex3f(edge->v0.x, edge->v0.y, edge->v0.z);
-		glVertex3f(edge->v1.x, edge->v1.y, edge->v1.z);
-		edge = edge->next;
-	}
-	
-	glEnd();
-	
-	#endif
-		
-}
-
-
-
-void bsp_DrawPolygons()
-{	
-	#ifdef DRAW_WORLD_POLYGONS
-	
-	bsp_polygon_t *polygon;
-	camera_t *active_camera = camera_GetActiveCamera();
-	vec3_t center;
-	vec3_t v;
-	int i;
-	int vert_count;
-	
-	if(!world_polygons_debug)
-		return;
-		
-	
-	
-	glMatrixMode(GL_MODELVIEW);
-	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
-	glUseProgram(0);	
-		
-	
-	polygon = world_polygons_debug;
-	
-	glLineWidth(4.0);
-	glBegin(GL_LINES);
-	
-	while(polygon)
-	{
-		
-		vert_count = polygon->vert_count;
-		
-		center.x = 0.0;
-		center.y = 0.0;
-		center.z = 0.0;
-		
-		for(i = 0; i < vert_count; i++)
-		{
-			center.x += polygon->vertices[i].position.x;
-			center.y += polygon->vertices[i].position.y;
-			center.z += polygon->vertices[i].position.z;
-		}
-		
-		center.x /= vert_count;
-		center.y /= vert_count;
-		center.z /= vert_count;
-		
-		#define SCALE 0.9
-		
-		glColor3f(1.0, 1.0, 1.0);
-		for(i = 0; i < vert_count;)
-		{
-			v.x = polygon->vertices[i % vert_count].position.x - center.x;
-			v.y = polygon->vertices[i % vert_count].position.y - center.y;
-			v.z = polygon->vertices[i % vert_count].position.z - center.z;
-			
-			glVertex3f(center.x + v.x * SCALE, center.y + v.y * SCALE, center.z + v.z * SCALE);
-			i++;
-			
-			v.x = polygon->vertices[i % vert_count].position.x - center.x;
-			v.y = polygon->vertices[i % vert_count].position.y - center.y;
-			v.z = polygon->vertices[i % vert_count].position.z - center.z;
-			
-			glVertex3f(center.x + v.x * SCALE, center.y + v.y * SCALE, center.z + v.z * SCALE);
-					
-			/*glVertex3f(polygon->vertices[i % vert_count].x, polygon->vertices[i % vert_count].y, polygon->vertices[i % vert_count].z);
-			i++;
-			glVertex3f(polygon->vertices[i % vert_count].x, polygon->vertices[i % vert_count].y, polygon->vertices[i % vert_count].z);*/
-		}
-		
-		glColor3f(fabs(polygon->normal.x), fabs(polygon->normal.y), fabs(polygon->normal.z));
-		glVertex3f(center.x, center.y, center.z);
-		glVertex3f(center.x + polygon->normal.x, center.y + polygon->normal.y, center.z + polygon->normal.z);
-		
-		
-		polygon = polygon->next;
-	}
-	
-	glEnd();
-	glLineWidth(1.0);
-	#endif	
-		
-}
 
 
 #define NUDGE_AMOUNT 0.005

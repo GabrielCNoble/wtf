@@ -8,7 +8,9 @@ typedef struct light_cache_slot_t
 {
 	unsigned int last_touched;
 	unsigned short light_index;
-	unsigned short offset;
+	unsigned short offset;				/* offset to where upload the light data. This allows the data of lights
+										   that persist on the cache to not be moved around in the gpu side when
+										   cache slots get shuffled around in the cpu side... */
 }light_cache_slot_t;
 
 typedef struct
@@ -33,6 +35,7 @@ void light_CacheLight(int light_index);
 
 void light_DropLight(int light_index);
 
+void light_ClearCache();
 /* drop not recently used lights
 from the cache... */
 void light_EvictOld();

@@ -1,6 +1,12 @@
 #include "matrix.h"
 #include <intrin.h>
 
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void CreatePerspectiveMatrix(mat4_t *mat,  float fovY, float aspect, float znear, float zfar, float x_shift, float y_shift, frustum_t *generated_frustum)
 {
 	//float tanHalfFovY=tan(fovY/2.0f);
@@ -21,19 +27,29 @@ void CreatePerspectiveMatrix(mat4_t *mat,  float fovY, float aspect, float znear
 	f.right=f.top*aspect;
 	f.left=-f.right;
 	
-	f.right += x_shift;
+	/*f.right += x_shift;
 	f.left += x_shift;
 	
 	f.top += y_shift;
-	f.bottom += y_shift;
+	f.bottom += y_shift;*/
+	
+	//f.right = f.right - f.znear * (1.0 / tan(x_shift * 3.14159265));
+	//f.left = f.left - f.znear * (1.0 / tan(x_shift * 3.14159265));
+	
+	//f.top = f.top - f.znear * (1.0 / tan(y_shift * 3.14159265));
+	//f.bottom = f.bottom - f.znear * (1.0 / tan(y_shift * 3.14159265));
 
 	mat->floats[0][0] = f.znear/f.right;
-	mat->floats[1][1] = f.znear/f.top;
+	mat->floats[1][1] = f.znear/f.top; 
+	//mat->floats[2][2] = (-f.zfar)/(f.zfar-f.znear);
 	mat->floats[2][2] = (-f.zfar+f.znear)/(f.zfar-f.znear);
+	//mat->floats[2][2] = -1.0;
+	
+	
 	mat->floats[3][2] = ((-2.0)*f.zfar*f.znear)/(f.zfar-f.znear);
 	mat->floats[2][3] = -1.0;
-	mat->floats[3][0] = x_shift;
-	mat->floats[3][1] = y_shift;
+	mat->floats[3][0] = 0.0;
+	mat->floats[3][1] = 0.0;
 	
 	//printf("%f %f\n", f.znear, f.zfar);
 	
@@ -69,6 +85,7 @@ void Frustum(mat4_t *mat, float left, float right, float top, float bottom, floa
 	mat->floats[0][0] = (2.0 * f.znear) / (f.right - f.left);
 	mat->floats[1][1] = (2.0 * f.znear) / (f.top - f.bottom);
 	mat->floats[2][2] = (-f.zfar+f.znear)/(f.zfar-f.znear);
+	
 	mat->floats[3][2] = ((-2.0)*f.zfar*f.znear)/(f.zfar-f.znear);
 	mat->floats[2][3] = -1.0;
 	mat->floats[2][0] = (f.right + f.left) / (f.right - f.left);
@@ -309,6 +326,21 @@ void mat4_t_scale(mat4_t *mat, vec3_t axis, float scale_factor)
 	
 	return;
 }
+
+void mat4_t_scale_axis_aligned(mat4_t *mat, vec3_t scale)
+{
+	mat->floats[0][0] *= scale.x;
+	mat->floats[1][0] *= scale.x;
+	mat->floats[2][0] *= scale.x;
+	
+	mat->floats[0][1] *= scale.y;
+	mat->floats[1][1] *= scale.y;
+	mat->floats[2][1] *= scale.y;
+	
+	mat->floats[0][2] *= scale.z;
+	mat->floats[1][2] *= scale.z;
+	mat->floats[2][2] *= scale.z;
+}
 //########################################################################################################################
 
 //########################################################################################################################
@@ -419,29 +451,45 @@ __fastcall void mat4_t_mult_fast(mat4_t *result, mat4_t *mat1, mat4_t *mat2)
 	asm
 	(
 		
+		/* result addr is in ebx... */
 		"mov ebx, %[result]\n"
+		/* mat1's addr is in esi... */
 		"mov esi, %[mat1]\n"
+		/* mat2's addr is in edi... */
 		"mov edi, %[mat2]\n"
 		
 		//".intel_syntax noprefix\n"
 		
 		"mov ecx, 4\n"
 		
+		/* store mat2 in registers...  */
 		"movups  xmm0, [edi]\n"
 		"movups  xmm1, [edi + 16]\n"
 		"movups  xmm2, [edi + 32]\n"
 		"movups  xmm3, [edi + 48]\n"
 		
 		"_mat4_t_mult_fast_internal_loop:\n"
+		
+			/*move a ROW of mat1 into a register...*/
 			"movups xmm4, [esi]\n"
 			"add esi, 16\n"
 			"dec ecx\n"
 		
+			/* copy the current row of mat1 to
+			another register... */
 			"movups xmm5, xmm4\n"
+			
+			/* copy the first element over
+			the others...  */
 			"shufps xmm5, xmm5, 0\n"
+			
+			/* multiply the elements
+			of the first row of mat2...*/
 			"mulps xmm5, xmm0\n"
 			"movups xmm6, xmm5\n"
 		
+		
+			
 			"movups xmm5, xmm4\n"
 			"shufps xmm5, xmm5, 0x55\n"
 			"mulps xmm5, xmm1\n"
@@ -592,24 +640,43 @@ void mat4_t_transpose(mat4_t *mat)
 }
 
 
-void mat4_t_invert_transform(mat4_t *mat)
+void mat4_t_inverse_transform(mat4_t *mat)
 {
-	float temp; 
-	temp=mat->floats[0][1];
-	mat->floats[0][1]=mat->floats[1][0];
-	mat->floats[1][0]=temp;
+	float temp;
+	float tempx;
+	float tempy;
+	float tempz; 
 	
-	temp=mat->floats[0][2];
-	mat->floats[0][2]=mat->floats[2][0];
-	mat->floats[2][0]=temp;
+	temp = mat->floats[0][1];
+	mat->floats[0][1] = mat->floats[1][0];
+	mat->floats[1][0] = temp;
 	
-	temp=mat->floats[1][2];
-	mat->floats[1][2]=mat->floats[2][1];
-	mat->floats[2][1]=temp;
+	temp = mat->floats[0][2];
+	mat->floats[0][2] = mat->floats[2][0];
+	mat->floats[2][0] = temp;
 	
-	mat->floats[3][0] = -mat->floats[3][0];
-	mat->floats[3][1] = -mat->floats[3][1];
-	mat->floats[3][2] = -mat->floats[3][2];
+	temp = mat->floats[1][2];
+	mat->floats[1][2] = mat->floats[2][1];
+	mat->floats[2][1] = temp;
+	
+	
+	
+	tempx = -mat->floats[3][0] * mat->floats[0][0] -
+						 mat->floats[3][1] * mat->floats[1][0] -
+						 mat->floats[3][2] * mat->floats[2][0];
+						 
+	tempy = -mat->floats[3][0] * mat->floats[0][1] -
+						 mat->floats[3][1] * mat->floats[1][1] -
+						 mat->floats[3][2] * mat->floats[2][1];
+						 
+	tempz = -mat->floats[3][0] * mat->floats[0][2] -
+						 mat->floats[3][1] * mat->floats[1][2] -
+						 mat->floats[3][2] * mat->floats[2][2];					 					 
+	
+	mat->floats[3][0] = tempx;
+	mat->floats[3][1] = tempy;
+	mat->floats[3][2] = tempz;
+
 }
 
 
@@ -752,6 +819,63 @@ void mat4_t_compose(mat4_t *result, mat3_t *orientation, vec3_t position)
 	result->floats[1][3]=0.0;
 	result->floats[2][3]=0.0;
 	result->floats[3][3]=1.0;
+
+	return;
+}
+
+void mat4_t_compose2(mat4_t *result, mat3_t *orientation, vec3_t position, vec3_t scale)
+{
+	mat4_t output;
+	mat3_t ori;
+	if(orientation)
+	{
+		result->floats[0][0] = orientation->floats[0][0];
+		result->floats[0][1] = orientation->floats[0][1];
+		result->floats[0][2] = orientation->floats[0][2];
+		
+		result->floats[1][0] = orientation->floats[1][0];
+		result->floats[1][1] = orientation->floats[1][1];
+		result->floats[1][2] = orientation->floats[1][2];
+	
+		result->floats[2][0] = orientation->floats[2][0];
+		result->floats[2][1] = orientation->floats[2][1];
+		result->floats[2][2] = orientation->floats[2][2];
+	}
+	else
+	{
+		result->floats[0][0] = 1.0;
+		result->floats[0][1] = 0.0;
+		result->floats[0][2] = 0.0;
+	
+		result->floats[1][0] = 0.0;
+		result->floats[1][1] = 1.0;
+		result->floats[1][2] = 0.0;
+	
+		result->floats[2][0] = 0.0;
+		result->floats[2][1] = 0.0;
+		result->floats[2][2] = 1.0;
+	}
+	
+	result->floats[3][0] = position.floats[0];
+	result->floats[3][1] = position.floats[1];
+	result->floats[3][2] = position.floats[2];
+	
+	result->floats[0][0] *= scale.x;
+	result->floats[0][1] *= scale.x;
+	result->floats[0][2] *= scale.x;
+	
+	result->floats[1][0] *= scale.y;
+	result->floats[1][1] *= scale.y;
+	result->floats[1][2] *= scale.y;
+	
+	result->floats[2][0] *= scale.z;
+	result->floats[2][1] *= scale.z;
+	result->floats[2][2] *= scale.z;
+	
+	result->floats[0][3] = 0.0;
+	result->floats[1][3] = 0.0;
+	result->floats[2][3] = 0.0;
+	result->floats[3][3] = 1.0;
 
 	return;
 }
@@ -932,7 +1056,9 @@ __fastcall void mat4_t_vec4_t_mult(mat4_t *mat, vec4_t *vec)
 	);
 }
 
-
+#ifdef __cplusplus
+}
+#endif
 
 
 

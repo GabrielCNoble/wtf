@@ -46,6 +46,9 @@ enum WIDGET_FLAGS
 	WIDGET_JUST_RECEIVED_MOUSE_WHEEL_DOWN =						1 << 15,
 	WIDGET_HAS_MIDDLE_MOUSE_BUTTON = 							1 << 16,
 	WIDGET_NOT_AS_TOP = 										1 << 17,	/* avoids a widget becoming the top widget when clicked upon... */
+	WIDGET_NO_HIGHLIGHT = 										1 << 18,
+	WIDGET_DRAW_OUTLINE = 										1 << 19,
+	WIDGET_DONT_RECEIVE_MOUSE = 								1 << 20,	/* makes a widget (and everything nestled within it) to ignore the mouse... */
 };
 
 enum WIDGET_EDGE_FLAGS
@@ -60,7 +63,20 @@ enum WIDGET_EDGE_FLAGS
 	WIDGET_TOP_EDGE_GRABBED = 1 << 6,
 	WIDGET_BOTTOM_EDGE_GRABBED = 1 << 7,
 	
-	WIDGET_HEADER = 1 << 8,
+	WIDGET_LEFT_EDGE_ENABLED = 1 << 8,
+	WIDGET_RIGHT_EDGE_ENABLED = 1 << 9,
+	WIDGET_TOP_EDGE_ENABLED = 1 << 10,
+	WIDGET_BOTTOM_EDGE_ENABLED = 1 << 11,
+	
+	WIDGET_HEADER = 1 << 12,
+};
+
+enum WIDGET_JUSTIFICATION_FLAGS
+{
+	WIDGET_JUSTIFY_LEFT = 1,
+	WIDGET_JUSTIFY_RIGHT = 1 << 1,
+	WIDGET_JUSTIFY_TOP = 1 << 2,
+	WIDGET_JUSTIFY_BOTTOM = 1 << 3,
 };
 
 
@@ -78,6 +94,7 @@ enum WIDGET_TYPES
 	WIDGET_TEXT_FIELD,
 	WIDGET_SURFACE,
 	WIDGET_ITEM_LIST,
+	WIDGET_LAST,
 };
 
 enum BUTTON_FLAGS
@@ -85,6 +102,7 @@ enum BUTTON_FLAGS
 	BUTTON_PRESSED = 1,
 	BUTTON_TOGGLE = 1 << 1,
 	BUTTON_DRAW_TEST = 1 << 2,
+	BUTTON_DONT_RECEIVE_CLICK = 1 << 3
 };
 
 enum CHECKBOX_FLAGS
@@ -106,6 +124,8 @@ enum OPTION_LIST_FLAGS
 	OPTION_LIST_SCROLLER = 1 << 1,
 	OPTION_LIST_NO_OPTION_DIVISIONS = 1 << 2, 
 	OPTION_LIST_DOUBLE_CLICK_SELECTION = 1 << 3,
+	OPTION_LIST_DONT_TRANSLATE = 1 << 4,
+	OPTION_LIST_DONT_RECEIVE_MOUSE = 1 << 5,
 };
 
 enum OPTION_FLAGS
@@ -221,6 +241,13 @@ typedef struct gui_var_t
 	
 }gui_var_t;
 
+/*typedef struct linked_edge_t
+{
+	struct linked_edge_t *next;
+	
+}linked_edge_t;*/
+
+typedef struct linked_edge_t linked_edge_t;
 
 typedef struct widget_t
 {
@@ -235,25 +262,45 @@ typedef struct widget_t
 	struct widget_t *prev;
 	struct widget_t *nestled;
 	struct widget_t *last_nestled;
-	//struct widget_t *top;
-	//struct widget_t *nestled_top;
 	struct widget_t *parent;
 	
-	struct widget_t *bottom_edge_of;					/* which widget uses this widget's top edge as it's bottom edge... */
-	struct widget_t *left_edge_of;						/* which widget uses this widget's right edge as it's left edge...  */
+	//struct widget_t *bottom_edge_of;					/* which widget uses this widget's top edge as it's bottom edge... */
+	//struct widget_t *left_edge_of;						/* which widget uses this widget's right edge as it's left edge...  */
 	
+	//linked_edge_t *bottom_edge_of;
+	//linked_edge_t *left_edge_of;
+	linked_edge_t *linked_edges;
 	
 	//struct widget_t *first_parent;
 	void (*widget_callback)(struct widget_t *widget);
 	void (*process_callback)(struct widget_t *widget);
 	unsigned int bm_flags;
 	unsigned int edge_flags;
+	unsigned int jusitication_flags;
+	unsigned int gl_tex_handle;							/* texture to be used as this widget's color... */
 	short type;
 	int unique_index;
 	void *data;											/* general purpouse field... */
 	char *name;
 	SDL_Surface *rendered_name;
 }widget_t;
+
+enum WIDGET_EDGES
+{
+	WIDGET_LEFT_EDGE = 1,
+	WIDGET_RIGHT_EDGE = 1 << 1,
+	WIDGET_TOP_EDGE = 1 << 2,
+	WIDGET_BOTTOM_EDGE = 1 << 3,
+};
+
+struct linked_edge_t
+{
+	linked_edge_t *next;
+	widget_t *widget;
+	int linked_widget_edge;				
+	int this_widget_edge;
+	short offset;
+};
 
 
 typedef struct
@@ -289,7 +336,7 @@ typedef struct
 	short max_visible_options;
 }option_list_t;
 
-typedef struct
+typedef struct option_t
 {
 	widget_t widget;
 	int index;
@@ -297,6 +344,7 @@ typedef struct
 	int bm_option_flags;
 	char *option_text;
 	SDL_Surface *rendered_text;								/* rendered only when it changes... */
+	int rendered_string;
 }option_t;
 
 typedef struct
@@ -376,6 +424,16 @@ typedef struct
 	
 }item_list_t;
 
+typedef struct
+{
+	widget_t *widget;
+	
+	int flags;
+	
+	short x_offset;
+	short y_offset;
+	
+}tree_t;
 
 
 #endif

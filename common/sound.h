@@ -66,6 +66,11 @@ typedef union
 }sound_param_buffer_t;
 
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 int sound_Init();
 
 void sound_Finish();
@@ -85,6 +90,11 @@ void sound_SuspendSoundBackend();
 void sound_ResumeSoundBackend();
 
 int sound_SoundThread(void *param);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 
 

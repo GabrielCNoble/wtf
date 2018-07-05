@@ -4,34 +4,27 @@
 
 #include "path.h"
 #include "shader.h"
+#include "shd_pprc.h"
 #include "model.h"
 #include "l_common.h"
 #include "log.h"
 #include "GL\glew.h"
 #include "memory.h"
+#include "r_gl.h"
+#include "r_debug.h"
 
 #define strfy(x) #x
- 
-static char *uniforms[] = 
-{
-	strfy(UNIFORM_texture_sampler0),
-	strfy(UNIFORM_texture_sampler1),
-	strfy(UNIFORM_texture_sampler2),
-	strfy(UNIFORM_texture_cube_sampler0),
-	strfy(UNIFORM_r_frame),
-	strfy(UNIFORM_r_width),
-	strfy(UNIFORM_r_height),
-	strfy(UNIFORM_r_bloom_radius),
-	strfy(UNIFORM_cluster_texture),
-	strfy(UNIFORM_active_camera_position),
-	strfy(UNIFORM_material_flags),
-	strfy(UNIFORM_projection_matrix),
-	strfy(UNIFORM_view_matrix),
-	strfy(UNIFORM_model_matrix),
-	strfy(UNIFORM_view_projection_matrix),
-	strfy(UNIFORM_model_view_projection_matrix),
-};
 
+static char *default_uniforms[UNIFORM_LAST_UNIFORM];
+static int default_uniform_types[UNIFORM_LAST_UNIFORM];
+
+
+/* necessary because of buggy GL drivers returning the incorrect uniform type. Only works for
+default uniforms, but it's better than nothing... */
+#define SHADER_UNIFORM(uniform_name, uniform_type)	default_uniforms[uniform_name]=strfy(uniform_name);	\
+													default_uniform_types[uniform_name]=uniform_type
+															
+															
 static int shader_list_size;
 int shader_count;
 static int free_position_stack_top;
@@ -40,17 +33,28 @@ shader_t *shaders;
 //static int active_shader;
 
 /* from r_main.c */
-extern int z_pre_pass_shader;
-extern int forward_pass_shader;
-extern int geometry_pass_shader;
-extern int shading_pass_shader;
-extern int stencil_lights_pass_shader;
-extern int shadow_pass_shader;
-extern int skybox_shader;
+extern int r_z_pre_pass_shader;
+extern int r_forward_pass_shader;
+extern int r_particle_forward_pass_shader;
+extern int r_flat_pass_shader;
+extern int r_geometry_pass_shader;
+extern int r_shade_pass_shader;
+extern int r_stencil_lights_pass_shader;
+extern int r_shadow_pass_shader;
+extern int r_skybox_shader;
 extern int r_active_shader;
-extern int bloom0_shader;
-extern int bloom1_shader;
-extern int tonemap_shader;
+extern int r_bloom0_shader;
+extern int r_bloom1_shader;
+extern int r_tonemap_shader;
+extern int r_blit_texture_shader;
+extern int r_portal_shader;
+extern int r_forward_pass_portal_shader;
+
+extern int r_gui_shader;
+
+/* from r_imediate.c */
+extern int r_imediate_color_shader;
+//extern int r_glff_fixed_function_texture_shader;
 
 /* from editor.c */
 extern int brush_pick_shader;
@@ -68,33 +72,63 @@ int shader_Init()
 	int i;
 	int c;
 	
-//	strcpy(shader_base_path, shader_path);
-//	c = strlen(shader_base_path);
-	
-	//i = c;
-	//while(shader_base_path[i] == ' ' || shader_base_path[i] == '\\')i--;
-	//shader_base_path[i] = '\0';	
-		
 	shader_list_size = 16;
 	shader_count = 0;
 	free_position_stack_top = -1;
-	//shaders = malloc(sizeof(shader_t ) * shader_list_size);
-	//free_position_stack = malloc(sizeof(int) * shader_list_size);
+	
+	
+	SHADER_UNIFORM(UNIFORM_texture_sampler0, GL_SAMPLER_2D);
+	SHADER_UNIFORM(UNIFORM_texture_sampler1, GL_SAMPLER_2D);
+	SHADER_UNIFORM(UNIFORM_texture_sampler2, GL_SAMPLER_2D);
+	SHADER_UNIFORM(UNIFORM_texture_cube_sampler0, GL_SAMPLER_CUBE);
+	SHADER_UNIFORM(UNIFORM_texture_array_sampler0, GL_SAMPLER_2D_ARRAY);
+	SHADER_UNIFORM(UNIFORM_r_frame, GL_INT);
+	SHADER_UNIFORM(UNIFORM_r_width, GL_INT);
+	SHADER_UNIFORM(UNIFORM_r_height, GL_INT);
+	SHADER_UNIFORM(UNIFORM_r_near, GL_FLOAT);
+	SHADER_UNIFORM(UNIFORM_r_far, GL_FLOAT);
+	SHADER_UNIFORM(UNIFORM_r_bloom_radius, GL_INT);
+	SHADER_UNIFORM(UNIFORM_cluster_texture, GL_UNSIGNED_INT_SAMPLER_3D);
+	SHADER_UNIFORM(UNIFORM_material_flags, GL_UNSIGNED_INT);
+	SHADER_UNIFORM(UNIFORM_projection_matrix, GL_FLOAT_MAT4);
+	SHADER_UNIFORM(UNIFORM_view_matrix, GL_FLOAT_MAT4);
+	SHADER_UNIFORM(UNIFORM_model_matrix, GL_FLOAT_MAT4);
+	SHADER_UNIFORM(UNIFORM_model_view_matrix, GL_FLOAT_MAT4);
+	SHADER_UNIFORM(UNIFORM_view_projection_matrix, GL_FLOAT_MAT4);
+	SHADER_UNIFORM(UNIFORM_model_view_projection_matrix, GL_FLOAT_MAT4);
+	SHADER_UNIFORM(UNIFORM_particle_positions, GL_FLOAT_VEC4);
+	SHADER_UNIFORM(UNIFORM_particle_frames, GL_INT);
+	
+	
 	
 	shaders = memory_Malloc(sizeof(shader_t ) * shader_list_size, "shader_Init");
 	free_position_stack = memory_Malloc(sizeof(int) * shader_list_size, "shader_Init");
 	
-	z_pre_pass_shader = shader_LoadShader("z_pre_pass");
-	forward_pass_shader = shader_LoadShader("forward_pass");
-	//geometry_pass_shader = shader_LoadShader("geometry_buffer");
-	//shading_pass_shader = shader_LoadShader("shade_pass");
-	stencil_lights_pass_shader = shader_LoadShader("stencil_light_pass");
-	shadow_pass_shader = shader_LoadShader("shadow_pass");
-	skybox_shader = shader_LoadShader("skybox");
+	r_z_pre_pass_shader = shader_LoadShader("engine/z_pre_pass");
+	r_forward_pass_shader = shader_LoadShader("engine/forward_pass");
+	r_particle_forward_pass_shader = shader_LoadShader("engine/particle_forward_pass");
+	r_forward_pass_portal_shader = shader_LoadShader("engine/forward_pass_portal");
+	r_flat_pass_shader = shader_LoadShader("engine/flat_pass");
+	//r_geometry_pass_shader = shader_LoadShader("engine/geometry_pass");
+	//r_shade_pass_shader = shader_LoadShader("engine/shade_pass");
+	r_stencil_lights_pass_shader = shader_LoadShader("engine/stencil_light_pass");
+	r_shadow_pass_shader = shader_LoadShader("engine/shadow_pass");
+	r_skybox_shader = shader_LoadShader("engine/skybox");
 	
-	bloom0_shader = shader_LoadShader("bloom0");
-	bloom1_shader = shader_LoadShader("bloom1");
-	tonemap_shader = shader_LoadShader("tonemap");
+	r_bloom0_shader = shader_LoadShader("engine/bloom0");
+	r_bloom1_shader = shader_LoadShader("engine/bloom1");
+	r_tonemap_shader = shader_LoadShader("engine/tonemap");
+	
+	r_blit_texture_shader = shader_LoadShader("engine/blit_texture");
+	r_portal_shader = shader_LoadShader("engine/portal");
+	
+	r_gui_shader = shader_LoadShader("engine/gui");
+	
+	r_imediate_color_shader = shader_LoadShader("engine/imediate draw/imediate_color");
+	
+	//shader_LoadShader("engine/include_test");
+	
+	//r_glff_fixed_function_texture_shader = shader_LoadShader("engine/imediate drawing/imediate_color");
 	
 	return 1;
 	
@@ -103,18 +137,179 @@ int shader_Init()
 void shader_Finish()
 {
 	int i;
+	int j;
 	for(i = 0; i < shader_count; i++)
 	{
 		//free(shaders[i].name);
 		memory_Free(shaders[i].name);
 		memory_Free(shaders[i].file_name);
-		memory_Free(shaders[i].uniforms);
+		memory_Free(shaders[i].default_uniforms);
+		
+		if(shaders[i].named_uniforms)
+		{
+			for(j = 0; j < shaders[i].named_uniforms_list_cursor; j++)
+			{
+				memory_Free(shaders[i].named_uniforms[j].name);
+			}
+			
+			memory_Free(shaders[i].named_uniforms);
+		}
 		glDeleteProgram(shaders[i].shader_program);
 	}
 	
 	memory_Free(shaders);
 	memory_Free(free_position_stack);
 }
+
+
+/*
+================================================================================
+================================================================================
+================================================================================
+*/
+
+void shader_GetShaderDefaultAttributesLocations(shader_t *shader)
+{
+	if(shader)
+	{
+		
+	}
+}
+
+void shader_GetShaderDefaultUniformsLocations(shader_t *shader)
+{
+	int i;
+	unsigned int uniform_location;
+	unsigned int uniform_type;
+	char *uniform_type_str;
+	
+	printf("**************************\nshader [%s] uniforms:\n", shader->name);
+	
+	for(i = 0; i < UNIFORM_LAST_UNIFORM; i++)
+	{
+		uniform_location = glGetUniformLocation(shader->shader_program, default_uniforms[i]); 
+		
+		shader->default_uniforms[i].location = uniform_location;
+		shader->default_uniforms[i].type = GL_NONE;
+		
+		if(shader->default_uniforms[i].location != 0xffff)
+		{
+			//glGetActiveUniformsiv(shader->shader_program, 1, &uniform_location, GL_UNIFORM_TYPE, &uniform_type);
+			//shader->default_uniforms[i].type = uniform_type;
+			shader->default_uniforms[i].type = default_uniform_types[i];
+			
+			
+			printf("default uniform [%s (%s)] at [%d]\n", default_uniforms[i], renderer_GetGLEnumString(shader->default_uniforms[i].type), shader->default_uniforms[i].location);
+		}
+	}
+	printf("**************************\n");
+}
+
+int shader_FindShaderNamedUniformIndex(shader_t *shader, char *uniform_name)
+{
+	int i;
+	int uniform_index;
+	unsigned int uniform_location;
+	unsigned int uniform_type;
+	char *uniform_type_str;
+	named_uniform_t *named_uniform;
+	
+	
+	for(i = 0; i < shader->named_uniforms_list_cursor; i++)
+	{
+		if(!strcmp(shader->named_uniforms[i].name, uniform_name))
+		{
+			/* there's already a named uniform with this name... */
+			break;
+		}
+	}
+	
+	uniform_index = i;
+	
+	uniform_location = glGetUniformLocation(shader->shader_program, uniform_name);
+		
+	if(uniform_location != 0xffffffff)
+	{
+		/* this uniform has already been found
+		and is currently active, so just return its index...  */
+		if(uniform_index < shader->named_uniforms_list_cursor)
+		{
+			return uniform_index;
+		}
+		
+		if(uniform_index >= shader->named_uniforms_list_size)
+		{
+			if(shader->named_uniforms_list_size < 255)
+			{
+				named_uniform = memory_Malloc(sizeof(named_uniform_t) * (shader->named_uniforms_list_size + 1), "shader_GetShaderNamedUniformLocation");
+				
+				if(shader->named_uniforms)
+				{
+					memcpy(named_uniform, shader->named_uniforms, sizeof(named_uniform_t) * shader->named_uniforms_list_size);
+					memory_Free(shader->named_uniforms);
+				}
+				
+				shader->named_uniforms = named_uniform;
+				shader->named_uniforms_list_size++;
+			}
+			else
+			{
+				printf("shader_GetShaderNamedUniformLocation: too many uniforms on shader [%s]!\n", shader->name);
+				return -1;
+			}
+		}
+			
+		named_uniform = &shader->named_uniforms[uniform_index];
+		named_uniform->uniform.location = uniform_location;
+		glGetActiveUniformsiv(shader->shader_program, 1, &uniform_location, GL_UNIFORM_TYPE, &uniform_type);
+		named_uniform->uniform.type = uniform_type;
+		named_uniform->name = memory_Strdup(uniform_name, "shader_GetShaderNamedUniformLocation");
+		shader->named_uniforms_list_cursor++;
+		printf("shader [%s]: named uniform [%s (%s)] at [%d]\n", shader->name, uniform_name, renderer_GetGLEnumString(uniform_type), uniform_location);
+		
+		return uniform_index;
+			
+	}
+	else if(uniform_index < shader->named_uniforms_list_cursor)
+	{
+		/* this uniform was active last time it was checked, but not
+		anymore, so drop it from the list... */
+			
+		memory_Free(shader->named_uniforms[uniform_index].name);
+			
+		if(uniform_index < shader->named_uniforms_list_cursor - 1)
+		{
+			shader->named_uniforms[uniform_index] = shader->named_uniforms[shader->named_uniforms_list_cursor - 1];
+		}			
+			
+		shader->named_uniforms_list_cursor--;
+	}
+	
+	return -1;
+}
+
+int shader_GetShaderNamedUniformIndex(shader_t *shader, char *uniform_name)
+{
+	int i;
+	
+	for(i = 0; i < shader->named_uniforms_list_cursor; i++)
+	{
+		if(!strcmp(shader->named_uniforms[i].name, uniform_name))
+		{
+			return i;
+		}
+	}
+	
+	return shader_FindShaderNamedUniformIndex(shader, uniform_name);
+}
+
+
+/*
+================================================================================
+================================================================================
+================================================================================
+*/
+
 
 int shader_LoadShader(char *file_name)
 {
@@ -125,6 +320,9 @@ int shader_LoadShader(char *file_name)
 	unsigned int vertex_shader_object;
 	unsigned int fragment_shader_object;
 	unsigned int shader_program;
+	unsigned int uniform_type;
+	unsigned int uniform_location;
+	unsigned int uniform_size;
 	
 	int shader_index;
 	int status;
@@ -136,14 +334,15 @@ int shader_LoadShader(char *file_name)
 	char *vertex_shader_source;
 	char *fragment_shader_source;
 	char *error_log;
+	char *uniform_type_str;
 		
 	char vertex_shader_file_name[128];
 	char fragment_shader_file_name[128];
 	char *shader_file_full_path;
 	
-	int uniform_type;
-	int uniform_size;
-	unsigned int uniform_location;
+	//int uniform_type;
+	//int uniform_size;
+	
 	
 	
 
@@ -172,10 +371,12 @@ int shader_LoadShader(char *file_name)
 	fread(vertex_shader_source, 1, file_size, f);
 	vertex_shader_source[file_size - 1] = '\0';
 	vertex_shader_source[file_size] = '\0';
-	
-	
-	
 	fclose(f);
+	
+	shader_AddDefine("MASSACRE_VERTEX_SHADER", NULL, 1);
+	shader_Preprocess(&vertex_shader_source);
+	shader_DropDefine("MASSACRE_VERTEX_SHADER", 1);
+	
 	
 	vertex_shader_object = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertex_shader_object, 1, (const GLchar **)&vertex_shader_source, NULL);
@@ -230,8 +431,11 @@ int shader_LoadShader(char *file_name)
 	fread(fragment_shader_source, 1, file_size, f);
 	fragment_shader_source[file_size - 1] = '\0';
 	fragment_shader_source[file_size] = '\0';
-	
 	fclose(f);
+	
+	shader_AddDefine("MASSACRE_FRAGMENT_SHADER", NULL, 1);
+	shader_Preprocess(&fragment_shader_source);
+	shader_DropDefine("MASSACRE_FRAGMENT_SHADER", 1);
 	
 	fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fragment_shader_object, 1, (const GLchar **)&fragment_shader_source, NULL);
@@ -311,16 +515,19 @@ int shader_LoadShader(char *file_name)
 	
 	if(free_position_stack_top >= 0)
 	{
-		shader_index = free_position_stack[free_position_stack_top--];
+		shader_index = free_position_stack[free_position_stack_top];
+		free_position_stack_top--;
 	}
 	else
 	{
 		shader_index = shader_count++;
 		if(shader_index >= shader_list_size)
 		{
-			shader = malloc(sizeof(shader_t ) * (shader_list_size + 16));
+			//shader = malloc(sizeof(shader_t ) * (shader_list_size + 16));
+			shader = memory_Malloc(sizeof(shader_t ) * (shader_list_size + 16), "shader_LoadShader");
 			memcpy(shader, shaders, sizeof(shader_t) * shader_list_size);
-			free(shaders);
+			memory_Free(shaders);
+			//free(shaders);
 			
 			shaders = shader;
 			shader_list_size += 16;
@@ -342,26 +549,16 @@ int shader_LoadShader(char *file_name)
 	shader->vertex_normal = glGetAttribLocation(shader->shader_program, "vertex_normal");
 	shader->vertex_tangent = glGetAttribLocation(shader->shader_program, "vertex_tangent");
 	shader->vertex_tex_coords = glGetAttribLocation(shader->shader_program, "vertex_tex_coords");	
+	shader->vertex_color = glGetAttribLocation(shader->shader_program, "vertex_color");
 	
 	//shader->uniforms = malloc(sizeof(uniform_t ) * UNIFORM_LAST_UNIFORM);
-	shader->uniforms = memory_Malloc(sizeof(uniform_t) * UNIFORM_LAST_UNIFORM, "shader_LoadShader");
+	shader->default_uniforms = memory_Malloc(sizeof(uniform_t) * UNIFORM_LAST_UNIFORM, "shader_LoadShader");
 	
-	for(i = 0; i < UNIFORM_LAST_UNIFORM; i++)
-	{
-		uniform_location = glGetUniformLocation(shader->shader_program, uniforms[i]); 
-		shader->uniforms[i].location = uniform_location;
-		//shader->uniforms[i].location = glGetUniformLocation(shader->shader_program, uniforms[i]); 
-		
-		//printf("shader [%s]: uniform [%s] at %d\n", file_name, uniforms[i], shader->uniforms[i].location);
-		if(shader->uniforms[i].location != 0xffff)
-		{
-		//	shader->uniforms[i].location = (unsigned short)uniform_location;
-			//glGetActiveUniform(shader->shader_program, shader->uniforms[i].location, 0, NULL, &uniform_size, &uniform_type, NULL);
-			//shader->uniforms[i].type = (short)uniform_type;
-			//printf("shader [%s]: uniform [%s] at %d\n", file_name, uniforms[i], shader->uniforms[i].location);
-		}
-		
-	}
+	shader_GetShaderDefaultUniformsLocations(shader);
+
+	shader->named_uniforms = NULL;
+	shader->named_uniforms_list_cursor = 0;
+	shader->named_uniforms_list_size = 0;
 
 	shader->bm_flags = 0;
 	
@@ -372,11 +569,11 @@ int shader_LoadShader(char *file_name)
 		//printf("found light_params_uniform_block! %d\n", i);
 	}
 	
-	if((i = glGetUniformBlockIndex(shader->shader_program, "test_block")) != GL_INVALID_INDEX)
-	{
-		glUniformBlockBinding(shader->shader_program, i, TEST_UNIFORM_BUFFER_BINDING);
+	//if((i = glGetUniformBlockIndex(shader->shader_program, "test_block")) != GL_INVALID_INDEX)
+	//{
+	//	glUniformBlockBinding(shader->shader_program, i, TEST_UNIFORM_BUFFER_BINDING);
 		//printf("found test_block! %d\n", i);
-	}
+	//}
 	
 	//printf("SHADER %s\n", file_name);
 	
@@ -466,8 +663,12 @@ void shader_ReloadShader(int shader_index)
 	fread(vertex_shader_source, 1, file_size, f);
 	vertex_shader_source[file_size - 1] = '\0';
 	vertex_shader_source[file_size] = '\0';
-	
 	fclose(f);
+	
+	shader_AddDefine("MASSACRE_VERTEX_SHADER", NULL, 1);
+	shader_Preprocess(&vertex_shader_source);
+	shader_DropDefine("MASSACRE_VERTEX_SHADER", 1);
+	
 	
 	vertex_shader_object = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertex_shader_object, 1, (const GLchar **)&vertex_shader_source, NULL);
@@ -520,8 +721,11 @@ void shader_ReloadShader(int shader_index)
 	fread(fragment_shader_source, 1, file_size, f);
 	fragment_shader_source[file_size - 1] = '\0';
 	fragment_shader_source[file_size] = '\0';
-	
 	fclose(f);
+	
+	shader_AddDefine("MASSACRE_FRAGMENT_SHADER", NULL, 1);
+	shader_Preprocess(&fragment_shader_source);
+	shader_DropDefine("MASSACRE_FRAGMENT_SHADER", 1);
 	
 	fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fragment_shader_object, 1, (const GLchar **)&fragment_shader_source, NULL);
@@ -622,32 +826,8 @@ void shader_ReloadShader(int shader_index)
 	shader->vertex_tangent = glGetAttribLocation(shader->shader_program, "vertex_tangent");
 	shader->vertex_tex_coords = glGetAttribLocation(shader->shader_program, "vertex_tex_coords");	
 	
-	
-	for(i = 0; i < UNIFORM_LAST_UNIFORM; i++)
-	{
-		shader->uniforms[i].location = glGetUniformLocation(shader->shader_program, uniforms[i]);
-		if(shader->uniforms[i].location != 0xffff)
-		{
-			glGetActiveUniform(shader->shader_program, shader->uniforms[i].location, 0, NULL, &uniform_size, &uniform_type, NULL);
-			//shader->uniforms[i].type = uniform_type;
-		}
+	shader_GetShaderDefaultUniformsLocations(shader);
 		
-	}
-	
-	/*shader->texture_sampler0 = glGetUniformLocation(shader->shader_program, "texture_sampler0");
-	shader->texture_sampler1 = glGetUniformLocation(shader->shader_program, "texture_sampler1");
-	shader->texture_sampler2 = glGetUniformLocation(shader->shader_program, "texture_sampler2");
-	shader->texture_cube_sampler0 = glGetUniformLocation(shader->shader_program, "texture_cube_sampler0");
-	shader->shadow_sampler = glGetUniformLocation(shader->shader_program, "shadow_sampler");
-	shader->camera_to_light_matrix = glGetUniformLocation(shader->shader_program, "camera_to_light_matrix");
-	shader->frame = glGetUniformLocation(shader->shader_program, "r_frame");
-	shader->width = glGetUniformLocation(shader->shader_program, "r_width");
-	shader->height = glGetUniformLocation(shader->shader_program, "r_height");
-	shader->cluster_texture = glGetUniformLocation(shader->shader_program, "cluster_texture");
-	shader->texture_flags = glGetUniformLocation(shader->shader_program, "texture_flags");
-	shader->active_camera_position = glGetUniformLocation(shader->shader_program, "active_camera_position");
-	shader->light_index = glGetUniformLocation(shader->shader_program, "light_index");*/
-	
 	shader->bm_flags = 0;
 	
 	//printf("%s: %d %d %d\n", file_name, shader->width, shader->height, shader->cluster_texture);
@@ -708,6 +888,7 @@ int shader_GetShaderIndex(char *shader_name)
 void shader_DeleteShaderIndex(int shader_index)
 {
 	shader_t *shader;
+	int i;
 	if(shader_index >= 0 && shader_index < shader_count)
 	{
 		shader = &shaders[shader_index];
@@ -717,7 +898,19 @@ void shader_DeleteShaderIndex(int shader_index)
 			glDeleteProgram(shader->shader_program);
 			memory_Free(shader->name);
 			memory_Free(shader->file_name);
-			memory_Free(shader->uniforms);
+			memory_Free(shader->default_uniforms);
+			
+			if(shader->named_uniforms)
+			{
+				for(i = 0; i < shader->named_uniforms_list_cursor; i++)
+				{
+					memory_Free(shader->named_uniforms[i].name);
+				}
+				
+				memory_Free(shader->named_uniforms);
+			}
+			
+			
 			/*free(shader->name);
 			free(shader->file_name);
 			free(shader->uniforms);*/

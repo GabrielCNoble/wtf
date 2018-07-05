@@ -1,14 +1,15 @@
 #ifndef ED_UI_H
 #define ED_UI_H
 
-
+#include "gui.h"
 
 
 #define MENU_BAR_HEIGHT 20
 #define FILE_DROPDOWN_WIDTH 120
+#define EDITORS_DROPDOWN_WIDTH 150
 #define WORLD_DROPDOWN_WIDTH 220
 #define WOW_DROPDOWN_WIDTH 120
-#define MISC_DROPDOWN_WIDTH 200
+#define MISC_DROPDOWN_WIDTH 260
 
 #define FPS_DISPLAY_WIDTH 70
 #define HANDLE_3D_MODE_DISPLAY_WIDTH 120
@@ -50,41 +51,17 @@ void editor_FinishUI();
 
 void editor_ProcessUI();
 
+void editor_LockUI();
+
+void editor_UnlockUI();
+
 void editor_HideUI();
 
 void editor_ShowUI();
 
-void editor_OpenAddToWorldMenu(int x, int y);
-
-void editor_CloseAddToWorldMenu();
-
-void editor_OpenDeleteSelectionMenu(int x, int y);
-
-void editor_OpenSaveProjectWindow();
-
-void editor_CloseSaveProjectWindow();
-
-void editor_OpenOpenProjectWindow();
+void editor_EnumerateEditors();
 
 
-void editor_OpenLightPropertiesWindow(int light_index);
-
-void editor_CloseLightPropertiesWindow();
-
-
-/*void editor_OpenMaterialWindow();
-
-void editor_CloseMaterialWindow();
-
-void editor_ToggleMaterialWindow();
-
-void editor_EnumerateMaterials();
-
-void editor_OpenEditMaterialWindow(int material_index);
-
-void editor_CloseEditMaterialWindow();*/
-
-void editor_UIWindowResizeCallback();
 
 
 

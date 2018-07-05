@@ -20,11 +20,17 @@ extern int gui_widget_unique_index;
  
 /* from input.c */
 extern int bm_mouse;
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 option_list_t *gui_CreateOptionList(char *name, short x, short y, short w, short bm_flags, short max_visible_options, void (*option_list_callback)(widget_t *))
 {
 	option_list_t *options;
 	
-	options = malloc(sizeof(option_list_t));
+	/*options = malloc(sizeof(option_list_t));
 	options->widget.name = strdup(name);
 	options->widget.next = NULL;
 	options->widget.prev = NULL;
@@ -35,8 +41,13 @@ option_list_t *gui_CreateOptionList(char *name, short x, short y, short w, short
 	options->widget.w = w * 0.5;	
 	options->widget.x = x;
 	options->widget.y = y;
-	options->widget.process_callback = NULL;
+	options->widget.process_callback = NULL;*/
 	
+	options = (option_list_t *) gui_CreateWidget(name, x, y, w, OPTION_HEIGHT, WIDGET_OPTION_LIST);
+	
+	options->widget.widget_callback = option_list_callback;
+	options->widget.rendered_name = NULL;
+		
 	if(max_visible_options < OPTION_LIST_MINIMUM_MAXIMUM_VISIBLE_OPTIONS)
 		max_visible_options = OPTION_LIST_MINIMUM_MAXIMUM_VISIBLE_OPTIONS;
 	
@@ -48,11 +59,10 @@ option_list_t *gui_CreateOptionList(char *name, short x, short y, short w, short
 	options->selected_option = NULL;
 	options->widget.bm_flags = WIDGET_IGNORE_EDGE_CLIPPING | WIDGET_JUST_CREATED;
 	options->bm_option_list_flags = bm_flags | OPTION_LIST_UPDATE_EXTENTS;
-	options->widget.widget_callback = option_list_callback;
-	options->widget.rendered_name = NULL;
+	
 	options->first_unused = NULL;	
 	
-	options->widget.unique_index = gui_widget_unique_index++;
+	//options->widget.unique_index = gui_widget_unique_index++;
 	options->y_offset = 0;
 	
 	options->first_x = x;
@@ -141,6 +151,7 @@ option_t *gui_AddOptionToList(option_list_t *option_list, char *name, char *text
 	option->widget.parent = (widget_t *)option_list;
 	option->index = option_list->option_count;
 	option->widget.widget_callback = option_list->widget.widget_callback;
+	option->widget.process_callback = option_list->widget.process_callback;
 		
 	if(!option_list->widget.nestled)
 	{
@@ -429,6 +440,13 @@ void gui_UpdateOptionList(widget_t *widget)
 	top_y = (OPTION_HEIGHT * option_list->option_count) * 0.5;
 	
 	
+	if(option_list->bm_option_list_flags & OPTION_LIST_DONT_RECEIVE_MOUSE)
+	{
+		widget->bm_flags &= ~(WIDGET_JUST_RECEIVED_MOUSE_WHEEL_DOWN | WIDGET_JUST_RECEIVED_MOUSE_WHEEL_UP |
+							  WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON |
+							  WIDGET_JUST_RECEIVED_LEFT_MOUSE_DOUBLE_CLICK | WIDGET_MOUSE_OVER);
+	}
+	
 	if(widget->bm_flags & WIDGET_JUST_RECEIVED_MOUSE_WHEEL_DOWN)
 	{
 		//if(option_list->y_offset + option_list->widget.h)
@@ -451,8 +469,7 @@ void gui_UpdateOptionList(widget_t *widget)
 		}
 			
 			/*}*/
-	}
-	
+	}	
 		
 	if(option_list->bm_option_list_flags & OPTION_LIST_UPDATE_EXTENTS)
 	{
@@ -461,6 +478,11 @@ void gui_UpdateOptionList(widget_t *widget)
 		option_list->bm_option_list_flags &= ~OPTION_LIST_SCROLLER;
 		
 		option_w = option_list->widget.w;
+		if(widget->bm_flags & WIDGET_DRAW_OUTLINE)
+		{
+			option_w -= 6;
+		}
+		
 		option_x = 0;
 		
 		if(top_y > OPTION_HEIGHT * option_list->max_visible_options * 0.5)
@@ -472,12 +494,28 @@ void gui_UpdateOptionList(widget_t *widget)
 		}
 		
 		r = widget->nestled;
-					
+		
 		widget->h = top_y;
-		widget->y = option_list->first_y - top_y;
+		
+		if(widget->bm_flags & WIDGET_DRAW_OUTLINE)
+		{
+			widget->h++;
+		}			
+		
+		if(!(option_list->bm_option_list_flags & OPTION_LIST_DONT_TRANSLATE))
+		{
+			widget->y = option_list->first_y - top_y;
+		}
+	
 		
 		if(widget->parent)
 		{
+			
+			if(option_list->bm_option_list_flags & OPTION_LIST_DONT_TRANSLATE)
+			{
+				widget->y = option_list->first_y;
+			}
+			
 			/* if this option list is nestled within a option, 
 			make it align correctly... */
 			if(widget->parent->type == WIDGET_OPTION)
@@ -490,11 +528,11 @@ void gui_UpdateOptionList(widget_t *widget)
 				{
 					widget->y += OPTION_HEIGHT * 0.5;
 				}
-				/* dropdown... */
-				else
+				else if(widget->parent->type == WIDGET_DROPDOWN)
 				{
 					widget->y -= OPTION_HEIGHT * 0.5;
 				}
+				
 				
 			}
 		}
@@ -502,6 +540,8 @@ void gui_UpdateOptionList(widget_t *widget)
 		top_y -= OPTION_HEIGHT * 0.5;
 		top_y += option_list->y_offset;
 		r = widget->nestled;
+		
+		//printf("%d\n", option_w);
 					
 		while(r)
 		{
@@ -513,6 +553,20 @@ void gui_UpdateOptionList(widget_t *widget)
 		}
 					
 		option_list->bm_option_list_flags &= ~OPTION_LIST_UPDATE_EXTENTS;
+		
+		if(widget->parent)
+		{
+			gui_GetAbsolutePosition(widget->parent, &x, &y);
+		}
+		else
+		{
+			x = 0;
+			y = 0;
+		}
+		
+		
+		gui_UpdateWidgetRelativeMouse(widget, x, y);
+		gui_UpdateWidgetMouseEvents(widget);
 	}
 	
 	if(widget->parent)
@@ -562,9 +616,6 @@ void gui_UpdateOptionList(widget_t *widget)
 		}	
 	}
 	
-	
-	
-	
 	if(widget->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
 	{
 		r = widget->parent;
@@ -599,8 +650,17 @@ void gui_PostUpdateOptionList(widget_t *widget)
 			//printf("here\n");
 		}
 	}
+	
+	if(widget->process_callback)
+	{
+		widget->process_callback(widget);
+	}
 }
 
+
+#ifdef __cplusplus
+}
+#endif
 
 
 

@@ -3,14 +3,35 @@
 
 #include "r_text.h"
 
+#include "SDL2\SDL.h"
+#include "GL\glew.h"
+
 extern int r_window_width;
 extern int r_window_height;
 
 
 static char formated_str[8192];
 
+extern rendered_string_t *ft_rendered_strings;
+
+/*
+================
+renderer_BlitSurface
+
+plain blits a surface to the screen.
+Problems arise when the surface gets 
+outside the left or the bottom of the
+screen because the raster position gets
+clipped away, and no blitting happens...
+
+================
+*/
 void renderer_BlitSurface(SDL_Surface *surface, float x, float y)
 {
+	
+	float raster_x;
+	float raster_x_offset;
+	float raster_y;
 	
 	if(!surface)
 		return;
@@ -22,13 +43,22 @@ void renderer_BlitSurface(SDL_Surface *surface, float x, float y)
 	glPushMatrix();
 	glLoadIdentity();
 	
+	raster_x = ((float)x / (float)r_window_width) * 2.0 - 1.0;
+	raster_y = ((float)(y) / (float)r_window_height) * 2.0 - 1.0;
+	
+	/*if(raster_x < -1.0)
+	{
+		raster_x_offset = -raster_x - 1.0;
+		glTranslatef(raster_x_offset, 0.0, 0.0);
+	}*/
 	 
-	glRasterPos2f(((float)x / (float)r_window_width) * 2.0 - 1.0, ((float)(y) / (float)r_window_height) * 2.0 - 1.0);
+	glRasterPos2f(raster_x, raster_y);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-	glUseProgram(0);
+	//glUseProgram(0);
+	renderer_SetShader(-1);
 	glEnable(GL_BLEND);
 	glPixelZoom(1.0, -1.0);
-	glColor3f(1.0, 0.0, 0.0);
+	glColor3f(1.0, 1.0, 1.0);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDrawPixels(surface->w, surface->h, GL_BGRA, GL_UNSIGNED_BYTE, surface->pixels);
 
@@ -43,147 +73,45 @@ void renderer_BlitSurface(SDL_Surface *surface, float x, float y)
 }
 
 
-void renderer_DrawString(font_t *font, int line_length, int x, int y, vec3_t color, char *str, ...)
+
+void renderer_DrawRenderedString(int string_index, float x, float y)
 {
+	rendered_string_t *string;
 	
-	char cparm[64];
-		
+	string = &ft_rendered_strings[string_index];
 	
-	int iparm;
-	float fparm;
-	char *strparm;
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, string->gl_tex_handle);
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(GL_FALSE);
+
+	glBegin(GL_QUADS);
+	glColor4f(1.0, 1.0, 1.0, 1.0);
+	glTexCoord2f(0.0, 0.0);
+	glVertex3f(x, y, 0.0);
+	glTexCoord2f(0.0, 1.0);
+	glVertex3f(x, y - string->height, 0.0);
+	glTexCoord2f(1.0, 1.0);
+	glVertex3f(x + string->width, y - string->height, 0.0);
+	glTexCoord2f(1.0, 0.0);
+	glVertex3f(x + string->width, y, 0.0);
+	glEnd();
 	
-	va_list args;
-	va_start(args, str);
-	
-	int i;
-	int decimal;
-	int desired_decimal;
-	int sign;
-	//void *parms = ((char *)&str) + sizeof(char *);
-	char *p = str;
-	char *o = formated_str;
-	char *q = cparm;
-	char *t;
-	
-	vsprintf(formated_str, str, args);
-	
-	//if(size > MAX_FONT_PSIZE) size = MAX_FONT_PSIZE;
-	//else if(size < MIN_FONT_PSIZE) size = MIN_FONT_PSIZE;
-	
-	//float zoom = size * FONT_ZOOM_STEP;
-	
-	/*while(*p)
-	{
-		if(*p == '%')
-		{
-			p++;
-			q = cparm;
-			desired_decimal = 999;
-			switch(*p)
-			{
-				case 'd':
-					iparm = va_arg(args, int);
-					itoa(iparm, q, 10);
-					while(*q)
-					{
-						*o++ = *q++;
-					}
-					p++;
-				break;
-				
-				case 'f':
-					_do_float:
-						
-					fparm = va_arg(args, double);
-					
-					i = 0;
-					q = ecvt(fparm, 12, &decimal, &sign);
-					if(sign)
-					{
-						*o++ = '-';
-					}
-					if(decimal <= 0)
-					{
-						*o++ = '0';
-						*o++ = '.';
-						while(*q && desired_decimal > 0)
-						{
-							*o++ = *q++;
-							desired_decimal--;
-						}
-					}
-					else
-					{
-						while(*q && i < decimal)
-						{
-							*o++ = *q++;
-							i++;
-						}
-						*o++ = '.';
-						while(*q && desired_decimal > 0)
-						{
-							*o++ = *q++;
-							i++;
-							desired_decimal--;
-						}
-					}
-					p++;
-				break;
-				
-				case 's':
-					strparm = va_arg(args, char *);
-					while(*strparm)
-					{
-						*o++ = *strparm++;
-					}
-					p++;
-				break;
-				
-				case '.':
-					i = 0;
-					p++;
-					while(*p >= '0' && *p <= '9')
-					{
-						cparm[i++] = *p++;
-					}
-					cparm[i] = '\0';
-					desired_decimal = atoi(cparm);
-					goto _do_float;
-				break;
-			}
-		}
-		else
-		{
-			if(*p == '\t')
-			{
-				*o++ = ' ';
-				*o++ = ' ';
-				*o++ = ' ';
-				*o++ = ' ';
-				p++;
-			}
-			*o++ = *p++;
-		}
-	}
-	
-	*o = '\0';*/
-	
-	if(color.r > 1.0) color.r = 1.0;
-	else if(color.r < 0.0) color.r = 0.0;
-	
-	if(color.g > 1.0) color.g = 1.0;
-	else if(color.g < 0.0) color.g = 0.0;
-	
-	if(color.b > 1.0) color.b = 1.0;
-	else if(color.b < 0.0) color.b = 0.0;
-	
-	
-	SDL_Color f = {255 * color.r, 255 * color.g, 255 * color.b, 255};
-	SDL_Surface *s = TTF_RenderUTF8_Blended_Wrapped(font->font, formated_str, f, line_length);
-	
-	renderer_BlitSurface(s, x, y);
-	
-	SDL_FreeSurface(s);
+	glDepthMask(GL_TRUE);
+	glEnable(GL_DEPTH_TEST);
+	glDisable(GL_TEXTURE_2D);
+	glDisable(GL_BLEND);
+	glBindTexture(GL_TEXTURE_2D, 0);
 	
 }
+
+
+
+
+
+
+
+
+

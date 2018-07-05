@@ -8,33 +8,91 @@
 enum PICK_TYPE
 {
 	PICK_NONE = 0,
-	PICK_HANDLE,				/* 3d manipulation handle */
+	PICK_HANDLE,
 	PICK_BRUSH,
+	PICK_BRUSH_FACE,
+	PICK_BRUSH_EDGE,
 	PICK_LIGHT,
+	PICK_ENTITY,
 	PICK_SPAWN_POINT,
 	PICK_UV_VERTEX,
-	PICK_ENTITY,
+	PICK_COLLIDER_PRIMITIVE,
+	PICK_PORTAL,
+	PICK_WAYPOINT,
 };
 
-enum HANDLE_3D_FLAGS
+enum ED_3D_HANDLE_FLAGS
 {
-	HANDLE_3D_GRABBED_X_AXIS = 1,
-	HANDLE_3D_GRABBED_Y_AXIS = 1 << 1,
-	HANDLE_3D_GRABBED_Z_AXIS = 1 << 2,
+	ED_3D_HANDLE_X_AXIS_GRABBED = 1,
+	ED_3D_HANDLE_Y_AXIS_GRABBED = 1 << 1,
+	ED_3D_HANDLE_Z_AXIS_GRABBED = 1 << 2,
 };
 
-enum HANDLE_3D_POSITION_MODE
+enum ED_3D_HANDLE_PIVOT_MODE
 {
-	HANDLE_3D_ACTIVE_OBJECT_ORIGIN = 1,
-	HANDLE_3D_MEDIAN_POINT
+	ED_3D_HANDLE_PIVOT_MODE_ACTIVE_OBJECT_ORIGIN = 0,
+	ED_3D_HANDLE_PIVOT_MODE_MEDIAN_POINT
 };
 
-enum HANDLE_3D_MODE
+enum ED_3D_HANDLE_TRANSFORM_MODE
 {
-	HANDLE_3D_TRANSLATION = 0,
-	HANDLE_3D_ROTATION,
-	HANDLE_3D_SCALE,
+	ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION = 0,
+	ED_3D_HANDLE_TRANSFORM_MODE_ROTATION,
+	ED_3D_HANDLE_TRANSFORM_MODE_SCALE,
 };
+
+enum ED_3D_HANDLE_TRANSFORM_ORIENTATION
+{
+	ED_3D_HANDLE_TRANSFORM_ORIENTATION_GLOBAL = 0,
+	ED_3D_HANDLE_TRANSFORM_ORIENTATION_LOCAL,
+};
+
+
+/************************************************************************************************************/
+/************************************************************************************************************/
+/************************************************************************************************************/
+/************************************************************************************************************/
+/************************************************************************************************************/
+/************************************************************************************************************/
+/************************************************************************************************************/
+/************************************************************************************************************/
+
+enum LEVEL_EDITOR_HANDLE_TRANSFORM_TYPE
+{
+	HANDLE_TRANSFORM_TYPE_TRANSLATION = 0,
+	HANDLE_TRANSFORM_TYPE_ROTATION,
+	HANDLE_TRANSFORM_TYPE_SCALE,
+};
+
+enum LEVEL_EDITOR_HANDLE_TRANSFORM_ORIENTATION
+{
+	HANDLE_TRANSFORM_ORIENTATION_LOCAL,
+	HANDLE_TRANSFORM_ORIENTATION_GLOBAL,
+};
+
+enum LEVEL_EDITOR_HANDLE_PIVOT_MODE
+{
+	HANDLE_PIVOT_MODE_ACTIVE_OBJECT_ORIGIN = 1,
+	HANDLE_PIVOT_MODE_MEDIAN_POINT,
+	HANDLE_PIVOT_MODE_3D_CURSOR
+};
+
+enum LEVEL_EDITOR_EDITING_MODE
+{
+	EDITING_MODE_OBJECT,
+	EDITING_MODE_BRUSH,
+	EDITING_MODE_UV,
+};
+
+/************************************************************************************************************/
+/************************************************************************************************************/
+/************************************************************************************************************/
+/************************************************************************************************************/
+/************************************************************************************************************/
+/************************************************************************************************************/
+/************************************************************************************************************/
+/************************************************************************************************************/
+
 
 enum HANDLE_3D_TRANFORM_MODE
 {
@@ -48,44 +106,90 @@ enum EDITOR_STATE
 	EDITOR_PIE,
 };
 
-enum EDITING_MODE
+/*enum EDITING_MODE
 {
 	EDITING_MODE_OBJECT = 0,
 	EDITING_MODE_BRUSH,
 	EDITING_MODE_UV,
-};
+};*/
 
 enum EDITOR_TEXTURE_FLAGS
 {
 	TEXTURE_COPY = 1 << 28,					/* used to signal a texture should be copied to the project folder... */
 };
 
+enum EDITORS
+{
+	EDITOR_LEVEL_EDITOR,
+	EDITOR_ENTITY_EDITOR,
+	EDITOR_MATERIAL_EDITOR,
+	EDITOR_PARTICLE_SYSTEM_EDITOR,	
+};
+
 typedef struct
 {
 	int type;
 	int index0;
+	void *pointer;
 	int index1;
 	int index2;
 }pick_record_t;
 
-
-
 typedef struct
 {
-	unsigned short *radius;
-	unsigned short *energy;
-	unsigned char *r;
-	unsigned char *g;
-	unsigned char *b;
-}light_ptr_t;
+	int record_count;
+	int max_records;
+	int last_selection_type;
+	pick_record_t *records;
+}pick_list_t;
 
-typedef struct
+
+enum EDITOR_ACTION_RECORD_TYPE
 {
-	int *type;
-	int *vertex_count;
-	int *polygon_count;
-	int *triangle_group_count;
-}brush_ptr_t;
+	EDITOR_ACTION_NONE = 0,
+	EDITOR_ACTION_ADD_OBJECT,
+	EDITOR_ACTION_REMOVE_OBJECT,
+	EDITOR_ACTION_TRANSFORM,
+	EDITOR_ACTION_SELECTION
+};
+
+typedef struct editor_action_object_t
+{
+	struct editor_action_object_t *next;
+	struct editor_action_object_t *prev;
+	
+	int type;
+	int index;
+	void *pointer;
+	void *data;
+	
+}editor_action_object_t;
+
+typedef struct editor_action_record_t
+{
+	struct editor_action_record_t *next;
+	struct editor_action_record_t *prev;
+	int type;
+	editor_action_object_t *object;
+	
+}editor_action_record_t;
+
+typedef struct editor_t
+{
+	struct editor_t *next;
+	
+	char *name;
+	
+	void (*init_callback)();
+	void (*finish_callback)();
+	void (*restart_callback)();
+	void (*setup_callback)();
+	void (*shutdown_callback)();
+	void (*main_callback)(float);
+	
+	void *editor_data;
+	
+}editor_t;
 
 
 #endif

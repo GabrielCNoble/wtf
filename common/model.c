@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <math.h>
+#include <float.h>
 
 #include "GL\glew.h"
 
@@ -12,6 +14,10 @@
 #include "material.h"
 #include "texture.h"
 #include "shader.h"
+#include "memory.h"
+#include "r_debug.h"
+
+#include "mpk_read.h"
 //#include "physics.h"
 
 
@@ -23,19 +29,24 @@ int *mesh_free_stack;
 static mesh_t *mesh_data;
 static int *alloc_handles;*/
   
-int mesh_count;
-mesh_t *meshes;
+int mdl_mesh_count;
+mesh_t *mdl_meshes;
+//mesh_t *mdl_last_mesh;
 
 
-int model_free_stack_top;
-int *model_free_stack;
-int max_models;
-int model_list_cursor;
-model_t *models;
+int mdl_model_free_stack_top;
+int *mdl_model_free_stack;
+int mdl_max_models;
+int mdl_model_list_cursor;
+struct model_t *mdl_models = NULL;
+struct model_t *mdl_last_model = NULL;
 
 
 
-
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 int model_Init()
 {
@@ -46,16 +57,17 @@ int model_Init()
 	
 	mesh_free_stack_top = -1;
 	mesh_free_stack = malloc(sizeof(int) * mesh_data_list_size);*/
-	mesh_count = 0;
-	meshes = NULL;
+	mdl_mesh_count = 0;
+	mdl_meshes = NULL;
+	//mdl_last_mesh = NULL;
+	
+	mdl_max_models = 512;
+	mdl_model_list_cursor = 0;
+	mdl_model_free_stack_top = -1;
 	
 	
-	max_models = 512;
-	model_list_cursor = 0;
-	model_free_stack_top = -1;
-	
-	models = malloc(sizeof(model_t) * max_models);
-	model_free_stack = malloc(sizeof(int) * max_models);
+	mdl_models = memory_Malloc(sizeof(struct model_t) * mdl_max_models, "model_Init");
+	mdl_model_free_stack = memory_Malloc(sizeof(int) * mdl_max_models, "model_Init");
 	
 	return 1;
 }
@@ -63,50 +75,114 @@ int model_Init()
 void model_Finish()
 {
 	int i;
-	
-	while(meshes)
+	mesh_t *next;
+	while(mdl_meshes)
 	{
-		free(meshes->name);
-		free(meshes->vertices);
-		meshes = meshes->next;
+		//free(meshes->name);
+		//free(meshes->vertices);
+		next = mdl_meshes->next;
+		memory_Free(mdl_meshes->name);
+		memory_Free(mdl_meshes->vertices);
+		mdl_meshes = next;
 	}
+
+	memory_Free(mdl_model_free_stack);
 	
-	
-	free(model_free_stack);
-	
-	for(i = 0; i < model_list_cursor; i++)
+	for(i = 0; i < mdl_model_list_cursor; i++)
 	{
-		if(!models[i].vert_count)
+		if(!mdl_models[i].vert_count)
 			continue;
 			
-		free(models[i].name);	
+		memory_Free(mdl_models[i].name);
+		memory_Free(mdl_models[i].file_name);
+		memory_Free(mdl_models[i].batches);
 	}
-	
-	free(models);
+	memory_Free(mdl_models);
 }
 
 
 mesh_t *model_CreateMesh(char *name, vertex_t *vertices, unsigned int vert_count, unsigned short draw_mode)
 {
+	int i;
+	
 	mesh_t *mesh;
 	
-	mesh = malloc(sizeof(mesh_t ));
-	mesh->name = strdup(name);
+	vec3_t max_extents;
+	vec3_t min_extents;
+	vec3_t center;
+	compact_vertex_t *compact;
+	
+	renderer_PushFunctionName("model_CreateMesh");
+	
+	//mesh = malloc(sizeof(mesh_t ));
+	mesh = memory_Malloc(sizeof(mesh_t), "model_CreateMesh");
+	//mesh->name = strdup(name);
+	mesh->name = memory_Strdup(name, "model_CreateMesh");
 	mesh->vertices = vertices;
 	mesh->vert_count = vert_count;
 	mesh->draw_mode = draw_mode;
 	
-	mesh->gpu_handle = gpu_Alloc(sizeof(vertex_t) * mesh->vert_count);
-	mesh->vert_start = gpu_GetAllocStart(mesh->gpu_handle) / sizeof(vertex_t);
 	
-	gpu_Write(mesh->gpu_handle, 0, mesh->vertices, sizeof(vertex_t) * mesh->vert_count, 0);
+	max_extents.x = FLT_MIN;
+	max_extents.y = FLT_MIN;
+	max_extents.z = FLT_MIN;
 	
-	mesh->next = meshes;
-	meshes = mesh;
+	min_extents.x = FLT_MAX;
+	min_extents.y = FLT_MAX;
+	min_extents.z = FLT_MAX;
 	
-	mesh_count++;
+	for(i = 0; i < mesh->vert_count; i++)
+	{
+		if(mesh->vertices[i].position.x > max_extents.x) max_extents.x = mesh->vertices[i].position.x;
+		if(mesh->vertices[i].position.y > max_extents.y) max_extents.y = mesh->vertices[i].position.y;
+		if(mesh->vertices[i].position.z > max_extents.z) max_extents.z = mesh->vertices[i].position.z;
+		
+		
+		if(mesh->vertices[i].position.x < min_extents.x) min_extents.x = mesh->vertices[i].position.x;
+		if(mesh->vertices[i].position.y < min_extents.y) min_extents.y = mesh->vertices[i].position.y;
+		if(mesh->vertices[i].position.z < min_extents.z) min_extents.z = mesh->vertices[i].position.z;
+	}
 	
-	//printf("created mesh [%s] with %d vertices...\n", name, vert_count);
+	center.x = (max_extents.x + min_extents.x) / 2.0;
+	center.y = (max_extents.y + min_extents.y) / 2.0;
+	center.z = (max_extents.z + min_extents.z) / 2.0;
+	
+	
+	for(i = 0; i < mesh->vert_count; i++)
+	{
+		mesh->vertices[i].position.x -= center.x;
+		mesh->vertices[i].position.y -= center.y;
+		mesh->vertices[i].position.z -= center.z;
+	}
+	
+	
+	compact = model_ConvertVertices(mesh->vertices, mesh->vert_count);
+	
+	//mesh->gpu_handle = gpu_Alloc(sizeof(vertex_t) * mesh->vert_count);
+	//mesh->vert_start = gpu_GetAllocStart(mesh->gpu_handle) / sizeof(vertex_t);
+	
+	//mesh->gpu_handle = gpu_Alloc(sizeof(compact_vertex_t) * mesh->vert_count);
+	mesh->gpu_handle = gpu_AllocAlign(sizeof(compact_vertex_t) * mesh->vert_count, sizeof(compact_vertex_t), 0);
+	mesh->vert_start = gpu_GetAllocStart(mesh->gpu_handle) / sizeof(compact_vertex_t);
+	
+	//gpu_Write(mesh->gpu_handle, 0, mesh->vertices, sizeof(vertex_t) * mesh->vert_count, 0);
+	gpu_Write(mesh->gpu_handle, 0, compact, sizeof(compact_vertex_t) * mesh->vert_count);
+	
+	max_extents.x -= center.x;
+	max_extents.y -= center.y;
+	max_extents.z -= center.z;
+		
+	mesh->aabb_max = max_extents;
+	
+	mesh->next = mdl_meshes;
+	mdl_meshes = mesh;
+	
+	mdl_mesh_count++;
+	
+	//free(compact);
+	memory_Free(compact);
+	
+	renderer_PopFunctionName();
 	
 	return mesh;
 }
@@ -116,7 +192,9 @@ int model_DestroyMesh(char *name)
 	mesh_t *mesh;
 	mesh_t *prev = NULL;
 	
-	mesh = meshes;
+	mesh = mdl_meshes;
+	
+	renderer_PushFunctionName("model_DestroyMesh");
 	
 	while(mesh)
 	{
@@ -125,8 +203,10 @@ int model_DestroyMesh(char *name)
 		only while loading levels... */
 		if(!strcmp(name, mesh->name))
 		{
-			free(mesh->name);
-			free(mesh->vertices);
+			//free(mesh->name);
+			//free(mesh->vertices);
+			memory_Free(mesh->name);
+			memory_Free(mesh->vertices);
 			gpu_Free(mesh->gpu_handle);
 			
 			if(prev)
@@ -135,12 +215,15 @@ int model_DestroyMesh(char *name)
 			}
 			else
 			{
-				meshes = mesh->next;
+				mdl_meshes = mesh->next;
 			}
 			
-			free(mesh);
+			//free(mesh);
+			memory_Free(mesh);
 			
-			mesh_count--;
+			mdl_mesh_count--;
+			
+			renderer_PopFunctionName();
 			return 1;
 		}
 		
@@ -148,390 +231,295 @@ int model_DestroyMesh(char *name)
 		mesh = mesh->next;
 	}
 	
+	renderer_PopFunctionName();
 	return 0;
 }
-
-int model_CreateModel(char *name, mesh_t *mesh, triangle_group_t *triangle_groups, int triangle_group_count)
+ 
+int model_CreateModel(char *file_name, char *name, mesh_t *mesh, batch_t *batches, int batch_count)
 {
 	int model_index;
-	model_t *model;
-	
+	struct model_t *model;
+		
 	if(!mesh)
 	{
 		printf("model_CreateModel: null mesh pointer for model [%s]!\n", name);
 		return -1;
 	}
 	
-	if(!triangle_groups)
+	if(!batches)
 	{
-		printf("model_CreateModel: null triangle groups pointer for model [%s]!\n", name);
+		printf("model_CreateModel: null batch pointer for model [%s]!\n", name);
 		return -1;
 	}
 	
-	if(model_free_stack_top > -1)
+	if(mdl_model_free_stack_top > -1)
 	{
-		model_index = model_free_stack[model_free_stack_top];
-		model_free_stack_top--;
+		model_index = mdl_model_free_stack[mdl_model_free_stack_top];
+		mdl_model_free_stack_top--;
 	}
 	else
 	{
-		model_index = model_list_cursor++;
+		model_index = mdl_model_list_cursor++;
 		
-		if(model_index >= max_models)
+		if(model_index >= mdl_max_models)
 		{
-			model = malloc(sizeof(model_t) * (max_models + 32));
-			free(model_free_stack);
-			model_free_stack = malloc(sizeof(int) * (max_models + 32));
+			model = memory_Malloc(sizeof(struct model_t) * (mdl_max_models + 32), "model_CreateModel");
+			memory_Free(mdl_model_free_stack);
+			mdl_model_free_stack = memory_Malloc(sizeof(int) * (mdl_max_models + 32), "model_CreateModel");
 			
-			memcpy(model, models, sizeof(model_t) * max_models);
-			
-			free(models);
-			models = model;
-			max_models += 32;
+			memcpy(model, mdl_models, sizeof(struct model_t) * mdl_max_models);
+
+			memory_Free(mdl_models);
+			mdl_models = model;
+			mdl_max_models += 32;
 		}
 	}
 	
-	model = &models[model_index];
+	model = &mdl_models[model_index];
 	
+	//model = memory_Malloc(sizeof(struct model_t), "model_CreateModel");
 	
-	model->name = strdup(name);
+	//model->next = NULL;
+	//model->prev = NULL;
+	
+	//model->name = strdup(name);
+	model->name = memory_Strdup(name, "model_CreateModel");
+	//model->file_name = strdup(file_name);
+	model->file_name = memory_Strdup(file_name, "model_CreateModel");
 	model->mesh = mesh;
-	model->triangle_groups = triangle_groups;
-	model->triangle_group_count = triangle_group_count;
+	model->batches = batches;
+	model->batch_count = batch_count;
 	model->draw_mode = mesh->draw_mode;
 	model->vert_count = mesh->vert_count;
 	model->vert_start = mesh->vert_start;
+	model->aabb_max = mesh->aabb_max;
 	model->flags = 0;
 	
+	
+	/*if(!mdl_models)
+	{
+		mdl_models = model;
+	}
+	else
+	{
+		mdl_last_model->next = model;
+		model->prev = mdl_last_model;
+	}
+	
+	mdl_last_model = model;*/
 	
 	//printf("created model [%s] with mesh [%s]\n", name, mesh->name);
 	
 	return model_index;	
 	
+	//return model;
 }
 
 int model_DestroyModel(char *name)
 {
 	int i;
 	
-	for(i = 0; i < model_list_cursor; i++)
+	/*for(i = 0; i < mdl_model_list_cursor; i++)
 	{
-		if(!strcmp(name, models[i].name))
+		if(!strcmp(name, mdl_models[i].name))
 		{
 			return model_DestroyModelIndex(i);
 		}
-	}
+	}*/
 	
 	return 0;
 }
 
 int model_DestroyModelIndex(int model_index)
 {
-	if(model_index >= 0 && model_index < model_list_cursor)
+	//if(model_index >= 0 && model_index < mdl_model_list_cursor)
 	{
-		if(!(models[model_index].flags & MODEL_INVALID))
+		/*if(!(mdl_models[model_index].flags & MODEL_INVALID))
 		{
-			models[model_index].vert_count = 0;
-			models[model_index].vert_start = -1;
-			free(models[model_index].triangle_groups);
-			models[model_index].triangle_groups = NULL;
+			mdl_models[model_index].vert_count = 0;
+			mdl_models[model_index].vert_start = -1;
+			memory_Free(mdl_models[model_index].batches);
+			mdl_models[model_index].batches = NULL;
 			
-			models[model_index].triangle_group_count = 0;
-			free(models[model_index].name);
-			models[model_index].name = NULL;
+			mdl_models[model_index].batch_count = 0;
+			memory_Free(mdl_models[model_index].name);
+			mdl_models[model_index].name = NULL;
 			
-			models[model_index].mesh = NULL;
+			mdl_models[model_index].mesh = NULL;
 			
-			models[model_index].flags |= MODEL_INVALID;
+			mdl_models[model_index].flags |= MODEL_INVALID;
 			
-			model_free_stack_top++;
-			model_free_stack[model_free_stack_top] = model_index;
+			mdl_model_free_stack_top++;
+			mdl_model_free_stack[mdl_model_free_stack_top] = model_index;
 			
 			return 1;
-		}
+		}*/
 	}
 	
 	return 0;
 }
 
-
 int model_LoadModel(char *file_name, char *model_name)
 {
-	FILE *file;
-	char *full_path;
-	int mesh_index;
-	char name[BSP_MAX_NAME_LEN * 2];
-	char name2[BSP_MAX_NAME_LEN * 2];
+	mpk_vertex_record_t *vertex_records;
+	batch_t *batches;
+	int vertex_record_count;
 	
-	int i;
-	int j;
-	
-	char *file_buffer = 0;
-	unsigned long long file_size = 0;
-	unsigned int file_buffer_cursor = 0;
-	
-	int diffuse_texture_index;
-	int normal_texture_index;
-	int material_index;
-	
-	mpk_header_t *header;
-	mpk_vertex_record_t *vertex_record;
-	material_record_t *material_record;
-	texture_record_t *texture_record;
-	int triangle_group_count = 0;
-	triangle_group_t *triangle_groups = NULL;
+	char mesh_name[512];
 	
 	mesh_t *mesh;
+	struct model_t *model;
 	int model_index;
+	int i;
+	
+	
+	renderer_PushFunctionName("model_LoadModel");
 	
 	vertex_t *vertices;
 	int vertice_count;
 	
-	int *h;
-	
-	file = fopen(file_name, "rb");
-	
-	if(!file)
+	if(mpk_read(file_name, &vertex_records, &vertex_record_count, &vertices, &vertice_count))
 	{
-		printf("couldn't open %s!\n", file_name);
-		return -1;
+		batches = memory_Malloc(sizeof(batch_t) * vertex_record_count, "model_LoadModel");
+		
+		for(i = 0; i < vertex_record_count; i++)
+		{
+			batches[i].material_index = material_MaterialIndex(vertex_records[i].material_name);
+			batches[i].next = vertex_records[i].vertice_count;
+			batches[i].start = vertex_records[i].offset;
+		}
+		
+		strcpy(mesh_name, model_name);
+		strcat(mesh_name, ".mesh");
+		
+		mesh = model_CreateMesh(mesh_name, vertices, vertice_count, GL_TRIANGLES);
+		model_index = model_CreateModel(file_name, model_name, mesh, batches, vertex_record_count);
+		
+		memory_Free(vertex_records);
+		
+		renderer_PopFunctionName();
+		
+		return model_index;	
 	}
 	
+	printf("model_LoadModel: something went wrong when loading model %s!\n", model_name);
 	
-	fseek(file, 0, SEEK_END);
-	file_size = ftell(file);
-	rewind(file);
+	renderer_PopFunctionName();
 	
-	
-	file_buffer = calloc(file_size, 1);
-	fread(file_buffer, file_size, 1, file);
-	fclose(file);
-	
-	
-	header = (mpk_header_t *)file_buffer;
-	file_buffer_cursor += sizeof(mpk_header_t);
-		
-	for(i = 0; i < header->texture_count; i++)
-	{
-		texture_record = (texture_record_t *)(file_buffer + file_buffer_cursor);
-		file_buffer_cursor += sizeof(texture_record_t);
-
-		j = 0;
-		while(*(file_buffer + file_buffer_cursor))
-		{
-			name[j] = *(file_buffer + file_buffer_cursor);
-			j++;
-			file_buffer_cursor++;
-		}
-		
-		name[j] = '\0';
-		file_buffer_cursor++;
-		
-		//strcpy(name, file_buffer + file_buffer_cursor);
-		//file_buffer_cursor += strlen(name) + 1;
-		
-		//full_path = path_FormatPath(name);
-		//strcpy(name, full_path);
-		
-		//strcpy(name2, file_buffer + file_buffer_cursor);
-		//file_buffer_cursor += strlen(name2) + 1;
-		
-		j = 0;
-		while(*(file_buffer + file_buffer_cursor))
-		{
-			name2[j] = *(file_buffer + file_buffer_cursor);
-			j++;
-			file_buffer_cursor++;
-		}
-		
-		name2[j] = '\0';
-		file_buffer_cursor++;
-		
-		if(texture_LoadTexture(path_FormatPath(name), path_GetFileNameFromPath(name2), texture_record->bm_texture_flags) < 0)
-		{
-			printf("couldn't find texture %s [%s]!\n", name, name2);
-		}
-		/*else
-		{
-			printf("texture %s [%s]...\n", name, name2);
-		}	*/
-	}
-	
-	
-	
-	vertices = malloc(sizeof(vertex_t) * header->vertice_count);
-	vertice_count = 0;
-	
-	triangle_groups = malloc(sizeof(triangle_group_t) * header->vertex_record_count);
-	
-	
-	for(i = 0; i < header->material_count; i++)
-	{
-		material_record = (material_record_t *)(file_buffer + file_buffer_cursor);
-		file_buffer_cursor += sizeof(material_record_t) + strlen(material_record->name) + 1;
-		
-		diffuse_texture_index = -1;
-		normal_texture_index = -1;
-		
-		if(material_record->bm_flags & MATERIAL_USE_DIFFUSE_TEXTURE)
-		{
-			strcpy(name, file_buffer + file_buffer_cursor);
-			file_buffer_cursor += strlen(name) + 1;
-			diffuse_texture_index = texture_GetTexture(path_GetFileNameFromPath(name));
-		}
-		
-		if(material_record->bm_flags & MATERIAL_USE_NORMAL_TEXTURE)
-		{
-			strcpy(name, file_buffer + file_buffer_cursor);
-			file_buffer_cursor += strlen(name) + 1;
-			normal_texture_index = texture_GetTexture(path_GetFileNameFromPath(name));
-		}
-		
-		material_index = material_CreateMaterial(material_record->name, material_record->base, 1.0, 1.0, shader_GetShaderIndex("forward_pass"), diffuse_texture_index, normal_texture_index);
-		
-	//	printf("material %s\n", material_record->name);
-		
-		vertex_record = (mpk_vertex_record_t *)(file_buffer + file_buffer_cursor);
-		file_buffer_cursor += sizeof(mpk_vertex_record_t );
-		
-		if(vertex_record->vertice_count)
-		{
-			memcpy(vertices + vertice_count, file_buffer + file_buffer_cursor, sizeof(vertex_t ) * vertex_record->vertice_count);
-			vertice_count += vertex_record->vertice_count;
-			
-			triangle_groups[triangle_group_count].material_index = material_index;
-			triangle_groups[triangle_group_count].next = vertex_record->vertice_count;
-			
-			file_buffer_cursor += sizeof(vertex_t) * vertex_record->vertice_count;
-			
-			
-			if(triangle_group_count)
-			{
-				triangle_groups[triangle_group_count].start = triangle_groups[triangle_group_count - 1].start + triangle_groups[triangle_group_count - 1].next;
-			}
-			else
-			{
-				triangle_groups[triangle_group_count].start = 0;
-			}
-			triangle_group_count++;
-			
-		//	printf("%d vertices...\n", vertex_record->vertice_count);
-		}
-		
-	}
-	
-	
-	/* indigent vertices... */
-	if(header->material_count < header->vertex_record_count)
-	{
-		vertex_record = (mpk_vertex_record_t *)(file_buffer + file_buffer_cursor);
-		file_buffer_cursor += sizeof(mpk_vertex_record_t );
-		
-		memcpy(vertices + vertice_count, file_buffer + file_buffer_cursor, sizeof(vertex_t ) * vertex_record->vertice_count);
-		file_buffer_cursor += sizeof(vertex_t ) * vertex_record->vertice_count;
-		
-		 
-		vertice_count += vertex_record->vertice_count;
-		
-		triangle_groups[triangle_group_count].material_index = -1;
-		triangle_groups[triangle_group_count].next = vertex_record->vertice_count;
-		
-		
-		if(triangle_group_count)
-		{
-			triangle_groups[triangle_group_count].start = triangle_groups[triangle_group_count - 1].start + triangle_groups[triangle_group_count - 1].next;
-		}
-		else
-		{
-			triangle_groups[triangle_group_count].start = 0;
-		}
-		triangle_group_count++;
-		
-	//	printf("%d indigent vertices...\n", vertex_record);
-	}
-	
-	
-	strcpy(name, model_name);
-	strcat(name, ".mesh");
-		
-	mesh = model_CreateMesh(name, vertices, vertice_count, GL_TRIANGLES);
-	model_index = model_CreateModel(model_name, mesh, triangle_groups, triangle_group_count);
-	
-	free(file_buffer);
-	
-	return model_index;
+	return -1;
 }
+
+
 
 
 int model_GetModel(char *model_name)
 {
 	int i;
 	
-	for(i = 0; i < model_list_cursor; i++)
+/*	for(i = 0; i < mdl_model_list_cursor; i++)
 	{
-		if(!strcmp(models[i].name, model_name))
+		if(!strcmp(mdl_models[i].name, model_name))
 		{
 			return i;
 		}
-	}
+	}*/
 	
 	return -1;
 }
 
-model_t *model_GetModelPointer(char *model_name)
+struct model_t *model_GetModelPointer(char *model_name)
 {
 	
 }
 
-model_t *model_GetModelPointerIndex(int model_index)
+struct model_t *model_GetModelPointerIndex(int model_index)
 {
-	if(model_index >= 0 && model_index < model_list_cursor)
+	if(model_index >= 0 && model_index < mdl_model_list_cursor)
 	{
-		if(!(models[model_index].flags & MODEL_INVALID))
+		if(!(mdl_models[model_index].flags & MODEL_INVALID))
 		{
-			return &models[model_index];
+			return &mdl_models[model_index];
 		}
 	}
 	
 	return NULL;
 }
+
+mesh_t *model_GetModelMesh(char *model_name)
+{
+	/*int i;
+	for(i = 0; i < mdl_model_list_cursor; i++)
+	{
+		if(!strcmp(model_name, mdl_models[i].name))
+		{
+			if(!(mdl_models[i].flags & MODEL_INVALID))
+			{
+				return mdl_models[i].mesh;
+			}
+		}
+		
+	}
+	
+	return NULL;*/
+}
+
+mesh_t *model_GetModelMeshIndex(int model_index)
+{
+	/*if(model_index >= 0 && model_index < mdl_model_list_cursor)
+	{
+		if(!(mdl_models[model_index].flags & MODEL_INVALID))
+		{
+			return mdl_models[model_index].mesh;
+		}
+	}*/
+}
  
 int model_IncModelMaterialsRefs(int model_index)
 {
 	int i;
-	model_t *model;
+	struct model_t *model;
 	
-	if(model_index >= 0 && model_index < model_list_cursor)
+	if(model_index >= 0 && model_index < mdl_model_list_cursor)
 	{
-		if(!(models[model_index].flags & MODEL_INVALID))
+		if(!(mdl_models[model_index].flags & MODEL_INVALID))
 		{
-			model = &models[model_index];
+			model = &mdl_models[model_index];
 			
-			for(i = 0; i < model->triangle_group_count; i++)
+			for(i = 0; i < model->batch_count; i++)
 			{
-				material_IncRefCount(model->triangle_groups[i].material_index);
+				if(!material_IncRefCount(model->batches[i].material_index))
+				{
+					/* this material got destroyed, so assing the default 
+					material to this model... */
+					model->batches[i].material_index = -1;
+				}
 			}
 		}
 	}
+
 }
 
 int model_DecModelMaterialsRefs(int model_index)
 {
 	int i;
-	model_t *model;
+	struct model_t *model;
 	
-	if(model_index >= 0 && model_index < model_list_cursor)
+	if(model_index >= 0 && model_index < mdl_model_list_cursor)
 	{
-		if(!(models[model_index].flags & MODEL_INVALID))
+		if(!(mdl_models[model_index].flags & MODEL_INVALID))
 		{
-			model = &models[model_index];
+			model = &mdl_models[model_index];
 			
-			for(i = 0; i < model->triangle_group_count; i++)
+			for(i = 0; i < model->batch_count; i++)
 			{
-				material_DecRefCount(model->triangle_groups[i].material_index);
+				if(!material_DecRefCount(model->batches[i].material_index))
+				{
+					model->batches[i].material_index = -1;
+				}
 			}
 		}
 	}
+
 }
 
 /*model_t *model_GetModel(char *model_name)
@@ -569,7 +557,8 @@ void model_GenerateIcoSphere(float radius, int sub_divs, float **verts, int *fac
 	int j;
 	int k;
 	mesh_t m;
-	float *a = (float *)malloc(sizeof(float) * 3 * 3 * 20);
+	//float *a = (float *)malloc(sizeof(float) * 3 * 3 * 20);
+	float *a = memory_Malloc(sizeof(float) * 3 * 3 * 20, "model_GenerateIcoSphere");
 	float *b;
 	float v_offset = cos((60.0 * 3.14159265) / 180.0) * radius;
 	float c;
@@ -692,7 +681,8 @@ void model_GenerateIcoSphere(float radius, int sub_divs, float **verts, int *fac
 				dst = 0;
 				//src = 0;
 				
-				b = (float *)malloc(sizeof(float) * 3 * 3 * f_count * 4);
+				//b = (float *)malloc(sizeof(float) * 3 * 3 * f_count * 4);
+				b = memory_Malloc(sizeof(float) * 3 * 3 * f_count * 4, "model_GenerateIcoSphere");
 				
 				/* for each face, add a vertex in the middle
 				of each edge, and then triangulate. Each triangle 
@@ -847,7 +837,8 @@ void model_GenerateIcoSphere(float radius, int sub_divs, float **verts, int *fac
 				
 				f_count *= 4;
 
-				free(a);
+				//free(a);
+				memory_Free(a);
 				a = b;		
 
 		}
@@ -1101,10 +1092,226 @@ void model_CalculateTangentsIndexes(vertex_t *vertices, int *indexes, int index_
 	return;
 }
 
+void model_GenerateIndexes(struct model_t *model)
+{
+	int vertice_count;
+	
+}
+
+compact_vertex_t *model_ConvertVertices(vertex_t *in_vertices, int vert_count)
+{
+	int i;
+	compact_vertex_t *out_vertices;
+	
+	//out_vertices = malloc(sizeof(compact_vertex_t) * vert_count * 10);
+	out_vertices = memory_Malloc(sizeof(compact_vertex_t) * vert_count, "model_ConvertVertices");
+	
+	
+	for(i = 0; i < vert_count; i++)
+	{
+		out_vertices[i].position = in_vertices[i].position;
+		
+		out_vertices[i].normal = 0;
+		out_vertices[i].normal |= (0x03ff) & ((short)(0x01ff * in_vertices[i].normal.z));
+		out_vertices[i].normal <<= 10;
+		out_vertices[i].normal |= (0x03ff) & ((short)(0x01ff * in_vertices[i].normal.y));
+		out_vertices[i].normal <<= 10;
+		out_vertices[i].normal |= (0x03ff) & ((short)(0x01ff * in_vertices[i].normal.x));
+		
+		
+		out_vertices[i].tangent = 0;
+		out_vertices[i].tangent |= (0x03ff) & ((short)(0x01ff * in_vertices[i].tangent.z));
+		out_vertices[i].tangent <<= 10;
+		out_vertices[i].tangent |= (0x03ff) & ((short)(0x01ff * in_vertices[i].tangent.y));
+		out_vertices[i].tangent <<= 10;
+		out_vertices[i].tangent |= (0x03ff) & ((short)(0x01ff * in_vertices[i].tangent.x));
+		
+		out_vertices[i].tex_coord = in_vertices[i].tex_coord;
+	}
+	
+	
+	return out_vertices;
+	
+	
+}
+
+
+/*
+=======================================================================
+=======================================================================
+=======================================================================
+*/
+
+
+void model_SerializeModels(void **buffer, int *buffer_size)
+{
+	#if 0
+	int out_size = 0;
+	int model_count = 0;
+	char *out;
+	char *name;
+	int i;
+	int j;
+	int name_cursor;
+	
+	model_section_header_t *header;
+	model_record_t *record;
+	
+	
+	out_size += sizeof(model_section_header_t);
+	
+	for(i = 0; i < mdl_model_list_cursor; i++)
+	{
+		if(mdl_models[i].flags & MODEL_INVALID)
+		{
+			continue;
+		}
+		model_count++;
+		out_size += sizeof(model_record_t);
+	}
+	
+	
+	out = memory_Malloc(out_size, "model_SerializeModels");
+	header = out;
+	*buffer = out;
+	//out_size = 0;
+	//*buffer_size = out_size;
+	
+	header->model_count = model_count;
+	out += sizeof(model_section_header_t);
+	
+	header->tag[0]  = '[';
+	header->tag[1]  = 'm';
+	header->tag[2]  = 'o';
+	header->tag[3]  = 'd';
+	header->tag[4]  = 'e';
+	header->tag[5]  = 'l';
+	header->tag[6]  = '_';
+	header->tag[7]  = 's';
+	header->tag[8]  = 'e';
+	header->tag[9]  = 'c';
+	header->tag[10] = 't';
+	header->tag[11] = 'i';
+	header->tag[12] = 'o';
+	header->tag[13] = 'n';
+	header->tag[14] = ']';
+	header->tag[15] = '\0';
+	
+	header->reserved0 = 0;
+	header->reserved1 = 0;
+	header->reserved2 = 0;
+	header->reserved3 = 0;
+	header->reserved4 = 0;
+	header->reserved5 = 0;
+	header->reserved6 = 0;
+	header->reserved7 = 0;
+	
+	for(i = 0; i < mdl_model_list_cursor; i++)
+	{
+		if(mdl_models[i].flags & MODEL_INVALID)
+		{
+			continue;
+		}
+		name_cursor = 0;
+		
+		record = (model_record_t *)out;
+		
+		name = mdl_models[i].name;
+		for(j = 0; name[j]; j++)
+		{
+			record->names[j] = name[j];
+		}
+		
+		record->names[j] = '\0';
+		
+		name_cursor = j + 1;
+		
+		name = mdl_models[i].file_name;
+		for(j = 0; mdl_models[i].file_name[j]; j++)
+		{
+			record->names[name_cursor + j] = name[j];
+		}
+		
+		name_cursor += j;
+		
+		/* round the offset to a multiple of four... */
+		name_cursor = (name_cursor - 3) & (~3);
+		
+		out += name_cursor;
+	}
+	
+	*buffer_size = out - (char *)header;
+	
+	#endif
+	
+}
+
+void model_DeserializeModels(void **buffer)
+{
+	#if 0
+	model_section_header_t *header;
+	model_record_t *record;
+	char *in;
+	
+	int i;
+	int j;
+	
+	char *name;
+	char model_name[PATH_MAX];
+	char file_name[PATH_MAX];
+	
+	in = *buffer;
+	
+	header = (model_section_header_t *)in;
+	in += sizeof(model_section_header_t);
+	
+	for(i = 0; i < header->model_count; i++)
+	{
+		record = (model_record_t *)in;
+		
+		/* although the 'names' field is equal to
+		the address of the model_record_t, doing
+		this will allow modifications to the struct 
+		without breaking the code... */
+		in += (int)&(((model_record_t *)0)->names[0]);
+		
+		for(j = 0; in[j]; j++)
+		{
+			model_name[j] = in[j];
+		}
+		
+		in += j + 1;
+		
+		for(j = 0; in[j]; j++)
+		{
+			file_name[j] = in[j];
+		}
+		
+		in += j + 1;
+		
+		/* records are always 4 byte aligned... */
+		in = (char *)(((int)in + 3) & (~3));
+				
+		model_LoadModel(file_name, model_name);
+	}
+	
+	*buffer = in;
+	
+	#endif
+}
+
+/*
+=======================================================================
+=======================================================================
+=======================================================================
+*/
 
 
 
 
+#ifdef __cplusplus
+}
+#endif
 
 
 

@@ -56,6 +56,12 @@ typedef union
 		float a2;
 	};
 	
+	struct
+	{
+		vec2_t vec2;
+		float e;
+	};
+	
 }vec3_t;
 
 

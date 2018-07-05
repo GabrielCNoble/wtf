@@ -6,6 +6,9 @@
 #include "matrix.h"
 #include "camera.h"
 #include "r_main.h"
+#include "w_common.h"
+#include "material.h"
+#include "memory.h"
 
 #include "GL\glew.h"
 //#include "draw.h"
@@ -17,9 +20,19 @@
 
 static int camera_list_size = 0;
 int camera_count = 0;
-camera_t *camera_list = NULL;
+//camera_t *camera_list = NULL;
+
+camera_t *cameras = NULL;
+camera_t *last_camera = NULL;
+
+camera_t *active_camera;
+camera_t *main_view;
+
+extern camera_t *r_active_view;
+extern camera_t *r_main_view;
 
 static int active_camera_index;
+static unsigned int camera_indexes[2048];
 
 extern int r_window_width;
 extern int r_window_height;
@@ -30,6 +43,7 @@ extern int r_window_height;
 extern "C"
 {
 #endif
+
 
 /*
 =============
@@ -42,16 +56,21 @@ int camera_Init()
 	
 	camera_list_size = 64;
 	camera_count = 0;
-	camera_list = malloc(sizeof(camera_t ) * camera_list_size);	
+	
+	for(i = 0; i < 2048; i++)
+	{
+		camera_indexes[i] = 0;
+	}
+	//camera_list = malloc(sizeof(camera_t ) * camera_list_size);	
 	
 	/* space for name strings are prealocated... */
-	for(i = 0; i < camera_list_size; i++)
+	/*for(i = 0; i < camera_list_size; i++)
 	{
 		camera_list[i].name = malloc(CAMERA_MAX_NAME_LEN);
-	}
+	}*/
 	
 	
-	renderer_RegisterCallback(camera_UpdateCamerasCallback, RENDERER_RESOLUTION_CHANGE_CALLBACK);
+	//renderer_RegisterCallback(camera_UpdateCamerasCallback, RENDERER_RESOLUTION_CHANGE_CALLBACK);
 	
 	return 1;
 }
@@ -66,80 +85,216 @@ void camera_Finish()
 {
 	int i;
 	
-	for(i = 0; i < camera_list_size; i++)
+	camera_DestroyAllCameras();
+	/*for(i = 0; i < camera_list_size; i++)
 	{
 		free(camera_list[i].name);
 	}
-	free(camera_list);
+	free(camera_list);*/
 	return;
 }
 
-int camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, float fovy, float width, float height, float znear, float zfar, int bm_flags)
+camera_t *camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, float fovy, float width, float height, float znear, float zfar, int bm_flags)
 {
-	int camera_index = camera_count++;
+	//int camera_index = camera_count++;
 	int name_len;
 	camera_t *camera;
 	int i;
-	
-	if(camera_index >= camera_list_size)
-	{
-		camera = malloc(sizeof(camera_t) * (camera_list_size + 16));
-		memcpy(camera, camera_list, sizeof(camera_t) * camera_list_size);
-		free(camera_list);
-		camera_list = camera;
+	int bit_index;
+	int int_index;
 		
-		camera_list_size += 16;
-		
-		for(i = camera_index; i < camera_list_size; i++)
-		{
-			camera_list[i].name = malloc(CAMERA_MAX_NAME_LEN);
-		}
-		
-		
-	}
-	
-	camera = &camera_list[camera_index];
+	camera = memory_Malloc(sizeof(camera_t), "camera_CreateCamera");
+	camera->next = NULL;
+	camera->prev = NULL;
 
 	//name_len = strlen(name) + 1;
 	//name_len = (name_len + 3) & (~3);
 	//camera->name = malloc(name_len);
-	strcpy(camera->name, name);
+	//strcpy(camera->name, name);
+	camera->name = memory_Strdup(name, "camera_CreateCamera");
 	
 	
-	camera->local_position = position;
-	memcpy(&camera->local_orientation, orientation, sizeof(mat3_t));
+	//camera->local_position = position;
+	//memcpy(&camera->local_orientation, orientation, sizeof(mat3_t));
 	
 	camera->world_position = position;
-	memcpy(&camera->world_orientation, orientation, sizeof(mat3_t));
+	camera->world_orientation = *orientation;
+	//memcpy(&camera->world_orientation, orientation, sizeof(mat3_t));
 	
-	CreatePerspectiveMatrix(&camera->projection_matrix, fovy, width/height, znear, zfar, 0.0, 0.0, &camera->frustum);
+	CreatePerspectiveMatrix(&camera->view_data.projection_matrix, fovy, width/height, znear, zfar, 0.0, 0.0, &camera->frustum);
 	
 	camera->width = width;
 	camera->height = height;
 	camera->zoom = 1.0;
 	camera->fov_y = fovy;
-	camera->camera_index = camera_index;
-	camera->bm_flags = bm_flags;
+	//camera->view_clusters = memory_Malloc(sizeof(cluster_t) * CLUSTERS_PER_ROW * CLUSTER_ROWS * CLUSTER_LAYERS, "camera_CreateCamera");
+	//camera->visible_lights = memory_Malloc((MAX_WORLD_LIGHTS >> 5) * sizeof(int), "camera_CreateCamera");
+	
+	camera_InitViewData(&camera->view_data);
+	
+	/*camera->view_data.view_lights_list_cursor = 0;
+	camera->view_data.view_lights_list_size = 32;
+	camera->view_data.view_lights = memory_Malloc(sizeof(view_light_t) * camera->view_data.view_lights_list_size, "camera_CreateCamera");
+	
+	camera->view_data.view_portals_list_cursor = 0;
+	camera->view_data.view_portals_list_size = 32;
+	camera->view_data.view_portals = memory_Malloc(sizeof(unsigned short) * camera->view_data.view_portals_list_size, "camera_CreateCamera");
+	
+	camera->view_data.visible_entities_list_size = 0;
+	camera->view_data.visible_entities_list_cursor = 0;
+	camera->view_data.visible_entities = NULL;
+	
+	camera->view_data.view_draw_command_frame = 0;
+	camera->view_data.view_draw_command_list_size = 512;
+	camera->view_data.view_draw_command_list_cursor = 0;
+	camera->view_data.view_draw_commands = memory_Malloc(sizeof(draw_command_t) * camera->view_data.view_draw_command_list_size, "camera_CreateCamera");
+	
+	camera->view_data.view_material_refs = memory_Malloc(sizeof(view_material_ref_record_t) * (MAX_MATERIALS + 1), "camera_CreateCamera");
+	camera->view_data.view_material_refs++;
+	
+	camera->view_data.view_leaves_list_cursor = 0;
+	camera->view_data.view_leaves_list_size = 256;
+	camera->view_data.view_leaves = memory_Malloc(sizeof(bsp_dleaf_t *) * camera->view_data.view_leaves_list_size, "camera_CreateCamera");
+	
+	for(i = -1; i < MAX_MATERIALS; i++)
+	{
+		camera->view_data.view_material_refs[i].last_touched = 0;
+		camera->view_data.view_material_refs[i].frame_ref_count = 0;
+	}*/
+	
+	camera->x_shift = 0.0;
+	camera->y_shift = 0.0;
+	
+	
+	/*for(i = 0; i < 2048; i++)
+	{
+		int_index = i >> 5;
+		bit_index = i % 32;
+		
+		if(!(camera_indexes[int_index] & (1 << bit_index)))
+		{
+			camera_indexes[int_index] |= (1 << bit_index);
+			break;
+		}
+	}*/
+	
+	//camera->camera_index = i;
+	
+	//camera->camera_index = camera_index;
+	camera->bm_flags = 0;
 	//camera->assigned_node=scenegraph_AddNode(NODE_CAMERA, camera_index, -1, camera->name);
 	camera_ComputeWorldToCameraMatrix(camera);
 	
-	return camera_index;
+	if(!cameras)
+	{
+		cameras = camera;
+	}
+	else
+	{
+		last_camera->next = camera;
+		camera->prev = last_camera;
+	}
+	last_camera = camera;
+	
+	camera_count++;
+	
+	return camera;
+}
+
+void camera_InitViewData(view_data_t *view_data)
+{
+	int i;
+	
+	view_data->view_lights_list_cursor = 0;
+	view_data->view_lights_list_size = 32;
+	view_data->view_lights = memory_Malloc(sizeof(view_light_t) * view_data->view_lights_list_size, "camera_InitViewData");
+	
+	view_data->view_portals_frame = 0;
+	view_data->view_portals_list_cursor = 0;
+	view_data->view_portals_list_size = 32;
+	view_data->view_portals = memory_Malloc(sizeof(unsigned short) * view_data->view_portals_list_size, "camera_InitViewData");
+	
+	view_data->view_entities_list_size = 1024;
+	view_data->view_entities_list_cursor = 0;
+	view_data->view_entities = memory_Malloc(sizeof(unsigned short ) * view_data->view_entities_list_size, "camera_InitViewData");
+	
+	view_data->view_draw_command_frame = 0;
+	view_data->view_draw_command_list_size = 512;
+	view_data->view_draw_command_list_cursor = 0;
+	view_data->view_draw_commands = memory_Malloc(sizeof(draw_command_t) * view_data->view_draw_command_list_size, "camera_InitViewData");
+	
+	view_data->view_leaves_list_cursor = 0;
+	view_data->view_leaves_list_size = 256;
+	view_data->view_leaves = memory_Malloc(sizeof(bsp_dleaf_t *) * view_data->view_leaves_list_size, "camera_InitViewData");
+	
+	view_data->view_triangles_size = 1024;
+	view_data->view_triangles_cursor = 0;
+	view_data->view_triangles = memory_Malloc(sizeof(bsp_striangle_t) * view_data->view_triangles_size, "camera_InitViewData");
+}
+
+void camera_DeleteViewData(view_data_t *view_data)
+{
+	memory_Free(view_data->view_lights);
+	memory_Free(view_data->view_portals);
+	memory_Free(view_data->view_entities);
+	memory_Free(view_data->view_draw_commands);
+	memory_Free(view_data->view_triangles);
+	memory_Free(view_data->view_leaves);
+}
+
+void camera_DestroyCamera(camera_t *camera)
+{
+	if(camera)
+	{
+		if(camera == cameras)
+		{
+			cameras = cameras->next;
+			if(cameras)
+			{
+				cameras->prev = NULL;
+			}
+		}
+		else
+		{
+			camera->prev->next = camera->next;
+			
+			if(camera->next)
+			{
+				camera->next->prev = camera->prev;
+			}
+			else
+			{
+				last_camera = last_camera->prev;
+			}
+		}
+		
+		camera_DeleteViewData(&camera->view_data);
+		
+		memory_Free(camera);
+		
+		camera_count--;
+	}
 }
 
 void camera_DestroyAllCameras()
 {
-	int i;
 	
-	/*for(i = 0; i < camera_count; i++)
+	while(cameras)
 	{
-		free(camera_list[i].name);
-	}*/
+		last_camera = cameras->next;
+		
+		camera_DeleteViewData(&cameras->view_data);
+		
+		memory_Free(cameras);
+		cameras = last_camera;
+	}
+
 	camera_count = 0;
 }
 
 void camera_SetCameraProjectionMatrix(camera_t *camera, float width, float height, float znear, float zfar, float fovy)
 {
-	CreatePerspectiveMatrix(&camera->projection_matrix, fovy, width/height, znear, zfar, 0.0, 0.0, &camera->frustum);
+	CreatePerspectiveMatrix(&camera->view_data.projection_matrix, fovy, width/height, znear, zfar, 0.0, 0.0, &camera->frustum);
 	camera->width = width;
 	camera->height = height;
 }
@@ -150,7 +305,7 @@ void camera_SetCameraProjectionMatrix(camera_t *camera, float width, float heigh
 camera_SetCameraByIndex
 =============
 */
-void camera_SetCameraByIndex(int camera_index)
+/*void camera_SetCameraByIndex(int camera_index)
 {
 	camera_t *camera;
 	if(camera_index > -1 && camera_index < camera_list_size)
@@ -162,15 +317,46 @@ void camera_SetCameraByIndex(int camera_index)
 		glLoadMatrixf(&camera->projection_matrix.floats[0][0]);
 		glMatrixMode(GL_MODELVIEW);
 	}
-}
+}*/
 
 
 void camera_SetCamera(camera_t *camera)
 {
-	active_camera_index = camera->camera_index;
-	glMatrixMode(GL_PROJECTION);
-	glLoadMatrixf(&camera->projection_matrix.floats[0][0]);
-	glMatrixMode(GL_MODELVIEW);
+	//active_camera_index = camera->camera_index;
+	if(camera)
+	{
+		active_camera = camera;
+		r_active_view = camera;
+		
+		camera_Activate(camera);
+		//camera->bm_flags &= ~CAMERA_INACTIVE;
+		
+		//glMatrixMode(GL_PROJECTION);
+		//glLoadMatrixf(&camera->projection_matrix.floats[0][0]);
+		//glMatrixMode(GL_MODELVIEW);
+	}
+}
+
+void camera_SetMainViewCamera(camera_t *camera)
+{
+	main_view = camera;
+	r_main_view = camera;
+}
+
+void camera_Activate(camera_t *camera)
+{
+	if(camera)
+	{
+		camera->bm_flags &= ~CAMERA_INACTIVE;
+	}
+}
+
+void camera_Deactivate(camera_t *camera)
+{
+	if(camera)
+	{
+		camera->bm_flags |= CAMERA_INACTIVE;
+	}
 }
 
 
@@ -181,40 +367,40 @@ camera_ComputeWorldToCameraMatrix
 */
 void camera_ComputeWorldToCameraMatrix(camera_t *camera)
 {	
-	camera->world_to_camera_matrix.floats[0][0] = camera->world_orientation.floats[0][0];
-	camera->world_to_camera_matrix.floats[1][0] = camera->world_orientation.floats[0][1];
-	camera->world_to_camera_matrix.floats[2][0] = camera->world_orientation.floats[0][2];
+	camera->view_data.view_matrix.floats[0][0] = camera->world_orientation.floats[0][0];
+	camera->view_data.view_matrix.floats[1][0] = camera->world_orientation.floats[0][1];
+	camera->view_data.view_matrix.floats[2][0] = camera->world_orientation.floats[0][2];
 	
-	camera->world_to_camera_matrix.floats[3][0] = (-camera->world_position.floats[0]) * camera->world_to_camera_matrix.floats[0][0]	+	
-										  		  (-camera->world_position.floats[1]) * camera->world_to_camera_matrix.floats[1][0]	+
-										  		  (-camera->world_position.floats[2]) * camera->world_to_camera_matrix.floats[2][0];
+	camera->view_data.view_matrix.floats[3][0] =  (-camera->world_position.floats[0]) * camera->view_data.view_matrix.floats[0][0]	+	
+										  		  (-camera->world_position.floats[1]) * camera->view_data.view_matrix.floats[1][0]	+
+										  		  (-camera->world_position.floats[2]) * camera->view_data.view_matrix.floats[2][0];
 										  		  
 										  		  
 	
-	camera->world_to_camera_matrix.floats[0][1] = camera->world_orientation.floats[1][0];
-	camera->world_to_camera_matrix.floats[1][1] = camera->world_orientation.floats[1][1];
-	camera->world_to_camera_matrix.floats[2][1] = camera->world_orientation.floats[1][2];
+	camera->view_data.view_matrix.floats[0][1] = camera->world_orientation.floats[1][0];
+	camera->view_data.view_matrix.floats[1][1] = camera->world_orientation.floats[1][1];
+	camera->view_data.view_matrix.floats[2][1] = camera->world_orientation.floats[1][2];
 	
-	camera->world_to_camera_matrix.floats[3][1] = (-camera->world_position.floats[0]) * camera->world_to_camera_matrix.floats[0][1]	+	
-										  		  (-camera->world_position.floats[1]) * camera->world_to_camera_matrix.floats[1][1]	+
-										  		  (-camera->world_position.floats[2]) * camera->world_to_camera_matrix.floats[2][1];
+	camera->view_data.view_matrix.floats[3][1] =  (-camera->world_position.floats[0]) * camera->view_data.view_matrix.floats[0][1]	+	
+										  		  (-camera->world_position.floats[1]) * camera->view_data.view_matrix.floats[1][1]	+
+										  		  (-camera->world_position.floats[2]) * camera->view_data.view_matrix.floats[2][1];
 										  		  
 										  		  
 										  		
 	
-	camera->world_to_camera_matrix.floats[0][2] = camera->world_orientation.floats[2][0];
-	camera->world_to_camera_matrix.floats[1][2] = camera->world_orientation.floats[2][1];
-	camera->world_to_camera_matrix.floats[2][2] = camera->world_orientation.floats[2][2];	
+	camera->view_data.view_matrix.floats[0][2] = camera->world_orientation.floats[2][0];
+	camera->view_data.view_matrix.floats[1][2] = camera->world_orientation.floats[2][1];
+	camera->view_data.view_matrix.floats[2][2] = camera->world_orientation.floats[2][2];
 						
-	camera->world_to_camera_matrix.floats[3][2] = (-camera->world_position.floats[0]) * camera->world_to_camera_matrix.floats[0][2]	+	
-										 		  (-camera->world_position.floats[1]) * camera->world_to_camera_matrix.floats[1][2]	+
-										  		  (-camera->world_position.floats[2]) * camera->world_to_camera_matrix.floats[2][2];
+	camera->view_data.view_matrix.floats[3][2] =  (-camera->world_position.floats[0]) * camera->view_data.view_matrix.floats[0][2]	+	
+										 		  (-camera->world_position.floats[1]) * camera->view_data.view_matrix.floats[1][2]	+
+										  		  (-camera->world_position.floats[2]) * camera->view_data.view_matrix.floats[2][2];
 										  		  
 	
-	camera->world_to_camera_matrix.floats[0][3] = 0.0;
-	camera->world_to_camera_matrix.floats[1][3] = 0.0;
-	camera->world_to_camera_matrix.floats[2][3] = 0.0;
-	camera->world_to_camera_matrix.floats[3][3] = 1.0;									  		  
+	camera->view_data.view_matrix.floats[0][3] = 0.0;
+	camera->view_data.view_matrix.floats[1][3] = 0.0;
+	camera->view_data.view_matrix.floats[2][3] = 0.0;
+	camera->view_data.view_matrix.floats[3][3] = 1.0;									  		  
 									
 }
 
@@ -343,27 +529,33 @@ camera_GetActiveCamera
 */
 camera_t *camera_GetActiveCamera()
 {
-	return &camera_list[active_camera_index];
+	//return &camera_list[active_camera_index];
+	return r_active_view;
+}
+
+camera_t *camera_GetMainViewCamera()
+{
+	return r_main_view;
 }
 
 camera_t *camera_GetCamera(char *name)
-{
-	int i;
-	int c = camera_count;
+{	
+	camera_t *c;
+	c = cameras;
 	
-	for(i = 0; i < c; i++)
+	while(c)
 	{
-		if(!strcmp(name, camera_list[i].name))
+		if(!strcmp(name, c->name))
 		{
-			return &camera_list[i];
+			return c;
 		}
+		c = c->next;
 	}
 	
 	return NULL;
-	
 }
 
-camera_t *camera_GetCameraByIndex(int camera_index)
+/*camera_t *camera_GetCameraByIndex(int camera_index)
 {
 	if(camera_index > -1 && camera_index < camera_list_size)
 	{
@@ -371,10 +563,10 @@ camera_t *camera_GetCameraByIndex(int camera_index)
 	}
 	
 	return NULL;
-}
+}*/
 
 
-void camera_UpdateCamerasCallback()
+/*void camera_UpdateCamerasCallback()
 {
 	int i;
 	camera_t *camera;
@@ -389,7 +581,7 @@ void camera_UpdateCamerasCallback()
 		}
 		
 	}
-}
+}*/
 
 
 

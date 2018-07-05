@@ -1,7 +1,7 @@
 #include "gui_option.h"
 
 #include "input.h"
-
+#include "memory.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,13 +12,18 @@ extern int gui_widget_unique_index;
 
 extern int bm_mouse;
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 option_t *gui_CreateOption(char *name, char *text)
 {
 	
 	option_t *option;
 	int name_len;
  
-	option = malloc(sizeof(option_t));
+	/*option = malloc(sizeof(option_t));
 	option->widget.name = malloc(WIDGET_NAME_MAX_LEN);
 	
 	name_len = strlen(name) + 1;
@@ -37,23 +42,55 @@ option_t *gui_CreateOption(char *name, char *text)
 	option->widget.nestled = NULL;
 	option->widget.last_nestled = NULL;
 	option->widget.parent = NULL;
-	option->widget.type = WIDGET_OPTION;
+	option->widget.type = WIDGET_OPTION;*/
+	
+	
+	option = (option_t *) gui_CreateWidget(name, 0, 0, 5, OPTION_HEIGHT, WIDGET_OPTION);
+	option->widget.bm_flags = WIDGET_RENDER_TEXT | WIDGET_JUST_CREATED | WIDGET_NOT_AS_TOP;
+	
+	
 	option->index = -1;
-	option->widget.widget_callback = NULL;
+	//option->widget.widget_callback = NULL;
 	option->rendered_text = NULL;
+	option->rendered_string = -1;
 	option->bm_option_flags = 0;
 	option->unique_index = gui_option_unique_index++;
-	option->widget.unique_index = gui_widget_unique_index++;
-	option->widget.process_callback = NULL;
+	//option->widget.unique_index = gui_widget_unique_index++;
+	//option->widget.process_callback = NULL;
 		
 	if(text)
-		option->option_text = strdup(text);
+		option->option_text = memory_Strdup(text, "gui_CreateOption");
 	else
 		option->option_text = NULL;
 	
 	
 	return option;	
 		
+}
+
+void gui_SetOptionText(option_t *option, char *text)
+{
+	int prev_text_len;
+	int new_text_len;
+
+	if(option)
+	{
+		if(text)
+		{
+			prev_text_len = strlen(option->option_text) + 1;
+			new_text_len = strlen(text) + 1;
+			
+			if(new_text_len > prev_text_len)
+			{
+				memory_Free(option->option_text);
+				option->option_text = memory_Malloc(new_text_len, "gui_SetOptionText");
+			}
+			
+			strcpy(option->option_text, text);
+			
+			option->widget.bm_flags |= WIDGET_RENDER_TEXT;
+		}
+	}
 }
 
 void gui_UpdateOption(widget_t *widget)
@@ -125,3 +162,7 @@ void gui_UpdateOption(widget_t *widget)
 			
 	}
 }
+
+#ifdef __cplusplus
+}
+#endif

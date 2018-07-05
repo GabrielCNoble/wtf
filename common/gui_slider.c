@@ -1,10 +1,17 @@
 #include "gui_slider.h"
+#include "gui.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
 extern int gui_widget_unique_index;
+
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 slider_t *gui_AddSlider(widget_t *widget, char *name, short x, short y, short w, short bm_flags, void (*slider_callback)(widget_t *), gui_var_t *var, gui_var_t max, gui_var_t min)
 {
@@ -13,7 +20,8 @@ slider_t *gui_AddSlider(widget_t *widget, char *name, short x, short y, short w,
 	/* sliders can't live on their own... */
 	if(widget)
 	{
-		slider = malloc(sizeof(slider_t ));
+		slider = (slider_t *)gui_CreateWidget(name, x, y, w, SLIDER_HEIGHT, WIDGET_SLIDER);
+		/*slider = malloc(sizeof(slider_t ));
 		 
 		slider->widget.x = x;
 		slider->widget.y = y;
@@ -30,7 +38,7 @@ slider_t *gui_AddSlider(widget_t *widget, char *name, short x, short y, short w,
 		slider->widget.bm_flags = WIDGET_TRACK_VAR;
 		slider->widget.rendered_name = NULL;
 		slider->widget.unique_index = gui_widget_unique_index++;
-		slider->widget.process_callback = NULL;
+		slider->widget.process_callback = NULL;*/
 		
 		
 		slider->max_value = max;
@@ -231,7 +239,9 @@ void gui_PostUpdateSlider(widget_t *widget)
 
 
 
-
+#ifdef __cplusplus
+}
+#endif
 
 
 

@@ -5,6 +5,7 @@
 #include "gui_dropdown.h"
 #include "gui_option_list.h"
 #include "input.h"
+#include "memory.h"
 
 /* from input.c */
 extern int bm_mouse;
@@ -19,13 +20,19 @@ extern widget_t *widgets;
 extern widget_t *last_widget;
 extern int gui_widget_unique_index;
 
- 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 dropdown_t *gui_CreateDropdown(char *name, char *text, short x, short y, short w, short bm_flags, void (*dropdown_callback)(widget_t *widget))
 {
 	dropdown_t *dropdown = NULL;
-
-	dropdown = malloc(sizeof(dropdown_t));
+	
+	dropdown = (dropdown_t *)gui_CreateWidget(name, x, y, w, DROPDOWN_HEIGHT, WIDGET_DROPDOWN);
+	dropdown->widget.bm_flags = WIDGET_RENDER_TEXT;
+	dropdown->widget.widget_callback = dropdown_callback;
+	/*dropdown = malloc(sizeof(dropdown_t));
 		
 	dropdown->widget.bm_flags = WIDGET_RENDER_TEXT;
 	dropdown->widget.x = x;
@@ -46,12 +53,12 @@ dropdown_t *gui_CreateDropdown(char *name, char *text, short x, short y, short w
 	dropdown->widget.widget_callback = dropdown_callback;
 	dropdown->widget.rendered_name = NULL;
 	dropdown->widget.unique_index = gui_widget_unique_index++;
-	dropdown->widget.process_callback = NULL;
+	dropdown->widget.process_callback = NULL;*/
 
 	dropdown->bm_dropdown_flags = bm_flags;
 		
 	if(text)
-		dropdown->dropdown_text = strdup(text);
+		dropdown->dropdown_text = memory_Strdup(text, "gui_CreateDropdown");
 	else 
 		dropdown->dropdown_text = NULL;
 		
@@ -105,10 +112,21 @@ dropdown_t *gui_AddDropdown(widget_t *widget, char *name, char *text, short x, s
 	return dropdown;
 }
 
-void gui_AddOption(dropdown_t *dropdown, char *name, char *text)
+void gui_RemoveDropdown(dropdown_t *dropdown, int free_dropdown)
 {
-	option_list_t *options;
-	option_t *option;
+	widget_t *parent;
+	
+	if(dropdown)
+	{
+		gui_DestroyWidget((widget_t *)dropdown);
+	}
+	
+}
+
+option_t *gui_AddOption(dropdown_t *dropdown, char *name, char *text)
+{
+	option_list_t *options = NULL;
+	option_t *option = NULL;
 	
 	short x;
 	short y;
@@ -120,10 +138,13 @@ void gui_AddOption(dropdown_t *dropdown, char *name, char *text)
 			gui_AddOptionList((widget_t *)dropdown, "dropdown option list", 0, 0, dropdown->widget.w * 2.0, 0, 32, dropdown->widget.widget_callback);
 		}
 		options = (option_list_t *)dropdown->widget.nestled;
+		options->widget.process_callback = dropdown->widget.process_callback;
 		
-		gui_AddOptionToList(options, name, text);
+		option = gui_AddOptionToList(options, name, text);
 			
 	}
+	
+	return option;
 }
 
 void gui_UpdateDropdown(widget_t *widget)
@@ -157,7 +178,12 @@ void gui_UpdateDropdown(widget_t *widget)
 		
 	}
 	
-	if(widget->bm_flags & WIDGET_TRACK_VAR)
+	if(widget->process_callback)
+	{
+		widget->process_callback(widget);
+	}
+	
+	/*if(widget->bm_flags & WIDGET_TRACK_VAR)
 	{
 		var = widget->var;
 		
@@ -199,7 +225,7 @@ void gui_UpdateDropdown(widget_t *widget)
 		
 		
 		
-	}
+	}*/
 	
 }
 
@@ -265,7 +291,9 @@ void gui_UpdateDropdownBar(widget_t *bar)
 	
 }
 
-
+#ifdef __cplusplus
+}
+#endif
 
 
 

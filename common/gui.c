@@ -8,8 +8,12 @@
 #include "matrix.h"
 #include "gui.h"
 #include "font.h"
+//#include "renderer.h"
 #include "r_main.h"
+#include "r_gl.h"
 #include "input.h"
+#include "memory.h"
+#include "texture.h"
 
 
 //#include "gui_dropdown.h"
@@ -25,10 +29,15 @@ extern int r_window_height;
 extern float normalized_mouse_x;
 extern float normalized_mouse_y;
 extern int bm_mouse;
+extern int mouse_x;
+extern int mouse_y;
  
 widget_t *widgets;
 widget_t *last_widget;
 widget_t *top_widget;
+
+
+
 mat4_t gui_projection_matrix;
 
 gui_var_t *gui_vars = NULL;
@@ -39,27 +48,129 @@ extern font_t *gui_font;
 
 int gui_widget_unique_index = 0;
 
+widget_t *freed_widgets[WIDGET_LAST];
+
+#ifdef __cplusplus
+extern "C++"
+{
+#endif
+
+#include "imgui.h"
+ImGuiContext *gui_context;
+
+#ifdef __cplusplus
+}
+#endif
+	
+int gui_draw_cmd_count = 0;
+ImDrawCmd *gui_draw_cmds = NULL;
+ImDrawIdx *gui_index_buffer = NULL;
+ImDrawVert *gui_vertex_buffer = NULL;
+int gui_draw_flags = 0;	
+
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 int gui_Init()
 {
+	int i;
 	widgets = NULL;
-	gui_UpdateGUIProjectionMatrix();
+	
+	unsigned char *pixels;
+	int width;
+	int height;
+	unsigned int font_texture;
+//	gui_UpdateGUIProjectionMatrix();
+	
+	gui_context = ImGui::CreateContext(NULL);
+	ImGui::SetCurrentContext(gui_context);
+	
+	ImGuiIO &io = ImGui::GetIO();
+	
+	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+	
+	font_texture = texture_GenEmptyGLTexture(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_CLAMP, GL_CLAMP, GL_CLAMP, 0, 0);
+	
+	glBindTexture(GL_TEXTURE_2D, font_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	
+	io.Fonts->TexID = (void *)font_texture;
+	
+	//glGenTextures(1, &font_texture);
+	//glBindTexture(GL_TEXTURE_2D, font_texture);
+	
+	
+	
+	
 	return 1;
 }
 
 void gui_Finish()
 {
-	/*while(widgets)
+	int i;
+	
+	while(widgets)
 	{
 		gui_DestroyWidget(widgets);
-	}*/
+	}
+	
+	while(gui_vars)
+	{
+		last_gui_var = gui_vars->next;
+		gui_DeleteVar(gui_vars);
+		gui_vars = last_gui_var;
+	}
+	
+	
+	ImGui::DestroyContext(gui_context);
+	
 }
+
+
+void gui_OpenGuiFrame()
+{
+	ImGuiIO &io = ImGui::GetIO();
+	
+	io.DisplaySize.x = r_window_width;
+	io.DisplaySize.y = r_window_height;
+	
+	ImGui::NewFrame();
+	
+	if(ImGui::Begin("test", NULL, 0))
+	{
+		ImGui::Text("FUCK!");
+		ImGui::End();
+	}
+	
+	
+}
+
+void gui_CloseGuiFrame()
+{
+	struct ImDrawList *draw_list;
+	
+	ImGui::EndFrame();
+	ImGui::Render();
+	
+	
+	//draw_list = ImGui::GetDrawData();
+	
+	//gui_draw_cmd_count = draw_list->CmdBuffer.Size;
+	//gui_draw_cmds = (struct ImDrawCmd *)draw_list->CmdBuffer.Data;
+	//gui_index_buffer = (struct ImDrawIdx *)draw_list->IdxBuffer.Data;
+	//gui_vertex_buffer = (struct ImDrawVert *)draw_list->VtxBuffer.Data;
+}
+
 
 widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h, int type)
 {
 	widget_t *widget;
 	int name_len;
-	int size;
+	unsigned int size;
 	
 	
 	switch(type)
@@ -114,7 +225,8 @@ widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h, int t
 	
 	
 	//widget = malloc(sizeof(widget_t));
-	widget = malloc(size);
+	//widget = malloc(size);
+	widget = (widget_t *)memory_Malloc(size, "gui_CreateWidget");
 	
 	if(w < WIDGET_MIN_SIZE) w = WIDGET_MIN_SIZE;
 	if(h < WIDGET_MIN_SIZE) h = WIDGET_MIN_SIZE;
@@ -129,17 +241,22 @@ widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h, int t
 	widget->h = h / 2;
 	widget->bm_flags = 0;
 	widget->edge_flags = 0;
+	widget->jusitication_flags = 0;
 	widget->type = type;
 	widget->parent = NULL;
 	
-	widget->left_edge_of = NULL;
-	widget->bottom_edge_of = NULL;
+	//widget->left_edge_of = NULL;
+	//widget->bottom_edge_of = NULL;
+	widget->linked_edges = NULL;
 	//widget->first_parent = NULL;
 	widget->widget_callback = NULL;
+	widget->process_callback = NULL;
+	widget->gl_tex_handle = 0;
 	
 	//widget->name = strdup(name);
 	
-	widget->name = malloc(WIDGET_NAME_MAX_LEN);
+	//widget->name = malloc(WIDGET_NAME_MAX_LEN);
+	widget->name = (char *)memory_Malloc(WIDGET_NAME_MAX_LEN, "gui_CreateWidget");
 	widget->name[0] = '\0';
 	
 	if(name)
@@ -156,7 +273,6 @@ widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h, int t
 
 	widget->rendered_name = NULL;
 	widget->unique_index = gui_widget_unique_index++;
-	widget->process_callback = NULL;
 	
 	return widget;
 }
@@ -199,7 +315,7 @@ widget_t *gui_AddWidget(widget_t *parent, char *name, short x, short y, short w,
 		last_widget = widget;
 	}
 	
-	
+	return widget;
 	
 }
 
@@ -245,8 +361,13 @@ void gui_DestroyWidget(widget_t *widget)
 	widget_t *w;
 	widget_t *r;
 	widget_t *parent;
-	
+	text_field_t *field;
 	wsurface_t *surface;
+	dropdown_t *dropdown;
+	option_list_t *option_list;
+	option_t *option;
+	linked_edge_t *linked_edges;
+	linked_edge_t *next_linked_edge;
 	
 	w = widget->nestled;
 	
@@ -256,44 +377,81 @@ void gui_DestroyWidget(widget_t *widget)
 		gui_DestroyWidget(w);
 		w = r;
 	}
-	
+		
 	if(!widget->parent)
 	{
 		if(widget == widgets)
 		{
 			widgets = widget->next;
+			
 			if(widgets)
+			{
 				widgets->prev = NULL;
+			}	
 		}
 		else
 		{
-			parent = widget->parent;
-			
-			if(widget == parent->nestled)
-			{
-				parent->nestled = widget->next;
-				
-				if(parent->nestled)
-					parent->nestled->prev = NULL;
-			}
-			else
-			{
-				widget->prev->next = widget->next;	
-			}
+			widget->prev->next = widget->next;
 			
 			if(widget->next)
 			{
 				widget->next->prev = widget->prev;
 			}
+			else
+			{
+				last_widget = last_widget->prev;
+			}
+		}
+	}
+	else
+	{
+		parent = widget->parent;
+			
+		if(widget == parent->nestled)
+		{
+			parent->nestled = widget->next;
+			
+			if(parent->nestled)
+			{
+				parent->nestled->prev = NULL;
+			}
+					
+		}
+		else
+		{
+			widget->prev->next = widget->next;	
+		}
+			
+		if(widget->next)
+		{
+			widget->next->prev = widget->prev;
+		}
+		else
+		{
+			parent->last_nestled = widget->prev;
 		}
 	}
 	
-	free(widget->name);
+	_free_widget:
+	
+	if(widget->name)
+	{
+		memory_Free(widget->name);
+	}
 	
 	if(widget->rendered_name)
+	{
 		SDL_FreeSurface(widget->rendered_name);
-		
+	}
 	
+	linked_edges = widget->linked_edges;
+	while(linked_edges)
+	{
+		next_linked_edge = linked_edges->next;
+		memory_Free(linked_edges);
+		linked_edges = next_linked_edge;
+	}
+		
 	switch(widget->type)
 	{
 		case WIDGET_SURFACE:
@@ -302,10 +460,69 @@ void gui_DestroyWidget(widget_t *widget)
 			glDeleteTextures(1, &surface->depth_texture);
 			glDeleteFramebuffers(1, &surface->framebuffer_id);
 		break;
+		
+		case WIDGET_TEXT_FIELD:
+			field = (text_field_t *)widget;
+			if(field->text)
+			{
+				memory_Free(field->text);
+			}
+			
+			if(field->rendered_text)
+			{
+				SDL_FreeSurface(field->rendered_text);
+			}
+		break;
+		
+		case WIDGET_DROPDOWN:
+			dropdown = (dropdown_t *)widget;
+			
+			if(dropdown->dropdown_text)
+			{
+				memory_Free(dropdown->dropdown_text);
+			}
+			
+			if(dropdown->rendered_text)
+			{
+				SDL_FreeSurface(dropdown->rendered_text);
+			}
+		break;
+		
+		case WIDGET_OPTION_LIST:
+			option_list = (option_list_t *)widget;
+			w = option_list->first_unused;
+			
+			while(w)
+			{
+				r = w->next;
+				gui_DestroyWidget(w);
+				w = r;
+			}
+			
+		break;
+		
+		case WIDGET_OPTION:
+			option = (option_t *)widget;
+			
+			w = option->widget.nestled;
+			
+			while(w)
+			{
+				r = w->next;
+				gui_DestroyWidget(w);
+				w = r;
+			}
+			
+			/* this is causing the engine to
+			crash when shutting down. Probable
+			memory corruption when freeing stuff
+			before this. FIX IT! */
+			//memory_Free(option->option_text);
+		break;
 	}
 		
 	
-	free(widget);	
+	memory_Free(widget);	
 }
 
 void gui_GetAbsolutePosition(widget_t *widget, short *x, short *y)
@@ -339,14 +556,7 @@ void gui_SetAsTop(widget_t *widget)
 		if(widget->parent)
 		{			
 			first = &widget->parent->nestled;
-			last = &widget->parent->last_nestled;
-			
-			/* no business setting a bar's widgets as top, 
-			as it messes up their order whenever the bar
-			readjusts everything... */
-			//if(widget->parent->type == WIDGET_BAR)
-			//	return;
-			
+			last = &widget->parent->last_nestled;			
 		}
 		else
 		{
@@ -361,7 +571,7 @@ void gui_SetAsTop(widget_t *widget)
 		}
 			
 		/* by here there will be at least two widgets in the list, 
-		and it will be either in the middle or the last... */
+		and this widget will be either in the middle or in the end... */
 		widget->prev->next = widget->next;
 			
 		if(widget->next)
@@ -428,6 +638,43 @@ void gui_SetVisible(widget_t *widget)
 void gui_SetInvisible(widget_t *widget)
 {
 	widget->bm_flags |= WIDGET_INVISIBLE;
+	
+	widget->bm_flags &= ~(WIDGET_MOUSE_OVER | WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON | 
+						 WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON | WIDGET_OUT_OF_BOUNDS | 
+						 WIDGET_JUST_RECEIVED_LEFT_MOUSE_DOUBLE_CLICK | WIDGET_JUST_RECEIVED_MOUSE_WHEEL_UP | 
+						 WIDGET_JUST_RECEIVED_MOUSE_WHEEL_DOWN);
+}
+
+void gui_SetIgnoreMouse(widget_t *widget)
+{
+	widget_t *w;
+	if(widget)
+	{
+		widget->bm_flags |= WIDGET_DONT_RECEIVE_MOUSE;
+		
+		w = widget->nestled;
+		while(w)
+		{
+			gui_SetIgnoreMouse(w);
+			w = w->next;
+		}
+	}
+}
+
+void gui_SetReceiveMouse(widget_t *widget)
+{
+	widget_t *w;
+	if(widget)
+	{
+		widget->bm_flags &= ~WIDGET_DONT_RECEIVE_MOUSE;
+		
+		w = widget->nestled;
+		while(w)
+		{
+			gui_SetReceiveMouse(w);
+			w = w->next;
+		}
+	}
 }
 
 
@@ -469,7 +716,9 @@ void gui_RenderText(widget_t *widget)
 				
 				sprintf(formated_str, option->option_text);
 				
-				option->rendered_text = TTF_RenderUTF8_Blended_Wrapped(gui_font->font, formated_str, foreground, option->widget.w * 2.0);
+				//option->rendered_text = TTF_RenderUTF8_Blended_Wrapped(gui_font->font, formated_str, foreground, option->widget.w * 2.0);
+				option->rendered_text = TTF_RenderUTF8_Blended(gui_font->font, formated_str, foreground);
+				option->rendered_string = font_RenderString(gui_font, formated_str, 0, vec4(1.0, 1.0, 1.0, 1.0), 1);
 			}
 			
 			if(widget->bm_flags & WIDGET_RENDER_NAME)
@@ -505,11 +754,13 @@ void gui_RenderText(widget_t *widget)
 					foreground.b = 0;
 				}
 						
-				if(field->rendered_text)
-					SDL_FreeSurface(field->rendered_text);
+				//if(field->rendered_text)
+				//	SDL_FreeSurface(field->rendered_text);
 						
 				sprintf(formated_str, field->text);
-				field->rendered_text = TTF_RenderUTF8_Blended_Wrapped(gui_font->font, formated_str, foreground, field->widget.w * 2.0);		
+				field->rendered_string = font_RenderString(gui_font, formated_str, 0, vec4(1.0, 1.0, 1.0, 1.0), 0);
+				//field->rendered_text = TTF_RenderUTF8_Blended_Wrapped(gui_font->font, formated_str, foreground, field->widget.w * 2.0);
+						
 			}
 			
 		break;
@@ -520,9 +771,18 @@ void gui_RenderText(widget_t *widget)
 			
 			if(button->rendered_text)
 				SDL_FreeSurface(button->rendered_text);
+				
+			
+			if(button->bm_button_flags & BUTTON_DONT_RECEIVE_CLICK)
+			{
+				/*foreground.r = 255;
+				foreground.g = 200;
+				foreground.b = 200;
+				foreground.a = 255;*/
+			}	
 			
 			
-			sprintf(formated_str, button->widget.name);
+			sprintf(formated_str, button->button_text);
 			
 			button->rendered_text = TTF_RenderUTF8_Blended_Wrapped(gui_font->font, formated_str, foreground, button->widget.w * 2.0);	
 				
@@ -569,8 +829,10 @@ gui_var_t *gui_CreateVar(char *name, short type, void *addr, void *refresh_base,
 		case GUI_VAR_POINTER_TO_UNSIGNED_CHAR:
 		case GUI_VAR_ALLOCD_STRING:
 		case GUI_VAR_STRING:
-			var = malloc(sizeof(gui_var_t));
-			var->name = strdup(name);
+			//var = malloc(sizeof(gui_var_t));
+			var = (gui_var_t *)memory_Malloc(sizeof(gui_var_t), "gui_CreateVar");
+			//var->name = strdup(name);
+			var->name = memory_Strdup(name, "gui_CreateVar");
 			var->type = type;
 			var->addr = addr;
 			var->base = refresh_base;
@@ -621,24 +883,20 @@ void gui_DeleteVar(gui_var_t *var)
 	while(r)
 	{
 		if(r->next == var)
+		{
+			r->next = var->next;
 			break;
-		
+		}		
 		r = r->next;
 	}
 	
-	if(r)
-	{
-		r->next = var->next;
+	memory_Free(var->name);
 		
-		free(var->name);
-		
-		if(var->type == GUI_VAR_STRING)
-			if(var->prev_var_value.str_var)
-				free(var->prev_var_value.str_var);
-				
-		
-		free(var);
-	}
+	if(var->type == GUI_VAR_STRING)
+		if(var->prev_var_value.str_var)
+			memory_Free(var->prev_var_value.str_var);
+			
+	memory_Free(var);
 }
 
 
@@ -710,10 +968,10 @@ void gui_UpdateVars()
 				{
 					if(v->prev_var_value.str_var)
 					{
-						free(v->prev_var_value.str_var);
+						//memory_Free(v->prev_var_value.str_var);
 					}
 					
-					v->prev_var_value.str_var = strdup(*((char **)v->addr));
+					v->prev_var_value.str_var = memory_Strdup(*((char **)v->addr), "gui_UpdateVars");
 					v->bm_flags |= GUI_VAR_VALUE_HAS_CHANGED;
 				}
 			break;
@@ -745,6 +1003,14 @@ void gui_UpdateVars()
 				}
 			break;
 			
+			case GUI_VAR_SHORT:
+				if(v->prev_var_value.short_var != *((short *)v->addr))
+				{
+					v->prev_var_value.short_var = *((short *)v->addr);
+					v->bm_flags |= GUI_VAR_VALUE_HAS_CHANGED;
+				}
+			break;
+			
 			case GUI_VAR_POINTER_TO_UNSIGNED_SHORT:
 				if(!(*(unsigned short **)v->addr))
 					break;
@@ -763,6 +1029,399 @@ void gui_UpdateVars()
 }
 
 
+void gui_UpdateWidgetRelativeMouse(widget_t *widget, short parent_x, short parent_y)
+{
+	float screen_mouse_x = (r_window_width * 0.5) * normalized_mouse_x;
+	float screen_mouse_y = (r_window_height * 0.5) * normalized_mouse_y;
+
+	float relative_screen_mouse_x;
+	float relative_screen_mouse_y;
+	
+	float relative_mouse_x;
+	float relative_mouse_y;
+	
+	relative_screen_mouse_x = screen_mouse_x - ((float)widget->x + (float)parent_x);
+	relative_screen_mouse_y = screen_mouse_y - ((float)widget->y + (float)parent_y);
+		
+	widget->relative_mouse_x = relative_screen_mouse_x / (float)widget->w;
+	widget->relative_mouse_y = relative_screen_mouse_y / (float)widget->h;
+}
+
+void gui_UpdateWidgetMouseEvents(widget_t *widget)
+{
+	
+	widget_t *top;
+	widget_t *r;
+	widget_t *w = widget;
+	
+	
+	w->bm_flags &= ~(WIDGET_MOUSE_OVER | WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON | 
+				     WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON | WIDGET_OUT_OF_BOUNDS | 
+					 WIDGET_JUST_RECEIVED_LEFT_MOUSE_DOUBLE_CLICK | WIDGET_JUST_RECEIVED_MOUSE_WHEEL_UP |
+					 WIDGET_JUST_RECEIVED_MOUSE_WHEEL_DOWN);
+	
+	
+	if(w->parent)
+	{
+		top = w->parent->nestled;
+			
+		if(!top)
+		{
+			printf("%s %s\n", w->name, w->parent->name);
+		}
+	}
+	else
+	{
+		top = widgets;
+	}
+	
+	
+	if(w == top)
+	{	
+		/* this enables manipulating widgets like sliders. This
+		only clears the WIDGET_HAS_LEFT_MOUSE_BUTTON flag if the left
+		mouse button is not pressed, given that the top widget will
+		conserve the flag even if the mouse is not over it... */
+		if(!(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED))
+		{
+			w->bm_flags &= ~WIDGET_HAS_LEFT_MOUSE_BUTTON;
+			
+			w->edge_flags &= ~(WIDGET_LEFT_EDGE_GRABBED | 
+			 				   WIDGET_RIGHT_EDGE_GRABBED | 
+							   WIDGET_TOP_EDGE_GRABBED | 
+							   WIDGET_BOTTOM_EDGE_GRABBED);
+		}
+		
+		if(!(bm_mouse & MOUSE_MIDDLE_BUTTON_CLICKED))
+		{
+			w->bm_flags &= ~WIDGET_HAS_MIDDLE_MOUSE_BUTTON;
+		}
+			
+	}
+	else
+	{
+		w->bm_flags &= ~(WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_HAS_RIGHT_MOUSE_BUTTON | WIDGET_HAS_MIDDLE_MOUSE_BUTTON);
+	}
+		
+	w->edge_flags &= ~(WIDGET_MOUSE_OVER_LEFT_EDGE | 
+					   WIDGET_MOUSE_OVER_RIGHT_EDGE | 
+					   WIDGET_MOUSE_OVER_TOP_EDGE | 
+					   WIDGET_MOUSE_OVER_BOTTOM_EDGE);
+		
+	
+	if(w->edge_flags & WIDGET_LEFT_EDGE_GRABBED)
+	{
+		w->edge_flags |= WIDGET_MOUSE_OVER_LEFT_EDGE;
+	}
+	else if(w->edge_flags & WIDGET_RIGHT_EDGE_GRABBED)
+	{
+		w->edge_flags |= WIDGET_MOUSE_OVER_RIGHT_EDGE;
+	}
+					
+	if(w->edge_flags & WIDGET_BOTTOM_EDGE_GRABBED)
+	{
+		w->edge_flags |= WIDGET_MOUSE_OVER_BOTTOM_EDGE;
+	}		
+	else if(w->edge_flags & WIDGET_TOP_EDGE_GRABBED)
+	{
+		w->edge_flags |= WIDGET_MOUSE_OVER_TOP_EDGE;
+	}
+		
+			
+	if(w->relative_mouse_x > -1.0 && w->relative_mouse_x <= 1.0 && w->relative_mouse_y > -1.0 && w->relative_mouse_y <= 1.0)
+	{
+		if(!(top->bm_flags & WIDGET_MOUSE_OVER))
+		{				
+			//if(!(w->bm_flags & WIDGET_DONT_RECEIVE_MOUSE))
+			{
+				if(w->bm_flags & WIDGET_IGNORE_EDGE_CLIPPING)
+				{
+					_do_flag_business:
+					
+					r = top->parent;
+							
+					/* propagate the flag upwards... */
+					while(r)
+					{
+						r->bm_flags |= WIDGET_MOUSE_OVER;
+						r = r->parent;
+					}
+					
+					/* it's important to have the widget detect when the mouse is over
+					it even when it's set to ignore it. Not doing so essentially allows
+					one to click 'through' it... */	
+					w->bm_flags |= WIDGET_MOUSE_OVER;
+					
+					if(!(w->bm_flags & WIDGET_DONT_RECEIVE_MOUSE))
+					{
+						if(w->w - abs(w->w * w->relative_mouse_x) <= WIDGET_BORDER_WIDTH)
+						{
+							if(w->relative_mouse_x < 0.0)
+							{
+								if(w->edge_flags & WIDGET_LEFT_EDGE_ENABLED)
+								{
+									w->edge_flags |= WIDGET_MOUSE_OVER_LEFT_EDGE;
+								}
+									
+							}
+							else
+							{
+								if(w->edge_flags & WIDGET_RIGHT_EDGE_ENABLED)
+								{
+									w->edge_flags |= WIDGET_MOUSE_OVER_RIGHT_EDGE;
+								}
+							}
+						}
+							
+						
+						if(w->h - abs(w->h * w->relative_mouse_y) <= WIDGET_BORDER_WIDTH)
+						{
+							if(w->relative_mouse_y < 0.0)
+							{
+								if(w->edge_flags & WIDGET_BOTTOM_EDGE_ENABLED)
+								{
+									w->edge_flags |= WIDGET_MOUSE_OVER_BOTTOM_EDGE;
+								}
+							}
+							else
+							{
+								if(w->edge_flags & WIDGET_TOP_EDGE_ENABLED)
+								{
+									w->edge_flags |= WIDGET_MOUSE_OVER_TOP_EDGE;
+								}
+							}
+						}
+					}
+				}
+				else
+				{
+					if(w->parent)
+					{
+						if(w->parent->bm_flags & WIDGET_MOUSE_OVER)
+						{
+							goto _do_flag_business;
+						}
+					}
+					else
+					{
+						goto _do_flag_business;
+					}
+				}
+				
+				
+				
+				
+				if(w->bm_flags & WIDGET_MOUSE_OVER)
+				{
+					bm_mouse |= MOUSE_OVER_WIDGET;
+					
+					if(!(w->bm_flags & WIDGET_DONT_RECEIVE_MOUSE))
+					{
+						if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
+						{
+							w->bm_flags |= WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON;
+							
+							r = w->parent;
+								
+							while(r)
+							{
+								r->bm_flags |= WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON;
+								r = r->parent;
+							}
+							
+							gui_SetAsTop(w);
+							
+							switch(w->type)
+							{
+								case WIDGET_BASE:
+								case WIDGET_SURFACE:
+									
+									switch(w->edge_flags & (WIDGET_MOUSE_OVER_LEFT_EDGE | WIDGET_MOUSE_OVER_RIGHT_EDGE))
+									{
+										case WIDGET_MOUSE_OVER_LEFT_EDGE:
+											w->edge_flags |= WIDGET_LEFT_EDGE_GRABBED;
+										break;	
+											
+										case WIDGET_MOUSE_OVER_RIGHT_EDGE:
+											w->edge_flags |= WIDGET_RIGHT_EDGE_GRABBED;
+										break;
+									}
+										
+									switch(w->edge_flags & (WIDGET_MOUSE_OVER_TOP_EDGE | WIDGET_MOUSE_OVER_BOTTOM_EDGE))
+									{
+										case WIDGET_MOUSE_OVER_TOP_EDGE:
+											w->edge_flags |= WIDGET_TOP_EDGE_GRABBED;
+										break;	
+											
+										case WIDGET_MOUSE_OVER_BOTTOM_EDGE:
+											w->edge_flags |= WIDGET_BOTTOM_EDGE_GRABBED;
+										break;
+									}
+										
+								break;
+							}
+								
+						}
+							
+						if(bm_mouse & MOUSE_LEFT_BUTTON_DOUBLE_CLICKED)
+						{
+							w->bm_flags |= WIDGET_JUST_RECEIVED_LEFT_MOUSE_DOUBLE_CLICK;
+							
+							r = w->parent;
+								
+							while(r)
+							{
+								r->bm_flags |= WIDGET_JUST_RECEIVED_LEFT_MOUSE_DOUBLE_CLICK;
+								r = r->parent;
+							}
+						}
+							
+						if(bm_mouse & MOUSE_RIGHT_BUTTON_JUST_CLICKED)
+						{
+							w->bm_flags |= WIDGET_HAS_RIGHT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON;
+							
+							r = w->parent;
+								
+							while(r)
+							{
+								r->bm_flags |= WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON;
+								r = r->parent;
+							}
+								
+							gui_SetAsTop(w);
+						}
+							
+							
+						if(bm_mouse & MOUSE_WHEEL_UP)
+						{
+							w->bm_flags |= WIDGET_JUST_RECEIVED_MOUSE_WHEEL_UP;
+								
+							r = w->parent;
+								
+							while(r)
+							{
+								r->bm_flags |= WIDGET_JUST_RECEIVED_MOUSE_WHEEL_UP;
+								r = r->parent;
+							}
+						}
+						else if(bm_mouse & MOUSE_WHEEL_DOWN)
+						{
+							w->bm_flags |= WIDGET_JUST_RECEIVED_MOUSE_WHEEL_DOWN;
+								
+							r = w->parent;
+								
+							while(r)
+							{
+								r->bm_flags |= WIDGET_JUST_RECEIVED_MOUSE_WHEEL_DOWN;
+								r = r->parent;
+							}
+						}
+							
+						if(bm_mouse & MOUSE_MIDDLE_BUTTON_CLICKED)
+						{
+							w->bm_flags |= WIDGET_HAS_MIDDLE_MOUSE_BUTTON;
+								
+							r = w->parent;
+								
+							while(r)
+							{
+								r->bm_flags |= WIDGET_HAS_MIDDLE_MOUSE_BUTTON;
+								r = r->parent;
+							}
+						}
+					}
+					
+					
+						
+				}
+			}	
+			
+			
+		}
+	}
+}
+
+void gui_UpdateWidgetEdges(widget_t *widget, short parent_x, short parent_y)
+{
+	
+	widget_t *w;
+	short right_edge_x;
+	short left_edge_x;
+	short top_edge_y;
+	short bottom_edge_y;
+	short dx;
+	short dy;
+	short x = parent_x;
+	short y = parent_y;
+	
+	if(w->edge_flags & WIDGET_RIGHT_EDGE_GRABBED)
+	{
+		right_edge_x = x + w->x + w->w;
+		dx = (short)(r_window_width * normalized_mouse_x * 0.5) - right_edge_x;
+		
+		dx >>= 1;
+			
+		if(dx + w->w < WIDGET_MIN_SIZE)
+		{
+			dx = -w->w + WIDGET_MIN_SIZE;
+		}
+			
+		w->x += dx;
+		w->w += dx;
+	}
+		
+	if(w->edge_flags & WIDGET_LEFT_EDGE_GRABBED)
+	{
+		left_edge_x = x + w->x - w->w;
+		dx = (short)(r_window_width * normalized_mouse_x * 0.5) - left_edge_x;
+		
+		dx >>= 1;
+			
+		if(w->w - dx < WIDGET_MIN_SIZE)
+		{
+			dx = w->w - WIDGET_MIN_SIZE;
+		}
+			
+		w->x += dx;
+		w->w -= dx;
+	}
+		
+	if(w->edge_flags & WIDGET_TOP_EDGE_GRABBED)
+	{
+		top_edge_y = y + w->y + w->h;
+		dy = (short)(r_window_height * normalized_mouse_y * 0.5) - top_edge_y;
+
+		dy >>= 1;
+			
+		if(dy + w->h < WIDGET_MIN_SIZE)
+		{
+			dy = -w->h + WIDGET_MIN_SIZE;
+		}
+			
+			
+		w->y += dy;
+		w->h += dy;
+	}
+		
+	if(w->edge_flags & WIDGET_BOTTOM_EDGE_GRABBED)
+	{
+		bottom_edge_y = y + w->y - w->h;
+		dy = (short)(r_window_height * normalized_mouse_y * 0.5) - bottom_edge_y;
+
+		dy >>= 1;
+			
+		if(w->h - dy < WIDGET_MIN_SIZE)
+		{
+			dy = w->h - WIDGET_MIN_SIZE;
+		}
+
+			
+		w->y += dy;
+		w->h -= dy;
+	}
+}
+
+
 void gui_ProcessGUI()
 {
 	widget_t *w;
@@ -777,8 +1436,13 @@ void gui_ProcessGUI()
 	widget_bar_t *bar;
 	text_field_t *field;
 	
+	linked_edge_t *linked;
+	short smallest_linked_edge_dist;
+	
 	int widget_stack_top = -1;
 	widget_t *widget_stack[WIDGET_STACK_SIZE];
+	
+	//input_GetInput(0.0);
 	
 	float screen_mouse_x = (r_window_width * 0.5) * normalized_mouse_x;
 	float screen_mouse_y = (r_window_height * 0.5) * normalized_mouse_y;
@@ -792,6 +1456,22 @@ void gui_ProcessGUI()
 	int b_do_rest = 0;
 	int x = 0;
 	int y = 0;
+	short right_edge_x;
+	short bottom_edge_y;
+	short left_edge_x;
+	short top_edge_y;
+	
+	short linked_edge_x;
+	short linked_edge_y;
+	short this_edge_x;
+	short this_edge_y;
+	short hpos_signal;
+	short hdim_signal;
+	short vpos_signal;
+	short vdim_signal;
+	
+	short dx;
+	short dy;
 	int call_callback;
 	int mouse_over_top;
 	
@@ -810,252 +1490,211 @@ void gui_ProcessGUI()
 
 	top = widgets;
 	
+	//printf("%d\n", (short)(r_window_width * normalized_mouse_x * 0.5));
+	
 	_do_rest:
 	
-	//bm_mouse &= ~MOUSE_OVER_WIDGET;
+	//bm_mouse &= ~MOUSE_OVER_WIDGET	
 		
 	while(w)
-	{
-		
-		if(w->parent)
-		{
-			top = w->parent->nestled;
-			
-			if(!top)
-			{
-				printf("%s %s\n", w->name, w->parent->name);
-			}
-		}
-		else
-		{
-			top = widgets;
-		}
-		
-		
-		
-		relative_screen_mouse_x = screen_mouse_x - ((float)w->x + (float)x);
-		relative_screen_mouse_y = screen_mouse_y - ((float)w->y + (float)y);
-		
-		w->relative_mouse_x = relative_screen_mouse_x / (float)w->w;
-		w->relative_mouse_y = relative_screen_mouse_y / (float)w->h;
-		
-		w->bm_flags &= ~(WIDGET_MOUSE_OVER |
-						 WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON | 
-						 WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON | 
-						 WIDGET_OUT_OF_BOUNDS | 
-						 WIDGET_JUST_RECEIVED_LEFT_MOUSE_DOUBLE_CLICK |
-						 WIDGET_JUST_RECEIVED_MOUSE_WHEEL_UP |
-						 WIDGET_JUST_RECEIVED_MOUSE_WHEEL_DOWN);
+	{		
+		gui_UpdateWidgetRelativeMouse(w, x, y);
 		
 		/* ignore invisible widgets... */
 		if(w->bm_flags & WIDGET_INVISIBLE)
 			goto _advance_widget;
 			
-		//w->bm_flags &= ~WIDGET_OUT_OF_BOUNDS;	
+		gui_UpdateWidgetMouseEvents(w);
+		gui_UpdateWidgetEdges(w, x, y);
 		
-		
+		if(w->linked_edges)
+		{
+			linked = w->linked_edges;
+			/* first go over the linked edges this widget has... */
+			while(linked)
+			{
+				gui_GetAbsolutePosition(linked->widget, &linked_edge_x, &linked_edge_y);
 				
-		if(w == top)
-		{	
-			/* this enables manipulating widgets like sliders. This
-			only clears the WIDGET_HAS_LEFT_MOUSE_BUTTON flag if the left
-			mouse button is not pressed, given that the top widget will
-			conserve the flag even if the mouse is not over it... */
-			if(!(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED))
-			{
-				w->bm_flags &= ~WIDGET_HAS_LEFT_MOUSE_BUTTON;
-			}
-			
-			if(!(bm_mouse & MOUSE_MIDDLE_BUTTON_CLICKED))
-			{
-				w->bm_flags &= ~WIDGET_HAS_MIDDLE_MOUSE_BUTTON;
-			}
-			
-		}
-		else
-		{
-			w->bm_flags &= ~(WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_HAS_RIGHT_MOUSE_BUTTON | WIDGET_HAS_MIDDLE_MOUSE_BUTTON);
-		}
-		
-		w->edge_flags &= ~(WIDGET_MOUSE_OVER_LEFT_EDGE | 
-						   WIDGET_MOUSE_OVER_RIGHT_EDGE | 
-						   WIDGET_MOUSE_OVER_TOP_EDGE | 
-						   WIDGET_MOUSE_OVER_BOTTOM_EDGE);
-		
-		
-		if(w->edge_flags & WIDGET_LEFT_EDGE_GRABBED)
-		{
-			w->edge_flags |= WIDGET_MOUSE_OVER_LEFT_EDGE;
-		}
-		else if(w->edge_flags & WIDGET_RIGHT_EDGE_GRABBED)
-		{
-			w->edge_flags |= WIDGET_MOUSE_OVER_RIGHT_EDGE;
-		}
-					
-		if(w->edge_flags & WIDGET_BOTTOM_EDGE_GRABBED)
-		{
-			w->edge_flags |= WIDGET_MOUSE_OVER_BOTTOM_EDGE;
-		}		
-		else if(w->edge_flags & WIDGET_TOP_EDGE_GRABBED)
-		{
-			w->edge_flags |= WIDGET_MOUSE_OVER_TOP_EDGE;
-		}
-		
-			
-		if(w->relative_mouse_x > -1.0 && w->relative_mouse_x <= 1.0 && w->relative_mouse_y > -1.0 && w->relative_mouse_y <= 1.0)
-		{
-			if(!(top->bm_flags & WIDGET_MOUSE_OVER))
-			{				
-				if(w->bm_flags & WIDGET_IGNORE_EDGE_CLIPPING)
+				hpos_signal = 0;
+				hdim_signal = 0;
+				vpos_signal = 0;
+				vdim_signal = 0;
+				
+				
+				switch(linked->linked_widget_edge)
 				{
-					_do_flag_business:
+					case WIDGET_LEFT_EDGE:
+						linked_edge_x -= linked->widget->w;
+					break;
 					
-					r = top->parent;
-						
-					/* propagate the flag upwards... */
-					while(r)
+					case WIDGET_RIGHT_EDGE:
+						linked_edge_x += linked->widget->w;
+					break;
+					
+					case WIDGET_TOP_EDGE:
+						linked_edge_y += linked->widget->h;
+					break;
+					
+					case WIDGET_BOTTOM_EDGE:
+						linked_edge_y -= linked->widget->h;
+					break;
+				}
+				
+				
+				
+				switch(linked->this_widget_edge)
+				{
+					case WIDGET_LEFT_EDGE:
+						this_edge_x = x + w->x - w->w;
+						dx = (this_edge_x - linked_edge_x + linked->offset) >> 1;
+						hpos_signal = -1;
+						hdim_signal = 1;
+					break;
+					
+					case WIDGET_RIGHT_EDGE:
+						this_edge_x = x + w->x + w->w;
+						dx = (linked_edge_x - this_edge_x + linked->offset) >> 1;
+						hpos_signal = 1;
+						hdim_signal = 1;								
+					break;
+					
+					case WIDGET_TOP_EDGE:
+						this_edge_y = y + w->y + w->h;
+						dy = (linked_edge_y - this_edge_y) >> 1;
+						vpos_signal = 1;
+						vdim_signal = 1;
+					break;
+					
+					case WIDGET_BOTTOM_EDGE:
+						this_edge_y = y + w->y - w->h;
+						dy = (this_edge_y - linked_edge_y) >> 1;
+						vpos_signal = -1;
+						vdim_signal = 1;
+					break;
+				}
+				
+				/* ... and make sure we don't turn a widget "inside-out"
+				by clamping the edge movement if a widget's size becomes
+				smaller than the minimal allowed size... */
+				if(linked->this_widget_edge == linked->linked_widget_edge)
+				{
+					
+					if(linked->widget->w - dx < WIDGET_MIN_SIZE)
 					{
-						r->bm_flags |= WIDGET_MOUSE_OVER;
-						r = r->parent;
+						dx -= linked->widget->w - WIDGET_MIN_SIZE;						
+						w->x += dx * hpos_signal;
+						w->w += dx * hdim_signal;
 					}
-					
-					w->bm_flags |= WIDGET_MOUSE_OVER;
-					
-					if(w->w - abs(w->w * w->relative_mouse_x) <= WIDGET_BORDER_WIDTH)
-					{
-						if(w->relative_mouse_x < 0.0)
-						{
-							w->edge_flags |= WIDGET_MOUSE_OVER_LEFT_EDGE;
-						}
-						else
-						{
-							w->edge_flags |= WIDGET_MOUSE_OVER_RIGHT_EDGE;
-						}
-					}
-					
-					
-					if(w->h - abs(w->h * w->relative_mouse_y) <= WIDGET_BORDER_WIDTH)
-					{
-						if(w->relative_mouse_y < 0.0)
-						{
-							w->edge_flags |= WIDGET_MOUSE_OVER_BOTTOM_EDGE;
-						}
-						else
-						{
-							w->edge_flags |= WIDGET_MOUSE_OVER_TOP_EDGE;
-						}
-					}
-					
 				}
 				else
 				{
-					if(w->parent)
+					if(linked->widget->w + dx < WIDGET_MIN_SIZE)
 					{
-						if(w->parent->bm_flags & WIDGET_MOUSE_OVER)
-						{
-							goto _do_flag_business;
-						}
-					}
-					else
-					{
-						goto _do_flag_business;
+						dx += linked->widget->w - WIDGET_MIN_SIZE;
+						w->x += dx * hpos_signal;
+						w->w += dx * hdim_signal;
 					}
 				}
-							
 				
-				
-				if(w->bm_flags & WIDGET_MOUSE_OVER)
+				if(linked->this_widget_edge == linked->linked_widget_edge)
 				{
-					bm_mouse |= MOUSE_OVER_WIDGET;
-					
-					if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
+					if(linked->widget->h - dy < WIDGET_MIN_SIZE)
 					{
-						w->bm_flags |= WIDGET_HAS_LEFT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON;
-						
-						r = w->parent;
-						
-						while(r)
-						{
-							r->bm_flags |= WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON;
-							r = r->parent;
-						}
-						
-						//if(w->type != WIDGET_OPTION)
-							gui_SetAsTop(w);
+						dy -= linked->widget->h - WIDGET_MIN_SIZE;
+						w->y += dy * vpos_signal;
+						w->h += dy * vdim_signal;
 					}
-					
-					if(bm_mouse & MOUSE_LEFT_BUTTON_DOUBLE_CLICKED)
-					{
-						w->bm_flags |= WIDGET_JUST_RECEIVED_LEFT_MOUSE_DOUBLE_CLICK;
-						
-						r = w->parent;
-						
-						while(r)
-						{
-							r->bm_flags |= WIDGET_JUST_RECEIVED_LEFT_MOUSE_DOUBLE_CLICK;
-							r = r->parent;
-						}
-					}
-					
-					if(bm_mouse & MOUSE_RIGHT_BUTTON_JUST_CLICKED)
-					{
-						w->bm_flags |= WIDGET_HAS_RIGHT_MOUSE_BUTTON | WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON;
-						
-						r = w->parent;
-						
-						while(r)
-						{
-							r->bm_flags |= WIDGET_JUST_RECEIVED_RIGHT_MOUSE_BUTTON;
-							r = r->parent;
-						}
-						
-						gui_SetAsTop(w);
-					}
-					
-					
-					if(bm_mouse & MOUSE_WHEEL_UP)
-					{
-						w->bm_flags |= WIDGET_JUST_RECEIVED_MOUSE_WHEEL_UP;
-						
-						r = w->parent;
-						
-						while(r)
-						{
-							r->bm_flags |= WIDGET_JUST_RECEIVED_MOUSE_WHEEL_UP;
-							r = r->parent;
-						}
-					}
-					else if(bm_mouse & MOUSE_WHEEL_DOWN)
-					{
-						w->bm_flags |= WIDGET_JUST_RECEIVED_MOUSE_WHEEL_DOWN;
-						
-						r = w->parent;
-						
-						while(r)
-						{
-							r->bm_flags |= WIDGET_JUST_RECEIVED_MOUSE_WHEEL_DOWN;
-							r = r->parent;
-						}
-					}
-					
-					if(bm_mouse & MOUSE_MIDDLE_BUTTON_CLICKED)
-					{
-						w->bm_flags |= WIDGET_HAS_MIDDLE_MOUSE_BUTTON;
-						
-						r = w->parent;
-						
-						while(r)
-						{
-							r->bm_flags |= WIDGET_HAS_MIDDLE_MOUSE_BUTTON;
-							r = r->parent;
-						}
-					}
-					
 				}
+				else
+				{
+					if(linked->widget->h + dy < WIDGET_MIN_SIZE)
+					{
+						dy += linked->widget->h - WIDGET_MIN_SIZE;
+						w->y += dy * vpos_signal;
+						w->h += dy * vdim_signal;
+					}
+				}
+				
+				
+				linked = linked->next;			
 			}
+			
+			
+			linked = w->linked_edges;
+			/* now go over all the linked edgess again... */
+			while(linked)
+			{
+				gui_GetAbsolutePosition(linked->widget, &linked_edge_x, &linked_edge_y);
+				
+				switch(linked->this_widget_edge)
+				{
+					case WIDGET_LEFT_EDGE:
+						this_edge_x = x + w->x - w->w;
+					break;
+					
+					case WIDGET_RIGHT_EDGE:
+						this_edge_x = x + w->x + w->w;						
+					break;
+					
+					case WIDGET_TOP_EDGE:
+						this_edge_y = y + w->y + w->h;
+					break;
+					
+					case WIDGET_BOTTOM_EDGE:
+						this_edge_y = y + w->y - w->h;
+					break;
+				}
+				
+				hpos_signal = 0;
+				hdim_signal = 0;
+				vpos_signal = 0;
+				vdim_signal = 0;
+				
+				switch(linked->linked_widget_edge)
+				{
+					case WIDGET_LEFT_EDGE:
+						linked_edge_x -= linked->widget->w;
+						dx = (this_edge_x - linked_edge_x + linked->offset) >> 1;	
+						hpos_signal = 1;
+						hdim_signal = -1;
+					break;
+					
+					case WIDGET_RIGHT_EDGE:
+						linked_edge_x += linked->widget->w;
+						dx = (linked_edge_x - this_edge_x + linked->offset) >> 1;
+						hpos_signal = -1;
+						hdim_signal = -1;						
+					break;
+					
+					case WIDGET_TOP_EDGE:
+						linked_edge_y += linked->widget->h;
+						dy = (this_edge_y - linked_edge_y) >> 1;
+						vpos_signal = 1;
+						vdim_signal = 1;
+					break;
+					
+					case WIDGET_BOTTOM_EDGE:
+						linked_edge_y -= linked->widget->h;
+						dy = (linked_edge_y - this_edge_y) >> 1;
+						vpos_signal = -1;
+						vdim_signal = 1;
+					break;
+				}
+				
+				/* ... and properly update their positions
+				so they all match correctly... */
+				linked->widget->x += dx * hpos_signal;
+				linked->widget->w += dx * hdim_signal;
+				linked->widget->y += dy * vpos_signal;
+				linked->widget->h += dy * vdim_signal;
+				
+				
+				linked = linked->next;			
+			}
+			
+			
 		}
-		
-		//_skip_mouse_over:
+	
 		
 		call_callback = 0;
 		
@@ -1122,14 +1761,11 @@ void gui_ProcessGUI()
 				
 				if(w->nestled)
 				{
-					//printf("%s\n", w->name);
-					//printf("%s\n", w->nestled->name);
 					x += w->x;
 					y += w->y;
 					widget_stack_top++;		
 					widget_stack[widget_stack_top] = w;
 					w = w->nestled;
-					//top = &(*top)->nestled;
 					continue;
 				}
 			break;
@@ -1371,9 +2007,117 @@ void gui_PostUpdateWidget(widget_t *widget)
 	
 }
 
+void gui_LinkLeftEdge(widget_t *widget, widget_t *left_edge)
+{
+	linked_edge_t *new_linked;
+	linked_edge_t *linked;
+	if(widget && left_edge)
+	{
+		
+		//new_linked = malloc(sizeof(linked_edge_t));
+		new_linked = (linked_edge_t *)memory_Malloc(sizeof(linked_edge_t), "gui_LinkLeftEdge");
+		new_linked->next = NULL;
+		new_linked->widget = widget;
+		new_linked->this_widget_edge = WIDGET_RIGHT_EDGE;
+		new_linked->linked_widget_edge = WIDGET_LEFT_EDGE;
+		
+		if(!left_edge->linked_edges)
+		{
+			left_edge->linked_edges = new_linked;
+		}
+		else
+		{
+			linked = left_edge->linked_edges;
+			while(linked->next)
+			{
+				linked = linked->next;
+			}
+			
+			linked->next = new_linked;
+		}
+		
+		
+		widget->edge_flags &= ~WIDGET_LEFT_EDGE_ENABLED;
+	}
+}
+
+void gui_LinkBottomEdge(widget_t *widget, widget_t *bottom_edge)
+{
+	linked_edge_t *new_linked;
+	linked_edge_t *linked;
+	if(widget && bottom_edge)
+	{
+		
+		new_linked = (linked_edge_t *)memory_Malloc(sizeof(linked_edge_t), "gui_LinkBottomEdge");
+		new_linked->next = NULL;
+		new_linked->widget = widget;
+		new_linked->this_widget_edge = WIDGET_TOP_EDGE;
+		new_linked->linked_widget_edge = WIDGET_BOTTOM_EDGE;
+		
+		if(!bottom_edge->linked_edges)
+		{
+			bottom_edge->linked_edges = new_linked;
+		}
+		else
+		{
+			linked = bottom_edge->linked_edges;
+			while(linked->next)
+			{
+				linked = linked->next;
+			}
+			
+			linked->next = new_linked;
+		}
+		
+		
+		widget->edge_flags &= ~WIDGET_BOTTOM_EDGE_ENABLED;
+	}
+}
+
+linked_edge_t *gui_LinkEdges(widget_t *to_link, widget_t *link_to, int to_link_edge, int link_to_edge)
+{
+	linked_edge_t *new_linked = NULL;
+	linked_edge_t *linked = NULL;
+	
+	if(to_link && link_to)
+	{
+		if(to_link_edge >= WIDGET_LEFT_EDGE && to_link_edge <= WIDGET_BOTTOM_EDGE &&
+		   link_to_edge >= WIDGET_LEFT_EDGE && link_to_edge <= WIDGET_BOTTOM_EDGE)
+		{
+			new_linked = (linked_edge_t *)memory_Malloc(sizeof(linked_edge_t), "gui_LinkEdges");
+			new_linked->next = NULL;
+			new_linked->widget = to_link;
+			new_linked->this_widget_edge = link_to_edge;
+			new_linked->linked_widget_edge = to_link_edge;
+			new_linked->offset = 0;
+			
+			if(!link_to->linked_edges)
+			{
+				link_to->linked_edges = new_linked;
+			}
+			else
+			{
+				linked = link_to->linked_edges;
+				
+				while(linked->next)
+				{
+					linked = linked->next;
+				}
+				
+				linked->next = new_linked;
+			}			
+		}
+	}
+	
+	return new_linked;
+}
 
 
-
+#ifdef __cplusplus
+}
+}
+}
+#endif
 
 
 

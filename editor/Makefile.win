@@ -1,17 +1,16 @@
 # Project: wtf_editor
-# Makefile created by Dev-C++ 5.11
+# Makefile created by Dev-C++ 5.10
 
 CPP      = g++.exe -D__DEBUG__
 CC       = gcc.exe -D__DEBUG__
 WINDRES  = windres.exe
-RES      = wtf_editor_private.res
-OBJ      = main.o editor.o brush.o bsp_cmp.o r_editor.o pvs.o indirect.o r_skybox.o ../common/gmath/frustum.o ../common/gmath/line.o ../common/gmath/matrix.o ../common/gmath/plane.o ../common/gmath/triangle.o ../common/gmath/vector.o ../common/soil/image_DXT.o ../common/soil/image_helper.o ../common/soil/SOIL.o ../common/soil/stb_image_aug.o ../common/sound.o ../common/camera.o ../common/engine.o ../common/r_main.o ../common/shader.o ../common/input.o ../common/model.o ../common/gpu.o ../common/material.o ../common/l_cache.o ../common/l_main.o ../common/bsp.o ../common/gui.o ../common/player.o ../common/world.o ../common/physics.o ../common/r_text.o ed_ui.o ed_proj.o ../common/font.o ../common/gui_button.o ../common/gui_dropdown.o ../common/gui_option_list.o ../common/gui_option.o ../common/gui_widget_bar.o ../common/gui_checkbox.o ../common/gui_text_field.o ed_in.o ../common/log.o ../common/gui_slider.o ../common/path.o ../common/entity.o ../common/file.o ../common/texture.o ../common/gui_surface.o ed_ui_brush.o ed_ui_material.o ed_ui_texture.o ed_ui_explorer.o ../common/portal.o ../common/bsp_file.o ../common/gui_item_list.o ed_ui_entity.o ../common/memory.o $(RES)
-LINKOBJ  = main.o editor.o brush.o bsp_cmp.o r_editor.o pvs.o indirect.o r_skybox.o ../common/gmath/frustum.o ../common/gmath/line.o ../common/gmath/matrix.o ../common/gmath/plane.o ../common/gmath/triangle.o ../common/gmath/vector.o ../common/soil/image_DXT.o ../common/soil/image_helper.o ../common/soil/SOIL.o ../common/soil/stb_image_aug.o ../common/sound.o ../common/camera.o ../common/engine.o ../common/r_main.o ../common/shader.o ../common/input.o ../common/model.o ../common/gpu.o ../common/material.o ../common/l_cache.o ../common/l_main.o ../common/bsp.o ../common/gui.o ../common/player.o ../common/world.o ../common/physics.o ../common/r_text.o ed_ui.o ed_proj.o ../common/font.o ../common/gui_button.o ../common/gui_dropdown.o ../common/gui_option_list.o ../common/gui_option.o ../common/gui_widget_bar.o ../common/gui_checkbox.o ../common/gui_text_field.o ed_in.o ../common/log.o ../common/gui_slider.o ../common/path.o ../common/entity.o ../common/file.o ../common/texture.o ../common/gui_surface.o ed_ui_brush.o ed_ui_material.o ed_ui_texture.o ed_ui_explorer.o ../common/portal.o ../common/bsp_file.o ../common/gui_item_list.o ed_ui_entity.o ../common/memory.o $(RES)
-LIBS     = -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -L"../common/SDL/lib/mingw" -L"../common/OPENAL/Win32" -L"../common/GLEW/lib"  -lmingw32 -lopengl32 -lSDL2main -lSDL2 -lSDL2_ttf -lglew32 -lOpenAL32 -limagehlp   -Wl,-Map=r.map -m32 -g3
-INCS     = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include" -I"../common/SDL/include" -I"../common/GLEW/include" -I"../common/soil" -I"../common/gmath" -I"../common/OPENAL/include" -I"../common"
-CXXINCS  = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include/c++" -I"../common/SDL/include" -I"../common/GLEW/include" -I"../common/soil" -I"../common/gmath" -I"../common/OPENAL/include" -I"../common"
+OBJ      = main.o editor.o brush.o bsp_cmp.o pvs.o indirect.o r_skybox.o ../common/gmath/frustum.o ../common/gmath/line.o ../common/gmath/matrix.o ../common/gmath/plane.o ../common/gmath/triangle.o ../common/gmath/vector.o ../common/soil/image_DXT.o ../common/soil/image_helper.o ../common/soil/SOIL.o ../common/soil/stb_image_aug.o ../common/sound.o ../common/camera.o ../common/engine.o ../common/r_main.o ../common/shader.o ../common/input.o ../common/model.o ../common/gpu.o ../common/material.o ../common/l_cache.o ../common/l_main.o ../common/bsp.o ../common/gui.o ../common/player.o ../common/world.o ../common/physics.o ../common/r_text.o ed_ui.o ../common/font.o ../common/gui_button.o ../common/gui_dropdown.o ../common/gui_option_list.o ../common/gui_option.o ../common/gui_widget_bar.o ../common/gui_checkbox.o ../common/gui_text_field.o ../common/log.o ../common/gui_slider.o ../common/path.o ../common/entity.o ../common/file.o ../common/gui_surface.o ed_ui_explorer.o ../common/portal.o ../common/bsp_file.o ../common/gui_item_list.o ../common/memory.o ../common/gmath/fixed.o ../common/mpk_read.o ../common/mpk_write.o ../common/r_debug.o "level\ editor/ed_level.o" "level\ editor/ed_level_draw.o" ed_draw.o ../common/r_imediate.o ed_selection.o "level\ editor/ed_level_ui.o" "entity\ editor/ed_entity.o" "entity\ editor/ed_entity_draw.o" "entity\ editor/ed_entity_ui.o" ../common/r_gl.o ed_name.o ../common/shd_pprc.o ../common/r_shader.o "level\ editor/ed_ui_brush.o" "level\ editor/ed_ui_entity.o" "level\ editor/ed_ui_material.o" "level\ editor/ed_ui_texture.o" ../common/particle.o "material\ editor/ed_material.o" ../common/script.o ../common/src_math.o ../common/scr_types.o ../common/navigation.o ../common/texture.o ../common/phy_character.o "event\ editor/ed_event.o" ../common/event.o ../common/scenegraph.o ../common/imgui/imgui.o ../common/imgui/imgui_draw.o ../common/gui_tree.o ../common/scr_entity.o
+LINKOBJ  = main.o editor.o brush.o bsp_cmp.o pvs.o indirect.o r_skybox.o ../common/gmath/frustum.o ../common/gmath/line.o ../common/gmath/matrix.o ../common/gmath/plane.o ../common/gmath/triangle.o ../common/gmath/vector.o ../common/soil/image_DXT.o ../common/soil/image_helper.o ../common/soil/SOIL.o ../common/soil/stb_image_aug.o ../common/sound.o ../common/camera.o ../common/engine.o ../common/r_main.o ../common/shader.o ../common/input.o ../common/model.o ../common/gpu.o ../common/material.o ../common/l_cache.o ../common/l_main.o ../common/bsp.o ../common/gui.o ../common/player.o ../common/world.o ../common/physics.o ../common/r_text.o ed_ui.o ../common/font.o ../common/gui_button.o ../common/gui_dropdown.o ../common/gui_option_list.o ../common/gui_option.o ../common/gui_widget_bar.o ../common/gui_checkbox.o ../common/gui_text_field.o ../common/log.o ../common/gui_slider.o ../common/path.o ../common/entity.o ../common/file.o ../common/gui_surface.o ed_ui_explorer.o ../common/portal.o ../common/bsp_file.o ../common/gui_item_list.o ../common/memory.o ../common/gmath/fixed.o ../common/mpk_read.o ../common/mpk_write.o ../common/r_debug.o "level editor/ed_level.o" "level editor/ed_level_draw.o" ed_draw.o ../common/r_imediate.o ed_selection.o "level editor/ed_level_ui.o" "entity editor/ed_entity.o" "entity editor/ed_entity_draw.o" "entity editor/ed_entity_ui.o" ../common/r_gl.o ed_name.o ../common/shd_pprc.o ../common/r_shader.o "level editor/ed_ui_brush.o" "level editor/ed_ui_entity.o" "level editor/ed_ui_material.o" "level editor/ed_ui_texture.o" ../common/particle.o "material editor/ed_material.o" ../common/script.o ../common/src_math.o ../common/scr_types.o ../common/navigation.o ../common/texture.o ../common/phy_character.o "event editor/ed_event.o" ../common/event.o ../common/scenegraph.o ../common/imgui/imgui.o ../common/imgui/imgui_draw.o ../common/gui_tree.o ../common/scr_entity.o
+LIBS     = -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib32" -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -L"../common/SDL/lib/mingw" -L"../common/OPENAL/Win32" -L"../common/GLEW/lib" -L"../common/bullet/lib" -L"../common/angel" -L"../common/imgui"  -lmingw32 -lopengl32 -lSDL2main -lSDL2 -lSDL2_ttf -lglew32 -lOpenAL32 -limagehlp -langelscript  -lBulletDynamics -lBulletCollision -lLinearMath    -Wl,-Map=r.map -m32 -g3
+INCS     = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include" -I"../common/SDL/include" -I"../common/GLEW/include" -I"../common/soil" -I"../common/gmath" -I"../common/OPENAL/include" -I"../common" -I"../common/bullet/include" -I"../common/bullet/include/BulletCollision" -I"../common/angel" -I"../common/imgui"
+CXXINCS  = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include/c++" -I"../common/SDL/include" -I"../common/GLEW/include" -I"../common/soil" -I"../common/gmath" -I"../common/OPENAL/include" -I"../common" -I"../common/bullet/include" -I"../common/bullet/include/BulletCollision" -I"../common/angel" -I"../common/imgui"
 BIN      = wtf_editor.exe
-CXXFLAGS = $(CXXINCS) -msse3 -m32 -g3
+CXXFLAGS = $(CXXINCS) -msse3 -m32 -g3 -masm=intel -std=c++11 -Wno-write-strings
 CFLAGS   = $(INCS) -msse3 -m32 -g3 -masm=intel
 RM       = rm.exe -f
 
@@ -23,7 +22,7 @@ clean: clean-custom
 	${RM} $(OBJ) $(BIN)
 
 $(BIN): $(OBJ)
-	$(CC) $(LINKOBJ) -o $(BIN) $(LIBS)
+	$(CPP) $(LINKOBJ) -o $(BIN) $(LIBS)
 
 main.o: main.c
 	$(CC) -c main.c -o main.o $(CFLAGS)
@@ -36,9 +35,6 @@ brush.o: brush.c
 
 bsp_cmp.o: bsp_cmp.c
 	$(CC) -c bsp_cmp.c -o bsp_cmp.o $(CFLAGS)
-
-r_editor.o: r_editor.c
-	$(CC) -c r_editor.c -o r_editor.o $(CFLAGS)
 
 pvs.o: pvs.c
 	$(CC) -c pvs.c -o pvs.o $(CFLAGS)
@@ -116,7 +112,7 @@ r_skybox.o: r_skybox.c
 	$(CC) -c ../common/bsp.c -o ../common/bsp.o $(CFLAGS)
 
 ../common/gui.o: ../common/gui.c
-	$(CC) -c ../common/gui.c -o ../common/gui.o $(CFLAGS)
+	$(CPP) -c ../common/gui.c -o ../common/gui.o $(CXXFLAGS)
 
 ../common/player.o: ../common/player.c
 	$(CC) -c ../common/player.c -o ../common/player.o $(CFLAGS)
@@ -125,16 +121,13 @@ r_skybox.o: r_skybox.c
 	$(CC) -c ../common/world.c -o ../common/world.o $(CFLAGS)
 
 ../common/physics.o: ../common/physics.c
-	$(CC) -c ../common/physics.c -o ../common/physics.o $(CFLAGS)
+	$(CPP) -c ../common/physics.c -o ../common/physics.o $(CXXFLAGS)
 
 ../common/r_text.o: ../common/r_text.c
 	$(CC) -c ../common/r_text.c -o ../common/r_text.o $(CFLAGS)
 
 ed_ui.o: ed_ui.c
 	$(CC) -c ed_ui.c -o ed_ui.o $(CFLAGS)
-
-ed_proj.o: ed_proj.c
-	$(CC) -c ed_proj.c -o ed_proj.o $(CFLAGS)
 
 ../common/font.o: ../common/font.c
 	$(CC) -c ../common/font.c -o ../common/font.o $(CFLAGS)
@@ -160,9 +153,6 @@ ed_proj.o: ed_proj.c
 ../common/gui_text_field.o: ../common/gui_text_field.c
 	$(CC) -c ../common/gui_text_field.c -o ../common/gui_text_field.o $(CFLAGS)
 
-ed_in.o: ed_in.c
-	$(CC) -c ed_in.c -o ed_in.o $(CFLAGS)
-
 ../common/log.o: ../common/log.c
 	$(CC) -c ../common/log.c -o ../common/log.o $(CFLAGS)
 
@@ -178,20 +168,8 @@ ed_in.o: ed_in.c
 ../common/file.o: ../common/file.c
 	$(CC) -c ../common/file.c -o ../common/file.o $(CFLAGS)
 
-../common/texture.o: ../common/texture.c
-	$(CC) -c ../common/texture.c -o ../common/texture.o $(CFLAGS)
-
 ../common/gui_surface.o: ../common/gui_surface.c
 	$(CC) -c ../common/gui_surface.c -o ../common/gui_surface.o $(CFLAGS)
-
-ed_ui_brush.o: ed_ui_brush.c
-	$(CC) -c ed_ui_brush.c -o ed_ui_brush.o $(CFLAGS)
-
-ed_ui_material.o: ed_ui_material.c
-	$(CC) -c ed_ui_material.c -o ed_ui_material.o $(CFLAGS)
-
-ed_ui_texture.o: ed_ui_texture.c
-	$(CC) -c ed_ui_texture.c -o ed_ui_texture.o $(CFLAGS)
 
 ed_ui_explorer.o: ed_ui_explorer.c
 	$(CC) -c ed_ui_explorer.c -o ed_ui_explorer.o $(CFLAGS)
@@ -205,12 +183,113 @@ ed_ui_explorer.o: ed_ui_explorer.c
 ../common/gui_item_list.o: ../common/gui_item_list.c
 	$(CC) -c ../common/gui_item_list.c -o ../common/gui_item_list.o $(CFLAGS)
 
-ed_ui_entity.o: ed_ui_entity.c
-	$(CC) -c ed_ui_entity.c -o ed_ui_entity.o $(CFLAGS)
-
 ../common/memory.o: ../common/memory.c
 	$(CC) -c ../common/memory.c -o ../common/memory.o $(CFLAGS)
 
-wtf_editor_private.res: wtf_editor_private.rc 
-	$(WINDRES) -i wtf_editor_private.rc -F pe-i386 --input-format=rc -o wtf_editor_private.res -O coff 
+../common/gmath/fixed.o: ../common/gmath/fixed.c
+	$(CPP) -c ../common/gmath/fixed.c -o ../common/gmath/fixed.o $(CXXFLAGS)
 
+../common/mpk_read.o: ../common/mpk_read.c
+	$(CC) -c ../common/mpk_read.c -o ../common/mpk_read.o $(CFLAGS)
+
+../common/mpk_write.o: ../common/mpk_write.c
+	$(CC) -c ../common/mpk_write.c -o ../common/mpk_write.o $(CFLAGS)
+
+../common/r_debug.o: ../common/r_debug.c
+	$(CC) -c ../common/r_debug.c -o ../common/r_debug.o $(CFLAGS)
+
+"level\ editor/ed_level.o": level\ editor/ed_level.c
+	$(CC) -c "level editor/ed_level.c" -o "level editor/ed_level.o" $(CFLAGS)
+
+"level\ editor/ed_level_draw.o": level\ editor/ed_level_draw.c
+	$(CC) -c "level editor/ed_level_draw.c" -o "level editor/ed_level_draw.o" $(CFLAGS)
+
+ed_draw.o: ed_draw.c
+	$(CC) -c ed_draw.c -o ed_draw.o $(CFLAGS)
+
+../common/r_imediate.o: ../common/r_imediate.c
+	$(CC) -c ../common/r_imediate.c -o ../common/r_imediate.o $(CFLAGS)
+
+ed_selection.o: ed_selection.c
+	$(CC) -c ed_selection.c -o ed_selection.o $(CFLAGS)
+
+"level\ editor/ed_level_ui.o": level\ editor/ed_level_ui.c
+	$(CC) -c "level editor/ed_level_ui.c" -o "level editor/ed_level_ui.o" $(CFLAGS)
+
+"entity\ editor/ed_entity.o": entity\ editor/ed_entity.c
+	$(CC) -c "entity editor/ed_entity.c" -o "entity editor/ed_entity.o" $(CFLAGS)
+
+"entity\ editor/ed_entity_draw.o": entity\ editor/ed_entity_draw.c
+	$(CC) -c "entity editor/ed_entity_draw.c" -o "entity editor/ed_entity_draw.o" $(CFLAGS)
+
+"entity\ editor/ed_entity_ui.o": entity\ editor/ed_entity_ui.c
+	$(CC) -c "entity editor/ed_entity_ui.c" -o "entity editor/ed_entity_ui.o" $(CFLAGS)
+
+../common/r_gl.o: ../common/r_gl.c
+	$(CC) -c ../common/r_gl.c -o ../common/r_gl.o $(CFLAGS)
+
+ed_name.o: ed_name.c
+	$(CC) -c ed_name.c -o ed_name.o $(CFLAGS)
+
+../common/shd_pprc.o: ../common/shd_pprc.c
+	$(CC) -c ../common/shd_pprc.c -o ../common/shd_pprc.o $(CFLAGS)
+
+../common/r_shader.o: ../common/r_shader.c
+	$(CC) -c ../common/r_shader.c -o ../common/r_shader.o $(CFLAGS)
+
+"level\ editor/ed_ui_brush.o": level\ editor/ed_ui_brush.c
+	$(CC) -c "level editor/ed_ui_brush.c" -o "level editor/ed_ui_brush.o" $(CFLAGS)
+
+"level\ editor/ed_ui_entity.o": level\ editor/ed_ui_entity.c
+	$(CC) -c "level editor/ed_ui_entity.c" -o "level editor/ed_ui_entity.o" $(CFLAGS)
+
+"level\ editor/ed_ui_material.o": level\ editor/ed_ui_material.c
+	$(CC) -c "level editor/ed_ui_material.c" -o "level editor/ed_ui_material.o" $(CFLAGS)
+
+"level\ editor/ed_ui_texture.o": level\ editor/ed_ui_texture.c
+	$(CC) -c "level editor/ed_ui_texture.c" -o "level editor/ed_ui_texture.o" $(CFLAGS)
+
+../common/particle.o: ../common/particle.c
+	$(CC) -c ../common/particle.c -o ../common/particle.o $(CFLAGS)
+
+"material\ editor/ed_material.o": material\ editor/ed_material.c
+	$(CPP) -c "material editor/ed_material.c" -o "material editor/ed_material.o" $(CXXFLAGS)
+
+../common/script.o: ../common/script.c
+	$(CPP) -c ../common/script.c -o ../common/script.o $(CXXFLAGS)
+
+../common/src_math.o: ../common/src_math.c
+	$(CC) -c ../common/src_math.c -o ../common/src_math.o $(CFLAGS)
+
+../common/scr_types.o: ../common/scr_types.c
+	$(CPP) -c ../common/scr_types.c -o ../common/scr_types.o $(CXXFLAGS)
+
+../common/navigation.o: ../common/navigation.c
+	$(CC) -c ../common/navigation.c -o ../common/navigation.o $(CFLAGS)
+
+../common/texture.o: ../common/texture.c
+	$(CC) -c ../common/texture.c -o ../common/texture.o $(CFLAGS)
+
+../common/phy_character.o: ../common/phy_character.c
+	$(CPP) -c ../common/phy_character.c -o ../common/phy_character.o $(CXXFLAGS)
+
+"event\ editor/ed_event.o": event\ editor/ed_event.c
+	$(CPP) -c "event editor/ed_event.c" -o "event editor/ed_event.o" $(CXXFLAGS)
+
+../common/event.o: ../common/event.c
+	$(CC) -c ../common/event.c -o ../common/event.o $(CFLAGS)
+
+../common/scenegraph.o: ../common/scenegraph.c
+	$(CPP) -c ../common/scenegraph.c -o ../common/scenegraph.o $(CXXFLAGS)
+
+../common/imgui/imgui.o: ../common/imgui/imgui.cpp
+	$(CPP) -c ../common/imgui/imgui.cpp -o ../common/imgui/imgui.o $(CXXFLAGS)
+
+../common/imgui/imgui_draw.o: ../common/imgui/imgui_draw.cpp
+	$(CPP) -c ../common/imgui/imgui_draw.cpp -o ../common/imgui/imgui_draw.o $(CXXFLAGS)
+
+../common/gui_tree.o: ../common/gui_tree.c
+	$(CC) -c ../common/gui_tree.c -o ../common/gui_tree.o $(CFLAGS)
+
+../common/scr_entity.o: ../common/scr_entity.c
+	$(CC) -c ../common/scr_entity.c -o ../common/scr_entity.o $(CFLAGS)

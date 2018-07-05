@@ -3,6 +3,11 @@
 
 #include "gui_common.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 option_list_t *gui_CreateOptionList(char *name, short x, short y, short w, short bm_flags, short max_visible_options, void (*option_list_callback)(widget_t *));
 
 option_list_t *gui_AddOptionList(widget_t *widget, char *name, short x, short y, short w, short bm_flags, short max_visible_options, void (*option_list_callback)(widget_t *));
@@ -31,5 +36,8 @@ void gui_UpdateOptionList(widget_t *widget);
 
 void gui_PostUpdateOptionList(widget_t *widget);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

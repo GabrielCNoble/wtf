@@ -11,6 +11,11 @@ enum LOG_MESSAGE_TYPE
 };
 
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void log_Init();
 
 void log_Finish();
@@ -19,6 +24,10 @@ void log_LogMessage(int message_type, char *format, ...);
 
 void log_FlushLog();
 
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

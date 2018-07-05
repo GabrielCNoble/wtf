@@ -1,8 +1,6 @@
 #ifndef GPU_H
 #define GPU_H
 
-
-
 typedef struct
 {
 	int size;
@@ -15,6 +13,7 @@ typedef struct
 {
 	int start;
 	int size;
+	int align_offset;
 }gpu_head_t;
 
 typedef struct
@@ -23,10 +22,15 @@ typedef struct
 	int cursor;
 	gpu_head_t *list;
 	int free_stack_top;
-	int free_stack_size;
+	//int free_stack_size;
 	int *free_stack;
 }gpu_heap_list_t;
 
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 int gpu_Init();
 
@@ -44,11 +48,40 @@ void gpu_Finish();
 
 //void gpu_DeleteGPUBuffer(gpu_buffer_t *buffer);
 
-int gpu_Alloc(int size);
+//int gpu_Alloc(int size);
+
+/*
+========================================================
+========================================================
+========================================================
+*/
+
+int gpu_AllocVerticesAlign(int size, int alignment);
+
+int gpu_AllocIndexesAlign(int size, int alignment);
+
+int gpu_AllocAlign(int size, int alignment, int index_alloc);
 
 int gpu_Realloc(int handle, int size);
 
+/*
+========================================================
+========================================================
+========================================================
+*/
+
+void gpu_FreeVertices(int handle);
+
+void gpu_FreeIndexes(int handle);
+
 void gpu_Free(int handle);
+
+/*
+========================================================
+========================================================
+========================================================
+*/
+
 
 void gpu_ClearHeap();
 
@@ -56,28 +89,28 @@ int gpu_GetAllocStart(int handle);
 
 int gpu_GetAllocSize(int handle);
 
+int gpu_GetVertexOffset(int handle);
 
-/* THOSE FUNCTIONS MODIFY THE CURRENT MAPPED VERTEX ARRAY BUFFER */
+
+/* THOSE FUNCTIONS MODIFY THE CURRENT MAPPED BUFFERS */
 void gpu_Read(int handle, int offset, void *buffer, int count, int direct);
 
-void gpu_Write(int handle, int offset, void *buffer, int count, int direct);
+void gpu_Write(int handle, int offset, void *buffer, int count);
+
+void gpu_WriteNonMapped(int handle, int offset, void *buffer, int count);
+
+void *gpu_MapAlloc(int handle, int acess);
+
+void gpu_UnmapAlloc(int handle);
 
 void gpu_BindGpuHeap();
 
 void gpu_UnbindGpuHeap();
 
 
-
-/* those should ALWAYS be used, for the gpu heap management
-depens upon info updated by those functions */
-void gpu_BindBuffer(int target, unsigned int id);
-
-void *gpu_MapBuffer(int target, int access);
-
-void gpu_UnmapBuffer(int target);
-
-
-
+#ifdef __cplusplus
+}
+#endif
 
 
 

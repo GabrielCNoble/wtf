@@ -9,6 +9,7 @@
 
 #include "GL/glew.h"
 #include "SOIL.h"
+#include "memory.h"
 
 /*#include "IL/ilu.h"
 #include "IL/ilut.h"
@@ -20,10 +21,10 @@
 static char texture_path[256];
 
  
-static int texture_list_size;
-int texture_count;
-texture_t *textures;
-texture_info_t *texture_info;
+static int tex_texture_list_size;
+int tex_texture_count;
+texture_t *tex_textures;
+texture_info_t *tex_texture_info;
 //char **texture_names;
 
 
@@ -40,99 +41,131 @@ static char *suffixes[] =
 	".cubemap_neg_z"
 };
 
-#define MISSING_TEXTURE_SIZE 64
+#define DEFAULT_TEXTURE_SIZE 16
 
 texture_t missing_texture;
 texture_info_t missing_texture_info;
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 int texture_Init()
 {
 	int x;
 	int y;
+	int layer_count = 2;
+	int layer_index;
+	int current_layer_offset;
+	int current_pixel_offset;
+	texture_t *default_texture;
+	
+	char *default_texture_data;
+	char color[4];
+	
 	free_position_stack_top = -1;
-	texture_list_size = 64;
-	texture_count = 0;
-	textures = malloc(sizeof(texture_t) * texture_list_size);
-	texture_info = malloc(sizeof(texture_info_t ) * texture_list_size);
-	free_position_stack = malloc(sizeof(int) * texture_list_size);
-	
-	char *missing_texture_bytes = malloc(MISSING_TEXTURE_SIZE * MISSING_TEXTURE_SIZE * 4);
+	tex_texture_list_size = 64;
+	tex_texture_count = 0;
+	tex_textures = memory_Malloc(sizeof(texture_t) * (tex_texture_list_size + 1), "texture_Init");
+	tex_texture_info = memory_Malloc(sizeof(texture_info_t ) * tex_texture_list_size, "texture_Init");
+	free_position_stack = memory_Malloc(sizeof(int) * tex_texture_list_size, "texture_Init");
 	
 	
-	for(y = 0; y < MISSING_TEXTURE_SIZE; y++)
+	default_texture = tex_textures;
+	tex_textures++;
+	
+	
+	default_texture->bm_flags = 0;
+	default_texture->frame_count = 1;
+	default_texture->gl_handle = texture_GenEmptyGLTexture(GL_TEXTURE_2D_ARRAY, GL_NEAREST, GL_NEAREST, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
+	default_texture->target = GL_TEXTURE_2D_ARRAY;
+	
+	default_texture_data = memory_Malloc(DEFAULT_TEXTURE_SIZE * DEFAULT_TEXTURE_SIZE * 4 * layer_count, "texture_Init");
+	
+	for(layer_index = 0; layer_index < layer_count; layer_index++)
 	{
-		for(x = 0; x < MISSING_TEXTURE_SIZE; x++)
+		
+		switch(layer_index)
 		{
-			if((x + y) % 2)
-			{
-				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4] = 0xff;
-				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4 + 1] = 0;
-				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4 + 2] = 0xff;
-				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4 + 3] = 0;
-			}
-			else
-			{
-				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4] = 0;
-				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4 + 1] = 0;
-				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4 + 2] = 0;
-				missing_texture_bytes[y * 4 * MISSING_TEXTURE_SIZE + x * 4 + 3] = 0;
-			}
+			case 0:
+				color[0] = 0xff;
+				color[1] = 0;
+				color[2] = 0xff;
+				color[3] = 0xff;
+			break;
+			
+			case 1:
+				color[0] = 0;
+				color[1] = 0xff;
+				color[2] = 0;
+				color[3] = 0xff;
+			break;
+		}
+		
+		current_layer_offset = layer_index * DEFAULT_TEXTURE_SIZE * DEFAULT_TEXTURE_SIZE * 4;
+		
+		for(y = 0; y < DEFAULT_TEXTURE_SIZE; y++)
+		{
+			for(x = 0; x < DEFAULT_TEXTURE_SIZE; x++)
+			{	
+				current_pixel_offset = y * 4 * DEFAULT_TEXTURE_SIZE + x * 4 + current_layer_offset;
 				
+				if((x + y) % 2)
+				{
+					default_texture_data[current_pixel_offset] = color[0];
+					default_texture_data[current_pixel_offset + 1] = color[1];
+					default_texture_data[current_pixel_offset + 2] = color[2];
+					default_texture_data[current_pixel_offset + 3] = color[3];
+				}
+				else
+				{
+					default_texture_data[current_pixel_offset] = 0;
+					default_texture_data[current_pixel_offset + 1] = 0;
+					default_texture_data[current_pixel_offset + 2] = 0;
+					default_texture_data[current_pixel_offset + 3] = 0;
+				}		
+			}
 		}
 	}
+		
 	
 	
+	glBindTexture(GL_TEXTURE_2D_ARRAY, default_texture->gl_handle);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, DEFAULT_TEXTURE_SIZE, DEFAULT_TEXTURE_SIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, default_texture_data);
+	glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, DEFAULT_TEXTURE_SIZE, DEFAULT_TEXTURE_SIZE, layer_count, 0, GL_RGBA, GL_UNSIGNED_BYTE, default_texture_data);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 	
-	missing_texture_info.name = strdup("missing texture");
-	missing_texture_info.file_name = NULL;
-	missing_texture_info.width = MISSING_TEXTURE_SIZE;
-	missing_texture_info.height = MISSING_TEXTURE_SIZE;
-	missing_texture_info.internal_format = GL_RGBA8;
-	missing_texture_info.format = GL_RGBA;
-	
-	missing_texture.bm_flags = 0;
-	
-	glGenTextures(1, &missing_texture.gl_handle);
-	glBindTexture(GL_TEXTURE_2D, missing_texture.gl_handle);
-	
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, MISSING_TEXTURE_SIZE, MISSING_TEXTURE_SIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, missing_texture_bytes);
-	
-	
-	glBindTexture(GL_TEXTURE_2D, 0);
-	
-	free(missing_texture_bytes);
-	
-	
+	memory_Free(default_texture_data);
+		
 	return 1;
 }
 
 void texture_Finish()
 {
-	int i;
-	for(i = 0; i < texture_count; i++)
+	int i; 
+	for(i = 0; i < tex_texture_count; i++)
 	{
 		//free(texture_names[i]);
-		if(textures[i].gl_handle != 0)
+		if(tex_textures[i].gl_handle != 0)
 		{
-			free(texture_info[i].name);
-			free(texture_info[i].file_name);
-			free(texture_info[i].full_path);
-			glDeleteTextures(1, &textures[i].gl_handle);
+			
+			memory_Free(tex_texture_info[i].name);
+			memory_Free(tex_texture_info[i].file_name);
+			//free(texture_info[i].full_path);
+			glDeleteTextures(1, &tex_textures[i].gl_handle);
 		}
 		
 	}
 	
-	free(texture_info);
-	free(textures);
-	free(free_position_stack);
+	tex_textures--;
+	glDeleteTextures(1, &tex_textures[0].gl_handle);
 	
-	glDeleteTextures(1, &missing_texture.gl_handle);
+	memory_Free(tex_texture_info);
+	memory_Free(tex_textures);
+	memory_Free(free_position_stack);
+	
+	//glDeleteTextures(1, &missing_texture.gl_handle);
 	
 	//ilShutdown();
 }
@@ -141,6 +174,159 @@ void texture_Finish()
 {
 	strcpy(texture_path, path);
 }*/
+
+unsigned int texture_GenEmptyGLTexture(int target, int min_filter, int mag_filter, int wrap_s, int wrap_t, int wrap_r, int base_level, int max_level)
+{
+	unsigned int handle;
+	int temp;
+	int i;
+	int wrap_mode_test_count;
+	int wrap_mode;
+	
+	int filter_mode;
+	
+	switch(target)
+	{
+		case GL_TEXTURE_1D:
+		case GL_TEXTURE_1D_ARRAY:
+			wrap_mode_test_count = 1;
+		break;	
+			
+		case GL_TEXTURE_2D:
+		case GL_TEXTURE_2D_ARRAY:
+			wrap_mode_test_count = 2;
+		break;
+			
+		case GL_TEXTURE_3D:
+			wrap_mode_test_count = 3;
+			
+		break;	
+		
+		default:
+			printf("texture_GetEmptyGLTexture: invalid target!\n");
+			return 0;
+		break;
+	}
+	
+	for(i = 0; i < 2; i++)
+	{
+		switch(i)
+		{
+			case 0:
+				filter_mode = min_filter;
+			break;
+			
+			case 1:
+				filter_mode = mag_filter;
+			break;
+		}
+		
+		
+		switch(filter_mode )
+		{
+			case GL_NEAREST:
+			case GL_NEAREST_MIPMAP_NEAREST:
+			case GL_NEAREST_MIPMAP_LINEAR:
+			
+			case GL_LINEAR:
+			case GL_LINEAR_MIPMAP_NEAREST:
+			case GL_LINEAR_MIPMAP_LINEAR:
+				
+			break;
+			
+			default:
+				printf("texture_GenEmptyGLTexture: invalid filtering mode!\n");
+				return 0;	
+				
+		}
+		
+		
+	}
+	
+	
+	for(i = 0; i < wrap_mode_test_count; i++)
+	{
+		switch(i)
+		{
+			case 0:
+				wrap_mode = wrap_s;
+			break;
+			
+			case 1:
+				wrap_mode = wrap_t;
+			break;
+			
+			case 2:
+				wrap_mode = wrap_r;
+			break;
+		}
+		
+		switch(wrap_mode)
+		{
+			/*case GL_NEAREST:
+			case GL_NEAREST_MIPMAP_NEAREST:
+			case GL_NEAREST_MIPMAP_LINEAR:
+			
+			case GL_LINEAR:
+			case GL_LINEAR_MIPMAP_NEAREST:
+			case GL_LINEAR_MIPMAP_LINEAR:*/
+			
+			case GL_CLAMP:
+			case GL_CLAMP_TO_BORDER:
+			case GL_REPEAT:
+			
+			break;
+			
+			default:
+				printf("texture_GenEmptyGLTexture: invalid wrap mode!\n");
+				return 0;	
+				
+		}
+		
+	}
+	
+	
+	if(base_level < 0)
+	{
+		printf("texture_GenEmptyGLTexture: negative base level. Clamping to zero...\n");
+		base_level = 0;
+	}
+	
+	if(max_level < 0)
+	{
+		printf("texture_GenEmptyGLTexture: negative max level. Clamping to zero...\n");
+		max_level = 0;
+	}
+	
+	if(base_level > max_level)
+	{
+		printf("texture_GenEmptyGLTexture: base level greater than max level...\n");
+		temp = base_level;
+		base_level = max_level;
+		max_level = temp;
+	}
+	
+	
+	glGenTextures(1, &handle);
+	glBindTexture(target, handle);
+	glTexParameteri(target, GL_TEXTURE_MIN_FILTER, min_filter);
+	glTexParameteri(target, GL_TEXTURE_MAG_FILTER, mag_filter);
+	glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap_s);
+	glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap_t);
+	glTexParameteri(target, GL_TEXTURE_WRAP_R, wrap_r);
+	glTexParameteri(target, GL_TEXTURE_BASE_LEVEL, base_level);
+	glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, max_level);
+	
+	if(max_level)
+	{
+		glGenerateMipmap(target);
+	}
+	
+	glBindTexture(target, 0);
+	
+	
+	return handle;
+}
 
 int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 {
@@ -205,40 +391,27 @@ int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 	{
 		full_path = path_GetPathToFile(file_name);
 	
+		/* didn't find a path to the file... */
 		if(!full_path)
 		{
 			printf("couldn't fild file [%s] for texture [%s]!\n", file_name, name);
-			return;
+			return -1;
 		}
 		
 		tex_data = SOIL_load_image(full_path, &width, &height, &channels, SOIL_LOAD_AUTO);
 		
+		/* couldn't open the file... */
 		if(!tex_data)
 		{
 			printf("couldn't load %s!\nFailure reason: %s\n", name, SOIL_last_result());
-			return;
+			return -1;
 		}
 	}
 	else
 	{
+		/* file_name containst the full path to the file... */
 		full_path = file_name;
 	}
-	
-	
-	full_path_len = strlen(full_path);
-	
-	/* strip away the file name, keeping only
-	the path to the file... */	
-	for(tex_file_name_start = full_path_len; tex_file_name_start > 0; tex_file_name_start--)
-	{
-		if(full_path[tex_file_name_start] == '\\' || full_path[tex_file_name_start] == '/')
-		{
-			tex_file_name_start ++;
-			break;
-		}
-	}
-	
-	
 	
 	
 	if(free_position_stack_top >= 0)
@@ -247,34 +420,34 @@ int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 	}
 	else
 	{
-		texture_index = texture_count++;
+		texture_index = tex_texture_count++;
 		
-		if(texture_index >= texture_list_size)
+		if(texture_index >= tex_texture_list_size)
 		{
 			
-			free(free_position_stack);
+			memory_Free(free_position_stack);
 			
-			texture = malloc(sizeof(texture_t) * (texture_list_size + 16));
-			texture_info = malloc(sizeof(texture_info_t) * (texture_list_size + 16));
+			texture = memory_Malloc(sizeof(texture_t) * (tex_texture_list_size + 16), "texture_LoadTexture");
+			tex_texture_info = memory_Malloc(sizeof(texture_info_t) * (tex_texture_list_size + 16), "texture_LoadTexture");
 			//c_temp = malloc(sizeof(char *) * (texture_list_size + 16));
-			free_position_stack = malloc(sizeof(int) * (texture_list_size + 16));
+			free_position_stack = memory_Malloc(sizeof(int) * (tex_texture_list_size + 16), "texture_LoadTexture");
 			
-			memcpy(texture, textures, sizeof(texture_t) * texture_list_size);
-			memcpy(info, texture_info, sizeof(texture_info_t) * texture_list_size);
+			memcpy(texture, tex_textures, sizeof(texture_t) * tex_texture_list_size);
+			memcpy(info, tex_texture_info, sizeof(texture_info_t) * tex_texture_list_size);
 		
 			
-			free(textures);
-			free(texture_info);
+			memory_Free(tex_textures);
+			memory_Free(tex_texture_info);
 			
-			textures = texture;
-			texture_info = info;
+			tex_textures = texture;
+			tex_texture_info = info;
 		}
 	}
 	
 	
 	
-	texture = &textures[texture_index];
-	info = &texture_info[texture_index];
+	texture = &tex_textures[texture_index];
+	info = &tex_texture_info[texture_index];
 	
 	
 	/*texture->gl_handle = gl_tex_handle;
@@ -312,7 +485,7 @@ int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 	//strcpy(tex_file_name, full_path + tex_file_name_start);
 	//memcpy(tex_file_name, full_path + )
 	
-	glActiveTexture(GL_TEXTURE0);
+	/*glActiveTexture(GL_TEXTURE0);
 	glGenTextures(1, &gl_tex_handle);
 	glBindTexture(GL_TEXTURE_2D, gl_tex_handle);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
@@ -320,10 +493,14 @@ int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 4);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 4);*/
+	
+	gl_tex_handle = texture_GenEmptyGLTexture(GL_TEXTURE_2D, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR_MIPMAP_LINEAR, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 4);
 	
 	texture->gl_handle = gl_tex_handle;
 	texture->bm_flags = bm_flags & (~TEXTURE_INVALID);
+	texture->frame_count = 1;
+	texture->target = GL_TEXTURE_2D;
 	
 	//printf("%d\n", channels);
 	
@@ -347,15 +524,19 @@ int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 			glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 		break;
 	}
+	glBindTexture(GL_TEXTURE_2D, gl_tex_handle);
 	glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, tex_data);
 	glGenerateMipmap(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 	
 	
-	info->name = strdup(name);
-	info->file_name = strdup(full_path + tex_file_name_start);
-	info->full_path = strdup(full_path);
+	info->name = memory_Strdup(name, "texture_LoadTexture");
+	
+	/* keep the full path to the file to enable
+	the original file to be copied into the proper
+	folder if needed... */
+	info->file_name = memory_Strdup(full_path, "texture_LoadTexture");
 	info->format = format;
 	info->internal_format = internal_format;
 	info->width = width;
@@ -366,21 +547,14 @@ int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 	info->mag_filter = GL_LINEAR_MIPMAP_LINEAR;
 	info->wrap_s = GL_REPEAT;
 	info->wrap_t = GL_REPEAT;
-	info->target = GL_TEXTURE_2D;
+	//info->target = GL_TEXTURE_2D;
 	info->ref_count = 0;
+
 	
-	//printf("%s %d %x\n", name, channels, glGetError());
-	
-	
-	//info->bm_flags = bm_flags;
-	
-	//printf("texture_LoadTexture: texture [%s] with name [%s] loaded!\n", info->file_name, info->name);
-	
+	/* this got returned by soil, which uses malloc and free... */
 	free(tex_data);
-	
 	return texture_index;
-	
-	//ilDeleteImages(1, &il_tex_handle);	
+
 }
 
 
@@ -597,12 +771,12 @@ int texture_LoadCubeTexture(char *file_name, char *name)
 
 void texture_DeleteTextureByIndex(int texture_index)
 {
-	if(texture_index >= 0 && texture_index < texture_count)
+	if(texture_index >= 0 && texture_index < tex_texture_count)
 	{
-		if(textures[texture_index].gl_handle)
+		if(tex_textures[texture_index].gl_handle)
 		{
-			glDeleteTextures(1, &textures[texture_index].gl_handle);
-			textures[texture_index].gl_handle = 0;
+			glDeleteTextures(1, &tex_textures[texture_index].gl_handle);
+			tex_textures[texture_index].gl_handle = 0;
 			free_position_stack_top++;
 			free_position_stack[free_position_stack_top] = texture_index;
 		}
@@ -613,16 +787,32 @@ int texture_GetTexture(char *name)
 {
 	int i;
 	
-	for(i = 0; i < texture_count; i++)
+	if(name)
 	{
-		if(!strcmp(name, texture_info[i].name))
+		for(i = -1; i < tex_texture_count; i++)
 		{
-			return i;
+			if(!strcmp(name, tex_texture_info[i].name))
+			{
+				return i;
+			}
 		}
 	}
 	
 	return -1;
 }
+
+char *texture_GetTextureName(int texture_index)
+{
+	if(texture_index >= -1 && texture_index < tex_texture_count)
+	{
+		if(tex_textures[texture_index].bm_flags & TEXTURE_INVALID)
+		{
+			return NULL;
+		}
+		
+		return tex_texture_info[texture_index].name;
+	}
+} 
 
 void texture_UploadTexture(int texture_index)
 {
@@ -633,12 +823,13 @@ void texture_TexParameteri(int texture_index, int param, int value)
 {
 	int target;
 	unsigned int handle;
-	if(texture_index >= 0 && texture_index < texture_count)
+	if(texture_index >= 0 && texture_index < tex_texture_count)
 	{
-		if(textures[texture_index].gl_handle)
+		if(tex_textures[texture_index].gl_handle)
 		{
-			target = texture_info[texture_index].target;
-			handle = textures[texture_index].gl_handle;
+			//target = tex_texture_info[texture_index].target;
+			target = tex_textures[texture_index].target;
+			handle = tex_textures[texture_index].gl_handle;
 			
 			switch(param)
 			{
@@ -671,8 +862,19 @@ void texture_TexParameteri(int texture_index, int param, int value)
 
 
 
+void texture_SerializeTextures(void **buffer, int *buffer_size)
+{
+	
+}
 
+void texture_DeserializeTextures(void **buffer)
+{
+	
+}
 
+#ifdef __cplusplus
+}
+#endif
 
 
 

@@ -161,23 +161,7 @@ typedef struct
 ===================================================================
 */
 
-typedef struct
-{
-	mat3_t orientation;
-	vec3_t position;
-	vec3_t scale;
-	int vertex_count;
-	//int index_count;
-	int triangle_group_count;
-	int polygon_count;
-	short type;
-	short bm_flags;
-}brush_record_t;
 
-static struct
-{
-	brush_record_t record;
-}brush_record_size_t;
 
 
 /*
@@ -186,21 +170,7 @@ static struct
 ===================================================================
 */
 
-typedef struct
-{
-	int vert_count;
-	int first_index_offset;
-	vec3_t normal;
-	char material_name[1];
-	//char material_name[MAX_NAME_LEN];
-}polygon_record_t;
 
-
-static struct
-{
-	polygon_record_t record;
-	char max_material_name[BSP_FILE_MAX_NAME_LEN - 1];
-}polygon_record_size_t;
 
 
 /*
@@ -248,7 +218,7 @@ void editor_DirtyProject();
 
 void editor_CleanProject();
 
-char *editor_GetAbsolutePathToProject();
+char *editor_GetFullPathToProjectFileFolder();
  
 #endif
 

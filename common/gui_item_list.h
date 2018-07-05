@@ -3,6 +3,11 @@
 
 #include "gui_common.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 item_list_t *gui_CreateItemList(char *name, short x, short y, short w, short h, unsigned short flags, void (*item_list_callback)(widget_t *));
 
 item_list_t *gui_AddItemList(widget_t *parent, char *name, short x, short y, short w, short h, unsigned short flags, void (*item_list_callback)(widget_t *));
@@ -23,6 +28,9 @@ void gui_UpdateItemList(item_list_t *list);
 
 void gui_PostUpdateItemList(item_list_t *list);
 
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

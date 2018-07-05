@@ -51,6 +51,12 @@ static int last_used_sound_param_buffer;
 static int last_released_sound_param_buffer;
 static sound_param_buffer_t *sound_param_buffers;
 
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 int sound_Init()
 {
 	
@@ -516,7 +522,9 @@ int sound_SoundThread(void *param)
 }
 
 
-
+#ifdef __cplusplus
+}
+#endif
 
 
 

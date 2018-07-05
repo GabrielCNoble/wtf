@@ -5,6 +5,10 @@
 #include "vector_types.h"
 #include "camera_types.h"
 #include "model.h"
+#include "scr_common.h"
+#include "ent_common.h"
+
+#include "physics.h"
 
 #define PLAYER_CAMERA_HEIGHT 0.75
 //#define PLAYER_CAMERA_HEIGHT 0.0
@@ -49,12 +53,35 @@ enum SPAWN_POINT_FLAGS
 	SPAWN_POINT_INVALID = 1,
 };
 
+
+typedef struct player_def_t
+{
+	struct player_def_t *next;
+	struct player_def_t *prev;
+	
+	char *name;
+	
+	collider_def_t *collider_def;
+}player_def_t;
+
+
+struct ai_script_t
+{
+	struct script_t script;
+	void *ai_controller;
+	
+};
+
+
+
 typedef struct
 {
 	mat3_t player_orientation;
-	vec3_t collision_box_position;
+	//vec3_t collision_box_position;
 	vec3_t player_position;
-	vec3_t delta;
+	
+	int collider_index;
+	//vec3_t delta;
 	
 	
 	camera_t *player_camera;
@@ -88,36 +115,63 @@ typedef struct
 	char *name;
 }spawn_point_t;
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 int player_Init();
 
 void player_Finish();
 
-int player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation);
+/*
+========================================================================================
+========================================================================================
+========================================================================================
+*/
 
-void player_DestroyPlayer(char *name);
+player_def_t *player_CreatePlayerDef(char *name, collider_def_t *collider_def);
 
-void player_DestroyPlayerIndex(int player_index);
+void player_DestroyPlayerDef(char *name);
 
-int player_CreateSpawnPoint(vec3_t position, char *name);
+player_def_t *player_GetPlayerDefPointer(char *name);
 
-void player_DestroySpawnPoint(int spawn_point_index);
+/*
+========================================================================================
+========================================================================================
+========================================================================================
+*/
 
-void player_DestroyAllSpawnPoints();
+int player_SpawnPlayer(mat3_t *orientation, vec3_t position, vec3_t scale, player_def_t *def);
 
-void player_SpawnPlayer(int player_index, int spawn_point_index);
 
-void player_RemovePlayer(int player_index);
+struct ai_script_t *player_LoadAIScript(char *file_name, char *script_name);
 
-player_t *player_GetPlayer(char *name);
+//int player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation);
 
-player_t *player_GetActivePlayer();
+//void player_DestroyPlayer(char *name);
 
-void player_SetPlayerAsActive(player_t *player);
+//void player_DestroyPlayerIndex(int player_index);
 
-void player_SetPlayerAsActiveIndex(int player_index);
+//int player_CreateSpawnPoint(vec3_t position, char *name);
 
-void player_ProcessActivePlayer(double delta_time);
+//void player_DestroySpawnPoint(int spawn_point_index);
+
+//void player_DestroyAllSpawnPoints();
+
+//void player_SpawnPlayer(int player_index, int spawn_point_index);
+
+//void player_RemovePlayer(int player_index);
+
+//player_t *player_GetPlayer(char *name);
+
+//player_t *player_GetActivePlayer();
+
+//void player_SetPlayerAsActive(player_t *player);
+
+void player_SetPlayerAsActiveIndex(struct entity_handle_t player);
+
+void player_UpdateActivePlayer(double delta_time);
 
 void player_ProcessAI(float delta_time);
 
@@ -128,5 +182,12 @@ void player_PostUpdatePlayers(double delta_time);
 void player_Move(player_t *player, float delta_time);
 
 void player_TransformPlayers();
+
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -13,9 +13,20 @@
 #include "gui_surface.h"
 #include "gui_item_list.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 int gui_Init();
 
 void gui_Finish();
+
+
+void gui_OpenGuiFrame();
+
+void gui_CloseGuiFrame();
+
 
 widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h, int type);
 
@@ -33,6 +44,10 @@ void gui_SetVisible(widget_t *widget);
 
 void gui_SetInvisible(widget_t *widget);
 
+void gui_SetIgnoreMouse(widget_t *widget);
+
+void gui_SetReceiveMouse(widget_t *widget);
+
 void gui_RenderText(widget_t *widget);
 
 gui_var_t *gui_CreateVar(char *name, short type, void *addr, void *refresh_base, int offset);
@@ -44,6 +59,13 @@ void gui_DeleteVar(gui_var_t *var);
 void gui_UpdateVars();
 
 void gui_SetVarValue(gui_var_t *var, gui_var_t value);
+
+
+void gui_UpdateWidgetRelativeMouse(widget_t *widget, short parent_x, short parent_y);
+
+void gui_UpdateWidgetMouseEvents(widget_t *widget);
+
+void gui_UpdateWidgetEdges(widget_t *widget, short parent_x, short parent_y);
 
 void gui_ProcessGUI();
 
@@ -72,6 +94,19 @@ gui_var_t gui_MakeVec3Var(vec3_t value);
 void gui_UpdateWidget(widget_t *widget);
 
 void gui_PostUpdateWidget(widget_t *widget);
+
+
+void gui_LinkLeftEdge(widget_t *widget, widget_t *right_edge);
+
+void gui_LinkBottomEdge(widget_t *widget, widget_t *bottom_edge);
+
+linked_edge_t *gui_LinkEdges(widget_t *to_link, widget_t *link_to, int to_link_edge, int link_to_edge);
+
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif
 

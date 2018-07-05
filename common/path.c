@@ -5,15 +5,29 @@
 #include <stdio.h>
 #include <string.h>
 #include <dirent.h>
+#include <io.h>
+
+#include "memory.h"
 
 
 #define SEARCH_PATH_MAX_LEN 512
+#define DEFAULT_SEARCH_PATH_COUNT 8
 
-static char base_path[512];
-char *current_directory;
-static int base_path_len;
-struct search_paths_t *paths;
-char *path_ext_table[SEARCH_PATH_ALL][15];
+static char pth_base_path[512];
+static char pth_current_directory[512];
+static char pth_user_documents_directory[512];
+
+
+
+//char current_directory[512];
+//static int base_path_len;
+//struct search_paths_set_t *path_sets;
+//char *path_ext_table[SEARCH_PATH_ALL][15];
+
+
+int pth_max_search_paths = 0;
+int pth_search_path_count = 0;
+search_path_t *pth_search_paths = NULL;
 
 char *vis_file_exts[] = 
 {
@@ -33,9 +47,14 @@ char *vis_file_exts[] =
 };
  
 
-int max_dir_elements = 0;
-int dir_elements_count = 0;
-dir_element_t *dir_elements = NULL;
+int pth_max_dir_elements = 0;
+int pth_dir_element_count = 0;
+dir_element_t *pth_dir_elements = NULL;
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 void path_Init(char *path)
 {
@@ -43,101 +62,40 @@ void path_Init(char *path)
 	int i;
 	int j;
 	
-	int path_len;
-	
-	path_len = strlen(path);
-	
-	for(i = path_len; i > 0; i--)
-	{
-		if(path[i] == '\\' || path[i] == '/')
-		{
-			break;
-		}
-	}
-	
-	if(!i)
-	{
-		i = path_len;
-	}
+	//int path_len;
 	
 	
-	current_directory = calloc(512, 1);
-	
-	//memcpy(base_path, path, i);
-	
-	for(j = 0; j < i; j++)
-	{
-		base_path[j] = path[j];
-	}
-	
-	base_path[j] = '\0';
-	current_directory[0] = '\0';
-	base_path_len = strlen(base_path);
-	
-	path_len = i;
-	
-	for(i = 0; i < path_len; i++)
-	{
-		if(base_path[i] == '\\')
-		{
-			base_path[i] = '/';
-		}
-	}
-	
-	//printf("%s\n", base_path);
 	
 	
-	paths = malloc(sizeof(struct search_paths_t) * SEARCH_PATH_ALL);
+	pth_max_search_paths = 128;
+	pth_search_paths = memory_Malloc(sizeof(search_path_t) * (pth_max_search_paths + DEFAULT_SEARCH_PATH_COUNT), "path_Init");
 	
+	strcpy(pth_search_paths[0].path, "shaders");
+	strcpy(pth_search_paths[1].path, "shaders/engine");
+	strcpy(pth_search_paths[2].path, "sounds");
+	strcpy(pth_search_paths[3].path, "sprites");
+	strcpy(pth_search_paths[4].path, "fonts");
 	
-	for(i = 0; i < SEARCH_PATH_ALL; i++)
-	{
-		paths[i].max_paths = 16;
-		paths[i].path_count = 0;
-		paths[i].paths = malloc(sizeof(char *) * (paths[i].max_paths + 1));
-		paths[i].paths[0] = NULL;
-		paths[i].paths++;
-	}
+	//printf("%s\n", getenv("USERPROFILE"));
 	
+	pth_search_paths[4].path[0] = '\0';
+	pth_search_paths[5].path[0] = '\0';
+	pth_search_paths[6].path[0] = '\0';
+	pth_search_paths[7].path[0] = '\0';
 	
-	paths[SEARCH_PATH_SHADER].paths[-1] = strdup("shaders");
+	printf("path_Init: %s\n", _getdcwd(_getdrive(),NULL, 0));	
+
 	
-	path_ext_table[SEARCH_PATH_TEXTURE][0] = ".png"; 
-	path_ext_table[SEARCH_PATH_TEXTURE][1] = ".jpg";
-	path_ext_table[SEARCH_PATH_TEXTURE][2] = ".bmp";
-	path_ext_table[SEARCH_PATH_TEXTURE][3] = ".tga";
-	path_ext_table[SEARCH_PATH_TEXTURE][4] = NULL;
+	pth_search_paths += DEFAULT_SEARCH_PATH_COUNT;
+	strcpy(pth_base_path, path_FormatPath(getcwd(NULL, 0)));
+	strcpy(pth_user_documents_directory, path_FormatPath(getenv("USERPROFILE")));
+	strcat(pth_user_documents_directory, "/Documents");
+		
 	
-	path_ext_table[SEARCH_PATH_MATERIAL][0] = NULL;
+	pth_max_dir_elements = 1024;
+	pth_dir_elements = memory_Malloc(sizeof(dir_element_t) * pth_max_dir_elements, "path_Init");
 	
-	path_ext_table[SEARCH_PATH_SHADER][0] = ".vert";
-	path_ext_table[SEARCH_PATH_SHADER][1] = ".frag";
-	path_ext_table[SEARCH_PATH_SHADER][2] = NULL;
-	
-	path_ext_table[SEARCH_PATH_FONT][0] = ".ttf";
-	path_ext_table[SEARCH_PATH_FONT][1] = NULL;
-	
-	path_ext_table[SEARCH_PATH_SOUND][0] = ".wav";
-	path_ext_table[SEARCH_PATH_SOUND][1] = ".mp3";
-	path_ext_table[SEARCH_PATH_SOUND][2] = ".ogg";
-	path_ext_table[SEARCH_PATH_SOUND][3] = NULL;
-	
-	path_ext_table[SEARCH_PATH_SAVE][0] = ".vsf";
-	path_ext_table[SEARCH_PATH_SAVE][1] = NULL;
-	
-	//path_ext_table[SEARCH_PATH_MODEL][0] = ".obj";
-	path_ext_table[SEARCH_PATH_MODEL][0] = ".mpk";
-	path_ext_table[SEARCH_PATH_MODEL][1] = NULL;
-	
-	
-	max_dir_elements = 4096;
-	dir_elements = malloc(sizeof(dir_element_t) * max_dir_elements);
-	
-	
-	for(i = 0; i < max_dir_elements; i++)
-	{
-		dir_elements[i].name = malloc(PATH_MAX);
-	}
+	path_SetDir(pth_base_path);
 	
 }
 
@@ -145,80 +103,42 @@ void path_Finish()
 {
 	int i;
 	int j;
-	
-	struct search_paths_t *search_paths;
-	
-	for(i = 0; i < SEARCH_PATH_ALL; i++)
-	{
-		search_paths = paths + i;
-		
-		for(j = -1; j < search_paths->path_count; j++)
-		{
-			if(search_paths->paths[j])
-				free(search_paths->paths[j]);
-		}
-		
-		search_paths->paths--;
-		
-		free(search_paths->paths);
-	}
-	
-	for(i = 0; i < max_dir_elements; i++)
-	{
-		free(dir_elements[i].name);
-	}
-	
-	free(dir_elements);
+
+	pth_search_paths -= DEFAULT_SEARCH_PATH_COUNT;
+	memory_Free(pth_search_paths);
+	memory_Free(pth_dir_elements);
 }
 
 
 void path_AddSearchPath(char *path, int type)
 {
-	struct search_paths_t *search_paths;
-	char **c;
-	int path_len;
+	int i;
 	
-	switch(type)
+	char *formated_path;
+	search_path_t *paths;
+	
+	formated_path = path_FormatPath(path);
+	
+	for(i = 0; i < pth_search_path_count; i++)
 	{
-		
-		case SEARCH_PATH_TEXTURE:
-		case SEARCH_PATH_SHADER:
-		case SEARCH_PATH_FONT:
-		case SEARCH_PATH_MATERIAL:
-		case SEARCH_PATH_SOUND:
-		case SEARCH_PATH_SAVE:
-		case SEARCH_PATH_MODEL:
-			
-			search_paths = paths + type;
-			
-			if(search_paths->path_count >= search_paths->max_paths)
-			{
-				c = malloc(sizeof(char *) * (search_paths->max_paths + 16));
-				memcpy(c, search_paths->paths, sizeof(char *) * search_paths->max_paths);
-				free(search_paths->paths);
-				
-				search_paths->paths = c;
-				search_paths->max_paths += 16;
-			}
-			
-		break;
-		
-		
-		default:
+		if(!strcmp(formated_path, pth_search_paths[i].path))
+		{
+			printf("path_AddSearchPath: search path %s already exists!", path);
 			return;
-		
+		}
 	}
 	
-	path_len = strlen(path) + 2;
+	if(pth_search_path_count >= pth_max_search_paths)
+	{
+		paths = memory_Malloc(sizeof(search_path_t) * (pth_max_search_paths + 32), "path_AddSearchPath");
+		memcpy(paths, pth_search_paths, sizeof(search_path_t) * pth_max_search_paths);
+		memory_Free(pth_search_paths);
+		pth_search_paths = paths;
+		pth_max_search_paths += 32;
+	}
 	
-	//search_paths->paths[search_paths->path_count] = strdup(path);
-	search_paths->paths[search_paths->path_count] = malloc(base_path_len + path_len);
-	strcpy(search_paths->paths[search_paths->path_count], base_path);
-	strcat(search_paths->paths[search_paths->path_count], "/");
-	strcat(search_paths->paths[search_paths->path_count], path);
-	search_paths->path_count++;
-	//search_path->path = strdup(path);
-	//search_path->type = type;
+	strcpy(pth_search_paths[pth_search_path_count].path, formated_path);
+	pth_search_path_count++;
 }
 
 void path_ClearSearchPaths()
@@ -226,116 +146,48 @@ void path_ClearSearchPaths()
 	int i;
 	int j;
 	
-	search_paths_t *path_set;
+	pth_search_path_count = 0;
+	//search_paths_set_t *path_set;
 	
-	for(i = 0; i < SEARCH_PATH_ALL; i++)
+	/*for(i = 0; i < SEARCH_PATH_ALL; i++)
 	{
-		path_set = paths + i;
-		
+		path_set = path_sets + i;
 		for(j = 0; j < path_set->path_count; j++)
 		{
-			free(path_set->paths[j]);
+			printf("freed search path [%s]\n", path_set->paths[j]);
+			memory_Free(path_set->paths[j]);
 		}
 		
 		path_set->path_count = 0;
-	}
+	}*/
 	
 }
 
-static char full_path[SEARCH_PATH_MAX_LEN];
-
+static char path_to_file[1024];
 char *path_GetPathToFile(char *file_name)
 {
-	FILE *probe;
-	int str_len;
 	int i;
-	int j;
-	int path_type;
-	int path_ext;
-	char ext[32];
+	FILE *file;
 	
-	
-	full_path[0] = '\0';
-	
-	int search_path_count;
-	struct search_paths_t *search_paths;
-	
-	if(!file_name)
+	for(i = -DEFAULT_SEARCH_PATH_COUNT; i < pth_search_path_count; i++)
 	{
-		log_LogMessage(LOG_MESSAGE_ERROR, "path_GetPathToFile: empty file name string!");
-		return NULL;
-	}
-	
-	str_len = strlen(file_name);
-	
-	while(str_len >= 0 && file_name[str_len] != '.') str_len--;
-	
-	if(!str_len)
-	{
-		log_LogMessage(LOG_MESSAGE_ERROR, "path_GetPathToFile: file [%s] has no extension!\n", file_name);
-		return NULL;
-	}
-	
-	str_len--;
-	i = -1;
-	do
-	{
-		str_len++;
-		i++;
-		
- 		ext[i] = file_name[str_len];	
-	}while(file_name[str_len] != '\0');
-	
-	for(path_type = 0; path_type < SEARCH_PATH_ALL; path_type++)
-	{
-		path_ext = 0;
-		while(path_ext_table[path_type][path_ext])
+		if(!pth_search_paths[i].path[0])
 		{
-			if(!strcmp(ext, path_ext_table[path_type][path_ext]))
-			{
-				break;
-			}
-			
-			path_ext++;
+			continue;
 		}
 		
- 		if(path_ext_table[path_type][path_ext])
-			break;
-	}
-	
-	
-	switch(path_type)
-	{
-		case SEARCH_PATH_TEXTURE:
-		case SEARCH_PATH_SHADER:
-		case SEARCH_PATH_FONT:
-		case SEARCH_PATH_MATERIAL:
-		case SEARCH_PATH_SOUND:
-		case SEARCH_PATH_SAVE:
-		case SEARCH_PATH_MODEL:
+		strcpy(path_to_file, pth_base_path);
+		strcat(path_to_file, "/");
+		strcat(path_to_file, pth_search_paths[i].path);
+		strcat(path_to_file, "/");
+		strcat(path_to_file, file_name);
 		
-			search_paths = paths + path_type;
-		break;
+		file = fopen(path_to_file, "rb");
 		
-		default:
-			return NULL;
-	}
-	
-	
-	for(i = -1; i < search_paths->path_count; i++)
-	{
-		if(!search_paths->paths[i])
-			continue;
-		
-		strcpy(full_path, search_paths->paths[i]);
-		strcat(full_path, "/");
-		strcat(full_path, file_name);
-		
-		
-		if((probe = fopen(full_path, "rb")))
+		if(file)
 		{
-			fclose(probe);		
-			return full_path;
+			fclose(file);
+			return path_to_file;
 		}
 	}
 	
@@ -345,164 +197,74 @@ char *path_GetPathToFile(char *file_name)
 
 int path_SetDir(char *dir)
 {
-	DIR *d;
+	struct dirent *element;
+	DIR *current_dir;
 	DIR *probe;
-	struct dirent *e;
-	dir_element_t *de;
-	
-	char dir_path[512];
-	int dir_path_len;
-	int element_path_len;
+	char dir_path[1024];
+	current_dir = opendir(dir);
+	int current_dir_len;
 	int i;
 	
-	d = opendir(dir);
-	
-	
-	if(!d)
+	if(!current_dir)
 	{
 		printf("path_SetDir: couldn't change to dir %s\n", dir);
 		return 0;
 	}
 	
+	pth_dir_element_count = 0;
 	
-	dir_path_len = strlen(dir);
-	strcpy(dir_path, dir);
+	current_dir_len = strlen(current_dir->dd_name);
+	strcpy(pth_current_directory, path_FormatPath(current_dir->dd_name));
+	pth_current_directory[current_dir_len - 2] = '\0';
+	printf("path_SetDir: dir set to %s\n", pth_current_directory);
 	
-	for(i = 0; i < dir_path_len; i++)
-	{
-		if(dir_path[i] == '\\')
-		{
-			dir_path[i] = '/';
-		}
-	}
 	
-	i = dir_path_len;
-	while(dir_path[i] == ' ') i--;
-	
-	if(dir_path[i] == '/')
-	{
-		dir_path_len = i;
-	}
-	
-	dir_path[dir_path_len] = '\0';
-	dir_elements_count = 0;
-	
-	strcpy(current_directory, dir_path);
-	
-	e = readdir(d);
-	
-	if(e)
+	element = readdir(current_dir);
+	if(element)
 	{
 		do
 		{
-			
-			
-			if(dir_elements_count >= max_dir_elements)
+			if(element->d_name[0] == '.')
 			{
-				de = malloc(sizeof(dir_element_t) * (max_dir_elements + 1024));
-				memcpy(de, dir_elements, sizeof(dir_element_t) * max_dir_elements);
-				free(dir_elements);
-				dir_elements = de;
-				max_dir_elements += 1024;
-				
-				for(i = dir_elements_count; i < max_dir_elements; i++)
+				if(element->d_name[1] == '.')
 				{
-					dir_elements[i].name = malloc(PATH_MAX);
+					strcpy(pth_dir_elements[pth_dir_element_count].name, "..");
+					pth_dir_elements[pth_dir_element_count].type = DIR_ELEMENT_TYPE_PARENT;
+					pth_dir_element_count++;
 				}
-				
+				continue;
 			}
 			
-			
-			
-			dir_path[dir_path_len] = '\0';
+			strcpy(dir_path, pth_current_directory);
 			strcat(dir_path, "/");
-			strcat(dir_path, e->d_name);
-			
+			strcat(dir_path, element->d_name);
 			probe = opendir(dir_path);
 			
 			if(probe)
 			{
 				closedir(probe);
-				if(e->d_name[0] == '.')
-				{
-					if(e->d_name[1] == '.')
-					{
-						dir_elements[dir_elements_count].type = DIR_ELEM_GO_UP;
-					}
-					else
-					{
-						dir_elements[dir_elements_count].type = DIR_ELEM_SELF;
-					}
-					
-				}
-				else
-				{
-					dir_elements[dir_elements_count].type = DIR_ELEM_DIRECTORY;
-				}
-				
+				pth_dir_elements[pth_dir_element_count].type = DIR_ELEMENT_TYPE_DIRECTORY;
 			}
 			else
 			{
-				element_path_len = e->d_namlen;
-				while(e->d_name[element_path_len] != '.' && element_path_len > 0) element_path_len--;
-				
-				i = 0;
-				while(vis_file_exts[i])
-				{
-					if(!strcmp(vis_file_exts[i], e->d_name + element_path_len))
-					{
-						break;
-					}
-					
-					i++;
-				}
-			
-				if(!vis_file_exts[i])
-					continue;
-				
-				dir_elements[dir_elements_count].type = DIR_ELEM_FILE;
+				pth_dir_elements[pth_dir_element_count].type = DIR_ELEMENT_TYPE_FILE;
 			}
 			
-			strcpy(dir_elements[dir_elements_count].name, e->d_name);	
-			dir_elements_count++;
+			strcpy(pth_dir_elements[pth_dir_element_count].name, element->d_name);
+			pth_dir_element_count++;
 			
-			
-		}while(e = readdir(d));
+		}while(element = readdir(current_dir));
 	}
 	else
 	{
-		strcpy(dir_elements[0].name, "."); 
-		dir_elements[0].type = DIR_ELEM_SELF;
-		
-		strcpy(dir_elements[1].name, "..");
-		dir_elements[1].type = DIR_ELEM_GO_UP;
-		
-		dir_elements_count = 2;
+		strcpy(pth_dir_elements[0].name, "..");
+		pth_dir_elements[0].type = DIR_ELEMENT_TYPE_PARENT;
+		pth_dir_element_count = 1;
 	}
 	
-	
-	
-	dir_path[dir_path_len] = '\0';
-	
-	closedir(d);
-	
+	closedir(current_dir);	
 	
 	return 1;
-	
-	/*printf("current directory: %s\n", current_directory);
-	for(i = 0; i < dir_elements_count; i++)
-	{
-		switch(dir_elements[i].type)
-		{
-			case DIR_ELEM_DIRECTORY:
-				printf("<DIR> %s\n", dir_elements[i].name);
-			break;
-			
-			case DIR_ELEM_FILE:
-				printf("<FILE> %s\n", dir_elements[i].name);
-			break;
-		}
-	}*/
 }
 
 
@@ -527,57 +289,68 @@ int path_CheckSubDir(char *dir)
 	char full_path[512];
 	
 	
-	strcpy(full_path, current_directory);
+	strcpy(full_path, pth_current_directory);
 	strcat(full_path, "/");
 	strcat(full_path, dir);
 	
 	return path_CheckDir(full_path);
 }
 
-void path_GoUp()
+int path_GoUp()
 {
 	int i;
-	int current_dir_len;
+	i = strlen(pth_current_directory);
 	
-	current_dir_len = strlen(current_directory);
-	
-	while(current_directory[current_dir_len] != '/' && current_dir_len > 0) current_dir_len--;
-	
-	if(current_dir_len)
+	while(pth_current_directory[i] != '/' && i > 0)
 	{
-		current_directory[current_dir_len] = '\0';
-		path_SetDir(current_directory);
+		i--;
 	}
+	
+	if(i)
+	{
+		pth_current_directory[i] = '\0';
+		return path_SetDir(pth_current_directory);
+	}
+	
+	return 0;
 }
 
 
-
-void path_GoDown(char *dir_name)
+char path_GoDown_Temp[1024];
+int path_GoDown(char *sub_dir)
 {
 	
-	if(dir_name)
+	if(!strcmp(sub_dir, ".."))
 	{
-		if(dir_name[0])
-		{
-			strcat(current_directory, "/");
-			strcat(current_directory, dir_name);
-			path_SetDir(current_directory);
-		}
-		
+		return 0;
 	}
 	
+	if(!strcmp(sub_dir, "."))
+	{
+		return 0;
+	}
 	
+	strcpy(path_GoDown_Temp, pth_current_directory);
+	strcat(path_GoDown_Temp, "/");
+	strcat(path_GoDown_Temp, sub_dir);
+	
+	return path_SetDir(path_GoDown_Temp);
 }
 
 
 char *path_GetCurrentDirectory()
 {
-	return current_directory;
+	return pth_current_directory;
 }
 
 char *path_GetBasePath()
 {
-	return base_path;
+	return pth_base_path;
+}
+
+char *path_GetUserDocumentsDirectory()
+{
+	return pth_user_documents_directory;
 }
 
 char *path_GetFileNameFromPath(char *path)
@@ -603,7 +376,27 @@ char *path_GetFileNameFromPath(char *path)
 	return NULL;
 }
 
-static char formated_path[1024];
+static char path_GetFileExtension_Return[32];
+
+char *path_GetFileExtension(char *file_name)
+{
+	int i;
+	
+	i = strlen(file_name);
+	
+	while(file_name[i] != '.' && i > 0) i--;
+	
+	if(i)
+	{
+		i++;
+	}
+	
+	strcpy(path_GetFileExtension_Return, file_name + i);
+	
+	return path_GetFileExtension_Return;
+}
+
+static char path_FormatPath_Return[1024];
 
 char *path_FormatPath(char *path)
 {
@@ -625,11 +418,11 @@ char *path_FormatPath(char *path)
 			}
 		}
 		
-		formated_path[j] = path[i];
+		path_FormatPath_Return[j] = path[i];
 		
-		if(formated_path[j] == '\\')
+		if(path_FormatPath_Return[j] == '\\')
 		{
-			formated_path[j] = '/';
+			path_FormatPath_Return[j] = '/';
 		}
 		
 		i++;
@@ -637,12 +430,40 @@ char *path_FormatPath(char *path)
 		
 	}
 	
-	formated_path[j] = '\0';
+	path_FormatPath_Return[j] = '\0';
 	
-	return formated_path;
+	return path_FormatPath_Return;
 }
 
 
+
+FILE *path_TryOpenFile(char *file_name)
+{
+	FILE *file = NULL;
+	char *file_path;
+	
+	
+	/* first try to open the file
+	by it's file name... */
+	 
+	file = fopen(file_name, "rb");
+	
+	if(!file)
+	{
+		file_path = path_GetPathToFile(file_name);
+		
+		if(file_path)
+		{
+			file = fopen(file_path, "rb");
+		}
+	}
+	
+	return file;
+}
+
+#ifdef __cplusplus
+}
+#endif
 
 
 

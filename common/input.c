@@ -1,7 +1,10 @@
 #include "input.h"
-#include "r_main.h"
+//#include "renderer.h"
 #include "engine.h"
 #include "memory.h"
+
+#include "SDL2\SDL.h"
+//#include "SDL2\SDL_scancode.h"
 //#include "console.h"
 //#include "pew.h"
 //#include "draw.h"
@@ -12,7 +15,7 @@
 //extern renderer_t renderer;
 //extern int engine_state;
 
-#define DOUBLE_CLICK_TIME 230.0
+#define DOUBLE_CLICK_TIME 250.0
 
  
 Uint8 *kb_keys = NULL;
@@ -58,6 +61,12 @@ extern int engine_state;
 short key_pos_map[SDL_NUM_SCANCODES];
 key_t registered_keys[SDL_NUM_SCANCODES];
 
+
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 /*
 =============
@@ -281,7 +290,7 @@ void input_GetInput(double delta_time)
 	normalized_mouse_y*=2.0;
 	normalized_mouse_y-=1.0;
 	
-	if(engine_state == ENGINE_PLAYING || engine_state == ENGINE_EDITING)
+	if(engine_state == ENGINE_PLAYING/* || engine_state == ENGINE_EDITING*/)
 	{
 		
 		if(last_mouse_x || last_mouse_y)
@@ -325,6 +334,12 @@ void input_GetInput(double delta_time)
 	//printf("%d\n", input.bm_mouse);
 	
 	return;
+}
+
+void input_GetMouseDelta(float *dx, float *dy)
+{
+	*dx = mouse_dx;
+	*dy = mouse_dy;
 }
 
 void input_SetCursor(int cursor)
@@ -865,7 +880,9 @@ int input_ParseVec3(vec3_t *value, char *str)
 }
 
 
-
+#ifdef __cplusplus
+}
+#endif
 
 
 

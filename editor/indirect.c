@@ -47,6 +47,7 @@ int *affected_indexes;
 
 void indirect_BuildVolumes()
 {
+	#if 0
 	int i;
 	int c;
 	int j;
@@ -282,10 +283,13 @@ void indirect_BuildVolumes()
 		}
 				
 	}
+	
+	#endif
 }
 
 void indirect_GetAffectedVolumes()
 {
+	#if 0
 	int i;
 	int c = light_count;
 	
@@ -354,13 +358,15 @@ void indirect_GetAffectedVolumes()
 				}
 			}
 		}								
-	}	
+	}
+	#endif	
 }
 
 int call_count = 0;
 
 void indirect_Propagate()
 {
+	#if 0
 	int i;
 	int j;
 	int l;
@@ -496,10 +502,14 @@ void indirect_Propagate()
 	
 	call_count++;
 	
+	#endif
+	
 }
 
 void indirect_DrawVolumes()
 {
+	
+	#if 0
 	int x;
 	int y;
 	int z;
@@ -644,6 +654,8 @@ void indirect_DrawVolumes()
 	glEnd();
 	glEnable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	
+	#endif
 	
 }
 

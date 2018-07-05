@@ -3,13 +3,21 @@
 
 #include "gui_widget_bar.h"
 #include "gui_dropdown.h"
+#include "gui.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 widget_bar_t *gui_AddWidgetBar(widget_t *widget, char *name, short x, short y, short w, short h, short bm_flags)
 {
 	widget_bar_t *bar;
 	
-	bar = malloc(sizeof(widget_bar_t));
+	
+	bar = (widget_bar_t *)gui_CreateWidget(name, x, y, w, h, WIDGET_BAR);
+	
+	/*bar = malloc(sizeof(widget_bar_t));
 	
 	if(w < WIDGET_MIN_SIZE) w = WIDGET_MIN_SIZE;
 	if(h < WIDGET_MIN_SIZE) h = WIDGET_MIN_SIZE;
@@ -27,13 +35,16 @@ widget_bar_t *gui_AddWidgetBar(widget_t *widget, char *name, short x, short y, s
 	bar->widget.parent = widget;
 	bar->widget.widget_callback = NULL;
 	bar->widget.name = strdup(name);
-	bar->widget.process_callback = NULL;
+	bar->widget.process_callback = NULL;*/
+	
+	bar->widget.parent = widget;
 	
 	bar->type = WIDGET_NONE;
 	bar->process_fn = NULL;
 	bar->bm_flags = bm_flags;
 	bar->active_widget = NULL;
 	bar->first_widget = NULL;
+
 	
 	if(!widget->nestled)
 	{
@@ -122,20 +133,19 @@ void gui_AdjustBar(widget_t *widget)
 	
 	while(r)
 	{
-		if(r->h > height) height = r->h;
-		
-		width += r->w;
+		if(!(r->bm_flags & WIDGET_INVISIBLE))
+		{
+			if(r->h > height) height = r->h;
+			width += r->w;
+		}
 		
 		r = r->next;
 	}
 	
-	bar->widget.h = height;
+  	bar->widget.h = height;
 	
 	if(!(bar->bm_flags & WIDGET_BAR_FIXED_SIZE))	
 		bar->widget.w = width;
-	
-	//r = widget->nestled;
-	
 	
 	
 	r = bar->first_widget;
@@ -144,15 +154,25 @@ void gui_AdjustBar(widget_t *widget)
 		
 	while(r)
 	{
-		r->x = next_x;
-		next_x += r->w;
+		if(!(r->bm_flags & WIDGET_INVISIBLE))
+		{
+			r->x = next_x;
+			next_x += r->w;
+		}
+		
 		r = r->next;
-			
-		if(r) next_x += r->w;
+		
+		if(r)
+		{
+			if(!(r->bm_flags & WIDGET_INVISIBLE))
+			{
+				 next_x += r->w;
+			}
+		}
+		
 	}
 			
 	bar->bm_flags &= ~WIDGET_BAR_ADJUST_WIDGETS;
-	
 }
 
 
@@ -180,7 +200,9 @@ void gui_PostUpdateWidgetBar(widget_t *widget)
 	}
 }
 
-
+#ifdef __cplusplus
+}
+#endif
 
 
 

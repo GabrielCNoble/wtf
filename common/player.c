@@ -8,35 +8,44 @@
 #include "r_main.h"
 #include "input.h"
 #include "physics.h"
+#include "phy_character.h"
 #include "sound.h"
 #include "bsp.h"
 #include "entity.h"
+#include "memory.h"
+#include "script.h"
 
-int player_list_size;
-int player_count;
-static int free_positions_stack_top = -1;
-static int *free_positions_stack = NULL;
-player_t *players = NULL;
-player_t *active_player = NULL;
+//int player_list_size;
+//int player_count;
+//static int free_positions_stack_top = -1;
+//static int *free_positions_stack = NULL;
+//player_t *players = NULL;
+//player_t *active_player = NULL;
+
+struct entity_handle_t pl_active_player = {0, INVALID_ENTITY_INDEX};
 
 
-int max_spawn_points = 32;
-int spawn_point_count = 0;
-int spawn_point_free_position_stack_top = -1;
-int *spawn_point_free_position_stack = NULL;
-spawn_point_t *spawn_points = NULL;
+//player_def_t *pl_player_defs = NULL;
+//player_def_t *pl_last_player_def = NULL;
+
+
+//int max_spawn_points = 32;
+//int spawn_point_count = 0;
+//int spawn_point_free_position_stack_top = -1;
+//int *spawn_point_free_position_stack = NULL;
+//spawn_point_t *spawn_points = NULL;
  
-mesh_t *weapon_mesh;
-mesh_t *body_mesh;
+//mesh_t *weapon_mesh;
+//mesh_t *body_mesh;
 
 extern float normalized_mouse_x;
 extern float normalized_mouse_y;
 
-int visible_player_count;
-int *visible_players_indexes;
-mat4_t *visible_players_body_transforms;
-mat4_t *visible_players_weapon_transforms;
-mat4_t *active_player_transform;
+//int visible_player_count;
+//int *visible_players_indexes;
+//mat4_t *visible_players_body_transforms;
+//mat4_t *visible_players_weapon_transforms;
+//mat4_t *active_player_transform;
 
 
 /* from r_main.c */
@@ -48,13 +57,20 @@ extern bsp_pnode_t *collision_nodes;
 
 extern int fire_sound;
 
+
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 int player_Init()
 {
-	player_list_size = 64;
-	player_count = 0;
-	players = malloc(sizeof(player_t) * player_list_size);
-	free_positions_stack = malloc(sizeof(int) * player_list_size);
-	active_player = NULL;
+	//player_list_size = 64;
+	//player_count = 0;
+	//players = memory_Malloc(sizeof(player_t) * player_list_size, "player_Init");
+	//free_positions_stack = memory_Malloc(sizeof(int) * player_list_size, "player_Init");
+	//active_player = NULL;
 	
 	//mesh_LoadModel("weapon.obj", "weapon");
 	//mesh_LoadModel("body.obj", "body");
@@ -62,44 +78,110 @@ int player_Init()
 	//weapon_mesh = mesh_GetModel("weapon");
 	//body_mesh = mesh_GetModel("body");
 	
-	spawn_points = malloc(sizeof(spawn_point_t) * max_spawn_points);
-	spawn_point_free_position_stack = malloc(sizeof(int) * max_spawn_points);
+	//spawn_points = memory_Malloc(sizeof(spawn_point_t) * max_spawn_points, "player_Init");
+	//spawn_point_free_position_stack = memory_Malloc(sizeof(int) * max_spawn_points, "player_Init");
 	
 	
-	visible_players_body_transforms = malloc(sizeof(mat4_t ) * player_list_size);
-	visible_players_weapon_transforms = malloc(sizeof(mat4_t) * player_list_size);
-	visible_players_indexes = malloc(sizeof(int) * player_list_size);
+	//visible_players_body_transforms = memory_Malloc(sizeof(mat4_t ) * player_list_size, "player_Init");
+	//visible_players_weapon_transforms = memory_Malloc(sizeof(mat4_t) * player_list_size, "player_Init");
+	//visible_players_indexes = memory_Malloc(sizeof(int) * player_list_size, "player_Init");
 	
 	return 1;
 }
 
 void player_Finish()
 {
-	int i;
-	for(i = 0; i < player_count; i++)
-	{
-		free(players[i].player_name);
-	}
-	free(players);
+	//int i;
+	//for(i = 0; i < player_count; i++)
+	//{
+	//	if(players[i].bm_flags & PLAYER_INVALID)
+	//		continue;
+			
+	//	memory_Free(players[i].player_name);
+	//}
+	//memory_Free(players);
 	
 	
-	for(i = 0; i < spawn_point_count; i++)
-	{
-		free(spawn_points[i].name);
-	}
-	free(spawn_points);
-	free(spawn_point_free_position_stack);
+	//for(i = 0; i < spawn_point_count; i++)
+	//{
+	//	if(spawn_points[i].bm_flags & SPAWN_POINT_INVALID)
+	//		continue;
+			
+	//	memory_Free(spawn_points[i].name);
+	//}
+	//memory_Free(spawn_points);
+	//memory_Free(spawn_point_free_position_stack);
 	
 	
-	free(free_positions_stack);
-	free(visible_players_body_transforms);
-	free(visible_players_weapon_transforms);
-	free(visible_players_indexes);
+	//memory_Free(free_positions_stack);
+	//memory_Free(visible_players_body_transforms);
+	//memory_Free(visible_players_weapon_transforms);
+	//memory_Free(visible_players_indexes);
 }
 
-int player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation)
+/*
+========================================================================================
+========================================================================================
+========================================================================================
+*/
+/*
+player_def_t *player_CreatePlayerDef(char *name, collider_def_t *collider_def)
 {
-	player_t *player;
+	player_def_t *def;
+	
+	
+	def = memory_Malloc(sizeof(player_def_t), "player_CreatePlayerDef");
+	def->name = memory_Strdup(name, "player_CreatePlayerDef");
+	def->collider_def = collider_def;
+	
+	
+	if(!pl_player_defs)
+	{
+		pl_player_defs = def;
+	}
+	else
+	{
+		pl_last_player_def->next = def;
+		def->prev = pl_last_player_def;
+	}
+	
+	pl_last_player_def = def;	
+	
+	return def;	
+}*/
+
+/*void player_DestroyPlayerDef(char *name)
+{
+	
+}*/
+
+/*player_def_t *player_GetPlayerDefPointer(char *name)
+{
+	player_def_t *def;
+	
+	def = pl_player_defs;
+	
+	while(def)
+	{
+		if(!strcmp(name, def->name))
+		{
+			break;
+		}
+		def = def->next;
+	}
+	
+	return def;
+}*/
+
+/*
+========================================================================================
+========================================================================================
+========================================================================================
+*/
+
+int player_SpawnPlayer(mat3_t *orientation, vec3_t position, vec3_t scale, player_def_t *def)
+{
+	/*player_t *player;
 	int player_index;
 	int name_len;
 	int camera_index;
@@ -120,9 +202,107 @@ int player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation)
 		
 		if(player_index >= player_list_size)
 		{
-			player = malloc(sizeof(player_t) * (player_list_size + 16));
+			player = memory_Malloc(sizeof(player_t) * (player_list_size + 16), "player_CreatePlayer");
 			memcpy(player, players, sizeof(player_t) * player_list_size);
-			free(players);
+			memory_Free(players);
+			players = player;
+			player_list_size += 16;
+		}
+	}
+	
+	player = &players[player_index];
+	name_len = strlen(def->name) + 1;
+	name_len = (name_len + 3) & (~3);
+	player->player_name = memory_Calloc(name_len, 1, "player_CreatePlayer");
+	strcpy(player->player_name, def->name);
+	
+	strcpy(camera_name, def->name);
+	strcat(camera_name, "_camera");
+	
+	
+	
+	//renderer_GetWindowSize(&w, &h);
+	
+	if(def->collider_def)
+	{
+		player->collider_index = physics_CreateCollider(NULL, position, scale, def->collider_def, 0);
+	}
+	else
+	{
+		player->collider_index = -1;
+	}
+	
+	player->player_position = position;
+	//player->collision_box_position = position;
+	
+	player->player_orientation = *orientation;
+	player->bm_flags = 0;
+	
+	
+	//gun_entity_def = entity_GetEntityDef("portal gun");
+	//player->gun_entity_index = entity_CreateEntity("gun", vec3(position.x + 1.0, position.y - 1.0, position.z - 2.0), vec3(0.035, 0.055, 0.055), orientation, gun_entity_def);
+	
+	//entity_SetInvisible(player->gun_entity_index);
+	
+	//player->weapon_start = weapon_mesh->start;
+	//player->weapon_count = weapon_mesh->vert_count;
+	
+	//player->body_start = body_mesh->start;
+	//player->body_count = body_mesh->vert_count;
+	
+	player->weapon_x_shift = 0.0;
+	player->weapon_y_shift = 0.0;
+	player->weapon_z_shift = 0.0;
+	player->pitch = 0.0;
+	player->yaw = 0.0;
+	player->max_slope = PLAYER_MAX_SLOPE_ANGLE;
+	player->bm_flags = PLAYER_IN_WORLD;
+	
+	position.y = PLAYER_CAMERA_HEIGHT;
+	position.x = 0.0;
+	position.z = 0.0;
+	
+	//camera_index = camera_CreateCamera(camera_name, position, orientation, 0.68, r_width, r_height, 0.1, 500.0, CAMERA_UPDATE_ON_RESIZE);
+	
+	player->player_camera = camera_CreateCamera(camera_name, position, orientation, 0.68, r_width, r_height, 0.1, 500.0, CAMERA_UPDATE_ON_RESIZE);
+	
+	
+	//player->player_type = PLAYER_NPC;
+	
+	return player_index;*/
+}
+
+struct ai_script_t *player_LoadAIScript(char *file_name, char *script_name)
+{
+	//return (struct ai_script_t *)script_LoadScript(file_name, script_name, SCRIPT_TYPE_AI);
+}
+
+int player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation)
+{
+	/*player_t *player;
+	int player_index;
+	int name_len;
+	int camera_index;
+	char camera_name[128];
+	int w;
+	int h;
+	
+	int gun_entity_def;
+	
+	if(free_positions_stack_top > -1)
+	{
+		player_index = free_positions_stack[free_positions_stack_top];
+		free_positions_stack_top--;
+	}
+	else
+	{
+		player_index = player_count++;
+		
+		if(player_index >= player_list_size)
+		{
+			player = memory_Malloc(sizeof(player_t) * (player_list_size + 16), "player_CreatePlayer");
+			memcpy(player, players, sizeof(player_t) * player_list_size);
+			memory_Free(players);
 			players = player;
 			player_list_size += 16;
 		}
@@ -131,7 +311,7 @@ int player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation)
 	player = &players[player_index];
 	name_len = strlen(name) + 1;
 	name_len = (name_len + 3) & (~3);
-	player->player_name = calloc(name_len, 1);
+	player->player_name = memory_Calloc(name_len, 1, "player_CreatePlayer");
 	strcpy(player->player_name, name);
 	
 	strcpy(camera_name, name);
@@ -143,7 +323,7 @@ int player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation)
 	
 	
 	player->player_position = position;
-	player->collision_box_position = position;
+	//player->collision_box_position = position;
 	player->player_orientation = *orientation;
 	player->bm_flags = 0;
 	
@@ -170,13 +350,14 @@ int player_CreatePlayer(char *name, vec3_t position, mat3_t *orientation)
 	position.x = 0.0;
 	position.z = 0.0;
 	
-	camera_index = camera_CreateCamera(camera_name, position, orientation, 0.68, r_width, r_height, 0.1, 500.0, CAMERA_UPDATE_ON_RESIZE);
+	//camera_index = camera_CreateCamera(camera_name, position, orientation, 0.68, r_width, r_height, 0.1, 500.0, CAMERA_UPDATE_ON_RESIZE);
 	
-	player->player_camera = camera_GetCameraByIndex(camera_index);
+	player->player_camera = camera_CreateCamera(camera_name, position, orientation, 0.68, r_width, r_height, 0.1, 500.0, CAMERA_UPDATE_ON_RESIZE);
+	
 	
 	player->player_type = PLAYER_NPC;
 	
-	return player_index;
+	return player_index;*/
 }
 
 void player_DestroyPlayer(char *name)
@@ -189,7 +370,7 @@ void player_DestroyPlayerIndex(int player_index)
 	
 }
 
-int player_CreateSpawnPoint(vec3_t position, char *name)
+/*int player_CreateSpawnPoint(vec3_t position, char *name)
 {
 	int spawn_point_index;
 	spawn_point_t *spawn_point;
@@ -205,9 +386,9 @@ int player_CreateSpawnPoint(vec3_t position, char *name)
 		
 		if(spawn_point_index >= max_spawn_points)
 		{
-			spawn_point = malloc(sizeof(spawn_point_t) * (max_spawn_points + 16));
+			spawn_point = memory_Malloc(sizeof(spawn_point_t) * (max_spawn_points + 16), "player_CreateSpawnPoint");
 			memcpy(spawn_point, spawn_points, sizeof(spawn_point_t) * max_spawn_points);
-			free(spawn_points);
+			memory_Free(spawn_points);
 			spawn_points = spawn_point;
 			max_spawn_points += 16;
 		}
@@ -220,9 +401,9 @@ int player_CreateSpawnPoint(vec3_t position, char *name)
 	spawn_point->bm_flags = 0;
 	
 	return spawn_point_index;
-}
+}*/
 
-void player_DestroySpawnPoint(int spawn_point_index)
+/*void player_DestroySpawnPoint(int spawn_point_index)
 {
 	spawn_point_t *spawn_point;
 	if(spawn_point_index >= 0 && spawn_point_index < spawn_point_count)
@@ -237,9 +418,9 @@ void player_DestroySpawnPoint(int spawn_point_index)
 			spawn_point_free_position_stack[spawn_point_free_position_stack_top] = spawn_point_index;
 		}
 	}
-}
+}*/
 
-void player_DestroyAllSpawnPoints()
+/*void player_DestroyAllSpawnPoints()
 {
 	int i;
 	
@@ -247,15 +428,15 @@ void player_DestroyAllSpawnPoints()
 	{
 		if(!(spawn_points[i].bm_flags & SPAWN_POINT_INVALID))
 		{
-			free(spawn_points[i].name);
+			memory_Free(spawn_points[i].name);
 		}
 	}
 	
 	spawn_point_free_position_stack_top = -1;
 	spawn_point_count = 0;
-}
+}*/
 
-void player_SpawnPlayer(int player_index, int spawn_point_index)
+/*void player_SpawnPlayer(int player_index, int spawn_point_index)
 {	
 	if(player_index >= 0 && player_index < player_count)
 	{
@@ -278,20 +459,15 @@ void player_SpawnPlayer(int player_index, int spawn_point_index)
 			if(!(players[player_index].bm_flags & PLAYER_IN_WORLD))
 			{
 				players[player_index].player_position = spawn_points[spawn_point_index].position;
-				players[player_index].collision_box_position = spawn_points[spawn_point_index].position;
 				players[player_index].bm_flags |= PLAYER_IN_WORLD;
 				players[player_index].bm_movement = 0;
-				players[player_index].delta = vec3(0.0, 0.0, 0.0);
-				
-				//entity_SetVisible(players[player_index].gun_entity_index);
-				
 			}
 						
 		}
 	}
-}
+}*/
 
-void player_RemovePlayer(int player_index)
+/*void player_RemovePlayer(int player_index)
 {
 	if(player_index >= 0 && player_index < player_count)
 	{
@@ -299,21 +475,19 @@ void player_RemovePlayer(int player_index)
 		{
 			players[player_index].bm_flags &= ~PLAYER_IN_WORLD;
 			
-		//	entity_SetInvisible(players[player_index].gun_entity_index);
-			
 			if(active_player == &players[player_index])
 			{
 				active_player = NULL;
 			}
 		}
 	}
-}
+}*/
 
 player_t *player_GetPlayer(char *name)
 {
 	int i;
 	
-	for(i = 0; i < player_count; i++)
+/*	for(i = 0; i < player_count; i++)
 	{
 		if(!strcmp(players[i].player_name, name))
 		{
@@ -321,37 +495,43 @@ player_t *player_GetPlayer(char *name)
 		}
 	}
 	
-	return NULL;
+	return NULL;*/
 }
 
 player_t *player_GetActivePlayer()
 {
-	return active_player;
+	//return active_player;
 }
 
 void player_SetPlayerAsActive(player_t *player)
 {
-	active_player = player;
-	camera_SetCamera(player->player_camera);
+	/*active_player = player;
+	camera_SetCamera(player->player_camera);*/
 }
 
-void player_SetPlayerAsActiveIndex(int player_index)
+void player_SetPlayerAsActiveIndex(struct entity_handle_t player)
 {
-	player_t *player = &players[player_index];
-	
-	if(player->bm_flags & PLAYER_IN_WORLD)
+	/*struct entity_t *entity;
+	if(player.def)
 	{
-		active_player = player;
-		camera_SetCamera(player->player_camera);
-		
-	//	printf("active player: [%f %f %f]\n", active_player->player_position.x, active_player->player_position.y, active_player->player_position.z);	
+		printf("player_SetPlayerAsActive: can't set an entity def as player!\n");
+		return;
 	}
 	
+	entity = entity_GetEntityPointerIndex(player);
 	
+	if(entity->components[COMPONENT_INDEX_PLAYER_CONTROLLER].type != COMPONENT_TYPE_PLAYER_CONTROLLER)
+	{
+		printf("player_SetPlayerAsActive: entity [%s] doesn't have a player controller component\n", entity->name);
+		return;
+	}
+	
+	pl_active_player = player;	*/
 }
 
-void player_ProcessActivePlayer(double delta_time)
+void player_UpdateActivePlayer(double delta_time)
 {
+	#if 0
 	static float pitch;
 	static float yaw;
 	
@@ -364,100 +544,119 @@ void player_ProcessActivePlayer(double delta_time)
 	
 	camera_t *player_camera;
 	
+	struct entity_t *player_entity;
+	struct player_controller_component_t *player_controller;
+	struct transform_component_t *transform_component;
+	
 	float dx;
 	float dy;
 	float r;
 	
 	static int fire_timer = 0;
 
-	if(active_player)
+	if(pl_active_player.entity_index != INVALID_ENTITY_INDEX)
 	{
-		if(!(active_player->bm_flags & PLAYER_IN_WORLD))
-			return;
 		
-		//printf("active player\n");
-		active_player->bm_movement &= ~(MOVE_FORWARD|MOVE_BACKWARD|MOVE_STRAFE_LEFT|MOVE_STRAFE_RIGHT|MOVE_JUMP);
+		player_entity = entity_GetEntityPointerIndex(pl_active_player);
 		
-		x_shift *= 0.925;
-		y_shift *= 0.925;
-		
-		//printf("[%f %f]\n", x_shift, y_shift);
-		
-		dx = normalized_mouse_x * 0.25;
-		dy = normalized_mouse_y * 0.25;
+		transform_component = entity_GetComponentPointer(player_entity->components[COMPONENT_INDEX_TRANSFORM]);
+		player_controller = entity_GetComponentPointer(player_entity->components[COMPONENT_INDEX_PLAYER_CONTROLLER]);
 		
 		
-		//forward_vector = active_player->player_orientation.f_axis;
-		//right_vector = active_player->player_orientation.r_axis;
-		//up_vector = active_player->player_orientation.u_axis;
-		
-		player_camera = active_player->player_camera;
-		
-		
-		forward_vector = player_camera->world_orientation.f_axis;
-		
-		r = (forward_vector.x * forward_vector.x + forward_vector.z * forward_vector.z);
-		
-		//printf("%f\n", r);
-		 
-		active_player->pitch += dy;		
-		if(active_player->pitch > 0.5) active_player->pitch = 0.5;
-		else if(active_player->pitch < -0.5) active_player->pitch = -0.5;
-
-		active_player->yaw -= dx;
-		
-		if(active_player->yaw > 1.0) active_player->yaw = -1.0 + (active_player->yaw - 1.0);
-		else if(active_player->yaw < -1.0) active_player->yaw = 1.0 + (active_player->yaw + 1.0);
-		
-		x_shift -= dx * delta_time * 0.05 * r;
-		
-		if(x_shift > 1.0) x_shift = -1.0 + (x_shift - 1.0);
-		else if(x_shift < -1.0) x_shift = 1.0 + (x_shift + 1.0);
-		
-		
-		if(active_player->pitch < 0.5 && active_player->pitch > -0.5)
+		if(!player_controller)
 		{
-			y_shift += dy * delta_time * 0.05;
+			printf("player_UpdateActivePlayer: active player doesn't have a player controller component!\n");
+			return;
+		}
+		
+		if(player_controller->controller.type != COMPONENT_TYPE_PLAYER_CONTROLLER)
+		{
+			printf("player_UpdateActivePlayer: active player doesn't has the wrong controller component!\n");
+			return;
 		}
 		
 		
+		//active_player->bm_movement &= ~(MOVE_FORWARD|MOVE_BACKWARD|MOVE_STRAFE_LEFT|MOVE_STRAFE_RIGHT|MOVE_JUMP);
 		
-		if(y_shift < -0.5) y_shift = -0.5;
-		else if(y_shift > 0.5) y_shift = 0.5;
+		player_controller->control_flags &= ~(MOVE_FORWARD|MOVE_BACKWARD|MOVE_STRAFE_LEFT|MOVE_STRAFE_RIGHT|MOVE_JUMP);
 		
-	/*	if(active_player->pitch == 0.5 || active_player->pitch == -0.5)
-			y_shift = 0.0;*/
 		
-		active_player->weapon_x_shift = sin(x_shift * 3.14159265) * 0.5;
-		active_player->weapon_y_shift = sin(y_shift * 3.14159265) * 0.5;
-		active_player->weapon_z_shift = (-cos(x_shift * 3.14159265) - cos(y_shift * 3.14159265)) * 0.5;
+	//	x_shift *= 0.925;
+	//	y_shift *= 0.925;
+				
+	//	dx = normalized_mouse_x * 0.25;
+	//	dy = normalized_mouse_y * 0.25;
+			
+	//	player_camera = active_player->player_camera;
+		
+		
+	//	forward_vector = player_camera->world_orientation.f_axis;
+		
+	//	r = (forward_vector.x * forward_vector.x + forward_vector.z * forward_vector.z);
+		 
+	//	active_player->pitch += dy;		
+	//	if(active_player->pitch > 0.5) active_player->pitch = 0.5;
+	//	else if(active_player->pitch < -0.5) active_player->pitch = -0.5;
+
+	//	active_player->yaw -= dx;
+		
+	//	if(active_player->yaw > 1.0) active_player->yaw = -1.0 + (active_player->yaw - 1.0);
+	//	else if(active_player->yaw < -1.0) active_player->yaw = 1.0 + (active_player->yaw + 1.0);
+		
+	//	x_shift -= dx * delta_time * 0.05 * r;
+		
+	//	if(x_shift > 1.0) x_shift = -1.0 + (x_shift - 1.0);
+	//	else if(x_shift < -1.0) x_shift = 1.0 + (x_shift + 1.0);
+		
+		
+	//	if(active_player->pitch < 0.5 && active_player->pitch > -0.5)
+	//	{
+	//		y_shift += dy * delta_time * 0.05;
+	//	}
+		
+		
+		
+	//	if(y_shift < -0.5) y_shift = -0.5;
+	//	else if(y_shift > 0.5) y_shift = 0.5;
+		
+	//	active_player->weapon_x_shift = sin(x_shift * 3.14159265) * 0.5;
+	//	active_player->weapon_y_shift = sin(y_shift * 3.14159265) * 0.5;
+	//	active_player->weapon_z_shift = (-cos(x_shift * 3.14159265) - cos(y_shift * 3.14159265)) * 0.5;
 		
 		//printf("[%f %f %f]\n", active_player->weapon_x_shift, active_player->weapon_y_shift, active_player->weapon_z_shift);
 				
 		if(input_GetKeyPressed(SDL_SCANCODE_W))
 		{
-			active_player->bm_movement |= MOVE_FORWARD;
+			//active_player->bm_movement |= MOVE_FORWARD;
+			//printf("move forward");
+			
+			physics_Move(player_controller->controller.collider.collider_index, vec3(0.0, 0.0, -15.0));
+			
 		}
 		
 		if(input_GetKeyPressed(SDL_SCANCODE_S))
 		{
-			active_player->bm_movement |= MOVE_BACKWARD;
+			//active_player->bm_movement |= MOVE_BACKWARD;
+			physics_Move(player_controller->controller.collider.collider_index, vec3(0.0, 0.0, 15.0));
 		}
 		
 		
 		if(input_GetKeyPressed(SDL_SCANCODE_A))
 		{
-			active_player->bm_movement |= MOVE_STRAFE_LEFT;
+			//active_player->bm_movement |= MOVE_STRAFE_LEFT;
+			physics_Move(player_controller->controller.collider.collider_index, vec3(-15.0, 0.0, 0.0));
 		}
 		
 		if(input_GetKeyPressed(SDL_SCANCODE_D))
 		{
-			active_player->bm_movement |= MOVE_STRAFE_RIGHT;
+			//active_player->bm_movement |= MOVE_STRAFE_RIGHT;
+			physics_Move(player_controller->controller.collider.collider_index, vec3(15.0, 0.0, 0.0));
 		}
 		
-		if(input_GetKeyPressed(SDL_SCANCODE_SPACE) && (active_player->bm_movement & PLAYER_ON_GROUND))
+		if(input_GetKeyPressed(SDL_SCANCODE_SPACE))
 		{
-			active_player->bm_movement |= MOVE_JUMP | PLAYER_JUMPED;
+			//active_player->bm_movement |= MOVE_JUMP | PLAYER_JUMPED;
+			physics_Jump(player_controller->controller.collider.collider_index, 100.0);
 		}
 		
 		/*if(fire_timer)
@@ -472,7 +671,7 @@ void player_ProcessActivePlayer(double delta_time)
 			//if(!fire_timer)
 		//	{
 		//		fire_timer = 5;
-				active_player->bm_movement |= PLAYER_FIRED;
+			//	active_player->bm_movement |= PLAYER_FIRED;
 				//sound_PlaySound(fire_sound, active_player->player_camera->world_position, 1.0);	
 		//	}
 			
@@ -480,17 +679,19 @@ void player_ProcessActivePlayer(double delta_time)
 		}
 		else
 		{
-			active_player->bm_movement &= ~PLAYER_FIRED;
+			//active_player->bm_movement &= ~PLAYER_FIRED;
 		}
 		
 		
 		
 	}
+	
+	#endif
 }
 
 void player_ProcessAI(float delta_time)
 {
-	int i;
+/*	int i;
 	int c = player_count;
 	
 	vec3_t player_vec;
@@ -524,13 +725,13 @@ void player_ProcessAI(float delta_time)
 			
 		}
 	}
-	
+	*/
 	
 }
 
 void player_UpdatePlayers(double delta_time)
 {
-	int i;
+/*	int i;
 	int j;
 	float r;
 	vec3_t forward_vector;
@@ -555,9 +756,7 @@ void player_UpdatePlayers(double delta_time)
 	vec3_t r_direction;
 	vec3_t position;
 	
-	entity_t *gun;
-	
-	//printf("%f\n", delta_time);
+	struct entity_t *gun;
 	
 	visible_player_count = 0;
 	
@@ -582,161 +781,56 @@ void player_UpdatePlayers(double delta_time)
 		
 		if(!(players[i].bm_movement & PLAYER_ON_GROUND))
 		{
-			increment = AIR_DELTA_INCREMENT;
+		//	increment = AIR_DELTA_INCREMENT;
 		}
 		else
 		{
-			increment = GROUND_DELTA_INCREMENT;
+		//	increment = GROUND_DELTA_INCREMENT;
 		}
 		 
 		 
 		if(players[i].bm_movement & MOVE_FORWARD)
 		{
-			players[i].delta.x -= forward_vector.x * increment * delta_time * 0.0025;
-			players[i].delta.z -= forward_vector.z * increment * delta_time * 0.0025;
+		//	players[i].delta.x -= forward_vector.x * increment * delta_time * 0.0025;
+		//	players[i].delta.z -= forward_vector.z * increment * delta_time * 0.0025;
+		
+			physics_Move(players[i].collider_index, vec3(-15.0, 0.0, 0.0));
+		
 		}
 		
 		if(players[i].bm_movement & MOVE_BACKWARD)
 		{
-			players[i].delta.x += forward_vector.x * increment * delta_time * 0.0025;
-			players[i].delta.z += forward_vector.z * increment * delta_time * 0.0025;
+		//	players[i].delta.x += forward_vector.x * increment * delta_time * 0.0025;
+		//	players[i].delta.z += forward_vector.z * increment * delta_time * 0.0025;
+			physics_Move(players[i].collider_index, vec3(15.0, 0.0, 0.0));
 		}
 		
 		 
 		if(players[i].bm_movement & MOVE_STRAFE_LEFT)
 		{
-			players[i].delta.x -= right_vector.x * increment * delta_time * 0.0025;
-			players[i].delta.z -= right_vector.z * increment * delta_time * 0.0025;
+		//	players[i].delta.x -= right_vector.x * increment * delta_time * 0.0025;
+		//	players[i].delta.z -= right_vector.z * increment * delta_time * 0.0025;
+			physics_Move(players[i].collider_index, vec3(0.0, 0.0, 15.0));
 		}
 		
 		if(players[i].bm_movement & MOVE_STRAFE_RIGHT)
 		{
-			players[i].delta.x += right_vector.x * increment * delta_time * 0.0025;
-			players[i].delta.z += right_vector.z * increment * delta_time * 0.0025;
+		//	players[i].delta.x += right_vector.x * increment * delta_time * 0.0025;
+		//	players[i].delta.z += right_vector.z * increment * delta_time * 0.0025;
+			physics_Move(players[i].collider_index, vec3(0.0, 0.0, -15.0));
 		}
 		
 		if(players[i].bm_movement & MOVE_JUMP)
 		{
-			//printf("%f\n", delta_time);
-			players[i].delta.y = JUMP_DELTA * 0.35 /** delta_time * 0.025*/;
+			physics_Jump(players[i].collider_index, 105.0);
+		//	players[i].delta.y = JUMP_DELTA * 0.35;
 		}
-		
-		
-	/*	position = weapon_position;
-		
-		mat3_t_vec3_t_mult(&players[i].player_orientation, &position);
-		
-		position.x += players[i].collision_box_position.x;
-		position.y += players[i].collision_box_position.y;
-		position.z += players[i].collision_box_position.z;
-		
-		gun = entity_GetEnttiyPointerIndex(players[i].gun_entity_index);
-		gun->position = position;
-		gun->flags |= ENTITY_HAS_MOVED;*/
-		
-		
-		//player_Move(&players[i]);
-		
-	/*	players[i].player_position.x = players[i].collision_box_position.x;
-		players[i].player_position.z = players[i].collision_box_position.z;
-		
-		if(players[i].bm_movement & PLAYER_STEPPING_UP)
-		{ 
-			
-			s = fabs(players[i].player_position.y);
-			c = fabs(players[i].collision_box_position.y);
-					
-			players[i].player_position.y += (players[i].collision_box_position.y - players[i].player_position.y) * 0.075 * delta_time * 0.075;
-			
-			//printf("smooth...\n");
-					
-			if(fabs(s - c) <= 0.01)
-				players[i].bm_movement &= ~PLAYER_STEPPING_UP;
-			
-		}
-		else
-		{
-			players[i].player_position.y += (players[i].collision_box_position.y - players[i].player_position.y) * 0.25 * delta_time * 0.075;
-			players[i].bm_movement &= ~PLAYER_STEPPING_UP;
-		}*/
-		
-	//	printf("%d\n", players[i].bm_movement & PLAYER_ON_GROUND);
-		
-		/*if(players[i].fire_timer)
-		{
-			players[i].fire_timer--;
-		}
-		
-		
-		if(players[i].bm_movement & PLAYER_FIRED && players[i].fire_timer == 0)
-		{
-			
-			
-			
-			players[i].fire_timer = 5;
-			
-			direction = players[i].player_camera->world_orientation.f_axis;
-			r_vector = players[i].player_camera->world_orientation.r_axis;
-			u_vector = players[i].player_camera->world_orientation.u_axis;
-			
-			direction.x = -direction.x;
-			direction.y = -direction.y;
-			direction.z = -direction.z;
-			
-			r_direction = direction;
-			
-			for(j = 0; j < 1; j++)
-			{
-				r_direction = direction;
-				
-				r = ((float)((rand()%720) - 360) / 360.0) * 0.02;
-				
-				r_direction.x += r_vector.x * r;
-				r_direction.y += r_vector.y * r;
-				r_direction.z += r_vector.z * r;
-				
-				
-				r = ((float)((rand()%720) - 360) / 360.0) * 0.02;
-				
-				r_direction.x += u_vector.x * r;
-				r_direction.y += u_vector.y * r;
-				r_direction.z += u_vector.z * r;
-
-				
-				r_direction.x *= 10.0;
-				r_direction.y *= 10.0;
-				r_direction.z *= 10.0;
-				
-				//projectile_AddProjectile(players[i].player_camera->world_position, r_direction, 1.505, 600, i);
-				
-				
-			}
-			
-			//sound_PlaySound(fire_sound, players[i].player_camera->world_position, 0.9);		
-			/*r_direction.x *= 10.0;
-			r_direction.y *= 10.0;
-			r_direction.z *= 10.0;
-					
-			projectile_AddProjectile(players[i].player_camera->world_position, r_direction, 1.505, 600, i);
-		}*/
-			
-	}
-	
-	/*for(i = 0; i < visible_player_count; i++)
-	{
-		mat4_t_mult_fast(&visible_players_body_transforms[i], &visible_players_body_transforms[i], &active_camera->world_to_camera_matrix);
-	}*/
-	
-	/*for(i = 0; i < visible_player_count; i++)
-	{
-		mat4_t_mult_fast(&visible_players_weapon_transforms[i], &visible_players_weapon_transforms[i], &active_camera->world_to_camera_matrix);
-	}*/
-	
+	}	*/
 }
 
 void player_PostUpdatePlayers(double delta_time)
 {
-	int i;
+	/*int i;
 	int j;
 	float r;
 	vec3_t forward_vector;
@@ -762,7 +856,7 @@ void player_PostUpdatePlayers(double delta_time)
 	vec3_t r_direction;
 	vec3_t position;
 	
-	entity_t *gun;
+	struct entity_t *gun;
 	
 	//printf("%f\n", delta_time);
 	
@@ -776,38 +870,39 @@ void player_PostUpdatePlayers(double delta_time)
 		if(!(players[i].bm_flags & PLAYER_IN_WORLD))
 			continue;
 	
-	/*	
-		
-		rot = weapon_rot;
-		position = weapon_position;
-		
-		position.x += players[i].weapon_x_shift;
-		position.y -= players[i].weapon_y_shift;
-		position.z += players[i].weapon_z_shift;
 		
 		
-		player_camera = players[i].player_camera;
+	//	rot = weapon_rot;
+	//	position = weapon_position;
 		
-		mat3_t_mult(&rot, &weapon_rot, &player_camera->world_orientation);
-		mat3_t_vec3_t_mult(&player_camera->world_orientation, &position);
+	//	position.x += players[i].weapon_x_shift;
+	//	position.y -= players[i].weapon_y_shift;
+	//	position.z += players[i].weapon_z_shift;
 		
-		position.x += player_camera->world_position.x;
-		position.y += player_camera->world_position.y;
-		position.z += player_camera->world_position.z;
 		
-		gun = entity_GetEnttiyPointerIndex(players[i].gun_entity_index);
-		gun->position = position;
-		gun->orientation = rot;
-		gun->flags |= ENTITY_HAS_MOVED;*/
+	//	player_camera = players[i].player_camera;
+		
+	//	mat3_t_mult(&rot, &weapon_rot, &player_camera->world_orientation);
+	//	mat3_t_vec3_t_mult(&player_camera->world_orientation, &position);
+		
+	//	position.x += player_camera->world_position.x;
+	//	position.y += player_camera->world_position.y;
+	//	position.z += player_camera->world_position.z;
+		
+	//	gun = entity_GetEnttiyPointerIndex(players[i].gun_entity_index);
+	//	gun->position = position;
+	//	gun->orientation = rot;
+	//	gun->flags |= ENTITY_HAS_MOVED;
 				
 	}
-
+*/
 }
 
 #define BUMP_COUNT 5
 #define SPEED_THRESHOLD 0.00001
 void player_Move(player_t *player, float delta_time)
 {
+	#if 0
 	if(!player)
 		return;
 	
@@ -1042,21 +1137,18 @@ void player_Move(player_t *player, float delta_time)
 	//printf("%d\n", player->bm_movement & PLAYER_ON_GROUND);
 		
 	//bsp_Move(&player->player_position, &player->delta);	
-		
-}
-
-
-
-void player_TransformPlayers()
-{
-	int i;
 	
-	for(i = 0; i < player_count; i++)
-	{
+	#endif
 		
-	}
 }
 
+
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 
 

@@ -1,6 +1,8 @@
 #ifndef PATH_H
 #define PATH_H
 
+#include <limits.h>
+#include <stdio.h>
 
 enum SEARCH_PATH_TYPE
 {
@@ -14,27 +16,37 @@ enum SEARCH_PATH_TYPE
 	SEARCH_PATH_ALL,
 };
 
-enum DIR_ELEM_TYPE
+enum DIR_ELEMEMENT_TYPE
 {
-	DIR_ELEM_DIRECTORY = 1,
-	DIR_ELEM_GO_UP,
-	DIR_ELEM_SELF,
-	DIR_ELEM_FILE
+	DIR_ELEMENT_TYPE_DIRECTORY = 1,
+	DIR_ELEMENT_TYPE_PARENT,
+	DIR_ELEMENT_TYPE_SELF,
+	DIR_ELEMENT_TYPE_FILE
 };
 
-typedef struct search_paths_t
+typedef struct search_paths_set_t
 {
 	int max_paths;
 	int path_count;
 	char **paths;
-}search_paths_t;
+}search_paths_set_t;
+
+typedef struct search_path_t
+{
+	char path[PATH_MAX];
+}search_path_t;
 
 typedef struct dir_element_t
 {
-	char *name;
 	int type;
+	char name[PATH_MAX];
 }dir_element_t;
 
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 void path_Init(char *path);
 
@@ -52,18 +64,29 @@ int path_CheckDir(char *dir);
 
 int path_CheckSubDir(char *dir);
 
-void path_GoUp();
+int path_GoUp();
 
-void path_GoDown(char *dir_name);
+int path_GoDown(char *dir_name);
 
 char *path_GetCurrentDirectory();
 
 char *path_GetBasePath();
 
+char *path_GetUserDocumentsDirectory();
+
 char *path_GetFileNameFromPath(char *path);
+
+char *path_GetFileExtension(char *file_name);
 
 char *path_FormatPath(char *path);
 
+
+FILE *path_TryOpenFile(char *file_name);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 
 

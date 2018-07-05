@@ -7,6 +7,7 @@
 #include "SDL2\SDL_timer.h"
 
 #include <float.h>
+#include <malloc.h>
 
 
 int command_line_arg_count;
@@ -21,8 +22,8 @@ unsigned long long start_delta;
 unsigned long long end_delta;
 
 void (*engine_StartUp)(int, char *[]);
-
 void (*engine_GameMain)(float );
+void (*engine_Shutdown)();
 
 int b_init_properly = 0;
 
@@ -33,6 +34,11 @@ float collection_delta = 0.0;
 int collection_frame_count = 0;
 float fps = 0.0;
 
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 void engine_SigSegHandler(int signal)
 {
@@ -48,56 +54,62 @@ void engine_Init(int width, int height, int init_mode, int argc, char *argv[])
 	int camera_index;
 	int *i = 0;
 	
+	
+	/*i = malloc(sizeof(int));
+	
+	_HEAPINFO heap_info;
+	heap_info._pentry = -1;
+	heap_info._size = 0;
+	heap_info._useflag = 0;
+	
+	printf("%d\n", _heapwalk(&heap_info));*/
+	
+	
 	signal(SIGSEGV, engine_SigSegHandler);
 	
 	//*i = 5;
 	
-	log_Init();
 	
+	log_Init();
 	log_LogMessage(LOG_MESSAGE_NOTIFY, "ENGINE START");
 	
+	
+	if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
+	{
+		log_LogMessage(LOG_MESSAGE_ERROR, "engine_Init: SDL didn't init!");
+		return;
+	}
+	
+	memory_Init(0);
+
 	path_Init(argv[0]);
-	path_AddSearchPath("shaders", SEARCH_PATH_SHADER);
 	path_AddSearchPath("fonts", SEARCH_PATH_FONT);
 	
 	b_init_properly = 1;
 	
-	//if(renderer_Init(width, height, init_mode))
-	//printf("start\n");
 	b_init_properly &= renderer_Init(width, height, init_mode);
-	//printf("a\n");
 	b_init_properly &= shader_Init();
-	//printf("b\n");
+	b_init_properly &= script_Init();
 	b_init_properly &= input_Init();
-	//printf("c\n");
 	b_init_properly &= gpu_Init();
-	//printf("d\n");
 	b_init_properly &= model_Init();
-	//printf("e\n");
+	b_init_properly &= particle_Init();
 	b_init_properly &= entity_Init();
-	//printf("f\n");
 	b_init_properly &= light_Init();
-	//printf("g\n");
+	b_init_properly &= event_Init();
 	b_init_properly &= world_Init();
-	//printf("h\n");
 	b_init_properly &= camera_Init();
-	//printf("i\n");
 	b_init_properly &= sound_Init();
-	//printf("j\n");
 	b_init_properly &= player_Init();
-	//printf("k\n");
 	b_init_properly &= gui_Init();
-	//printf("l\n");
 	b_init_properly &= physics_Init();
-	//printf("m\n");
 	b_init_properly &= material_Init();
-	//printf("n\n");
 	b_init_properly &= texture_Init();
-	//printf("o\n");
 	b_init_properly &= font_Init();
-	//printf("p\n");
+	b_init_properly &= navigation_Init();
 	b_init_properly &= bsp_Init();
-	//printf("q\n");
+	b_init_properly &= portal_Init();
+	memory_CheckCorrupted();
 	
 	if(b_init_properly)
 	{		
@@ -124,14 +136,20 @@ void engine_Init(int width, int height, int init_mode, int argc, char *argv[])
 
 void engine_Finish()
 {
+	//memory_Report();
 	if(b_init_properly)
 	{
-		//editor_Finish();
+		
+		memory_CheckCorrupted();
+		portal_Finish();
 		shader_Finish();
+		navigation_Finish();
 		material_Finish();
 		input_Finish();
+		particle_Finish();
 		model_Finish();
 		world_Finish();
+		event_Finish();
 		camera_Finish();
 		light_Finish();
 		texture_Finish();
@@ -140,6 +158,7 @@ void engine_Finish()
 		gui_Finish();
 		bsp_Finish();
 		player_Finish();
+		script_Finish();
 		font_Finish();
 		physics_Finish();
 		gpu_Finish();
@@ -149,13 +168,23 @@ void engine_Finish()
 
 	path_Finish();
 	
+	memory_CheckCorrupted();
 	memory_Report();
-	log_LogMessage(LOG_MESSAGE_NOTIFY, "ENGINE FINISH");
+	memory_Finish();
 	
+	log_LogMessage(LOG_MESSAGE_NOTIFY, "ENGINE FINISH");
 	log_Finish();
+	SDL_Quit();
 	
 	
 }
+
+
+float accum_cpu_time = 0.0;
+float accum_gpu_time = 0.0;
+float capture_time = 0.0;
+int captured_frames = 0;
+
 
 void engine_MainLoop()
 {
@@ -168,62 +197,89 @@ void engine_MainLoop()
 		engine_StartUp(command_line_arg_count, command_line_args);
 	}
 	
+	memory_CheckCorrupted();
+	
 	float s;
 	float e;
 	
+	engine_UpdateDeltaTime();
+	
 	while(engine_state)
-	{
-		engine_UpdateDeltaTime();		
+	{	
+		
+		engine_UpdateDeltaTime();
+			
+		s = engine_GetDeltaTime();	
+		renderer_StartGpuTimer();
+		
 		renderer_OpenFrame();
 		input_GetInput(delta_time);
 		gui_ProcessGUI();
 		
-		engine_GameMain(delta_time);
+		//gui_OpenGuiFrame();
+		
+		if(engine_GameMain)
+		{
+			engine_GameMain(delta_time);
+		}
+		
+		//gui_CloseGuiFrame();
 		
 		if(engine_state == ENGINE_PLAYING)
 		{
-			player_ProcessActivePlayer(delta_time);
-			player_ProcessAI(delta_time);
-			player_UpdatePlayers(delta_time);
+		//	player_ProcessActivePlayer(delta_time);
+			//player_UpdateActivePlayer(delta_time);
+		//	player_ProcessAI(delta_time);
+		//	player_UpdatePlayers(delta_time);
+			entity_UpdateScriptControllerComponents();
 			physics_ProcessCollisions(delta_time);
-			player_PostUpdatePlayers(delta_time);
-			//projectile_UpdateProjectiles();
+		//	player_PostUpdatePlayers(delta_time);
 		} 
 
 		sound_ProcessSound();
-		light_UpdateLights();
-		entity_UpdateEntities();
-			
+		entity_UpdateTransformComponents();
+		particle_UpdateParticleSystems(delta_time);
+		
+		world_MarkLightsOnLeaves();
+		world_MarkEntitiesOnLeaves();
+		
 		world_VisibleWorld();
-		light_VisibleLights();
+		world_VisibleEntities();
+		world_VisibleLights();
 		
-
 		renderer_DrawFrame();		
+	
 		renderer_CloseFrame();
+		e = engine_GetDeltaTime();
+
 		
-		/*if(collection_delta < FPS_COLLECTION_TIME)
+		accum_cpu_time += e - s;
+		accum_gpu_time += renderer_StopGpuTimer();
+		capture_time += delta_time;
+
+
+		
+		if(capture_time >= 1000.0)
 		{
-			accum_frame_time += 1.0 / (engine_GetDeltaTime() * 0.001);
-			collection_delta += engine_GetDeltaTime();
-			collection_frame_count++;
+			accum_cpu_time /= captured_frames;
+			accum_gpu_time /= captured_frames;
+			printf("frame time - |gpu: %0.3f| |cpu: %0.3f| |fps(gpu): %0.3f| |fps(cpu): %0.3f|\n", accum_gpu_time, accum_cpu_time, 1.0 / (accum_gpu_time * 0.001), 1.0 / (accum_cpu_time * 0.001));
+			
+			accum_cpu_time = 0.0;
+			accum_gpu_time = 0.0;
+			capture_time = 0.0;
+			captured_frames = 0;
 		}
 		else
 		{
-			fps = accum_frame_time / collection_frame_count;
-			
-			collection_frame_count = 0;
-			collection_delta = 0.0;
-			accum_frame_time = 0.0;
-		}*/
-		
-		
-		
-		
-		
-		//printf("%f\n", 1.0 / (engine_GetDeltaTime() * 0.001));
-		
-		
-		//printf("CPU: %f\n", e - s);
+			captured_frames++;
+		}
+	}
+	
+	
+	if(engine_Shutdown)
+	{
+		engine_Shutdown();
 	}
 }
 
@@ -236,6 +292,11 @@ void engine_SetGameMainFunction(void (*game_main_fn)(float ))
 {
 	//game_main = game_main_fn;
 	engine_GameMain = game_main_fn;
+}
+
+void engine_SetGameShutdownFunction(void (*shutdown_fn)())
+{
+	engine_Shutdown = shutdown_fn;
 }
 
 void engine_ReadConfig()
@@ -257,22 +318,10 @@ void engine_SetEngineState(int state)
 		case ENGINE_PLAYING:
 		case ENGINE_EDITING:
 			
-			
 			/* once the engine is set to quit, nothing should stop it... */
-			//if(state == ENGINE_QUIT && engine_state == ENGINE_QUIT)
-			//	return;
-			
 			if(engine_state == ENGINE_QUIT)
 				return;	
 				
-			/*if(engine_state == ENGINE_PLAYING && state == ENGINE_PAUSED)
-			{
-				engine_state |= ENGINE_JUST_PAUSED;
-			}
-			else if(engine_state == ENGINE_PAUSED && state == ENGINE_PLAYING)
-			{
-				engine_state |= ENGINE_JUST_RESUMED;
-			}*/
 			engine_state = state;
 		break;
 	}
@@ -379,7 +428,17 @@ void engine_BackTrace()
 }
 
 
+void engine_BreakPoint()
+{
+	//if(input_GetKeyStatus(SDL_SCANCODE_K) & KEY_JUST_PRESSED)
+	{
+		asm("int 3\n");
+	}
+}
 
+#ifdef __cplusplus
+}
+#endif
 
 
 

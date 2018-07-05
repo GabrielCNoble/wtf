@@ -3,6 +3,10 @@
 
 #include "gui_common.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 wsurface_t *gui_CreateSurface(char *name, short x, short y, short w, short h, short bm_flags, void (*surface_callback)(widget_t *));
 
@@ -24,6 +28,10 @@ void gui_EnablePicking(widget_t *widget);
 
 void gui_DisablePicking(widget_t *widget);
 
+
+#ifdef __cplusplus
+}
+#endif
 
 
 

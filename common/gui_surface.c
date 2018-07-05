@@ -12,6 +12,10 @@
 extern widget_t *widgets;
 extern widget_t *last_widget;
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 wsurface_t *gui_CreateSurface(char *name, short x, short y, short w, short h, short bm_flags, void (*surface_callback)(widget_t *))
 {
@@ -24,7 +28,7 @@ wsurface_t *gui_CreateSurface(char *name, short x, short y, short w, short h, sh
 	
 	//int viewport[4];
 	
-	surface = malloc(sizeof(wsurface_t));
+	/*surface = malloc(sizeof(wsurface_t));
 	
 	if(name)
 		surface->widget.name = strdup(name);
@@ -45,12 +49,10 @@ wsurface_t *gui_CreateSurface(char *name, short x, short y, short w, short h, sh
 	surface->widget.widget_callback = surface_callback;
 	surface->widget.bm_flags = 0;
 	surface->widget.rendered_name = NULL;
-	surface->widget.process_callback = NULL;
+	surface->widget.process_callback = NULL;*/
 	
-	
-	//glGetIntegerv(GL_VIEWPORT, viewport);
-	
-	//glGetIntegerv(GL_DRAW_BUFFER, &prev_draw_buffer);
+	surface = (wsurface_t *)gui_CreateWidget(name, x, y, w, h, WIDGET_SURFACE);
+		
 	glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_framebuffer);
 	glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex);
 	
@@ -286,7 +288,9 @@ void gui_DisablePicking(widget_t *widget)
 	}
 }
 
-
+#ifdef __cplusplus
+}
+#endif
 
 
 

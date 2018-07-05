@@ -3,9 +3,11 @@
 
 //#include "conf.h"
 //#include "includes.h"
+#include "SDL2/SDL_scancode.h"
+#include "SDL2/SDL_mouse.h"
+#include "SDL2/SDL_keyboard.h"
 
-#include "SDL2\SDL.h"
-#include "vector.h"
+#include "vector_types.h"
 
 #define TEXT_BUFFER_SIZE 64
 
@@ -53,7 +55,7 @@ typedef struct
 	short key;
 	short bm_flags;
 }key_t;
-
+/*
 typedef struct
 {
 	Uint8 *kb_keys;
@@ -68,7 +70,7 @@ typedef struct
 	float normalized_mouse_y;
 	float mouse_dx;
 	float mouse_dy;
-}input_cache;
+}input_cache;*/
 
 #ifdef __cplusplus
 extern "C"
@@ -80,6 +82,8 @@ int input_Init();
 void input_Finish();
 
 void input_GetInput(double delta_time);
+
+void input_GetMouseDelta(float *dx, float *dy);
 
 void input_SetCursor(int cursor);
 

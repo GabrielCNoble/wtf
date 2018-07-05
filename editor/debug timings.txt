@@ -1,0 +1,3 @@
+renderer_DrawOpaque - throne2.wtf
+	vertex_t : around 40ms
+	compact_vertex_t : around 33 ms

@@ -8,14 +8,17 @@
 
 #include "l_main.h"
 #include "l_cache.h"
+#include "memory.h"
+#include "r_debug.h"
 
 #include "engine.h"
 
 /* from l_main.c */
-extern int light_count;
-extern light_position_t *light_positions;
-extern light_params_t *light_params;
-extern bsp_striangle_t *light_visible_triangles;
+//extern int light_count;
+//extern light_position_t *light_positions;
+//extern light_params_t *light_params;
+//extern bsp_striangle_t *light_visible_triangles;
+#include "l_globals.h"
 extern unsigned int shadow_map_frame_buffer;
 extern unsigned int cluster_uniform_buffer;
  
@@ -25,26 +28,27 @@ extern int r_frame;
 
 
 /* from world.c */
-extern int world_triangle_group_count;
+//extern int world_triangle_group_count;
+extern int world_batch_count;
 extern int world_start;
 extern vertex_t *world_vertices;
 extern bsp_dleaf_t *world_leaves;
 
 
 
-static int light_cache_cursor = 0;
-static int light_cache_triangle_group_count;
-//int light_cache_stack_top = -1;
-//int light_cache_free_stack[LIGHT_CACHE_SIZE];
-unsigned int light_cache_uniform_buffer = 0;
-unsigned int light_cache_element_buffer = 0;
-unsigned int light_cache_shadow_element_buffer = 0;
-unsigned int light_cache_shadow_maps[LIGHT_CACHE_SIZE];
-int *light_cache_index_buffer_base = NULL;
-int *light_cache_groups_next;
-int *light_cache_frustum_counts;
-int *light_cache_index_buffers[LIGHT_CACHE_SIZE];
-light_cache_slot_t light_cache[LIGHT_CACHE_SIZE];
+static int l_light_cache_cursor = 0;
+static int l_light_cache_triangle_group_count;
+
+
+/*unsigned int l_light_cache_uniform_buffer = 0;
+unsigned int l_light_cache_element_buffer = 0;
+unsigned int l_light_cache_shadow_element_buffer = 0;
+unsigned int l_light_cache_shadow_maps[LIGHT_CACHE_SIZE];
+int *l_light_cache_index_buffer_base = NULL;
+int *l_light_cache_groups_next;
+int *l_light_cache_frustum_counts;
+int *l_light_cache_index_buffers[LIGHT_CACHE_SIZE];
+light_cache_slot_t l_light_cache[LIGHT_CACHE_SIZE];*/
 
 gpu_lamp_t *lamp_buffer;
 
@@ -67,27 +71,29 @@ void light_InitCache()
 	int j;
 	int *p;
 	
+	R_DBG_PUSH_FUNCTION_NAME();
+	
 	
 	//while(glGetError() != GL_NO_ERROR);
-	glGenBuffers(1, &light_cache_uniform_buffer);
-	glBindBuffer(GL_UNIFORM_BUFFER, light_cache_uniform_buffer);
+	glGenBuffers(1, &l_light_cache_uniform_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, l_light_cache_uniform_buffer);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(gpu_lamp_t) * LIGHT_CACHE_SIZE, NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	
 	//printf("%d\n", glGetError());
 	
-	lamp_buffer = malloc(sizeof(gpu_lamp_t) * LIGHT_CACHE_SIZE);
+	lamp_buffer = memory_Malloc(sizeof(gpu_lamp_t) * LIGHT_CACHE_SIZE, "light_InitCache");
 	
-	glGenBuffers(1, &test_uniform_buffer);
+/*	glGenBuffers(1, &test_uniform_buffer);
 	glBindBuffer(GL_UNIFORM_BUFFER, test_uniform_buffer);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(test_t) * 8, NULL, GL_DYNAMIC_DRAW);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);*/
 		
-	glGenBuffers(1, &light_cache_shadow_element_buffer);	
+	/*glGenBuffers(1, &light_cache_shadow_element_buffer);	
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, light_cache_shadow_element_buffer);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * MAX_INDEXES_PER_FRUSTUM * 6 * LIGHT_CACHE_SIZE, NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	light_cache_frustum_counts = malloc(sizeof(int) * 6 * LIGHT_CACHE_SIZE);
+	light_cache_frustum_counts = malloc(sizeof(int) * 6 * LIGHT_CACHE_SIZE);*/
 	
 	#if 0
 	
@@ -117,18 +123,21 @@ void light_InitCache()
 		
 	for(i = 0; i < LIGHT_CACHE_SIZE; i++)
 	{
-		light_cache[i].offset = i;
+		l_light_cache[i].offset = i;
 	}
+	
+	
+	R_DBG_POP_FUNCTION_NAME();
 	
 	
 }
 
 void light_FinishCache()
 {
-	free(light_cache_frustum_counts);
-	free(lamp_buffer);
-	glDeleteBuffers(1, &light_cache_uniform_buffer);
-	glDeleteBuffers(1, &light_cache_shadow_element_buffer);
+	//memory_Free(light_cache_frustum_counts);
+	memory_Free(lamp_buffer);
+	glDeleteBuffers(1, &l_light_cache_uniform_buffer);
+	glDeleteBuffers(1, &l_light_cache_shadow_element_buffer);
 }
 
 
@@ -140,26 +149,26 @@ void light_CacheLight(int light_index)
 	int last_touched = 0;
 	int highest_last_touched = 0;
 	
-	if(light_index >= 0 && light_index < light_count)
+	if(light_index >= 0 && light_index < l_light_list_cursor)
 	{
-		parms = &light_params[light_index];
+		parms = &l_light_params[light_index];
 		
 		if(parms->cache > -1)
 		{
-			light_cache[parms->cache].last_touched = r_frame;
+			l_light_cache[parms->cache].last_touched = r_frame;
 			return;
 		} 
 			
-		if(light_cache_cursor < LIGHT_CACHE_SIZE)
+		if(l_light_cache_cursor < LIGHT_CACHE_SIZE)
 		{
 			
-			cache = light_cache_cursor++;
+			cache = l_light_cache_cursor++;
 			
 			_setup_data:
 			
 			parms->cache = cache;
-			light_cache[cache].last_touched = r_frame;
-			light_cache[cache].light_index = light_index;
+			l_light_cache[cache].last_touched = r_frame;
+			l_light_cache[cache].light_index = light_index;
 			parms->bm_flags |= LIGHT_NEEDS_REUPLOAD;
 			
 			light_AllocShadowMap(light_index);		
@@ -170,7 +179,7 @@ void light_CacheLight(int light_index)
 			/* evict the last recently touched slot...  */
 			for(i = 0; i < LIGHT_CACHE_SIZE; i++)
 			{
-				last_touched = r_frame - light_cache[i].last_touched;
+				last_touched = r_frame - l_light_cache[i].last_touched;
 				if(last_touched > highest_last_touched)
 				{
 					highest_last_touched = last_touched;
@@ -185,7 +194,7 @@ void light_CacheLight(int light_index)
 				return;
 			
 		
-			parms = &light_params[light_cache[cache].light_index];
+			parms = &l_light_params[l_light_cache[cache].light_index];
 			parms->cache = -1;
 			
 			goto _setup_data;
@@ -202,36 +211,36 @@ void light_DropLight(int light_index)
 	int i;
 	light_cache_slot_t t;
 	
-	if(light_index >= 0 && light_index < light_count)
+	if(light_index >= 0 && light_index < l_light_list_cursor)
 	{
-		if(light_params[light_index].bm_flags & LIGHT_INVALID)
+		if(l_light_params[light_index].bm_flags & LIGHT_INVALID)
 			return;
 		
-		cache = light_params[light_index].cache;
-		light_params[light_index].cache = -1;
+		cache = l_light_params[light_index].cache;
+		l_light_params[light_index].cache = -1;
 	
 		//l_cache[cache].light_index = 0xffff;
 		
 		if(cache > -1)
 		{
-			light_cache[cache].light_index = -1;
+			l_light_cache[cache].light_index = -1;
 			
-			if(cache < light_cache_cursor - 1)
+			if(cache < l_light_cache_cursor - 1)
 			{	
 				/* swap cache slots, as it keeps 
 				offsets for shadow map elements buffers... */
-				t = light_cache[cache];
-				light_cache[cache] = light_cache[light_cache_cursor - 1];
-				light_cache[light_cache_cursor - 1] = t;
+				t = l_light_cache[cache];
+				l_light_cache[cache] = l_light_cache[l_light_cache_cursor - 1];
+				l_light_cache[l_light_cache_cursor - 1] = t;
 				
-				i = light_cache[cache].light_index;
-				light_params[i].cache = cache;
+				i = l_light_cache[cache].light_index;
+				l_light_params[i].cache = cache;
 			}
 					
 			light_FreeShadowMap(light_index);
 				
 				
-			light_cache_cursor--;
+			l_light_cache_cursor--;
 		}
 		
 		
@@ -251,6 +260,29 @@ void light_DropLight(int light_index)
 }
 
 
+void light_ClearCache()
+{
+	int i;
+	int light;
+	int cache;
+	
+	for(i = 0; i < l_light_cache_cursor; i++)
+	{
+		light = l_light_cache[i].light_index;	
+		l_light_params[light].cache = -1;
+		l_light_cache[i].light_index = -1;
+	}
+	
+	for(i = 0; i < l_allocd_shadow_map_count; i++)
+	{
+		l_shadow_maps[i].light_index = -1;
+	}
+	
+	l_light_cache_cursor = 0;
+	l_allocd_shadow_map_count = 0;
+}
+
+
 void light_EvictOld()
 {
 	int i;
@@ -265,7 +297,7 @@ void light_EvictOld()
 	
 	//printf("light_EvictOld: before: %d  ", light_cache_cursor);
 
-	for(i = 0; i < light_cache_cursor; i++)
+	for(i = 0; i < l_light_cache_cursor; i++)
 	{
 		/*if(l_cache[i].light_index == 0xffff)
 			continue;*/
@@ -273,45 +305,31 @@ void light_EvictOld()
 		/* could've called light_DropLight here, but this
 		eviction process has to be as fast as possible, so
 		the code got copied instead... */	
-		if(r_frame - light_cache[i].last_touched > OLD_THRESHOLD)
+		if(r_frame - l_light_cache[i].last_touched > OLD_THRESHOLD)
 		{
-			parms = &light_params[light_cache[i].light_index];
+			parms = &l_light_params[l_light_cache[i].light_index];
 			parms->cache = -1;
 			
-			light_FreeShadowMap(light_cache[i].light_index);
+			light_FreeShadowMap(l_light_cache[i].light_index);
+				
+			l_light_cache[i].light_index = -1;
 			
-			//l_cache[i].light_index = 0xffff;
-			
-			light_cache[i].light_index = -1;
-			
-			if(i < light_cache_cursor - 1)
+			if(i < l_light_cache_cursor - 1)
 			{
 				
-				t = light_cache[i];
-				light_cache[i] = light_cache[light_cache_cursor - 1];
-				light_cache[light_cache_cursor - 1] = t;
+				t = l_light_cache[i];
+				l_light_cache[i] = l_light_cache[l_light_cache_cursor - 1];
+				l_light_cache[l_light_cache_cursor - 1] = t;
 				
-				c = light_cache[i].light_index;
+				c = l_light_cache[i].light_index;
 				
-				light_params[c].cache = i;
+				l_light_params[c].cache = i;
 				i--;
 			}
 			
-			
-			light_cache_cursor--;
-			
-			/*if(i == light_cache_cursor)
-			{
-				light_cache_cursor--;
-			}
-			else
-			{
-				light_cache_free_stack[++light_cache_stack_top] = i;	
-			}*/
+			l_light_cache_cursor--;
 		}	
 	}
-	
-	//printf("after: %d\n", light_cache_cursor);
 	
 	l_last_mass_eviction = 0;
 	
@@ -333,93 +351,82 @@ void light_UploadCache()
 	light_position_t *pos;
 	light_params_t *parms;
 	camera_t *active_camera = camera_GetActiveCamera();
+	mat4_t view_projection_matrix;
 	gpu_lamp_t *lamp;
 	
-	if(!light_cache_uniform_buffer)
+	if(!l_light_cache_uniform_buffer)
 		return;
+		
+	
+	R_DBG_PUSH_FUNCTION_NAME();	
 	
 	//while(glGetError() != GL_NO_ERROR);	
 	
-	glBindBuffer(GL_UNIFORM_BUFFER, light_cache_uniform_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, l_light_cache_uniform_buffer);
 	
 	//s = engine_GetDeltaTime();
+	
+	mat4_t_mult_fast(&view_projection_matrix, &active_camera->view_data.view_matrix, &active_camera->view_data.projection_matrix);
 	
 	/* BOTTLENECK: this call is taking between 3 and 6 ms... */
 	//lamp = (gpu_lamp_t *) glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
 	lamp = lamp_buffer;
-	//e = engine_GetDeltaTime();
-		
 	
-	/*lamp[0].color_energy.r = 1.0;
-	lamp[0].color_energy.g = 0.0;
-	lamp[0].color_energy.b = 0.0;
-	lamp[0].color_energy.a = 0.0;
-	
-	
-	glUnmapBuffer(GL_UNIFORM_BUFFER);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-	
-	
-	glBindBuffer(GL_UNIFORM_BUFFER, test_uniform_buffer);
-	p = (test_t *)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-	
-	p[0].color.r = 1.0;
-	p[0].color.g = 0.0;
-	p[0].color.b = 1.0;
-	p[0].color.a = 0.0;*/
-	
-	/*p[0].a0 = 0xffffffff;
-	p[0].a1 = 0xffffffff;
-	p[0].a2 = 0;
-	p[0].a3 = 0xffffffff;*/
-	
-	//glUnmapBuffer(GL_UNIFORM_BUFFER);	
-	//printf("%x\n", glGetError());
-	
-		
-	
-	
-	
-	
-//	printf("%x\n", glGetError());
-	
-	for(i = 0; i < light_cache_cursor; i++)
+	for(i = 0; i < l_light_cache_cursor; i++)
 	{
 		
-		light_index = light_cache[i].light_index;
-		pos = &light_positions[light_index];
-		parms = &light_params[light_index];
+		light_index = l_light_cache[i].light_index;
+		pos = &l_light_positions[light_index];
+		parms = &l_light_params[light_index];
 		
 		
-		if(light_cache[i].last_touched != r_frame) 
+		if(l_light_cache[i].last_touched != r_frame) 
 			continue;
 		
 		//printf("update\n");
 			
-		if(parms->bm_flags & LIGHT_NEEDS_REUPLOAD)
-			light_UploadIndexes(light_index);
+		//if(parms->bm_flags & LIGHT_NEEDS_REUPLOAD)
+		//	light_UploadIndexes(light_index);
 			
 		
-		pos->world_to_light_matrix.floats[3][0] = -pos->position.x;
-		pos->world_to_light_matrix.floats[3][1] = -pos->position.y;
-		pos->world_to_light_matrix.floats[3][2] = -pos->position.z;
+		//pos->world_to_light_matrix.floats[3][0] = -pos->position.x;
+		//pos->world_to_light_matrix.floats[3][1] = -pos->position.y;
+		//pos->world_to_light_matrix.floats[3][2] = -pos->position.z;
 		
-		uniform_index = light_cache[i].offset;
-			
+		uniform_index = l_light_cache[i].offset;
 		
-		lamp[uniform_index].position_radius.x = pos->position.x;
+		light_position.x = pos->position.x;
+		light_position.y = pos->position.y;
+		light_position.z = pos->position.z;
+		light_position.w = 1.0;
+		
+		//mat4_t_vec4_t_mult(&view_projection_matrix, &light_position);
+		mat4_t_vec4_t_mult(&active_camera->view_data.view_matrix, &light_position);
+		
+		/*lamp[uniform_index].position_radius.x = pos->position.x;
 		lamp[uniform_index].position_radius.y = pos->position.y;
-		lamp[uniform_index].position_radius.z = pos->position.z;
+		lamp[uniform_index].position_radius.z = pos->position.z;*/
+		
+		lamp[uniform_index].position_radius.x = light_position.x;
+		lamp[uniform_index].position_radius.y = light_position.y;
+		lamp[uniform_index].position_radius.z = light_position.z;
+		
+		/*lamp[uniform_index].position_radius.x = 0;
+		lamp[uniform_index].position_radius.y = 0;
+		lamp[uniform_index].position_radius.z = 0;*/
+		
 		lamp[uniform_index].position_radius.w = LIGHT_RADIUS(parms->radius);
 			
 		lamp[uniform_index].color_energy.r = (float)parms->r / 255.0;
 		lamp[uniform_index].color_energy.g = (float)parms->g / 255.0;
 		lamp[uniform_index].color_energy.b = (float)parms->b / 255.0;
 		lamp[uniform_index].color_energy.a = LIGHT_ENERGY(parms->energy);
+		
+		//printf("%f\n", lamp[uniform_index].color_energy.a);
 
-		lamp[uniform_index].bm_flags = parms->bm_flags;
+		//lamp[uniform_index].bm_flags = parms->bm_flags;
 		lamp[uniform_index].x_y = (parms->y << 16) | parms->x;
-		lamp[uniform_index].bm_flags = parms->bm_flags & LIGHT_GENERATE_SHADOWS;
+		lamp[uniform_index].bm_flags = parms->bm_flags & (~LIGHT_GENERATE_SHADOWS);
 		/*if(parms->bm_flags & LIGHT_GENERATE_SHADOWS)
 			lamp[uniform_index].bm_flags = 1;
 		else
@@ -436,6 +443,8 @@ void light_UploadCache()
 	//glUnmapBuffer(GL_UNIFORM_BUFFER);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	
+	
+	R_DBG_POP_FUNCTION_NAME();
 	//e = engine_GetDeltaTime();
 	
 	//printf("%f\n", e - s);
@@ -444,9 +453,12 @@ void light_UploadCache()
 
 void light_BindCache()
 {
+	R_DBG_PUSH_FUNCTION_NAME();
 	//glBindBuffer(GL_UNIFORM_BUFFER, test_uniform_buffer);
-	glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_PARAMS_UNIFORM_BUFFER_BINDING, light_cache_uniform_buffer);
+	glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_PARAMS_UNIFORM_BUFFER_BINDING, l_light_cache_uniform_buffer);
 	//glBindBufferBase(GL_UNIFORM_BUFFER, TEST_UNIFORM_BUFFER_BINDING, test_uniform_buffer);
+	
+	R_DBG_POP_FUNCTION_NAME();
 	
 	//glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_CLUSTER_UNIFORM_BUFFER_BINDING, cluster_uniform_buffer);
 }
@@ -469,103 +481,10 @@ void light_UnbindCache()
 	//glBindBufferBase(GL_UNIFORM_BUFFER, LIGHT_CLUSTER_UNIFORM_BUFFER_BINDING, 0);
 }
 
-#if 0
-void light_UpdateCacheGroups()
-{
-	
-	int i;
-	int j;
-	int *p;
-	if(!world_triangle_group_count)
-		return;
-	
-	if(!light_cache_element_buffer)
-	{
-		glGenBuffers(1, &light_cache_element_buffer);
-		glGenBuffers(1, &light_cache_shadow_element_buffer);
-		glGenBuffers(1, &light_cache_uniform_buffer);
-		glBindBuffer(GL_UNIFORM_BUFFER, light_cache_uniform_buffer);
-		glBufferData(GL_UNIFORM_BUFFER, sizeof(gpu_lamp_t) * LIGHT_CACHE_SIZE, NULL, GL_DYNAMIC_DRAW);
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
-		
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, light_cache_shadow_element_buffer);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * MAX_INDEXES_PER_FRUSTUM * 6 * LIGHT_CACHE_SIZE, NULL, GL_DYNAMIC_DRAW);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-		light_cache_frustum_counts = malloc(sizeof(int) * 6 * LIGHT_CACHE_SIZE);
-		
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, shadow_map_frame_buffer);
-		glDrawBuffer(GL_COLOR_ATTACHMENT0);
-		glClearColor(1000.0, 1000.0, 1000.0, 1000.0);
-		
-		for(i = 0; i < LIGHT_CACHE_SIZE; i++)
-		{
-			glGenTextures(1, &light_cache_shadow_maps[i]);
-			glBindTexture(GL_TEXTURE_CUBE_MAP, light_cache_shadow_maps[i]);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BASE_LEVEL, 0);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, 0);
-			
-			//while(glGetError());
-			for(j = 0; j < 6; j++)
-			{
-				glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, 0, GL_LUMINANCE16F_ARB, 512, 512, 0, GL_LUMINANCE, GL_FLOAT, NULL);
-				glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-				glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, light_cache_shadow_maps[i], 0);
-				glClear(GL_COLOR_BUFFER_BIT);
-				glBindTexture(GL_TEXTURE_CUBE_MAP, light_cache_shadow_maps[i]);
-			}
-			
-			//printf("%x\n", glGetError());
-			
-			
-		}
-		
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-		glDrawBuffer(GL_BACK);
-		
-	}
-	else
-	{
-		//free(light_cache_index_buffer_base);
-		free(light_cache_groups_next);
-	}
-	
-	//light_cache_index_buffer_base = malloc(sizeof(int) * 3 * MAX_INDEXES_PER_GROUP * world_triangle_group_count * LIGHT_CACHE_SIZE);
-	//light_cache_groups_next = malloc(sizeof(int) * world_triangle_group_count * LIGHT_CACHE_SIZE);
-	//while(glGetError() != GL_NO_ERROR);
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, light_cache_element_buffer);
-	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * MAX_INDEXES_PER_GROUP * world_triangle_group_count * LIGHT_CACHE_SIZE, NULL, GL_DYNAMIC_DRAW);
-	//printf("%x\n", glGetError());
-	
-	
-	//p = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_READ_ONLY);
-	
-	/*if(!p)
-	{
-		printf("WARNING: glMapBuffer returned NULL on light_cache_element_buffer!\n");
-	}
-	
-	glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER); */
-	
-	
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	
-
-	
-	for(i = 0; i < LIGHT_CACHE_SIZE; i++)
-	{
-		light_cache[i].offset = i;
-	}
-	
-}
-#endif
 
 void light_UploadIndexes(int light_index)
 {
+	#if 0
 	light_params_t *parms;
 	light_position_t *pos;
 	bsp_striangle_t *visible_triangles;
@@ -589,10 +508,10 @@ void light_UploadIndexes(int light_index)
 		return;
 	
 	
-	if(light_index >= 0 && light_index < light_count)
+	if(light_index >= 0 && light_index < l_light_list_cursor)
 	{
-		parms = &light_params[light_index];
-		pos = &light_positions[light_index];
+		parms = &l_light_params[light_index];
+		pos = &l_light_positions[light_index];
 		
 		if(!(parms->bm_flags & LIGHT_INVALID))
 		{
@@ -601,9 +520,9 @@ void light_UploadIndexes(int light_index)
 			if(cache > -1)
 			{
 									
-				group_next = light_cache_groups_next + (light_cache[cache].offset * world_triangle_group_count);
+				group_next = l_light_cache_groups_next + (l_light_cache[cache].offset * world_batch_count);
 		
-				visible_triangles = &light_visible_triangles[light_index * MAX_TRIANGLES_PER_LIGHT];
+				visible_triangles = &l_light_visible_triangles[light_index * MAX_TRIANGLES_PER_LIGHT];
 				c = parms->visible_triangle_count;
 				
 				//assert(c < MAX_)
@@ -641,17 +560,17 @@ void light_UploadIndexes(int light_index)
 				
 				if(parms->bm_flags & LIGHT_GENERATE_SHADOWS)
 				{
-					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, light_cache_shadow_element_buffer);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, l_light_cache_shadow_element_buffer);
 					/* this is likelly to cause a big slowdown... */
 					indexes = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_READ_WRITE);
 					
 					/* light_cache_frustum_counts is an array of ints, and each group of 
 					six ints represent the counts of the six frustums of a light... */
-					frustum_count = light_cache_frustum_counts + light_cache[cache].offset * 6;
+					frustum_count = l_light_cache_frustum_counts + l_light_cache[cache].offset * 6;
 					
 					/* block_index is the offset from the beginning of light_cache_frustum_counts of 
 					the group of six ints that represents the frustum of this light... */
-					block_index = MAX_INDEXES_PER_FRUSTUM * 6 * light_cache[cache].offset;				
+					block_index = MAX_INDEXES_PER_FRUSTUM * 6 * l_light_cache[cache].offset;				
 					
 					
 					
@@ -766,6 +685,8 @@ void light_UploadIndexes(int light_index)
 			}
 		}
 	}
+	
+	#endif
 }
 
 

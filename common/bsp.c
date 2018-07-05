@@ -13,35 +13,30 @@
 #include "shader.h"
 #include "l_main.h"
 #include "input.h"
+#include "memory.h"
 
-
-//extern bsp_node_t *world_bsp;
-extern int world_vertices_count;
-extern vertex_t *world_vertices;
-extern int global_triangle_group_count;
-extern triangle_group_t *global_triangle_groups;
-
-
-extern int world_nodes_count;
-extern bsp_pnode_t *world_nodes;
-extern bsp_pnode_t *collision_nodes;
-extern int world_leaves_count;
-extern bsp_dleaf_t *world_leaves;
-extern int world_triangle_group_count;
-extern triangle_group_t *world_triangle_groups;
-extern unsigned int *index_buffer;
-extern unsigned int world_element_buffer;
-extern int world_handle;
+/* from world.c */
+extern int w_world_vertices_count;
+extern vertex_t *w_world_vertices;
+extern int w_world_nodes_count;
+extern bsp_pnode_t *w_world_nodes;
+extern int w_world_leaves_count;
+extern bsp_dleaf_t *w_world_leaves;
+extern int w_world_triangle_group_count;
+extern triangle_group_t *w_world_triangle_groups;
+extern unsigned int *w_index_buffer;
+//extern unsigned int w_world_element_buffer;
+extern int w_world_handle;
 
 //extern bsp_leaf_t *world_leaves;
 
-int draw_bsp_shader;
+//int draw_bsp_shader;
 
-bsp_pnode_t *entity_hull = NULL;
+//bsp_pnode_t *entity_hull = NULL;
 
 
 /* from light.c */
-extern int visible_light_count;
+//extern int visible_light_count;
 
 
 
@@ -63,6 +58,10 @@ float color_table[][3] = {0.0, 0.8, 0.0,
 						  0.0, 0.8, 0.0};
 
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 int bsp_Init()
 {
@@ -72,7 +71,7 @@ int bsp_Init()
 void bsp_Finish()
 {
 	//bsp_DeleteSolidLeaf(world_bsp);
-	bsp_DeleteBsp();
+	//bsp_DeleteBsp();
 }
 
 void bsp_LoadFile(char *file_name)
@@ -83,43 +82,7 @@ void bsp_LoadFile(char *file_name)
 
 void bsp_DeleteBsp()
 {
-	
-	int i;
-	int c = world_leaves_count;
-	
-	if(world_nodes)
-	{
 		
-		for(i = 0; i < c; i++)
-		{
-			free(world_leaves[i].pvs);
-			free(world_leaves[i].tris);
-		}
-		
-		free(index_buffer);
-		free(world_triangle_groups);
-		free(world_nodes);
-		free(collision_nodes);
-		free(world_leaves);
-		
-		world_nodes = NULL;
-		collision_nodes = NULL;
-		world_leaves = NULL;
-		index_buffer = NULL;
-		world_triangle_groups = NULL;
-		
-		world_triangle_group_count = 0;
-		
-		
-		gpu_Free(world_handle);
-		
-		
-		glDeleteBuffers(1, &world_element_buffer);
-	
-		
-	}
-	
-	
 }
 
 /*
@@ -199,7 +162,7 @@ bsp_RecursiveFirstHit
 */
 int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t0, float t1, trace_t *trace)
 {
-	
+	#if 0
 	float d0;
 	float d1;
 	
@@ -361,6 +324,8 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 		
 	}
 	
+	#endif
+	
 }
 
 
@@ -388,6 +353,7 @@ bsp_TryStepUp
 */
 int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace)
 {
+	#if 0
 	vec3_t start;
 	vec3_t end;
 	vec3_t v;
@@ -465,7 +431,7 @@ int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace)
 	}
 	
 	
-	
+	#endif
 	
 	return 0;
 }
@@ -473,6 +439,7 @@ int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace)
 
 int bsp_TryStepDown(vec3_t *position, vec3_t *velocity, trace_t *trace)
 {
+	#if 0
 	vec3_t end;
 	
 	end = *position;
@@ -499,7 +466,7 @@ int bsp_TryStepDown(vec3_t *position, vec3_t *velocity, trace_t *trace)
 	
 	return 0;
 	
-	
+	#endif
 	
 }
 
@@ -514,6 +481,7 @@ bsp_Move
 */
 void bsp_Move(vec3_t *position, vec3_t *velocity)
 {
+	#if 0
 	int i;
 	int c;
 	
@@ -610,10 +578,12 @@ void bsp_Move(vec3_t *position, vec3_t *velocity)
 	position->y += velocity->y;
 	position->z += velocity->z;
 	
+	#endif
+	
 }
 
 
-bsp_dleaf_t *bsp_GetCurrentLeaf(bsp_pnode_t *node, vec3_t camera_position)
+bsp_dleaf_t *bsp_GetCurrentLeaf(bsp_pnode_t *node, vec3_t position)
 {
 	
 	float d;
@@ -625,7 +595,7 @@ bsp_dleaf_t *bsp_GetCurrentLeaf(bsp_pnode_t *node, vec3_t camera_position)
 		
 	while(node->child[0] > BSP_EMPTY_LEAF && node->child[0] < BSP_SOLID_LEAF)
 	{
-		d = dot3(node->normal, camera_position) - node->dist;
+		d = dot3(node->normal, position) - node->dist;
 		
 		if(d >= 0.0)
 		{
@@ -642,7 +612,7 @@ bsp_dleaf_t *bsp_GetCurrentLeaf(bsp_pnode_t *node, vec3_t camera_position)
 	if(node->child[0] == BSP_EMPTY_LEAF)
 	{
 		leaf_index = *(int *)&node->dist;	
-		return &world_leaves[leaf_index];
+		return &w_world_leaves[leaf_index];
 	}
 	
 	return NULL;
@@ -653,16 +623,17 @@ bsp_dleaf_t *bsp_GetCurrentLeaf(bsp_pnode_t *node, vec3_t camera_position)
 int potentially_visible_leaves_count;
 bsp_dleaf_t *potentially_visible_leaves[MAX_VISIBLE_LEAVES];
 
-bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t camera_position)
+bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t position)
 {
 	int i;
 	int leaf_index;
 	int l = 0;
 	
-	bsp_pnode_t *node = &world_nodes[0];
+	bsp_pnode_t *node = &w_world_nodes[0];
 	bsp_dleaf_t *cur_leaf = NULL;
 	bsp_dleaf_t *leaf;
-	
+	int potentially_visible_vert_count = 0;
+	int leaf_vert_count = 0;
 	
 	float d;
 	int node_index;
@@ -672,7 +643,7 @@ bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t camera_positi
 			
 	while(node->child[0] > BSP_EMPTY_LEAF && node->child[0] < BSP_SOLID_LEAF)
 	{
-		d = dot3(node->normal, camera_position) - node->dist;
+		d = dot3(node->normal, position) - node->dist;
 		
 		if(d >= 0.0)
 		{
@@ -689,40 +660,37 @@ bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t camera_positi
 	if(node->child[0] == BSP_EMPTY_LEAF)
 	{
 		leaf_index = *(int *)&node->dist;	
-		cur_leaf =  &world_leaves[leaf_index];
-		
-	//	printf("leaf index: %d\n", leaf_index);
-		
-		//assert(cur_leaf);
-		
-		/* avoid going over the pvs if the current leaf
-		didn't change between this and the last call... */
-		
-		/*if(cur_leaf == potentially_visible_leaves[0])
-		{
-			*leaf_count = potentially_visible_leaves_count;
-			return &potentially_visible_leaves[0];
-		}*/
-		
+		cur_leaf =  &w_world_leaves[leaf_index];		
 		potentially_visible_leaves[l++] = cur_leaf;
 		
-		for(i = 0; i < world_leaves_count && i < MAX_VISIBLE_LEAVES; i++)
+		for(i = 0; i < w_world_leaves_count && i < MAX_VISIBLE_LEAVES; i++)
 		{
 			if(!cur_leaf->pvs) 
 				break;
 			
-			//assert(cur_leaf->pvs);	
+			/* this avoids the occasion where the current leaf is marked on its own 
+			pvs (which happens when the pvs thread is calculating visibility to a 
+			leaf that 'sees' the current leaf, and ends marking it on its own pvs
+			to avoid infinte recursion), which ends up adding it twice for rendering, thus
+			causing severe memory corruption problems. */
+			if(i == leaf_index)
+				continue;
+			
+				
 				
 			if(cur_leaf->pvs[i >> 3] & (1 << (i % 8)))
-			{
-				potentially_visible_leaves[l++] = &world_leaves[i];
+			{				
+				potentially_visible_vert_count += leaf_vert_count;
+				potentially_visible_leaves[l++] = &w_world_leaves[i];
 			}
 		}
 		
 		*leaf_count = l;
-		potentially_visible_leaves_count = l;
+		potentially_visible_leaves_count = l;		
 		return &potentially_visible_leaves[0];
 	}
+	
+	
 	
 //	printf("nope!\n");
 	potentially_visible_leaves_count = 0;
@@ -732,6 +700,29 @@ bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t camera_positi
 	 
 }
 
+void bsp_AddIndexes(int leaf_index)
+{
+	bsp_dleaf_t *leaf;
+	
+	if(w_world_leaves)
+	{
+		leaf = w_world_leaves + leaf_index;
+		
+		
+		
+		
+	}
+	
+}
+
+void bsp_RemoveIndexes(int leaf_index)
+{
+	
+}
+
+#ifdef __cplusplus
+}
+#endif
 
 
 

@@ -1,0 +1,46 @@
+- Engine 
+	- Serializers	
+	- Animation system
+	- Navigation system
+		- Expose functions to scripts
+		
+
+	- Sound system
+	- Translucent rendering
+	- ECS
+		- Entity instancing (correctly spawning an entity based on its def)
+		
+		- Transform component
+			- hierarchical transform update 
+			- hierarchical aabb update
+		
+		- Controller component
+			- Physics controller
+			- Player controller
+			- AI controller
+			- remove controller
+
+		- Script component
+
+	
+	- Physics system
+		- Character collider
+			- step up steps
+			- stop still on slopes
+//				- stop still
+				- limit slope angle
+
+
+		- Rigid body constraints
+			- Hinge
+			- Slide
+
+
+
+- GUI
+	- Tree list
+
+
+- Editor
+	- Entity editor
+	- Level editor

@@ -1,77 +1,15 @@
 #ifndef PHYSICS_H
 #define PHYSICS_H
 
-#include "vector_types.h"
-#include "model.h"
-#include "player.h"
-//#include "projectile.h"
+#include "phy_common.h"
+#include "phy_character.h"
 
-#define GRAVITY 0.0098
 
-//#define GRAVITY 0.015
 
-#define GROUND_FRICTION 0.65
-#define AIR_FRICTION 0.01
-
-#define GROUND_DELTA_INCREMENT 0.45
-#define AIR_DELTA_INCREMENT 0.35
-
-#define MAX_HORIZONTAL_DELTA 0.25
-
-#define JUMP_DELTA 0.85 
-
-#define PLAYER_CAPSULE_HEIGHT 4.0
-#define PLAYER_CAPSULE_RADIUS 1.5
-
-typedef struct
+#ifdef __cplusplus
+extern "C"
 {
-	vec3_t position;
-	vec3_t half_extents;
-	vertex_t *verts;
-	int start;
-}block_t;
-
-typedef struct
-{
-	vec3_t a;
-	vec3_t b;
-	float radius;
-}capsule_t;
-
-typedef struct
-{
-	vec3_t a;
-	vec3_t b;
-	vec3_t c;
-	unsigned int packed_normal;
-	
-	//vec3_t normal;
-}collision_triangle_t;
-
-typedef struct bvh_node_t
-{
-	vec3_t position;						/* if this node is not a leaf, it represents a volume within the hierarchy... */
-	vec3_t half_extents;
-	
-	int start;								/* this is an offset within the array of vertices that compose the static world geometry... */
-	
-	struct bvh_node_t *left;
-	struct bvh_node_t *right;
-	
-	union
-	{
-		struct bvh_node_t *parent;
-		struct bvh_node_t *next;
-	};
-	
-}bvh_node_t;
-
-typedef struct
-{
-	vec3_t hit_point;
-	vec3_t hit_normal;
-}ray_cast_result_t;
-
+#endif
 
 int physics_Init();
 
@@ -79,7 +17,118 @@ void physics_Finish();
 
 void physics_ProcessCollisions(double delta_time);
 
+/*
+=================================================================
+=================================================================
+=================================================================
+*/
 
+
+collider_def_t *physics_CreateColliderDef(char *name);
+
+collider_def_t *physics_CreateCharacterColliderDef(char *name, float height, float crouch_height, float radius, float step_height, float slope_angle);
+
+void physics_DestroyColliderDef(char *name);
+
+void physics_DestroyColliderDefPointer(collider_def_t *def);
+
+void physics_DestroyColliderDefs();
+
+collider_def_t *physics_GetColliderDefPointer(char *name);
+
+collider_def_t *physics_GetColliderDefPointerIndex(int collider_def_index);
+
+void physics_AddCollisionShape(collider_def_t *def, vec3_t scale, vec3_t relative_position, mat3_t *relative_orientation, int type);
+
+void physics_RemoveCollisionShape(collider_def_t *def, int shape_index);
+
+void physics_TranslateCollisionShape(collider_def_t *def, vec3_t translation, int shape_index);
+
+void physics_RotateCollisionShape(collider_def_t *def, vec3_t axis, float amount, int shape_index);
+
+void physics_ScaleCollisionShape(collider_def_t *def, vec3_t scale, int shape_index);
+
+void *physics_BuildCollisionShape(collider_def_t *def);
+
+void physics_IncColliderDefRefCount(collider_def_t *def);
+
+void physics_DecColliderDefRefCount(collider_def_t *def);
+
+void physics_UpdateReferencingColliders(collider_def_t *def);
+
+void physics_DestroyCollisionShape(void *collision_shape);
+
+
+/*
+=================================================================
+=================================================================
+=================================================================
+*/
+
+
+int physics_CreateEmptyCollider();
+
+int physics_CreateCollider(mat3_t *orientation, vec3_t position, vec3_t scale, collider_def_t *def, int flags);
+
+int physics_CopyCollider(int collider_index);
+
+void physics_DestroyColliderIndex(int collider_index);
+
+collider_t *physics_GetColliderPointerIndex(int collider_index);
+
+void physics_GetColliderAabb(int collider_index, vec3_t *aabb);
+
+/*
+=================================================================
+=================================================================
+=================================================================
+*/
+
+void physics_SetColliderPosition(int collider_index, vec3_t position);
+
+void physics_SetColliderOrientation(int collider_index, mat3_t *orientation);
+
+void physics_SetColliderScale(int collider_index, vec3_t scale);
+
+/*
+=================================================================
+=================================================================
+=================================================================
+*/
+
+void physics_UpdateColliders();
+
+void physics_PostUpdateColliders();
+
+/*
+=================================================================
+=================================================================
+=================================================================
+*/
+
+
+
+/*
+=================================================================
+=================================================================
+=================================================================
+*/
+
+int physics_Raycast(vec3_t from, vec3_t to, vec3_t *hit_position, vec3_t *hit_normal);
+
+/*
+=================================================================
+=================================================================
+=================================================================
+*/
+
+void physics_ClearWorldCollisionMesh();
+
+void physics_BuildWorldCollisionMesh();
+
+#ifdef __cplusplus
+}
+#endif
 
 
 

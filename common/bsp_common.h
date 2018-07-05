@@ -18,7 +18,7 @@ this triangle belongs to. bsp_triangle_t's may be unsorted on memory. */
 typedef struct
 {
 	int first_vertex;
-	int triangle_group;		/* a.k.a. material */
+	int batch;		/* a.k.a. material */
 }bsp_striangle_t;			/* could cut this struct in half... 8 bits for triangle group + 24 bits for the first vertex, which
 gives 256 different triangle groups and 5592405 triangles... */
 
@@ -37,22 +37,47 @@ typedef struct
 {
 	vec3_t center;
 	vec3_t extents;
-	int leaf_index;
+	//int leaf_index;
 	//int first_batch;
 	//int batch_count;
 	bsp_striangle_t *tris;
 	//unsigned int *tris;				
 	unsigned int tris_count;			/* could get rid of this... */
-	unsigned char *pvs;/* this makes this struct not 32 byte aligned. Fuck! */
+	unsigned char *pvs;					/* this makes this struct not 32 byte aligned. Fuck! */
+	
+	//unsigned int first_light_indexes;
+	//unsigned int last_light_indexes;
 	
 }bsp_dleaf_t;
 
+#define PACK_NEXT_PREV_CURSOR(next, prev, cursor) ((next&0x00003fff)|((prev&0x00003fff)<<14)|((cursor&0x0000000f)<<28))
+
+#define UNPACK_NEXT_PREV_CURSOR(next_prev_cursor, next, prev, cursor) next=next_prev_cursor&0x00003fff;				\
+																	  prev=(next_prev_cursor>>14)&0x00003fff;		\
+																	  cursor=(next_prev_cursor>>28)&0x0000000f;		
+
+
+
+typedef struct
+{
+	unsigned short indexes[6];
+	unsigned next : 14;
+	unsigned prev : 14;
+	unsigned cursor : 4;
+	//unsigned int next_prev_cursor;
+	//unsigned short cursor;
+	//unsigned short next;				/* relative displacement... */
+}bsp_indexes_t;					/* 16 bytes... */
 
 typedef struct
 {
 	unsigned int lights[MAX_WORLD_LIGHTS >> 5];
 }bsp_lights_t;
 
+typedef struct
+{
+	unsigned int entities[1024 >> 5];
+}bsp_entities_t;
 
 typedef struct
 {
@@ -72,6 +97,23 @@ typedef struct
 
 
 
+typedef struct bsp_polygon_t
+{
+	struct bsp_polygon_t *next;
+	int vert_count;
+	int brush_index;								/* the brush from which this polygon came from... */
+	int material_index;
+	int triangle_group;
+	int b_used;
+	vertex_t *vertices;
+	int *indexes;
+	//bsp_triangle_t *triangles;						/* the triangles that form this face... */
+	//vec3_t *vertices;
+	vec3_t normal;
+}bsp_polygon_t;
+
+
+
 /* if this node has both child == 0, it means
 it points to a empty leaf, child == 0xffff points
 to a solid leaf. In case of empty leaf, the leaf
@@ -79,7 +121,7 @@ index will be contained in dist. To obtain the index,
 just do *(int *)&dist... */
 typedef struct
 {
-	vec3_t normal;
+	vec3_t normal;					/* could use packed normal here, but bsp's are really finicky with precision... */
 	//vec3_t point;
 	float dist;									
 	unsigned short child[2];		/* relative displacement... */	 /* given that the front child will be always one position away, it's
@@ -149,12 +191,7 @@ enum POLYGON_SPLITTER
 	POLYGON_CONTAINED_BACK = 1 << 5,
 };
 
-enum COLLISION_SHAPE
-{
-	COLLISION_SHAPE_AABB,
-	COLLISION_SHAPE_SPHERE,
-	COLLISION_SHAPE_CAPSULE,
-};
+
 
 
 

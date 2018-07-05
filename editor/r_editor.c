@@ -6,6 +6,9 @@
 #include "vector.h"
 #include "matrix.h"
 
+#include "SDL2\SDL.h"
+#include "GL\glew.h"
+
 
 #include "world.h"
 #include "model.h"
@@ -21,27 +24,35 @@
 #include "pvs.h"
 #include "entity.h"
 #include "model.h"
+
+#include "ed_globals.h"
+ 
+#include "ed_cursors.h"
  
 /* from r_main.c */
-extern int z_pre_pass_shader;
-extern int forward_pass_shader;
+extern int r_z_pre_pass_shader;
+extern int r_forward_pass_shader;
 int forward_pass_brush_shader;
-extern int geometry_pass_shader;
-extern int stencil_lights_pass_shader;
+extern int r_geometry_pass_shader;
+extern int r_stencil_lights_pass_shader;
+extern int r_flat_pass_shader;
 
 /* from editor.c */
-extern int max_selections;
-extern int selection_count;
-extern pick_record_t *selections;
-extern vec3_t cursor_3d_position;
-extern vec3_t handle_3d_position;
-extern int ed_handle_3d_mode;
-extern int ed_editing_mode;
-extern int ed_handle_3d_tranform_mode;
-extern int draw_cursors_shader;
+//extern int max_selections;
+//extern int selection_count;
+//extern pick_record_t *selections;
+//extern vec3_t ed_3d_cursor_position;
+//extern vec3_t ed_3d_handle_position;
+//extern int ed_3d_handle_transform_mode;
+//extern int ed_editing_mode;
+//extern int ed_handle_3d_tranform_mode;
+//extern int draw_cursors_shader;
+#include "ed_globals.h"
 
 extern int ed_selected_brush_polygon_index;
 extern int ed_selected_brush_selection_index;
+extern void (*editor_CurrentEditorPreShading)();
+extern void (*editor_CurrentEditorPostShading)();
 
 
 
@@ -54,6 +65,7 @@ extern brush_t *brushes;
 
 extern int ent_entity_list_cursor;
 extern entity_t *ent_entities;
+extern entity_aabb_t *ent_aabbs;
 
 
 /* from world.c */
@@ -71,9 +83,10 @@ extern bsp_pnode_t *collision_nodes;
 /* from l_main.c */
 extern light_position_t *visible_light_positions;
 extern light_params_t *visible_light_params;
-extern light_position_t *light_positions;
-extern light_params_t *light_params;
-extern int light_count;
+extern light_position_t *l_light_positions;
+extern light_params_t *l_light_params;
+extern int l_light_list_cursor;
+extern int l_light_count;
 extern int visible_light_count;
 extern int visible_lights[];
 extern int light_cache_cursor;
@@ -85,9 +98,9 @@ extern unsigned int cluster_texture;
 
 
 /* from editor.c */
-extern unsigned int cursor_framebuffer_id;
-extern unsigned int cursor_color_texture_id;
-extern unsigned int cursor_depth_texture_id;
+//extern unsigned int cursor_framebuffer_id;
+//extern unsigned int cursor_color_texture_id;
+//extern unsigned int cursor_depth_texture_id;
 extern int editor_state;
 
 
@@ -97,8 +110,11 @@ extern int r_width;
 extern int r_height;
 extern int r_window_width;
 extern int r_window_height;
-extern unsigned int r_backbuffer_id;
-
+extern unsigned int r_colorbuffer_id;
+extern unsigned int r_bbuffer_id;
+extern int r_blit_texture_shader;
+extern int r_deferred;
+extern int r_flat;
 
 /* from player.c */
 extern int spawn_point_count;
@@ -150,91 +166,40 @@ int b_draw_brush_obbs = 1;
 those functions with a big middle finger... */
 
 
+/*void renderer_EditorPreShadingDraw()
+{
+	if(editor_CurrentEditorPreShading)
+	{
+		editor_CurrentEditorPreShading();
+	}
+}
+
+void renderer_EditorPostShadingDraw()
+{
+	if(editor_CurrentEditorPostShading)
+	{
+		editor_CurrentEditorPostShading();
+	}
+}*/
+
+
+
+
+
 void renderer_EditorDraw()
 {
-	
-	//renderer_DrawBrushes();
 	
 	if(b_draw_editor && editor_state == EDITOR_EDITING)
 	{
 		if(b_draw_brushes)
 		{
 			renderer_DrawBrushes();
-		}
-		
-		/*if(b_draw_lights)
-		{
-			renderer_DrawLights();
-		}
-		
-		if(b_draw_grid)
-		{
-			renderer_DrawGrid();
-		}
-		
-		if(b_draw_spawn_points)
-		{
-			renderer_DrawSpawnPoints();
-		}
-		
-		if(b_draw_selected)
-		{
-			renderer_DrawSelected();
-		}
-		
-		if(b_draw_light_leaves)
-		{
-			renderer_DrawLightLeaves();
-		}
-		
-		if(b_draw_leaves)
-		{
-			renderer_DrawLeaves();
-		}
-
-		if(b_draw_world_polygons)
-		{
-			renderer_DrawWorldPolygons();
-		}
-		
-		if(b_draw_brush_polygons)
-		{
-			renderer_DrawBrushPolygons();
-		}
-		
-		if(b_draw_portals)
-		{
-			renderer_DrawPortals();
-		}*/
-		
-		/*if(b_draw_pvs_steps)
-		{
-			renderer_DrawPvsSteps();
-		}*/
-		
-		/*if(b_draw_cursors)
-		{
-			renderer_DrawCursors();	
-		}*/
-		
-		//bsp_DrawPolygons();
-		//bsp_DrawPortals();
-		
-	}
-	
-	//bsp_DrawExpandedBrushes();
-	
-	
+		}	
+	}	
 }
 
 void renderer_PostDraw()
 {
-	
-	
-	/*if(b_draw_world_polygons)
-		{
-			renderer_DrawWorldPolygons();
-		}*/
 	
 	if(b_draw_editor && editor_state == EDITOR_EDITING)
 	{	
@@ -294,35 +259,22 @@ void renderer_PostDraw()
 		{
 			renderer_DrawCollisionPolygons();
 		}
-		
-		
-		
+				
 		if(b_draw_brush_polygons)
 		{
-			//renderer_DrawBrushPolygons();
 			renderer_DrawClippedPolygons();
-			//renderer_DrawBrushBsp();
 		}
 		
-		
-		
-		if(b_draw_portals)
+		/*if(b_draw_portals)
 		{
 			renderer_DrawPortals();
-		}
-		
-		
-
-		
+		}*/
+	
 		if(b_draw_cursors)
 		{
 			renderer_DrawCursors();	
 		}
-			
-		
-		//bsp_DrawPolygons();
-		//bsp_DrawPortals();
-		
+				
 	}
 }
 
@@ -331,20 +283,29 @@ mat4_t transform;
 void renderer_DrawBrushes()
 {
 	
+/*	
+	int i;
+	brush_t *brush;
+	int j;	
+	transform = mat4_t_id();
+
 	
-/*	transform = mat4_t_id();
-	int i;*/
 	
-	
-	/*for(i = 0; i < brush_count; i++)
+	for(i = 0; i < brush_count; i++)
 	{
-		renderer_SubmitDrawCommand(&transform, GL_TRIANGLES, brushes[i].)
+		brush = &brushes[i];
+		
+		for(j = 0; j < brush->triangle_group_count; j++)
+		{
+			renderer_SubmitDrawCommand(&transform, GL_TRIANGLES, brush->triangle_groups[j].start + brush->start, brush->triangle_groups[j].next, brush->triangle_groups[j].material_index);
+		}
 	}*/
 	
-	
+	brush_t *brush;
 	
 	camera_t *active_camera = camera_GetActiveCamera();	
 	triangle_group_t *triangle_group;
+	batch_t *batch;
 	material_t *material;
 	bsp_polygon_t *polygon;
 	int i;
@@ -353,115 +314,153 @@ void renderer_DrawBrushes()
 	int j;
 	int k;
 	
-	float color[] = {1.0, 1.0, 1.0, 1.0};
+	float color[] = {10.0, 0.0, 0.0, 0.0};
 
 	
 	if(!b_draw_brushes) 
 		return;
+	
+	glDisable(GL_BLEND);
+	
+	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
+	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+	renderer_SetModelMatrix(NULL);
+		
 
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 	glDepthMask(GL_TRUE);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-
+		
+	renderer_SetShader(r_z_pre_pass_shader);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->position);
+	renderer_UpdateMatrices();
+		
+	brush = brushes;
 	
-	
-	renderer_SetShader(z_pre_pass_shader);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, (int)&((vertex_t *)0)->position, sizeof(vertex_t));
-	
-	renderer_SetProjectionMatrix(&active_camera->projection_matrix);
-	renderer_SetViewMatrix(&active_camera->world_to_camera_matrix);
+	/* brush z-prepass... */	
+	while(brush)
+	{				
+		if(brush->bm_flags & BRUSH_INVISIBLE)
+		{
+			brush = brush->next;
+			continue;
+		}
+				
+		if(brush->bm_flags & BRUSH_SUBTRACTIVE)
+		{
+			brush = brush->next;
+			continue;
+		}
+			
+		if(!brush->clipped_polygons_index_count)
+		{
+			brush = brush->next;
+			continue;
+		}
+					
+					
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brush->element_buffer);	
+		renderer_DrawElements(GL_TRIANGLES, brush->clipped_polygons_index_count, GL_UNSIGNED_INT, 0);
+		
+		brush = brush->next;
+	}
+		
+	if(r_flat)
+	{
+		renderer_SetShader(r_flat_pass_shader);
+	}
+	else
+	{
+		renderer_SetShader(r_forward_pass_shader);
+	}
+		
+	glEnable(GL_CULL_FACE);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		
+	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
+	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
 	renderer_SetModelMatrix(NULL);
 	renderer_UpdateMatrices();
 	
-	for(i = 0; i < c; i++)
-	{	
-	
-		if(brushes[i].type == BRUSH_BOUNDS)
-			continue;
-		
-		if(brushes[i].type == BRUSH_INVALID)
-			continue;	
-		
-		if(brushes[i].bm_flags & BRUSH_INVISIBLE)
-			continue;
-		
-		if(brushes[i].bm_flags & BRUSH_SUBTRACTIVE)
-			continue;	
-				
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brushes[i].element_buffer);	
-		glDrawElements(GL_TRIANGLES, brushes[i].index_count, GL_UNSIGNED_INT, 0);
-			
-	}
-	
-	renderer_SetShader(forward_pass_brush_shader);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, (int)&((vertex_t *)0)->position, sizeof(vertex_t));
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 3, (int)&((vertex_t *)0)->normal, sizeof(vertex_t));
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 3, (int)&((vertex_t *)0)->tangent, sizeof(vertex_t));
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, (int)&((vertex_t *)0)->tex_coord, sizeof(vertex_t));
-	renderer_SetClusterTexture();
 	renderer_SetUniform1i(UNIFORM_r_width, r_width);
 	renderer_SetUniform1i(UNIFORM_r_height, r_height);
 	renderer_SetUniform1i(UNIFORM_r_frame, r_frame);
-	renderer_SetUniform4fv(UNIFORM_active_camera_position, &active_camera->world_position.floats[0]);
-	
-	renderer_UpdateMatrices();
-	
-	glEnable(GL_CULL_FACE);
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	
-	
-	c = brush_count;
-	
-	for(i = 0; i < c; i++)
+		
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->position);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->normal);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->tangent);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->tex_coord);
+		
+	brush = brushes;
+	/* non-subtractive brushes first... */
+	while(brush)
 	{
-		
-		if(brushes[i].type == BRUSH_BOUNDS)
+		if(brush->bm_flags & BRUSH_INVISIBLE)
+		{
+			brush = brush->next;
 			continue;
-		
-		if(brushes[i].type == BRUSH_INVALID)
-			continue;	
-		
-		if(brushes[i].bm_flags & BRUSH_INVISIBLE)
-			continue;	
-	
-		/*if(brushes[i].bm_flags & BRUSH_SUBTRACTIVE)
-		{
-			renderer_SetShader(-1);
-			glColor3f(0.3, 0.0, 0.0);
-			glDisable(GL_CULL_FACE);
-			polygon = brushes[i].polygons;
-			while(polygon)
-			{		
-				glBegin(GL_LINE_LOOP);
-				
-				for(j = 0; j < polygon->vert_count; j++)
-				{
-					glVertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
-				}
-				
-				glEnd();
-				polygon = polygon->next;
-			}
-			
-			glEnable(GL_CULL_FACE);
-		}*/
-		
-		//else
-		{
-			
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brushes[i].element_buffer);
-			
-			k = brushes[i].triangle_group_count;	
-			triangle_group = brushes[i].triangle_groups;				
-			for(j = 0; j < k; j++)
-			{
-				
-				renderer_SetMaterial(triangle_group[j].material_index);				
-				glDrawElements(GL_TRIANGLES, triangle_group[j].next, GL_UNSIGNED_INT, (void *)(triangle_group[j].start * sizeof(int)));
-			}
 		}
 		
+		if(brush->bm_flags & BRUSH_SUBTRACTIVE)
+		{
+			brush = brush->next;
+			continue;
+		}
+	
+		
+		if(!brush->clipped_polygons_index_count)
+		{
+			brush = brush->next;
+			continue;
+		}
+					
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brush->element_buffer);
+
+
+		k = brush->batch_count;	
+		batch = brush->batches;			
+		for(j = 0; j < k; j++)
+		{	
+			renderer_SetMaterial(batch[j].material_index);		
+			renderer_DrawElements(GL_TRIANGLES, batch[j].next, GL_UNSIGNED_INT, (void *)(batch[j].start * sizeof(int)));
+		}
+	
+		brush = brush->next;
+	}
+	
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	
+	renderer_SetShader(r_flat_pass_shader);
+	renderer_UpdateMatrices();
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->position);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->normal);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->tangent);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->tex_coord);
+	
+	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
+	
+	brush = brushes;
+	/* subtractive... */
+	while(brush)
+	{
+		if(!(brush->bm_flags & BRUSH_SUBTRACTIVE))
+		{
+			brush = brush->next;
+			continue;
+		}
+		k = brush->clipped_polygons_vert_count;
+		
+		polygon = brush->clipped_polygons;
+		
+		k = brush->start;
+		while(polygon)
+		{
+			glDrawArrays(GL_LINE_LOOP, k, polygon->vert_count);
+			k += polygon->vert_count;
+			polygon = polygon->next;
+		}		
+		brush = brush->next;
 	}
 }
 
@@ -523,113 +522,14 @@ void renderer_RecursiveDrawBrushBsp(bsp_node_t *node)
 
 void renderer_DrawBrushBsp()
 {
-	int i;
-	camera_t *active_camera = camera_GetActiveCamera();
-	
-	
-	
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadMatrixf(&active_camera->projection_matrix.floats[0][0]);
-	
-	glMatrixMode(GL_MODELVIEW);
-	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
-	
-	
-	renderer_SetShader(-1);
-	glColor3f(0.0, 1.0, 0.0);
-	
-	
-	for(i = 0; i < brush_count; i++)
-	{
-		if(brushes[i].type == BRUSH_INVALID)
-			continue;
-			
-		renderer_RecursiveDrawBrushBsp(brushes[i].brush_bsp);	
 
-	}
-	
-	
-	
-	
-	
-	glMatrixMode(GL_PROJECTION);
-	glPopMatrix();
-	
-	glMatrixMode(GL_MODELVIEW);
 	
 }
 
 
 void renderer_DrawBrushesOBBs()
 {
-	int i;
-	int j;
-	
-	camera_t *active_camera = camera_GetActiveCamera();
-	
-	
-	
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadMatrixf(&active_camera->projection_matrix.floats[0][0]);
-	
-	glMatrixMode(GL_MODELVIEW);
-	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
-	
-	
-	renderer_SetShader(-1);
-	
-	
-	glPointSize(8.0);
-	glColor3f(0.0, 1.0, 0.0);
-	glBegin(GL_POINTS);
-	
-	
-	for(i = 0; i < brush_count; i++)
-	{
-		if(brushes[i].type == BRUSH_INVALID)
-			continue;
-		
-		/*for(j = 0; j < 3; j++)
-		{
-			glVertex3f(brushes[i].obb[j].x + brushes[i].position.x, brushes[i].obb[j].y + brushes[i].position.y, brushes[i].obb[j].z + brushes[i].position.z);	
-			glVertex3f(-brushes[i].obb[j].x + brushes[i].position.x, -brushes[i].obb[j].y + brushes[i].position.y, -brushes[i].obb[j].z + brushes[i].position.z);
-		}*/
-		
-		//for(j = 0; j < 3; j++)
-		//{
-			/*glVertex3f(brushes[i].obb[0].x + brushes[i].position.x, brushes[i].obb[0].y + brushes[i].position.y, brushes[i].obb[0].z + brushes[i].position.z);
-			
-			glVertex3f(-brushes[i].obb[0].x + brushes[i].position.x, brushes[i].obb[0].y + brushes[i].position.y, brushes[i].obb[0].z + brushes[i].position.z);
-			
-			glVertex3f(brushes[i].obb[0].x + brushes[i].position.x, -brushes[i].obb[0].y + brushes[i].position.y, brushes[i].obb[0].z + brushes[i].position.z);
-			
-			glVertex3f(-brushes[i].obb[0].x + brushes[i].position.x, -brushes[i].obb[0].y + brushes[i].position.y, brushes[i].obb[0].z + brushes[i].position.z);
-			
-			glVertex3f(brushes[i].obb[0].x + brushes[i].position.x, brushes[i].obb[0].y + brushes[i].position.y, -brushes[i].obb[0].z + brushes[i].position.z);
-			
-			glVertex3f(-brushes[i].obb[0].x + brushes[i].position.x, brushes[i].obb[0].y + brushes[i].position.y, -brushes[i].obb[0].z + brushes[i].position.z);
-			
-			glVertex3f(brushes[i].obb[0].x + brushes[i].position.x, -brushes[i].obb[0].y + brushes[i].position.y, -brushes[i].obb[0].z + brushes[i].position.z);
-			
-			glVertex3f(-brushes[i].obb[0].x + brushes[i].position.x, -brushes[i].obb[0].y + brushes[i].position.y, -brushes[i].obb[0].z + brushes[i].position.z);*/
-		//}
-		
-		
-	}
-	
-	glEnd();
-	glPointSize(1.0);
-	
-	
-	
-	
-	
-	glMatrixMode(GL_PROJECTION);
-	glPopMatrix();
-	
-	glMatrixMode(GL_MODELVIEW);
+
 	
 }
 
@@ -640,44 +540,6 @@ renderer_DrawGrid
 */
 void renderer_DrawGrid()
 {
-	
-	int i;
-	int j;
-	camera_t *active_camera = camera_GetActiveCamera();
-	
-	//glUseProgram(0);
-	renderer_SetShader(-1);
-	glLineWidth(2.0);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);
-	
-	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
-	
-	glBegin(GL_QUADS);
-	glColor3f(0.3, 0.3, 0.3);
-	for(i = 0; i <= 10; i++)
-	{
-		glVertex3f(-i, 0.0,-10.0);
-		glVertex3f(-i, 0.0, 10.0);
-		glVertex3f( i, 0.0, 10.0);
-		glVertex3f( i, 0.0,-10.0);
-	}
-	
-	for(i = 0; i <= 10; i++)
-	{
-		glVertex3f(-10.0, 0.0,-i);
-		glVertex3f( 10.0, 0.0,-i);
-		glVertex3f( 10.0, 0.0, i);
-		glVertex3f(-10.0, 0.0, i);
-	}
-	
-	glEnd();
-	
-	glEnable(GL_CULL_FACE);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glLineWidth(1.0);
-	
 	
 	
 	
@@ -692,8 +554,10 @@ renderer_DrawSelected
 */
 void renderer_DrawSelected()
 {
+	
+	#if 0
 	int i;
-	int c = selection_count;
+	int c = ed_selection_count;
 	int j;
 	int k;
 	int index;
@@ -702,6 +566,7 @@ void renderer_DrawSelected()
 	model_t *model;
 	mesh_t *mesh;
 	entity_t *entity;
+	brush_t *brush;
 	
 	mat4_t transform;
 	
@@ -713,11 +578,17 @@ void renderer_DrawSelected()
 	bsp_polygon_t *polygon;
 	camera_t *active_camera = camera_GetActiveCamera();
 	
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadMatrixf(&active_camera->projection_matrix.floats[0][0]);
+	glMatrixMode(GL_MODELVIEW);
+	
 	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
 	//glUseProgram(0);
 	renderer_SetShader(-1);
 	gpu_BindGpuHeap();
 	
+	glEnable(GL_STENCIL_TEST);
 		
 	if(ed_editing_mode == EDITING_MODE_OBJECT)
 	{
@@ -733,20 +604,25 @@ void renderer_DrawSelected()
 				glColor3f(0.2, 0.2, 0.6);
 			}
 			
+			glClear(GL_STENCIL_BUFFER_BIT);
 			
-			
-			switch(selections[i].type)
+			switch(ed_selections[i].type)
 			{
 				case PICK_BRUSH:
 					
-
-					index = selections[i].index0;
-					indexes = brushes[index].indexes;
-					vertices = brushes[index].vertices;
-					k = brushes[index].index_count;
 					
-					glEnable(GL_STENCIL_TEST);
-					glClear(GL_STENCIL_BUFFER_BIT);
+					/*index = selections[i].index0;
+					indexes = brushes[index].clipped_polygons_indexes;
+					vertices = brushes[index].clipped_polygons_vertices;
+					k = brushes[index].clipped_polygons_index_count;*/
+					
+					brush = ed_selections[i].pointer;
+					
+					indexes = brush->clipped_polygons_indexes;
+					vertices = brush->clipped_polygons_vertices;
+					k = brush->clipped_polygons_index_count;
+					
+					
 					glStencilFunc(GL_ALWAYS, 0x1, 0xff);
 					glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
 					glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
@@ -754,7 +630,6 @@ void renderer_DrawSelected()
 					glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 					
 					glBegin(GL_TRIANGLES);
-					//glColor3f(0.0, 0.0, 0.6);
 					for(j = 0; j < k;)
 					{
 						glVertex3f(vertices[indexes[j]].position.x, vertices[indexes[j]].position.y, vertices[indexes[j]].position.z);
@@ -788,14 +663,14 @@ void renderer_DrawSelected()
 					glLineWidth(1.0);
 					
 					glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-					glDisable(GL_STENCIL_TEST);
+					//glDisable(GL_STENCIL_TEST);
 				
 				break;
 				
 				
 				
 				case PICK_ENTITY:
-					index = selections[i].index0;
+					index = ed_selections[i].index0;
 					entity = &ent_entities[index];
 					model = model_GetModelPointerIndex(entity->model_index);
 					mesh = model->mesh;
@@ -880,9 +755,9 @@ void renderer_DrawSelected()
 				
 				case PICK_LIGHT:
 					
-					glEnable(GL_STENCIL_TEST);
+					//glEnable(GL_STENCIL_TEST);
 					
-					index = selections[i].index0;
+					index = ed_selections[i].index0;
 					
 					glStencilFunc(GL_ALWAYS, 0x1, 0xff);
 					glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
@@ -894,7 +769,7 @@ void renderer_DrawSelected()
 					glEnable(GL_POINT_SMOOTH);
 					
 					glBegin(GL_POINTS);
-					glVertex3f(light_positions[index].position.x, light_positions[index].position.y, light_positions[index].position.z);
+					glVertex3f(l_light_positions[index].position.x, l_light_positions[index].position.y, l_light_positions[index].position.z);
 					glEnd();
 					
 					
@@ -908,16 +783,16 @@ void renderer_DrawSelected()
 					
 					glBegin(GL_POINTS);
 					
-					glVertex3f(light_positions[index].position.x, light_positions[index].position.y, light_positions[index].position.z);
+					glVertex3f(l_light_positions[index].position.x, l_light_positions[index].position.y, l_light_positions[index].position.z);
 					glEnd();
 					
 					glDisable(GL_POINT_SMOOTH);
-					glDisable(GL_STENCIL_TEST);
+					//glDisable(GL_STENCIL_TEST);
 				break;
 				
 				case PICK_SPAWN_POINT:
 					
-					index = selections[i].index0;
+					index = ed_selections[i].index0;
 						
 					pos = spawn_points[index].position;
 					
@@ -1022,13 +897,11 @@ void renderer_DrawSelected()
 	}
 	else if(ed_editing_mode == EDITING_MODE_BRUSH || ed_editing_mode == EDITING_MODE_UV)
 	{
+		index = ed_selections[ed_selected_brush_selection_index].index0;
 		
-		//index = selections[selection_count - 1].index0;
-		index = selections[ed_selected_brush_selection_index].index0;
-		
-		vertices = brushes[index].vertices;
-		indexes = brushes[index].indexes;
-		k = brushes[index].index_count;
+		vertices = brushes[index].clipped_polygons_vertices;
+		indexes = brushes[index].clipped_polygons_indexes;
+		k = brushes[index].clipped_polygons_index_count;
 		
 		glEnable(GL_STENCIL_TEST);
 		glClear(GL_STENCIL_BUFFER_BIT);
@@ -1075,7 +948,7 @@ void renderer_DrawSelected()
 		
 		if(ed_selected_brush_polygon_index > -1)
 		{
-			polygon = brushes[index].polygons + ed_selected_brush_polygon_index;
+			polygon = brushes[index].base_polygons + ed_selected_brush_polygon_index;
 			vertice_count = polygon->vert_count;
 
 			glColor4f(1.0, 0.0, 0.0, 0.25);
@@ -1102,18 +975,18 @@ void renderer_DrawSelected()
 		
 		
 		glLineWidth(1.0);
-			
-		
-		
-		
-		
+					
 	}
 	
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
 	
 	
 	
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	
+	#endif
 }
 
 
@@ -1124,527 +997,48 @@ renderer_DrawCursors
 */
 void renderer_DrawCursors()
 {
-	camera_t *active_camera = camera_GetActiveCamera();
-	
-	vec4_t cursor_position;
-	vec4_t handle_position;
-	
-	float color[3];
-	
-	int i;
-	float step = (2.0 * 3.14159265) / ROTATION_HANDLE_DIVS;
-	float angle = 0.0;
-	
-	float angles_lut[ROTATION_HANDLE_DIVS][2];
-	
-	float s;
-	float c;
-	
-	float nzfar = -active_camera->frustum.zfar;
-	float nznear = -active_camera->frustum.znear;
-	float ntop = active_camera->frustum.top;
-	float nright = active_camera->frustum.right;
-	float qt = nznear / ntop;
-	float qr = nznear / nright;
-	float d;
-	
-	int index;
-	
-	vec3_t right_vector;
-	vec3_t up_vector;
-	vec3_t forward_vector;
-	vec3_t v;
-		
+	//editor_BindCursorsFramebuffer();
 	
 	
-	
-	//glUseProgram(0);
-	renderer_SetShader(-1);
-	
-	//glMatrixMode(GL_PROJECTION);
-	//glPushMatrix();
-	//glLoadIdentity();
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	
-	//glDisable(GL_DEPTH_TEST);
-	//glDepthMask(GL_FALSE);
-	
-	//glEnable(GL_DEPTH_TEST);
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glDepthMask(GL_TRUE);
-	glStencilMask(0xff);
-	
-	glEnable(GL_POINT_SMOOTH);
-	
-	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cursor_framebuffer_id);
-	//glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	//glEnable(GL_BLEND);
-	
-	glViewport(0, 0, r_width, r_height);
-	
-	glDisable(GL_STENCIL_TEST);
-	glDisable(GL_SCISSOR_TEST);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cursor_framebuffer_id);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, ed_cursors_framebuffer_id);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+	glViewport(0, 0, r_width, r_height);
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glClearStencil(0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	
-	
-	glEnable(GL_STENCIL_TEST);
-	glStencilFunc(GL_ALWAYS, 0xff, 0xff);
-	glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
+	//active_camera = camera_GetActiveCamera();
 	
 	
-	
-	if(selection_count && ed_editing_mode != EDITING_MODE_UV)
+	if(ed_draw_3d_handle)
 	{
-		cursor_position.vec3 = handle_3d_position;
-		cursor_position.w = 1.0;
-		
-		mat4_t_vec4_t_mult(&active_camera->world_to_camera_matrix, &cursor_position);		
-		
-		if(cursor_position.z < nznear)
-		{
-			
-			glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);		
-			d = sqrt(cursor_position.x * cursor_position.x + cursor_position.y * cursor_position.y + cursor_position.z * cursor_position.z);
-			
-			
-			/*right_vector = vec3(1.0, 0.0, 0.0);
-			up_vector = vec3(0.0, 1.0, 0.0);
-			forward_vector = vec3(0.0, 0.0, 1.0);*/
-			
-			if(ed_handle_3d_tranform_mode == HANDLE_3D_TRANFORM_GLOBAL || ed_handle_3d_mode == HANDLE_3D_TRANSLATION)
-			{
-				_global_vectors:
-					
-				right_vector = vec3(1.0, 0.0, 0.0);
-				up_vector = vec3(0.0, 1.0, 0.0);
-				forward_vector = vec3(0.0, 0.0, 1.0);
-			}
-			else
-			{
-				index = selections[selection_count - 1].index0;
-					
-				switch(selections[selection_count - 1].type)
-				{
-					case PICK_BRUSH:
-						right_vector = brushes[index].orientation.r_axis;
-						up_vector = brushes[index].orientation.u_axis;
-						forward_vector = brushes[index].orientation.f_axis;
-					break;
-					
-					case PICK_ENTITY:
-						right_vector = ent_entities[index].orientation.r_axis;
-						up_vector = ent_entities[index].orientation.u_axis;
-						forward_vector = ent_entities[index].orientation.f_axis;
-					break;
-					
-					case PICK_LIGHT:
-					case PICK_SPAWN_POINT:
-						goto _global_vectors;
-					break;
-				}
-			}
-			
-			
-			d *= 0.2;		
-					
-			right_vector.x *= d;
-			right_vector.y *= d;
-			right_vector.z *= d;
-			
-			up_vector.x *= d;
-			up_vector.y *= d;
-			up_vector.z *= d;
-			
-			forward_vector.x *= d;
-			forward_vector.y *= d;
-			forward_vector.z *= d;
-			
-				
-			switch(ed_handle_3d_mode)
-			{
-				case HANDLE_3D_TRANSLATION:
-				case HANDLE_3D_SCALE:
-					
-					
-					
-					glDisable(GL_BLEND);
-					glPointSize(16.0);
-					glBegin(GL_POINTS);
-					glColor4f(1.0, 1.0, 1.0, 1.0);
-					glVertex3f(handle_3d_position.x, handle_3d_position.y, handle_3d_position.z);
-					glEnd();
-					
-					right_vector.x += handle_3d_position.x;
-					right_vector.y += handle_3d_position.y;
-					right_vector.z += handle_3d_position.z;
-						
-					up_vector.x += handle_3d_position.x;
-					up_vector.y += handle_3d_position.y;
-					up_vector.z += handle_3d_position.z;
-						
-					forward_vector.x += handle_3d_position.x;
-					forward_vector.y += handle_3d_position.y;
-					forward_vector.z += handle_3d_position.z;
-					
-					if(ed_handle_3d_mode == HANDLE_3D_TRANSLATION)
-					{
-						
-						
-						glPointSize(6.0);
-						glBegin(GL_POINTS);
-						glColor4f(1.0, 0.0, 0.0, 1.0);
-						glVertex3f(right_vector.x, right_vector.y, right_vector.z);
-						glColor4f(0.0, 1.0, 0.0, 1.0);
-						glVertex3f(up_vector.x, up_vector.y, up_vector.z);
-						glColor4f(0.0, 0.0, 1.0, 1.0);
-						glVertex3f(forward_vector.x, forward_vector.y, forward_vector.z);
-						glEnd();
-					}
-					else
-					{
-						#define SCALE_HANDLE_CUBE_EXTENT 0.08 * d
-						
-						glDisable(GL_CULL_FACE);
-						glBegin(GL_QUADS);
-						glColor3f(1.0, 0.0, 0.0);
-						
-						v.x = right_vector.x;
-						v.y = right_vector.y;
-						v.z = right_vector.z;
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						
-						
-						
-						
-						glColor3f(0.0, 1.0, 0.0);
-						
-						v.x = up_vector.x;
-						v.y = up_vector.y;
-						v.z = up_vector.z;
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						
-						
-						
-						
-						glColor3f(0.0, 0.0, 1.0);
-						
-						v.x = forward_vector.x;
-						v.y = forward_vector.y;
-						v.z = forward_vector.z;
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y + SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x - SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z + SCALE_HANDLE_CUBE_EXTENT);
-						glVertex3f(v.x + SCALE_HANDLE_CUBE_EXTENT, v.y - SCALE_HANDLE_CUBE_EXTENT, v.z - SCALE_HANDLE_CUBE_EXTENT);
-						
-						glEnd();
-						glEnable(GL_CULL_FACE);
-					}
-					
-					
-					
-					glLineWidth(6.0);
-					glBegin(GL_LINES);
-					glColor4f(1.0, 0.0, 0.0, 1.0);
-					glVertex3f(handle_3d_position.x, handle_3d_position.y, handle_3d_position.z);
-					glVertex3f(right_vector.x, right_vector.y, right_vector.z);
-					
-					glColor4f(0.0, 1.0, 0.0, 1.0);
-					glVertex3f(handle_3d_position.x, handle_3d_position.y, handle_3d_position.z);
-					glVertex3f(up_vector.x, up_vector.y, up_vector.z);
-					
-					glColor4f(0.0, 0.0, 1.0, 1.0);
-					glVertex3f(handle_3d_position.x, handle_3d_position.y, handle_3d_position.z);
-					glVertex3f(forward_vector.x, forward_vector.y, forward_vector.z);
-					glEnd();
-					
-				break;
-				
-				case HANDLE_3D_ROTATION:
-					angle = 0.0;
-
-					for(i = 0; i < ROTATION_HANDLE_DIVS; i++)
-					{
-						s = sin(angle);
-						c = cos(angle);
-						/* a lut that gets regenerated every
-						frame is not exactly a lut... */
-						angles_lut[i][0] = sin(angle) * d;
-						angles_lut[i][1] = cos(angle) * d;	
-						angle += step;
-					}
-					
-					glLineWidth(6.0);
-					glBegin(GL_LINE_LOOP);
-					glColor4f(1.0, 0.0, 0.0, 1.0);
-					for(i = 0; i < ROTATION_HANDLE_DIVS; i++)
-					{
-						glVertex3f(handle_3d_position.x, handle_3d_position.y + angles_lut[i][0], handle_3d_position.z + angles_lut[i][1]);
-					}		
-					glEnd();
-					glPointSize(4.0);
-					glBegin(GL_POINTS);
-					for(i = 0; i < ROTATION_HANDLE_DIVS; i++)
-					{
-						glVertex3f(handle_3d_position.x, handle_3d_position.y + angles_lut[i][0], handle_3d_position.z + angles_lut[i][1]);
-					}		
-					glEnd();
-					
-					
-					glBegin(GL_LINE_LOOP);
-					glColor4f(0.0, 1.0, 0.0, 1.0);
-					for(i = 0; i < ROTATION_HANDLE_DIVS; i++)
-					{
-						glVertex3f(handle_3d_position.x + angles_lut[i][1], handle_3d_position.y, handle_3d_position.z + angles_lut[i][0]);
-					}		
-					glEnd();
-					glBegin(GL_POINTS);
-					for(i = 0; i < ROTATION_HANDLE_DIVS; i++)
-					{
-						glVertex3f(handle_3d_position.x + angles_lut[i][1], handle_3d_position.y, handle_3d_position.z + angles_lut[i][0]);
-					}		
-					glEnd();
-					
-					
-					glBegin(GL_LINE_LOOP);
-					glColor4f(0.0, 0.0, 1.0, 1.0);
-					for(i = 0; i < ROTATION_HANDLE_DIVS; i++)
-					{
-						glVertex3f(handle_3d_position.x + angles_lut[i][1], handle_3d_position.y + angles_lut[i][0], handle_3d_position.z);
-					}		
-					glEnd();
-					glBegin(GL_POINTS);
-					for(i = 0; i < ROTATION_HANDLE_DIVS; i++)
-					{
-						glVertex3f(handle_3d_position.x + angles_lut[i][1], handle_3d_position.y + angles_lut[i][0], handle_3d_position.z);
-					}		
-					glEnd();
-				break;	
-			}
-			
-			glLoadIdentity();
-			
-			
-		}
-	}	
-	
-	
-	
-	//glDisable(GL_STENCIL_TEST);
-	
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadIdentity();
-	
-	cursor_position.vec3 = cursor_3d_position;
-	cursor_position.w = 1.0;
-	
-	mat4_t_vec4_t_mult(&active_camera->world_to_camera_matrix, &cursor_position);
-	cursor_position.x = (cursor_position.x * qr) / cursor_position.z;
-	cursor_position.y = (cursor_position.y * qt) / cursor_position.z;
-	
-	//renderer_SetShader(draw_cursors_shader);
-
-	glLineWidth(1.0);
-	glPointSize(16.0);
-	if(cursor_position.z < nznear)
-	{	
-		/*color[0] = 1.0;
-		color[1] = 1.0;
-		color[2] = 1.0;*/
-		
-		glBegin(GL_POINTS);
-		//glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
-		glColor3f(1.0, 1.0, 1.0);
-		glVertex3f(cursor_position.x, cursor_position.y, -0.5);
-		glEnd();
-		
-		glBegin(GL_LINES);
-		/*color[0] = 0.0;
-		color[1] = 1.0;
-		color[2] = 1.0;*/
-		//glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
-		glColor3f(0.0, 1.0, 0.0);
-		glVertex3f(cursor_position.x, cursor_position.y + 0.08 * qt, -0.5);
-		glVertex3f(cursor_position.x, cursor_position.y - 0.08 * qt, -0.5);
-		glEnd();
-		
-		glBegin(GL_LINES);
-		//glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
-		glColor3f(1.0, 0.0, 0.0);
-		glVertex3f(cursor_position.x - 0.08 * qr, cursor_position.y, -0.5);
-		glVertex3f(cursor_position.x + 0.08 * qr, cursor_position.y, -0.5);
-		
-		glEnd();
+		editor_Draw3dHandle(ed_3d_handle_position, ed_3d_handle_transform_mode);
 	}
+		
 	
+	editor_Draw3dCursor(ed_3d_cursor_position);
+
 	
-/*	glBegin(GL_POINTS);
-	glColor3f(1.0, 0.0 ,0.0);
-	glVertex3f(0.0, 0.0, -0.5);
-	glEnd();*/
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer_id);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, ed_cursors_framebuffer_id);
+	glReadBuffer(GL_COLOR_ATTACHMENT0);
 	
-	
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	glDrawBuffer(GL_BACK);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, cursor_framebuffer_id);
-	
-	
-	glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_window_width, r_window_height, GL_STENCIL_BUFFER_BIT, GL_NEAREST);
-	glViewport(0, 0, r_window_width, r_window_height);
-	
-	//glReadBuffer(GL_STENCIL_ATTACHMENT);
-	
-	glEnable(GL_TEXTURE_2D);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, cursor_color_texture_id);
-	
+	glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_width, r_height, GL_STENCIL_BUFFER_BIT, GL_NEAREST);
+	glViewport(0, 0, r_width, r_height);
+
 	glEnable(GL_STENCIL_TEST);
 	glStencilFunc(GL_EQUAL, 0xff, 0xff);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 	
-	//glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-	//glBlendEquation(GL_ADD);
-	
-	renderer_SetShader(draw_cursors_shader);
-	renderer_BindTexture(GL_TEXTURE0, GL_TEXTURE_2D, cursor_color_texture_id);
+	renderer_SetShader(r_blit_texture_shader);
+	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, ed_cursors_color_texture_id);
 	renderer_SetUniform1i(UNIFORM_texture_sampler0, 0);
-	//glUseProgram(0);
 	
-	glBegin(GL_QUADS);
-	glColor3f(1.0, 1.0, 1.0);
+	glRectf(-1.0, -1.0, 1.0, 1.0);
 	
-	glTexCoord2f(0.0, 1.0);
-	glVertex3f(-1.0, 1.0, 0.0);
-	
-	glTexCoord2f(0.0, 0.0);
-	glVertex3f(-1.0, -1.0, 0.0);
-	
-	glTexCoord2f(1.0, 0.0);
-	glVertex3f(1.0, -1.0, 0.0);
-	
-	glTexCoord2f(1.0, 1.0);
-	glVertex3f(1.0, 1.0, 0.0);
-	
-	glEnd();
-	glDisable(GL_TEXTURE_2D);
-	
-	glDisable(GL_POINT_SMOOTH);
 	glDisable(GL_STENCIL_TEST);
-	
-	/*glBegin(GL_POINTS);
-	glColor3f(1.0, 0.0 ,0.0);
-	glVertex3f(0.0, 0.0, -0.5);
-	glEnd();*/
-	
-	
-	glLineWidth(1.0);
-	glPointSize(1.0);
-	glEnable(GL_DEPTH_TEST);
-	//glDisable(GL_BLEND);
-	
-	
-	glMatrixMode(GL_PROJECTION);
-	glPopMatrix();
-	glMatrixMode(GL_MODELVIEW);
-	
-	
-	
+
 }
 
 
@@ -1656,8 +1050,9 @@ renderer_DrawLights
 */
 void renderer_DrawLights()
 {
+	#if 0
 	int i;
-	int c = light_count;
+	int c = l_light_list_cursor;
 	camera_t *active_camera = camera_GetActiveCamera();
 	
 	glMatrixMode(GL_MODELVIEW);
@@ -1672,20 +1067,24 @@ void renderer_DrawLights()
 	glColor3f(0.5, 0.5, 1.0);
 	for(i = 0; i < c; i++)
 	{
-		if(light_params[i].bm_flags & LIGHT_INVALID)
+		if(l_light_params[i].bm_flags & LIGHT_INVALID)
 			continue;
-		glVertex3f(light_positions[i].position.x, light_positions[i].position.y, light_positions[i].position.z);
+		glVertex3f(l_light_positions[i].position.x, l_light_positions[i].position.y, l_light_positions[i].position.z);
 	}
 	
 	glEnd();
 	glPointSize(1.0);
 	glDisable(GL_POINT_SMOOTH);
 	
+	#endif
+	
 }
 
 
 void renderer_DrawSpawnPoints()
 {
+	
+	#if 0
 	int i;
 	camera_t *active_camera = camera_GetActiveCamera();
 	vec3_t pos;
@@ -1796,10 +1195,14 @@ void renderer_DrawSpawnPoints()
 	glDepthMask(GL_TRUE);
 	glPopMatrix();
 	
+	#endif
+	
 }
 
 void renderer_DrawLeaves()
 {
+	
+	#if 0
 	int i;
 	int c = visible_leaves_count;
 	
@@ -1874,17 +1277,21 @@ void renderer_DrawLeaves()
 	glEnd();
 	glDisable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);
+	
+	#endif
 		
 }
 
 
 void renderer_DrawLightLeaves()
 {
+	
+	#if 0
 	int i;
 	int c = world_leaves_count;
 	
 	int j;
-	int k = light_count;
+	int k = l_light_list_cursor;
 	
 	int light_index;
 	vec3_t center;
@@ -1893,13 +1300,13 @@ void renderer_DrawLightLeaves()
 	int triangle_count;
 	bsp_striangle_t *triangle;
 	
-	if(!selection_count)
+	if(!ed_selection_count)
 		return;
 	
 	//if(selections[0].type != PICK_LIGHT)
 	//	return;
 			
-	light_index = selections[0].index0;
+	light_index = ed_selections[0].index0;
 	
 	//glUseProgram(0);
 	renderer_SetShader(-1);
@@ -1945,13 +1352,16 @@ void renderer_DrawLightLeaves()
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	
+	#endif
 }
 
 
 void renderer_DrawLightBoxes()
 {
+	#if 0
 	int i;
-	int c = light_count;
+	int c = l_light_list_cursor;
 	light_params_t *parms;
 	if(!world_leaves)
 		return;
@@ -1965,7 +1375,7 @@ void renderer_DrawLightBoxes()
 		
 	for(i = 0; i < c; i++)
 	{
-		parms = &light_params[i];
+		parms = &l_light_params[i];
 		
 		glVertex3f(parms->box_min.x, parms->box_max.y, parms->box_max.z);
 		glVertex3f(parms->box_min.x, parms->box_min.y, parms->box_max.z);
@@ -1992,11 +1402,15 @@ void renderer_DrawLightBoxes()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_CULL_FACE);
 	glLineWidth(1.0);
+	
+	#endif
 }
 
 
 void renderer_RecursiveDrawWorldPolygons(bsp_node_t *node)
 {
+	
+	#if 0
 	
 	bsp_leaf_t *leaf;
 	bsp_polygon_t *polygon;
@@ -2070,6 +1484,8 @@ void renderer_RecursiveDrawWorldPolygons(bsp_node_t *node)
 		renderer_RecursiveDrawWorldPolygons(node->back);
 	}
 	
+	#endif
+	
 	
 }
 
@@ -2077,7 +1493,7 @@ void renderer_RecursiveDrawWorldPolygons(bsp_node_t *node)
 void renderer_DrawWorldPolygons()
 {
 	
-	
+	#if 0
 	
 	bsp_polygon_t *polygon;
 	camera_t *active_camera;
@@ -2103,11 +1519,16 @@ void renderer_DrawWorldPolygons()
 	renderer_RecursiveDrawWorldPolygons(world_bsp);
 	//glEnd();
 	glLineWidth(1.0);
+	
+	#endif
 }
 
 
 void renderer_RecursiveDrawCollisionPolygons(bsp_node_t *node)
 {
+	
+	#if 0
+	
 		bsp_leaf_t *leaf;
 	bsp_polygon_t *polygon;
 	int i;
@@ -2192,11 +1613,16 @@ void renderer_RecursiveDrawCollisionPolygons(bsp_node_t *node)
 		renderer_RecursiveDrawCollisionPolygons(node->front);
 		renderer_RecursiveDrawCollisionPolygons(node->back);
 	}
+	
+	#endif
 }
 
 
 void renderer_DrawCollisionPolygons()
 {
+	
+	#if 0
+	
 	bsp_polygon_t *polygon;
 	camera_t *active_camera;
 	vec3_t center;
@@ -2223,6 +1649,8 @@ void renderer_DrawCollisionPolygons()
 	glDepthMask(GL_TRUE);
 	//glEnd();
 	//glLineWidth(1.0);
+	
+	#endif
 }
 
 
@@ -2319,6 +1747,7 @@ void renderer_DrawCollisionPolygons()
 }
 #endif
 
+#if 0
 void renderer_DrawPortals()
 {
 	bsp_portal_t *portal;
@@ -2423,9 +1852,12 @@ void renderer_DrawPortals()
 	
 }
 
+#endif
+
 
 void renderer_DrawBrushPolygons()
 {
+	#if 0
 	int i;
 	int j;
 	bsp_polygon_t *polygon;
@@ -2446,7 +1878,7 @@ void renderer_DrawBrushPolygons()
 		if(brushes[i].type == BRUSH_INVALID)
 			continue;
 	
-		polygon = brushes[i].polygons;
+		polygon = brushes[i].clipped_polygons;
 					
 		while(polygon)
 		{
@@ -2502,17 +1934,32 @@ void renderer_DrawBrushPolygons()
 	
 	glLineWidth(1.0);		
 	
+	#endif
+	
 }
 
 
 void renderer_DrawClippedPolygons()
 {
+	#if 0
 	int i;
 	int j;
 	bsp_polygon_t *polygon;
 	camera_t *active_camera = camera_GetActiveCamera();
 	vec3_t center;
 	vec3_t vert_vec;
+	vertex_t *vertices;
+	int *indexes;
+	brush_t *brush;
+	
+	
+	float colors[] = {1.0, 0.0, 0.0,
+					  0.0, 1.0, 0.0,
+					  0.0, 0.0, 1.0,
+					  1.0, 1.0, 0.0,
+					  1.0, 0.0, 1.0,
+					  0.0, 1.0, 1.0,
+					  1.0, 1.0, 1.0};
 	
 	
 	glMatrixMode(GL_MODELVIEW);
@@ -2522,14 +1969,15 @@ void renderer_DrawClippedPolygons()
 	
 	glLineWidth(2.0);
 	
-	
-	for(i = 0; i < brush_count; i++)
+	brush = brushes;
+	//for(i = 0; i < brush_count; i++)
+	while(brush)
 	{
 		
-		if(brushes[i].type == BRUSH_INVALID)
-			continue;
+		//if(brushes[i].type == BRUSH_INVALID)
+		//	continue;
 		
-		polygon = brushes[i].clipped_polygons;
+		polygon = brush->clipped_polygons;
 					
 		while(polygon)
 		{
@@ -2550,8 +1998,19 @@ void renderer_DrawClippedPolygons()
 					
 			#define POLYGON_SCALE 1.0
 			
+			//glBegin(GL_LINE_LOOP);
+			
 			glBegin(GL_LINE_LOOP);
-			glColor3f(0.0, 1.0, 0.0);
+			
+			if(brush->bm_flags & BRUSH_SUBTRACTIVE)
+			{
+				glColor3f(1.0, 0.0, 0.0);
+			}
+			else
+			{
+				glColor3f(0.0, 1.0, 0.0);
+			}
+			
 			for(j = 0; j < polygon->vert_count; j++)
 			{
 				vert_vec.x = (polygon->vertices[j].position.x - center.x) * POLYGON_SCALE;
@@ -2564,32 +2023,65 @@ void renderer_DrawClippedPolygons()
 				
 			#undef POLYGON_SCALE
 			
-			if(b_draw_brush_polygons_normals)
+			if(!(brush->bm_flags & BRUSH_SUBTRACTIVE))
 			{
-				glBegin(GL_LINES);
-				glColor3f(fabs(polygon->normal.x), fabs(polygon->normal.y), fabs(polygon->normal.z));
-				for(j = 0; j < polygon->vert_count; j++)
-				{	
-					glVertex3f(center.x, center.y, center.z);
-					glVertex3f(center.x + polygon->normal.x, center.y + polygon->normal.y, center.z + polygon->normal.z);
+				if(b_draw_brush_polygons_normals)
+				{
+					glBegin(GL_LINES);
+					glColor3f(fabs(polygon->normal.x), fabs(polygon->normal.y), fabs(polygon->normal.z));
+					for(j = 0; j < polygon->vert_count; j++)
+					{	
+						glVertex3f(center.x, center.y, center.z);
+						glVertex3f(center.x + polygon->normal.x, center.y + polygon->normal.y, center.z + polygon->normal.z);
+					}
+					glEnd();
 				}
-				glEnd();
 			}
+			
+			
 			
 			
 			polygon = polygon->next;
 			
 		}
+		
+		if(!(brush->bm_flags & BRUSH_SUBTRACTIVE))
+		{
+			vertices = brush->clipped_polygons_vertices;
+			indexes = brush->clipped_polygons_indexes;
+				
+			glColor3f(0.0, 0.0, 1.0);	
+			//glColor3f(colors[(brush->brush_index % 7) * 3], colors[(brush->brush_index % 7) * 3 + 1], colors[(brush->brush_index % 7) * 3 + 2]);
+			glEnable(GL_BLEND);
+			glDisable(GL_DEPTH_TEST);
+			glBegin(GL_TRIANGLES);
+			
+			for(j = 0; j < brush->clipped_polygons_index_count; j++)
+			{
+				glVertex3f(vertices[indexes[j]].position.x, vertices[indexes[j]].position.y, vertices[indexes[j]].position.z);
+			}
+			
+			glEnd();
+			glEnable(GL_DEPTH_TEST);
+			glDisable(GL_BLEND);
+		}
+		
+		
+		brush = brush->next;
 				
 	}
 	
 	glLineWidth(1.0);	
+	
+	#endif
 }
 
 
 
 void renderer_DrawSourceLeaf()
 {
+	
+	#if 0
 	
 	bsp_leaf_t *leaf;
 	bsp_polygon_t *polygon;
@@ -2623,11 +2115,15 @@ void renderer_DrawSourceLeaf()
 	glEnd();
 	glDisable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);
+	
+	#endif
 }
 
 
 void renderer_DrawSourcePortal()
 {
+	
+	#if 0
 	bsp_leaf_t *leaf;
 	bsp_polygon_t *polygon;
 	bsp_portal_t *portal;
@@ -2691,10 +2187,13 @@ void renderer_DrawSourcePortal()
 			
 	#undef POLYGON_SCALE
 		
+	#endif	
 }
 
 void renderer_DrawDestinationPortals()
 {
+	
+	#if 0
 	bsp_leaf_t *leaf;
 	bsp_polygon_t *polygon;
 	bsp_portal_t *dst_portal;
@@ -2778,6 +2277,7 @@ void renderer_DrawDestinationPortals()
 	
 	SDL_UnlockMutex(polygon_copy_mutex);
 	
+	#endif
 	
 	
 }
@@ -2785,6 +2285,8 @@ void renderer_DrawDestinationPortals()
 
 void renderer_DrawGeneratorPortals()
 {
+	
+	#if 0
 	bsp_leaf_t *leaf;
 	bsp_polygon_t *polygon;
 	bsp_portal_t *dst_portal;
@@ -2869,11 +2371,15 @@ void renderer_DrawGeneratorPortals()
 	}
 	
 	SDL_UnlockMutex(polygon_copy_mutex);
+	
+	#endif
 }
 
 
 void renderer_DrawValidPortals()
 {
+	
+	#if 0
 	bsp_leaf_t *leaf;
 	bsp_polygon_t *polygon;
 	bsp_portal_t *dst_portal;
@@ -2955,10 +2461,14 @@ void renderer_DrawValidPortals()
 	}
 	
 	SDL_UnlockMutex(polygon_copy_mutex);
+	
+	#endif
 }
 
 void renderer_DrawClippingPlanes()
 {		
+
+	#if 0
 	bsp_leaf_t *leaf;
 	bsp_polygon_t *polygon;
 	bsp_portal_t *portal;
@@ -3041,6 +2551,8 @@ void renderer_DrawClippingPlanes()
 	
 	
 	SDL_UnlockMutex(polygon_copy_mutex);
+	
+	#endif
 }
 
 
@@ -3268,8 +2780,83 @@ void renderer_DrawPvsSteps()
 	
 	#endif
 		
+}
+
+void renderer_DrawEntityAabbs()
+{
 	
+	#if 0
+	camera_t *active_camera;
+	entity_aabb_t *aabb;
+	entity_t *entity;
+	int i;
+	
+	
+	active_camera = camera_GetActiveCamera();
+	renderer_SetShader(-1);
+	
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadMatrixf(&active_camera->projection_matrix.floats[0][0]);
+	
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
+	
+	for(i = 0; i < ent_entity_list_cursor; i++)
+	{
+		if(ent_entities[i].flags & ENTITY_INVALID)
+			continue;
 		
+		if(ent_entities[i].flags & ENTITY_INVISIBLE)
+			continue;
+			
+		entity = &ent_entities[i];
+		aabb = &ent_aabbs[i];
+		
+		glColor3f(0.0, 1.0, 0.0);
+		glDisable(GL_CULL_FACE);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		
+		glBegin(GL_QUADS);
+		
+		
+		glVertex3f(-aabb->current_extents.x + entity->position.x, aabb->current_extents.y + entity->position.y, aabb->current_extents.z + entity->position.z);
+		glVertex3f(-aabb->current_extents.x + entity->position.x, aabb->current_extents.y + entity->position.y, -aabb->current_extents.z + entity->position.z);
+		glVertex3f(aabb->current_extents.x + entity->position.x, aabb->current_extents.y + entity->position.y, -aabb->current_extents.z + entity->position.z);
+		glVertex3f(aabb->current_extents.x + entity->position.x, aabb->current_extents.y + entity->position.y, aabb->current_extents.z + entity->position.z);
+		
+		
+		glVertex3f(-aabb->current_extents.x + entity->position.x, -aabb->current_extents.y + entity->position.y, aabb->current_extents.z + entity->position.z);
+		glVertex3f(-aabb->current_extents.x + entity->position.x, -aabb->current_extents.y + entity->position.y, -aabb->current_extents.z + entity->position.z);
+		glVertex3f(aabb->current_extents.x + entity->position.x, -aabb->current_extents.y + entity->position.y, -aabb->current_extents.z + entity->position.z);
+		glVertex3f(aabb->current_extents.x + entity->position.x, -aabb->current_extents.y + entity->position.y, aabb->current_extents.z + entity->position.z);
+		
+		
+		
+		glVertex3f(-aabb->current_extents.x + entity->position.x, aabb->current_extents.y + entity->position.y, -aabb->current_extents.z + entity->position.z);
+		glVertex3f(-aabb->current_extents.x + entity->position.x, -aabb->current_extents.y + entity->position.y, -aabb->current_extents.z + entity->position.z);
+		glVertex3f(aabb->current_extents.x + entity->position.x, -aabb->current_extents.y + entity->position.y, -aabb->current_extents.z + entity->position.z);
+		glVertex3f(aabb->current_extents.x + entity->position.x, aabb->current_extents.y + entity->position.y, -aabb->current_extents.z + entity->position.z);
+		
+		
+		glVertex3f(-aabb->current_extents.x + entity->position.x, aabb->current_extents.y + entity->position.y, aabb->current_extents.z + entity->position.z);
+		glVertex3f(-aabb->current_extents.x + entity->position.x, -aabb->current_extents.y + entity->position.y, aabb->current_extents.z + entity->position.z);
+		glVertex3f(aabb->current_extents.x + entity->position.x, -aabb->current_extents.y + entity->position.y, aabb->current_extents.z + entity->position.z);
+		glVertex3f(aabb->current_extents.x + entity->position.x, aabb->current_extents.y + entity->position.y, aabb->current_extents.z + entity->position.z);
+		
+		glEnd();
+		
+		glEnable(GL_CULL_FACE);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+				
+	}
+	
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	
+	#endif
+	
 }
 
 

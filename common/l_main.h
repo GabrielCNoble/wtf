@@ -6,6 +6,7 @@
 
 #include "l_common.h"
 #include "bsp_common.h"
+#include "camera_types.h"
 
 
 
@@ -22,6 +23,15 @@ enum LIGHT_FLAGS
 };
 
 
+/* to which view (camera) a
+set of clusters belong to... */
+typedef struct
+{
+	camera_t *view;
+	unsigned int clusters;
+}view_clusters_t;
+
+
 typedef struct
 {
 	mat4_t world_to_light_matrix;
@@ -30,10 +40,10 @@ typedef struct
 }light_position_t;
 
 
-typedef struct
+typedef struct 
 {
-	struct bsp_dleaf_t *leaf;					/* in which leaf this light is in (updated every time it moves)... */
-	vec3_t box_max;						/* this box is calculated when the visible triangles are determined. As long as
+	bsp_dleaf_t *leaf;					/* in which leaf this light is in (updated every time it moves)... */
+	vec3_t box_max;								/* this box is calculated when the visible triangles are determined. As long as
 												   the light remains inside this box, no update is needed...*/
 	vec3_t box_min;		
 	
@@ -60,11 +70,23 @@ typedef struct
 	//unsigned char align1;
 	//unsigned char align2;
 	
-	
+	//int view_cluster_count;
+	//unsigned short view_cluster_list_cursor;
+	//unsigned short view_cluster_list_size;
+	//view_clusters_t *view_clusters;
+	//unsigned int *view_clusters;
+	//view_cluster_t *view_clusters;
 	
 	unsigned int first_cluster;
 	unsigned int last_cluster;
 }light_params_t;
+
+
+typedef struct
+{
+	light_params_t *params;
+	light_position_t *position;
+}light_ptr_t;
 
 typedef struct
 {
@@ -78,7 +100,7 @@ typedef struct
 	int align1;
 }gpu_lamp_t;
 
-/* !!! if this gets changed, it has to be updated on shade_pass.frag !!! */
+
 typedef struct
 {
 	unsigned int light_indexes_bm;
@@ -96,6 +118,57 @@ typedef struct
 }shadow_map_t;
 
 
+
+/*
+===================================================================
+===================================================================
+===================================================================
+*/
+
+typedef struct
+{
+	int light_count;
+	
+	int reserved0;
+	int reserved1;
+	int reserved2;
+	int reserved3;
+	int reserved4;
+	int reserved5;
+	int reserved6;
+	int reserved7;
+}light_section_header_t;
+
+
+typedef struct
+{
+	mat3_t orientation;
+	vec3_t position;
+	vec3_t color;
+	float radius;
+	float energy;
+	int flags;
+	
+	int reserved0;
+	int reserved1;
+	int reserved2;
+	int reserved3;
+	int reserved4;
+	int reserved5;
+	int reserved6;
+	int reserved7;
+	
+	char name[LIGHT_MAX_NAME_LEN];
+	
+}light_record_t;
+
+/*
+===================================================================
+===================================================================
+===================================================================
+*/
+
+
 int light_Init();
 
 void light_Finish();
@@ -106,32 +179,38 @@ int light_DestroyLight(char *name);
 
 int light_DestroyLightIndex(int light_index);
 
+int light_Getlight(char *name);
+
+light_ptr_t light_GetLightPointer(char *name);
+
+light_ptr_t light_GetLightPointerIndex(int light_index);
+
 void light_DestroyAllLights();
 
 /* updates which leaves contains which lights... */
-void light_UpdateLights();
+//void light_MarkLightsOnLeaves();
 
 /* find out which clusters each visible light affect 
 (and eliminate lights outside the frustum)... */
-void light_LightBounds();
+//void light_LightBounds();
 
 /* update the cluster texture (very time consuming!)... */
-void light_UpdateClusters();
+//void light_UpdateClusters();
 
 /* create a list of visible lights from the visible
 leaves... */
-void light_VisibleLights();
+//void light_VisibleLights();
 
 /* update the index list each light keeps to
 render its shadow map... */
-void light_VisibleTriangles(int light_index);
+//void light_VisibleTriangles(int light_index);
 
 
 void light_ClearLightLeaves();
 
 void light_TranslateLight(int light_index, vec3_t direction, float amount);
 
-void light_SetLight(int light_index);
+//void light_SetLight(int light_index);
 
 void light_AllocShadowMap(int light_index);
 
@@ -140,10 +219,9 @@ void light_FreeShadowMap(int light_index);
 void light_AllocShadowMaps();
 
 
+void light_SerializeLights(void **buffer, int *buffer_size);
 
-int light_ClusterThread0(void *data);
-
-int light_ClusterThread1(void *data);
+void light_DeserializeLights(void **buffer);
 
 
 

@@ -20,6 +20,11 @@
 #include "font.h"
 #include "log.h"
 #include "entity.h"
+#include "portal.h"
+#include "particle.h"
+#include "script.h"
+#include "navigation.h"
+#include "event.h"
 
 
 
@@ -38,7 +43,10 @@ enum ENGINE_STATE
 
 
 
-
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 void engine_Init(int width, int height, int init_mode, int argc, char *argv[]);
 
@@ -49,6 +57,8 @@ void engine_MainLoop();
 void engine_SetGameStartupFunction(void (*startup_fn)(int, char *[]));
 
 void engine_SetGameMainFunction(void (*game_main_fn)(float ));
+
+void engine_SetGameShutdownFunction(void (*shutdown_fn)());
 
 void engine_ReadConfig();
 
@@ -62,6 +72,11 @@ float engine_GetDeltaTime();
 
 void engine_BackTrace();
 
+void engine_BreakPoint();
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif 

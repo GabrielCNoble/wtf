@@ -3,12 +3,19 @@
 
 #include <assert.h>
 
+#include "r_common.h"
+
 #include "matrix_types.h"
 #include "vector_types.h"
 #include "model.h"
 #include "world.h"
 #include "bsp_common.h"
+#include "bsp_file.h"
 //#include "bsp_cmp.h"
+
+
+#define BRUSH_MAX_VERTICES (1024*3)
+
 
 enum BRUSH_TYPE
 {
@@ -30,19 +37,19 @@ enum BRUSH_FLAGS
 	BRUSH_UPDATE = 1 << 3,
 	BRUSH_INVISIBLE = 1 << 4,
 	BRUSH_CLIP_POLYGONS = 1 << 5,
+	BRUSH_HAS_PREV_CLIPS = 1 << 6,
 };
 
 
+struct brush_t;
 
 
-
-/* A brush_triangle_t groups three vertices into a triangle, and links them to a 
-triangle_group_t. */
-/*typedef struct
+typedef struct intersection_record_t
 {
-	int first_vertex;
-	int triangle_group_index;			
-}brush_triangle_t;*/
+	struct intersection_record_t *next;
+	struct intersection_record_t *prev;
+	struct brush_t *intersecting_brush;
+}intersection_record_t;
 
 
 /* Each brush_t contains its own GL_ELEMENT_ARRAY_BUFFER, in order to
@@ -52,41 +59,64 @@ for rendering. The final index value is calculated by taking the vertex
 index (which is relative to its brush), and adding the start field 
 (which is an offset from the beginning of the gpu heap to the first vertex 
 position from the space allocated). */
-typedef struct
+typedef struct brush_t
 {
+	
+	struct brush_t *next;
+	struct brush_t *prev;
+	
 	mat3_t orientation;
 	vec3_t position;
 	vec3_t scale;
 	
-	int max_triangle_groups;
-	int triangle_group_count;
-	triangle_group_t *triangle_groups;				/* keep a local list of triangle groups,
-												       to avoid doing a potentially expensive 
-													   update on a global group list when a brush 
-													   is added/removed to/from the world... */
+	//int max_triangle_groups;
+	//int triangle_group_count;
+	//triangle_group_t *triangle_groups;				// keep a local list of triangle groups,
+												       //to avoid doing a potentially expensive 
+													   //update on a global group list when a brush 
+													   //is added/removed to/from the world... */
+													   
+	
+	
+	int max_batches;
+	int batch_count;
+	batch_t *batches;
+	
+													   
 	bsp_striangle_t *triangles;
-	vertex_t *vertices;
 	struct bsp_edge_t *edges;						/* necessary to manipulate individual faces... */
-	int *indexes;
-	int index_count;
-	struct bsp_polygon_t *polygons;			
-	int polygon_count;
+
 	
-	
-	struct bsp_polygon_t *clipped_polygons;
+	int base_polygons_count;
+	int base_polygons_vert_count;
+	struct bsp_polygon_t *base_polygons;
+	vertex_t *base_polygons_vertices;
 	struct bsp_node_t *brush_bsp;
 	
-	//vec3_t obb[3];
+
+	int clipped_polygon_count;
+	int clipped_polygons_vert_count;
+	struct bsp_polygon_t *clipped_polygons;
+	vertex_t *clipped_polygons_vertices;
+	int *clipped_polygons_indexes;
+	int clipped_polygons_index_count;
 	
 	
 	int max_vertexes;								/* max number before a gpu realloc is needed... */
-	int vertex_count;
-	//int base_vertex_count;
 	int start;
 	int handle;
+	
+	int index_start;
+	int index_handle;
+	
 	int type;
 	unsigned int element_buffer;
 	int bm_flags;
+	
+	intersection_record_t *intersection_records;
+	intersection_record_t *last_intersection_record;
+	intersection_record_t *freed_records;
+	
 	
 	int max_intersections;
 	int *intersections;
@@ -96,6 +126,78 @@ typedef struct
 
 
 
+/*
+===================================================================
+===================================================================
+===================================================================
+*/
+
+/* serialization structures */
+
+typedef struct
+{
+	int brush_count;
+	
+	int reserved0;
+	int reserved1;
+	int reserved2;
+	int reserved3;
+	int reserved4;
+	int reserved5;
+	int reserved6;
+	int reserved7;
+	
+}brush_section_header_t;
+
+typedef struct
+{
+	mat3_t orientation;
+	vec3_t position;
+	vec3_t scale;
+	int vertex_count;
+	int triangle_group_count;
+	int polygon_count;
+	short type;
+	short bm_flags;
+	
+	int reserved0;
+	int reserved1;
+	int reserved2;
+	int reserved3;
+	int reserved4;
+	int reserved5;
+	int reserved6;
+	int reserved7;
+	
+}brush_record_t;
+
+typedef struct
+{
+	vec3_t normal;
+	int vert_count;
+	int first_index_offset;
+	
+	int reserved0;
+	int reserved1;
+	int reserved2;
+	int reserved3;
+	int reserved4;
+	int reserved5;
+	int reserved6;
+	int reserved7;
+	
+	char material_name[PATH_MAX];
+}polygon_record_t;
+
+
+
+/*
+===================================================================
+===================================================================
+===================================================================
+*/
+
+
 
 void brush_Init();
 
@@ -103,15 +205,35 @@ void brush_Finish();
 
 void brush_ProcessBrushes();
 
-int brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short type, short b_subtractive);
 
-int brush_CreateEmptyBrush();
 
-void brush_BuildTriangleGroups(brush_t *brush);
+brush_t *brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short type, short b_subtractive);
 
-void brush_BuildEdgeList(brush_t *brush);
+brush_t *brush_CreateEmptyBrush();
 
-int brush_CopyBrush(brush_t *src);
+
+void brush_InitializeBrush(brush_t *brush, mat3_t *orientation, vec3_t position, vec3_t scale, int type, int vertice_count, int polygon_count);
+
+void brush_FinalizeBrush(brush_t *brush, int transform_base_vertices);
+
+void brush_AllocBaseVertices(brush_t *brush, int vert_count, vertex_t *vertices);
+
+void brush_AllocBasePolygons(brush_t *brush, int polygon_count);
+
+void brush_AddPolygonToBrush(brush_t *brush, vertex_t *polygon_vertices, vec3_t normal, int polygon_vertice_count, int material_index);
+
+void brush_LinkPolygonsToVertices(brush_t *brush);
+
+
+
+
+void brush_IncBrushMaterialsRefCount(brush_t *brush);
+
+void brush_DecBrushMaterialsRefCount(brush_t *brush);
+
+
+
+brush_t *brush_CopyBrush(brush_t *src);
 
 void brush_DestroyBrush(brush_t *brush);
 
@@ -121,9 +243,24 @@ void brush_DestroyAllBrushes();
 
 void brush_CreateCylinder(int base_vertexes, int *vert_count, float **vertices, float **normals);
 
+
+
 void brush_UpdateBrushElementBuffer(brush_t *brush);
 
 void brush_UploadBrushVertices(brush_t *brush);
+
+void brush_UploadBrushIndexes(brush_t *brush);
+
+void brush_BuildBrushBsp(brush_t *brush);
+
+void brush_BuildEdgeList(brush_t *brush);
+
+void brush_BuildBatches(brush_t *brush);
+
+bsp_polygon_t *brush_BuildPolygonListFromBrushes();
+
+
+
 
 void brush_TranslateBrush(brush_t *brush, vec3_t direction);
 
@@ -141,11 +278,25 @@ void brush_SetAllVisible();
 
 void brush_SetAllInvisible();
 
-void brush_BuildBrushBsp(brush_t *brush);
+
 
 void brush_CheckIntersecting();
 
 int brush_CheckBrushIntersection(brush_t *a, brush_t *b);
+
+void brush_AddIntersectionRecord(brush_t *add_to, brush_t *to_add);
+
+void brush_RemoveIntersectionRecord(brush_t *remove_from, brush_t *to_remove);
+
+intersection_record_t *brush_GetIntersectionRecord(brush_t *brush, brush_t *brush2);
+
+
+
+void brush_SerializeBrushes(void **buffer, int *buffer_size);
+
+void brush_DeserializeBrushes(void **buffer);
+
+
 
 #endif 
 

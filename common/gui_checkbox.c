@@ -6,6 +6,12 @@
 
 extern int gui_widget_unique_index;
 
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 checkbox_t *gui_AddCheckbox(widget_t *widget, short x, short y, short w, short h, short bm_flags, void (*checkbox_callback)(widget_t *widget))
 {
 	checkbox_t *checkbox = NULL;
@@ -81,7 +87,12 @@ void gui_UpdateCheckbox(widget_t *widget)
 		}		
 	}
 	
-	if(widget->bm_flags & WIDGET_TRACK_VAR)
+	if(widget->process_callback)
+	{
+		widget->process_callback(widget);
+	}
+	
+	/*if(widget->bm_flags & WIDGET_TRACK_VAR)
 	{
 		var = widget->var;
 		
@@ -93,13 +104,9 @@ void gui_UpdateCheckbox(widget_t *widget)
 					break;
 					
 				iptr = (int *)var->addr;
-				
-				//printf("%d : %d\n", (*iptr) & checkbox->bm_check_flags, checkbox->bm_checkbox_flags & CHECKBOX_CHECKED);
-				
-										
+											
 				if(var->bm_flags & GUI_VAR_VALUE_HAS_CHANGED)
 				{
-					//printf("var changed!\n");
 					if((*iptr) & checkbox->bm_check_flags)
 					{
 						checkbox->bm_checkbox_flags |= CHECKBOX_CHECKED;
@@ -128,12 +135,14 @@ void gui_UpdateCheckbox(widget_t *widget)
 			
 			break;
 		}
-	}
+	}*/
 
 }
 
 
-
+#ifdef __cplusplus
+}
+#endif
 
 
 

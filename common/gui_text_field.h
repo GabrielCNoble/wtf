@@ -13,10 +13,15 @@ typedef struct
 	short text_buffer_cursor;
 	char *text;
 	SDL_Surface *rendered_text;
+	int rendered_string;
 	short cursor_blink_timer;
 	short bm_text_field_flags;
 }text_field_t;
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 text_field_t *gui_AddTextField(widget_t *widget, char *name, short x, short y, short w, short bm_flags, void (*text_field_callback)(widget_t *));
 
@@ -26,7 +31,9 @@ void gui_UpdateTextField(widget_t *widget);
 
 void gui_PostUpdateTextField(widget_t *widget);
 
-
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

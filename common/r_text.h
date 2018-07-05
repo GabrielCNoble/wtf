@@ -8,7 +8,8 @@
 
 void renderer_BlitSurface(SDL_Surface *surface, float x, float y);
 
-void renderer_DrawString(font_t *font, int line_length, int x, int y, vec3_t color, char *str, ...);
+void renderer_DrawRenderedString(int string_index, float x, float y);
+
 
 
 

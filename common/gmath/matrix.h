@@ -10,6 +10,11 @@
 #include <stdlib.h>
 
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 
 void CreatePerspectiveMatrix(mat4_t *mat,  float fovY, float aspect, float znear, float zfar, float x_shift, float y_shift, frustum_t *generated_frustum);
 
@@ -24,6 +29,8 @@ void mat3_t_rotate(mat3_t *mat, vec3_t axis, float angle, int b_set);
 void mat2_t_rotate(mat2_t *mat, float angle, int b_set);
 
 void mat4_t_scale(mat4_t *mat, vec3_t axis, float scale_factor);
+
+void mat4_t_scale_axis_aligned(mat4_t *mat, vec3_t scale);
 
 void mat4_t_translate(mat4_t *mat, vec3_t position, int b_set);
 
@@ -53,7 +60,7 @@ void mat4_t_mat2_t(mat4_t *in, mat2_t *out);
 
 void mat4_t_transpose(mat4_t *mat);
 
-void mat4_t_invert_transform(mat4_t *mat);
+void mat4_t_inverse_transform(mat4_t *mat);
 
 void mat4_t_inverse(mat4_t *mat);
 
@@ -86,6 +93,9 @@ void quat_to_mat3_t(mat3_t *out, quaternion_t *q);
 
 #include "matrix.inl"
 
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif //_MATRIX_H_
