@@ -12,7 +12,10 @@ void OnFirstRun()
 	/*end_pos[0] = 0.0;
 	end_pos[1] = 0.0;
 	end_pos[2] = 10.0;*/
-	entity_FindPath(vec3_t(0.0, 0.0, 25.0));
+	//entity_FindPath(vec3_t(0.0, 0.0, 25.0));
+	
+	entity_SetCameraPosition(vec3_t(0.0, 0.15, 0.0));
+	entity_SetCamera();
 }
 
 float pitch = 0.0;
@@ -20,11 +23,11 @@ float yaw = 0.0;
 
 void main()
 {
-	vec3_t waypoint_direction;
+	/*vec3_t waypoint_direction;
 	entity_GetWaypointDirection(waypoint_direction);
-	entity_Move(waypoint_direction * 4.0);
+	entity_Move(waypoint_direction * 4.0);*/
 	
-	/*vec3_t direction;
+	vec3_t direction;
 	mat3_t orientation;
 	
 	float mouse_dx;
@@ -77,7 +80,7 @@ void main()
 	if((input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED) == KEY_JUST_PRESSED)
 	{
 		entity_Jump(250.0);
-	}*/
+	}
 	
 	/*jump_timer++;
 

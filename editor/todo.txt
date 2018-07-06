@@ -12,7 +12,7 @@
 		- Entity instancing (correctly spawning an entity based on its def)
 		
 		- Transform component
-			- hierarchical transform update 
+//			- hierarchical transform update 
 			- hierarchical aabb update
 		
 //		- Controller component
@@ -29,6 +29,7 @@
 		- Expose entities
 //			- Allow modifications to the current entity
 //			- Allow querying of components
+			- Allow adding / removing components
 			- Allow querying of other entities 
 
 		- Expose cameras

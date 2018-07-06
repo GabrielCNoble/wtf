@@ -372,11 +372,16 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("void entity_GetWaypointDirection(vec3_t &out direction)", asFUNCTION(entity_ScriptGetWaypointDirection), asCALL_CDECL);
 	
 	scr_virtual_machine->RegisterGlobalFunction("mat3_t &entity_GetOrientation()", asFUNCTION(entity_ScriptGetOrientation), asCALL_CDECL);
-	
-	scr_virtual_machine->RegisterGlobalFunction("component_handle_t entity_GetCurrentComponent(int component_index)", asFUNCTION(entity_ScriptGetCurrentComponent), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("component_handle_t entity_GetComponent(entity_handle_t entity, int component_index)", asFUNCTION(entity_ScriptGetComponent), asCALL_CDECL);
-	
+		
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Rotate(vec3_t &in axis, float angle, int set)", asFUNCTION(entity_ScriptRotate), asCALL_CDECL);
+	
+	
+	
+	scr_virtual_machine->RegisterGlobalFunction("component_handle_t entity_GetComponent(int component_index)", asFUNCTION(entity_ScriptGetComponent), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("component_handle_t entity_GetEntityComponent(entity_handle_t entity, int component_index)", asFUNCTION(entity_ScriptGetEntityComponent), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_SetCameraPosition(vec3_t &in position)", asFUNCTION(entity_ScriptSetCameraPosition), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_SetCamera()", asFUNCTION(entity_ScriptSetCamera), asCALL_CDECL);
+	
 }
 
 /*

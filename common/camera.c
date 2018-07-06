@@ -118,7 +118,17 @@ camera_t *camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, 
 	//memcpy(&camera->local_orientation, orientation, sizeof(mat3_t));
 	
 	camera->world_position = position;
-	camera->world_orientation = *orientation;
+	
+	if(!orientation)
+	{
+		camera->world_orientation = mat3_t_id();
+	}
+	else
+	{
+		camera->world_orientation = *orientation;
+	}
+	
+	
 	//memcpy(&camera->world_orientation, orientation, sizeof(mat3_t));
 	
 	CreatePerspectiveMatrix(&camera->view_data.projection_matrix, fovy, width/height, znear, zfar, 0.0, 0.0, &camera->frustum);

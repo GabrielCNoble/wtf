@@ -134,9 +134,17 @@ struct component_handle_t entity_AllocComponent(int component_type, int alloc_fo
 
 void entity_DeallocComponent(struct component_handle_t component);
 
+struct component_handle_t entity_AllocTransform(int alloc_for_def);
+
+void entity_DeallocTransform(struct component_handle_t transform);
+
+
+
 void entity_AddTransformToTopList(struct component_handle_t transform);
 
 void entity_RemoveTransformFromTopList(struct component_handle_t transform);
+
+
 
 void entity_ParentTransformComponent(struct component_handle_t parent_transform, struct component_handle_t child_transform);
 
@@ -163,7 +171,7 @@ void entity_SetCollider(struct entity_handle_t entity, void *collider);
 
 void entity_SetControllerScript(struct entity_handle_t entity, void *script);
 
-void entity_SetCamera(struct entity_handle_t entity, camera_t *camera);
+void entity_SetCameraTransform(struct entity_handle_t entity, mat3_t *orientation, vec3_t position);
 
 /*
 ==============================================================

@@ -1,6 +1,7 @@
 #include "scr_entity.h"
 #include "entity.h"
 #include "physics.h"
+#include "camera.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -62,8 +63,20 @@ void entity_ScriptJump(float jump_force)
 =====================================
 */
 
-void *entity_ScriptGetPosition(struct entity_handle_t entity)
+void *entity_ScriptGetPosition(int local)
 {
+	struct entity_t *entity;
+	struct transform_component_t *local_transform;
+	struct entity_transform_t *global_transform;
+	
+	if(local)
+	{
+		
+	}
+	else
+	{
+		
+	}
 	
 }
 
@@ -91,18 +104,6 @@ void *entity_ScriptGetForwardVector()
 	return &transform->orientation.r2;
 }
 
-struct component_handle_t entity_ScriptGetCurrentComponent(int component_index)
-{
-	return entity_ScriptGetComponent(ent_current_entity, component_index);
-}
-
-struct component_handle_t entity_ScriptGetComponent(struct entity_handle_t entity, int component_index)
-{
-	struct entity_t *entity_ptr;
-	entity_ptr = entity_GetEntityPointerIndex(entity);
-	return entity_ptr->components[component_index];
-}
-
 void entity_ScriptRotate(vec3_t *axis, float angle, int set)
 {
 	struct entity_t *entity;
@@ -115,6 +116,59 @@ void entity_ScriptRotate(vec3_t *axis, float angle, int set)
 	
 	mat3_t_rotate(&transform->orientation, *axis, angle, set);
 }
+
+/*
+=====================================
+=====================================
+=====================================
+*/
+
+struct component_handle_t entity_ScriptGetComponent(int component_index)
+{
+	return entity_ScriptGetEntityComponent(ent_current_entity, component_index);
+}
+
+struct component_handle_t entity_ScriptGetEntityComponent(struct entity_handle_t entity, int component_index)
+{
+	struct entity_t *entity_ptr;
+	entity_ptr = entity_GetEntityPointerIndex(entity);
+	return entity_ptr->components[component_index];
+}
+
+
+void entity_ScriptSetCameraPosition(vec3_t *position)
+{
+	struct entity_t *entity;
+	struct camera_component_t *camera_component;
+	struct transform_component_t *transform_component;
+	
+	entity = entity_GetEntityPointerIndex(ent_current_entity);
+	
+	camera_component = entity_GetComponentPointer(entity->components[COMPONENT_INDEX_CAMERA]);
+	
+	if(camera_component)
+	{
+		transform_component = entity_GetComponentPointer(camera_component->transform);
+		transform_component->position = *position;
+	}	
+}
+
+
+void entity_ScriptSetCamera()
+{
+	struct entity_t *entity;
+	struct camera_component_t *camera_component;
+	
+	entity = entity_GetEntityPointerIndex(ent_current_entity);
+	
+	camera_component = entity_GetComponentPointer(entity->components[COMPONENT_INDEX_CAMERA]);
+	
+	if(camera_component)
+	{
+		camera_SetCamera(camera_component->camera);
+	}	
+}
+
 
 /*
 =====================================

@@ -589,12 +589,12 @@ void renderer_DrawViews()
 	
 	active_view = camera_GetActiveCamera();
 	
-	renderer_SetShader(r_imediate_color_shader);
-	renderer_SetProjectionMatrix(&active_view->view_data.projection_matrix);
+	//renderer_SetShader(r_imediate_color_shader);
+	//renderer_SetProjectionMatrix(&active_view->view_data.projection_matrix);
 	renderer_SetViewMatrix(&active_view->view_data.view_matrix);
 	//renderer_SetModelMatrix(NULL);
 	
-	renderer_EnableImediateDrawing();
+	//renderer_EnableImediateDrawing();
 	glPointSize(8.0);
 	glEnable(GL_POINT_SMOOTH);
 	glDisable(GL_CULL_FACE);
@@ -694,8 +694,10 @@ void renderer_DrawViews()
 	glDisable(GL_POINT_SMOOTH);
 	glPointSize(1.0);
 	
+	//renderer_SetViewMatrix(NULL);
 	
-	renderer_DisableImediateDrawing();
+	
+	//renderer_DisableImediateDrawing();
 }
 
 
@@ -706,7 +708,7 @@ void renderer_DrawWaypoints()
 	
 	struct waypoint_t *waypoint;
 	struct waypoint_t *linked_waypoint;
-	
+	renderer_SetModelMatrix(NULL);
 	
 	
 	for(i = 0; i < nav_waypoint_count; i++)
@@ -772,6 +774,9 @@ void renderer_DrawColliders()
 	float h_offset;
 	renderer_Color3f(1.0, 1.0, 1.0);
 	vec3_t capsule_vert;
+	
+	renderer_SetModelMatrix(NULL);
+	
 	for(i = 0; i < collider_list_cursor; i++)
 	{
 		switch(colliders[i].type)
@@ -840,6 +845,7 @@ void renderer_DrawEntities()
 	
 	glEnable(GL_POINT_SMOOTH);
 	//glPointSize(8.0);
+	renderer_SetModelMatrix(NULL);
 	
 	for(i = 0; i < ent_entity_list_cursor; i++)
 	{
@@ -954,10 +960,10 @@ void renderer_DrawDebug()
 		renderer_DrawPortalsOulines();
 	}*/
 	
-/*	if(r_debug_draw_views)
+	if(r_debug_draw_views)
 	{
 		renderer_DrawViews();
-	}*/
+	}
 	
 	if(r_debug_draw_waypoints)
 	{

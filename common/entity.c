@@ -187,7 +187,11 @@ void entity_Finish()
 	memory_Free(ent_entity_aabbs);
 	memory_Free(ent_global_transforms);
 	
-	memory_Free(ent_top_transforms);
+	if(ent_top_transforms)
+	{
+		memory_Free(ent_top_transforms);
+	}
+	
 	
 	for(j = 0; j < 2; j++)
 	{
@@ -386,6 +390,25 @@ void entity_DeallocComponent(struct component_handle_t component)
 	}
 }
 
+struct component_handle_t entity_AllocTransform(int alloc_for_def)
+{
+	struct transform_component_t *transform;
+	struct component_handle_t handle = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, alloc_for_def);
+	
+	transform = entity_GetComponentPointer(handle);
+	
+	transform->orientation = mat3_t_id();
+	transform->position = vec3(0.0, 0.0, 0.0);
+	transform->scale = vec3(1.0, 1.0, 1.0);
+	
+	return handle;
+}
+
+void entity_DeallocTransform(struct component_handle_t transform)
+{
+	entity_DeallocComponent(transform);
+}
+
 void entity_AddTransformToTopList(struct component_handle_t transform)
 {
 	struct component_handle_t *transforms;
@@ -445,12 +468,11 @@ void entity_RemoveTransformFromTopList(struct component_handle_t transform)
 	if(transform_ptr->top_list_index < ent_top_transform_count - 1)
 	{
 		ent_top_transforms[transform_ptr->top_list_index] = ent_top_transforms[ent_top_transform_count - 1];
+		other = entity_GetComponentPointer(ent_top_transforms[transform_ptr->top_list_index]);
+		other->top_list_index = transform_ptr->top_list_index;
 	}
 	
 	ent_top_transform_count--;
-	
-	other = entity_GetComponentPointer(ent_top_transforms[transform_ptr->top_list_index]);
-	other->top_list_index = transform_ptr->top_list_index;
 	transform_ptr->top_list_index = -1;
 }
 
@@ -473,8 +495,12 @@ void entity_ParentTransformComponent(struct component_handle_t parent_transform,
 	if(parent->children_count >= parent->max_children)
 	{
 		transforms = memory_Malloc(sizeof(struct component_handle_t) * (parent->max_children + 4), "entity_ParentTransformComponent");
-		memcpy(transforms, parent->child_transforms, sizeof(struct component_handle_t) * parent->max_children);
-		memory_Free(parent->child_transforms);
+		if(parent->child_transforms)
+		{
+			memcpy(transforms, parent->child_transforms, sizeof(struct component_handle_t) * parent->max_children);
+			memory_Free(parent->child_transforms);
+		}
+	
 		parent->child_transforms = transforms;
 		parent->max_children += 4;
 	}
@@ -558,6 +584,11 @@ struct entity_handle_t entity_CreateEntityDef(char *name)
 	
 	entity_def = ent_entity_defs + entity_def_index;
 	
+	for(i = 0; i < COMPONENT_INDEX_LAST; i++)
+	{
+		entity_def->components[i].type = COMPONENT_TYPE_NONE;
+	}
+	
 	handle.def = 1;
 	handle.entity_index = entity_def_index;
 	
@@ -573,10 +604,7 @@ struct entity_handle_t entity_CreateEntityDef(char *name)
 		transform_component->child_transforms[i].type = COMPONENT_TYPE_NONE;
 	}
 	
-	for(i = 0; i < COMPONENT_INDEX_LAST; i++)
-	{
-		entity_def->components[i].type = COMPONENT_TYPE_NONE;
-	}
+	
 		
 	entity_def->leaf = NULL;
 	entity_def->flags = 0;
@@ -632,7 +660,7 @@ struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int
 	
 	if(component_type == COMPONENT_TYPE_TRANSFORM)
 	{
-		if(entity_ptr->components[COMPONENT_TYPE_TRANSFORM].type != COMPONENT_TYPE_NONE)
+		if(entity_ptr->components[COMPONENT_INDEX_TRANSFORM].type != COMPONENT_TYPE_NONE)
 		{
 			printf("entity_AddComponent: cannot overwrite entity's transform component\n");
 			return component;
@@ -830,6 +858,30 @@ void entity_SetControllerScript(struct entity_handle_t entity, void *script)
 	controller->flags = SCRIPT_CONTROLLER_FLAG_FIRST_RUN;
 }
 
+void entity_SetCameraTransform(struct entity_handle_t entity, mat3_t *orientation, vec3_t position)
+{
+	struct entity_t *entity_ptr;
+	struct transform_component_t *transform_component;
+	struct camera_component_t *camera_component;
+	
+	entity_ptr = entity_GetEntityPointerIndex(entity);
+	
+	camera_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_CAMERA]);
+	transform_component = entity_GetComponentPointer(camera_component->transform);
+	
+	if(!orientation)
+	{
+		transform_component->orientation = mat3_t_id();
+	}
+	else
+	{
+		transform_component->orientation = *orientation;
+	}
+	
+	transform_component->position = position;
+	transform_component->scale = vec3(1.0, 1.0, 1.0);	
+}
+
 void entity_SetCamera(struct entity_handle_t entity, camera_t *camera)
 {
 	struct entity_t *entity_ptr;
@@ -856,6 +908,11 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 	struct model_component_t *def_model_component;
 	struct transform_component_t *transform_component;
 	
+	struct camera_component_t *camera_component;
+	struct transform_component_t *camera_transform_component;
+	struct camera_component_t *def_camera_component;
+	struct transform_component_t *def_camera_transform_component;
+	
 	struct script_controller_component_t *script_controller;
 	struct script_controller_component_t *def_script_controller;
 	
@@ -865,6 +922,8 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 	struct controller_component_t *controller;
 	struct controller_component_t *def_controller;
 	struct component_t *component_ptr;
+	
+	struct component_handle_t component_transform;
 	
 	struct entity_aabb_t *aabb;
 	struct model_t *model;
@@ -914,16 +973,17 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 	aabb->original_extents.y = 0.0;
 	aabb->original_extents.z = 0.0;
 	
-	for(i = 0; i < COMPONENT_INDEX_LAST; i++)
+	for(i = COMPONENT_INDEX_TRANSFORM + 1; i < COMPONENT_INDEX_LAST; i++)
 	{
 		//switch(entity_def_ptr->components[i].type)
 		if(entity_def_ptr->components[i].type != COMPONENT_TYPE_NONE)
 		{
+			component = entity_def_ptr->components[i];
+			entity_ptr->components[i] = entity_AllocComponent(component.type, 0);
+			
 			switch(i)
 			{
 				case COMPONENT_INDEX_MODEL:
-					entity_ptr->components[COMPONENT_INDEX_MODEL] = entity_AllocComponent(COMPONENT_TYPE_MODEL, 0);
-			
 					model_component = (struct model_component_t *)entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_MODEL]);
 					def_model_component = (struct model_component_t *)entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_INDEX_MODEL]);
 					
@@ -936,9 +996,6 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 				break;	
 				
 				case COMPONENT_INDEX_CONTROLLER:
-					component = entity_def_ptr->components[COMPONENT_INDEX_CONTROLLER];
-			
-					entity_ptr->components[COMPONENT_INDEX_CONTROLLER] = entity_AllocComponent(component.type, 0);	
 					controller = entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_CONTROLLER]);
 					def_controller = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_INDEX_CONTROLLER]);
 						
@@ -956,14 +1013,32 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 						script_controller->max_route_length = 0;
 					}
 				break;
+				
+				case COMPONENT_INDEX_CAMERA:
+					camera_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_CAMERA]);
+					def_camera_component = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_INDEX_CAMERA]);
+					component_transform = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, 0);
+					camera_component->transform = component_transform;
+					entity_ParentTransformComponent(entity_ptr->components[COMPONENT_INDEX_TRANSFORM], component_transform);
+					
+					
+					camera_transform_component = entity_GetComponentPointer(camera_component->transform);
+					def_camera_transform_component = entity_GetComponentPointer(def_camera_component->transform);
+					
+					camera_transform_component->orientation = def_camera_transform_component->orientation;
+					camera_transform_component->position = def_camera_transform_component->position;
+					camera_transform_component->scale = def_camera_transform_component->scale;
+					
+					camera_component->camera = camera_CreateCamera("camera", vec3(0.0, 0.0, 0.0), NULL, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
+				break;
 			}
 		}
 		
 	}
 
 	
-	transform_component->children_count = 0;
-	transform_component->flags = 0;
+	//transform_component->children_count = 0;
+	//transform_component->flags = 0;
 	
 	transform_component->orientation = *orientation;
 	transform_component->position = position;
@@ -1407,6 +1482,34 @@ void entity_UpdateScriptControllerComponents()
 	//last_update = r_frame;
 }
 
+void entity_RecursiveUpdateTransform(struct entity_transform_t *parent_transform, struct component_handle_t child_transform)
+{
+	//struct entity_transform_t current_transform;
+	struct entity_transform_t *global_transform;
+	struct transform_component_t *transform_component;
+	mat4_t transform;
+	int i;
+	
+	transform_component = entity_GetComponentPointer(child_transform);
+	global_transform = entity_GetWorldTransformPointer(child_transform);
+	
+	if(parent_transform)
+	{
+		mat4_t_compose2(&transform, &transform_component->orientation, transform_component->position, transform_component->scale);
+		mat4_t_mult(&global_transform->transform, &transform, &parent_transform->transform);
+	}
+	else
+	{
+		mat4_t_compose2(&global_transform->transform, &transform_component->orientation, transform_component->position, transform_component->scale);
+	}
+	
+	for(i = 0; i < transform_component->children_count; i++)
+	{
+		entity_RecursiveUpdateTransform(global_transform, transform_component->child_transforms[i]);
+	}
+	
+}
+
 void entity_UpdateTransformComponents()
 {
 	int i;
@@ -1439,14 +1542,8 @@ void entity_UpdateTransformComponents()
 	physics_controller_components = (struct physics_controller_component_t *)ent_components[0][COMPONENT_TYPE_PHYSICS_CONTROLLER].components;
 	
 	for(i = 0; i < c; i++)
-	{
-		/*if(transform_components[i].flags & COMPONENT_FLAG_INVALID)
-		{
-			continue;
-		}*/
-		
-		global_transform = ent_global_transforms + i;
-		//local_transform = transform_components + i;
+	{		
+		global_transform = ent_global_transforms + ent_top_transforms[i].index;
 		local_transform = transform_components + ent_top_transforms[i].index;
 		
 		if(local_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
@@ -1465,6 +1562,11 @@ void entity_UpdateTransformComponents()
 			else
 			{
 				mat4_t_compose2(&global_transform->transform, &local_transform->orientation, local_transform->position, local_transform->scale);
+			}
+			
+			for(j = 0; j < local_transform->children_count; j++)
+			{
+				entity_RecursiveUpdateTransform(global_transform, local_transform->child_transforms[j]);
 			}
 			
 			if(entity->components[COMPONENT_INDEX_MODEL].type != COMPONENT_TYPE_NONE)

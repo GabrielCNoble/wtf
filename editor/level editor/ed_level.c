@@ -240,39 +240,41 @@ void editor_LevelEditorInit()
 	 
 	brush_Init();
 	
-	struct particle_system_script_t *script = particle_LoadParticleSystemScript("scripts/particle_system.as", "particle_system_test_script");
-	//script_t *particle_system_script = script_LoadScript("scripts/particle_system.as", "particle_system_test_script");
-	//particle_system_script->setup_callback = particle_SetupParticleScriptCallback;
+	//camera_t *camera = camera_CreateCamera("entity_camera", vec3(0.0, 0.0, 0.0), &r, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
 	
-	int ps_def = particle_CreateParticleSystemDef("test", 500, 500, 1, 0, 0, script);
+	//struct particle_system_script_t *script = particle_LoadParticleSystemScript("scripts/particle_system.as", "particle_system_test_script");
+	//script_t *particle_system_script = script_LoadScript("scripts/particle_system.as", "particle_system_test_script");
+	
+	//int ps_def = particle_CreateParticleSystemDef("test", 500, 500, 1, 0, 0, script);
 	
 	//particle_SpawnParticleSystem(vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, ps_def);
 	
-	//struct script_controller_component_t *ai_controller;
-	struct controller_script_t *ai_script = entity_LoadScript("scripts/ai_script.as", "ai_script");
-	
+	struct script_controller_component_t *ai_controller;
+	struct controller_script_t *ai_script = entity_LoadScript("scripts/ai_script.as", "ai_script");	
 	collider_def_t *def = physics_CreateCharacterColliderDef("test collider", 1.0, 0.5, 0.3, 0.15, 0.7);
 	int model_index = model_LoadModel("toilet2.mpk", "toilet");
 	
 	struct entity_handle_t entity_def = entity_CreateEntityDef("test player");
 
+	entity_AddComponent(entity_def, COMPONENT_TYPE_CAMERA);
 	entity_AddComponent(entity_def, COMPONENT_TYPE_SCRIPT_CONTROLLER);
 	entity_AddComponent(entity_def, COMPONENT_TYPE_MODEL);
+	
 	
 	
 	entity_SetModel(entity_def, model_index);
 	entity_SetCollider(entity_def, def);
 	entity_SetControllerScript(entity_def, ai_script);
-	
-	//mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.5, 1);
+	mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), -0.5, 1);
+	entity_SetCameraTransform(entity_def, &r, vec3(0.0, 2.0, 0.0));
 	
 	r = mat3_t_id();
 	
 	entity_SpawnEntity(&r, vec3(0.0, 2.0, -10.0), vec3(1.0, 1.0, 1.0), entity_def, "test player");	 
-	entity_SpawnEntity(&r, vec3(2.0, 2.0, -10.0), vec3(1.0, 1.0, 1.0), entity_def, "test player1");
-	entity_SpawnEntity(&r, vec3(-2.0, 2.0, -10.0), vec3(1.0, 1.0, 1.0), entity_def, "test player2");
-	entity_SpawnEntity(&r, vec3(4.0, 2.0, -10.0), vec3(1.0, 1.0, 1.0), entity_def, "test player1");
-	entity_SpawnEntity(&r, vec3(-4.0, 2.0, -10.0), vec3(1.0, 1.0, 1.0), entity_def, "test player2");
+	//entity_SpawnEntity(&r, vec3(2.0, 2.0, -10.0), vec3(1.0, 1.0, 1.0), entity_def, "test player1");
+	//entity_SpawnEntity(&r, vec3(-2.0, 2.0, -10.0), vec3(1.0, 1.0, 1.0), entity_def, "test player2");
+	//entity_SpawnEntity(&r, vec3(4.0, 2.0, -10.0), vec3(1.0, 1.0, 1.0), entity_def, "test player1");
+	//entity_SpawnEntity(&r, vec3(-4.0, 2.0, -10.0), vec3(1.0, 1.0, 1.0), entity_def, "test player2");
 }
  
 void editor_LevelEditorFinish()
@@ -1138,6 +1140,7 @@ void editor_LevelEditorStopPIE()
 	engine_SetEngineState(ENGINE_PAUSED);
 	editor_LevelEditorRestoreLevelData();
 	level_editor_state = EDITOR_EDITING;
+	camera_SetCamera(level_editor_camera);
 }
 
 /*

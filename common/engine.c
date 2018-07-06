@@ -238,6 +238,7 @@ void engine_MainLoop()
 
 		sound_ProcessSound();
 		entity_UpdateTransformComponents();
+		entity_UpdateCameraComponents();
 		particle_UpdateParticleSystems(delta_time);
 		
 		world_MarkLightsOnLeaves();
