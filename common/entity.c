@@ -898,6 +898,43 @@ void entity_SetCamera(struct entity_handle_t entity, camera_t *camera)
 ==============================================================
 */
 
+struct entity_handle_t entity_CreateEntity(char *name)
+{
+	struct entity_t *entity_ptr;
+	struct entity_handle_t handle;
+	int entity_index;
+	int i;
+	
+	if(ent_free_stack_top >= 0)
+	{
+		entity_index = ent_free_stack[ent_free_stack_top];
+		ent_free_stack_top--;
+	}
+	else
+	{
+		if(ent_entity_list_cursor < MAX_ENTITIES)
+		{
+			entity_index = ent_entity_list_cursor;
+			ent_entity_list_cursor++;
+		}
+	} 
+	
+	entity_ptr = ent_entities + entity_index;
+	
+	for(i = 0; name[i] && i < ENTITY_NAME_MAX_LEN - 1; i++)
+	{
+		entity_ptr->name[i] = name[i];
+	}
+	
+	/* TODO: make sure no two entities in the world
+	have the same name... */
+	entity_ptr->name[i] = '\0';
+	
+	handle.def = 0;
+	handle.entity_index = entity_index;
+	
+	return handle;
+}
 
 struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, vec3_t scale, struct entity_handle_t entity_def, char *name)
 {
@@ -934,55 +971,39 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 	int i;
 	int j;
 	
-	if(ent_free_stack_top >= 0)
-	{
-		entity_index = ent_free_stack[ent_free_stack_top];
-		ent_free_stack_top--;
-	}
-	else
-	{
-		if(ent_entity_list_cursor < MAX_ENTITIES)
-		{
-			entity_index = ent_entity_list_cursor;
-			ent_entity_list_cursor++;
-		}
-	} 
+	handle = entity_CreateEntity(name);
 	
-	entity_ptr = ent_entities + entity_index;
+	entity_ptr = entity_GetEntityPointerIndex(handle);
 	entity_def_ptr = entity_GetEntityPointerIndex(entity_def);
-	
-	handle.def = 0;
-	handle.entity_index = entity_index;
-	
-	//entity_def = ent_entity_defs + entity_def_index;
 	
 	for(i = 0; i < COMPONENT_INDEX_LAST; i++)
 	{
 		entity_ptr->components[i].type = COMPONENT_TYPE_NONE;
 	}
-	
-	entity_ptr->components[COMPONENT_INDEX_TRANSFORM] = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, 0);
-	transform_component = (struct transform_component_t *)entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_TRANSFORM]);
-	aabb = ent_entity_aabbs + entity_ptr->components[COMPONENT_INDEX_TRANSFORM].index;
-	
-	aabb->current_extents.x = 0.0;
-	aabb->current_extents.y = 0.0;
-	aabb->current_extents.z = 0.0;
-	
-	aabb->original_extents.x = 0.0;
-	aabb->original_extents.y = 0.0;
-	aabb->original_extents.z = 0.0;
-	
-	for(i = COMPONENT_INDEX_TRANSFORM + 1; i < COMPONENT_INDEX_LAST; i++)
+			
+	for(i = 0; i < COMPONENT_INDEX_LAST; i++)
 	{
-		//switch(entity_def_ptr->components[i].type)
 		if(entity_def_ptr->components[i].type != COMPONENT_TYPE_NONE)
 		{
 			component = entity_def_ptr->components[i];
 			entity_ptr->components[i] = entity_AllocComponent(component.type, 0);
 			
 			switch(i)
-			{
+			{	
+				case COMPONENT_INDEX_TRANSFORM:
+					transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_TRANSFORM]);
+					aabb = ent_entity_aabbs + entity_ptr->components[COMPONENT_INDEX_TRANSFORM].index;
+					
+					aabb->current_extents.x = 0.0;
+					aabb->current_extents.y = 0.0;
+					aabb->current_extents.z = 0.0;
+					
+					aabb->original_extents.x = 0.0;
+					aabb->original_extents.y = 0.0;
+					aabb->original_extents.z = 0.0;
+					
+				break;
+				
 				case COMPONENT_INDEX_MODEL:
 					model_component = (struct model_component_t *)entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_MODEL]);
 					def_model_component = (struct model_component_t *)entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_INDEX_MODEL]);
@@ -1036,15 +1057,16 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 		
 	}
 
+	//transform_component->orientation = *orientation;
+	//transform_component->position = position;
+	//transform_component->scale = scale;
 	
-	//transform_component->children_count = 0;
-	//transform_component->flags = 0;
+	//transform_component->parent.type = COMPONENT_TYPE_NONE;
 	
+	transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_TRANSFORM]);
 	transform_component->orientation = *orientation;
 	transform_component->position = position;
 	transform_component->scale = scale;
-	
-	transform_component->parent.type = COMPONENT_TYPE_NONE;
 	
 	for(i = 0; i < COMPONENT_INDEX_LAST; i++)
 	{
@@ -1055,14 +1077,7 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 		}
 	}
 	
-	for(i = 0; name[i] && i < ENTITY_NAME_MAX_LEN - 1; i++)
-	{
-		entity_ptr->name[i] = name[i];
-	}
 	
-	/* TODO: make sure no two entities in the world
-	have the same name... */
-	entity_ptr->name[i] = '\0';
 	
 	return handle;
 }

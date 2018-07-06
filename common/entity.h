@@ -179,6 +179,7 @@ void entity_SetCameraTransform(struct entity_handle_t entity, mat3_t *orientatio
 ==============================================================
 */
 
+struct entity_handle_t entity_CreateEntity(char *name);
 
 struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, vec3_t scale, struct entity_handle_t entity_def, char *name);
 
