@@ -173,6 +173,14 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("void input_GetMouseDelta(float &out dx, float &out dy)", asFUNCTION(input_GetMouseDelta), asCALL_CDECL);
 	
 	
+	scr_virtual_machine->RegisterEnum("COMPONENT_INDEXES");
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_INDEXES", "COMPONENT_INDEX_TRANSFORM", COMPONENT_INDEX_TRANSFORM);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_INDEXES", "COMPONENT_INDEX_CONTROLLER", COMPONENT_INDEX_CONTROLLER);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_INDEXES", "COMPONENT_INDEX_PHYSICS_CONTROLLER", COMPONENT_INDEX_PHYSICS_CONTROLLER);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_INDEXES", "COMPONENT_INDEX_SCRIPT_CONTROLLER", COMPONENT_INDEX_SCRIPT_CONTROLLER);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_INDEXES", "COMPONENT_INDEX_MODEL", COMPONENT_INDEX_MODEL);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_INDEXES", "COMPONENT_INDEX_LIGHT", COMPONENT_INDEX_LIGHT);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_INDEXES", "COMPONENT_INDEX_SCRIPT", COMPONENT_INDEX_SCRIPT);
 	
 	
 	scr_virtual_machine->RegisterEnum("SDL_Scancode");
@@ -355,13 +363,19 @@ void script_RegisterTypesAndFunctions()
 	*/
 	
 	scr_virtual_machine->RegisterObjectType("entity_handle_t", sizeof(struct entity_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
-	
+	scr_virtual_machine->RegisterObjectType("component_handle_t", sizeof(struct component_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
 	
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Jump(float jump_force)", asFUNCTION(entity_ScriptJump), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Move(vec3_t &in direction)", asFUNCTION(entity_ScriptMove), asCALL_CDECL);
+	
 	scr_virtual_machine->RegisterGlobalFunction("void entity_FindPath(vec3_t &in to)", asFUNCTION(entity_ScriptFindPath), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_GetWaypointDirection(vec3_t &out direction)", asFUNCTION(entity_ScriptGetWaypointDirection), asCALL_CDECL);
+	
 	scr_virtual_machine->RegisterGlobalFunction("mat3_t &entity_GetOrientation()", asFUNCTION(entity_ScriptGetOrientation), asCALL_CDECL);
+	
+	scr_virtual_machine->RegisterGlobalFunction("component_handle_t entity_GetCurrentComponent(int component_index)", asFUNCTION(entity_ScriptGetCurrentComponent), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("component_handle_t entity_GetComponent(entity_handle_t entity, int component_index)", asFUNCTION(entity_ScriptGetComponent), asCALL_CDECL);
+	
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Rotate(vec3_t &in axis, float angle, int set)", asFUNCTION(entity_ScriptRotate), asCALL_CDECL);
 }
 
@@ -430,6 +444,7 @@ struct script_t *script_CreateScript(char *file_name, char *script_name, int scr
 	script->script_module = NULL;
 	script->setup_data_callback = setup_data_callback;
 	script->get_data_callback = get_data_callback;
+	script->update_count = 0;
 	
 	script->name = memory_Strdup(script_name, "script_CreateScript");
 	script->file_name = memory_Strdup(file_name, "script_CreateScript");
@@ -521,8 +536,8 @@ int script_CompileScriptSource(char *source, struct script_t *script)
 	
 	static char error_log[1024];
 	
-	particle_system_script_t *ps_script;
-	struct ai_script_t *ai_script;
+	//particle_system_script_t *ps_script;
+	//struct ai_script_t *ai_script;
 	
 	int success = 0;
 
@@ -569,66 +584,16 @@ int script_CompileScriptSource(char *source, struct script_t *script)
 		}
 		else
 		{
-			printf("script_CompileScriptSource: script [%s] has not get data callback\n", script->name);
+			printf("script_CompileScriptSource: script [%s] doesn't have a get data callback\n", script->name);
 		}
-		
-		/*switch(script->type)
-		{
-			case SCRIPT_TYPE_PARTICLE_SYSTEM:
-				ps_script = (particle_system_script_t *)script;
-				
-				ps_script->particle_array = script_GetGlobalVarAddress("ps_particles", script);
-				ps_script->particle_frame_array = script_GetGlobalVarAddress("ps_particle_frames", script);
-				ps_script->particle_position_array = script_GetGlobalVarAddress("ps_particle_positions", script);
-				ps_script->particle_system = script_GetGlobalVarAddress("ps_particle_system", script);
-				ps_script->init = script_GetFunctionAddress("ps_init", script);
-				
-				if(!ps_script->particle_array)
-				{
-					printf("script_CompileScriptSource: script [%s] is missing global var [array<particle_t> ps_particles]\n", script->name);
-					success = 0;
-				}
-				
-				if(!ps_script->particle_frame_array)
-				{
-					printf("script_CompileScriptSource: script [%s] is missing global var [array<int> ps_particle_frames]\n", script->name);
-					success = 0;
-				}
-				
-				if(!ps_script->particle_position_array)
-				{
-					printf("script_CompileScriptSource: script [%s] is missing global var [array<vec4_t> ps_particle_positions]\n", script->name);
-					success = 0;
-				}
-				
-				if(!ps_script->particle_system)
-				{
-					printf("script_CompileScriptSource: script [%s] is missing global var [particle_system_t@ ps_particle_system]\n", script->name);
-					success = 0;
-				}
-				
-				if(!ps_script->init)
-				{
-					printf("script_CompileScriptSource: script [%s] is missing function [void ps_init()]\n", script->name);
-					success = 0;
-				}		
-			break;
-			
-			case SCRIPT_TYPE_AI:
-				ai_script = (struct ai_script_t *)script;
-				ai_script->ai_controller = script_GetGlobalVarAddress("controller", script);
-				
-				if(!ai_script->ai_controller)
-				{
-					success = 0;
-				}
-				
-			break;
-		}*/
 		
 		if(!success)
 		{
-			ps_script->script.flags |= SCRIPT_FLAG_NOT_COMPILED;
+			script->flags |= SCRIPT_FLAG_NOT_COMPILED;
+		}
+		else
+		{
+			script->update_count++;
 		}
 		
 	}

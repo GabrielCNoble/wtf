@@ -225,7 +225,7 @@ void engine_MainLoop()
 		
 		//gui_CloseGuiFrame();
 		
-		if(engine_state == ENGINE_PLAYING)
+		if(engine_state & ENGINE_PLAYING)
 		{
 		//	player_ProcessActivePlayer(delta_time);
 			//player_UpdateActivePlayer(delta_time);
@@ -274,6 +274,8 @@ void engine_MainLoop()
 		{
 			captured_frames++;
 		}
+		
+		engine_state &= ~(ENGINE_JUST_PAUSED | ENGINE_JUST_RESUMED);
 	}
 	
 	
@@ -311,20 +313,35 @@ void engine_WriteConfig()
 
 void engine_SetEngineState(int state)
 {
+	/* once the engine is set to quit, nothing should stop it... */
+	if(engine_state == ENGINE_QUIT)
+		return;	
+				
 	switch(state)
 	{
 		case ENGINE_QUIT:
+			engine_state = ENGINE_QUIT;
+		break;
+		
 		case ENGINE_PAUSED:
+			if(engine_state & ENGINE_PLAYING)
+			{
+				engine_state = ENGINE_PAUSED | ENGINE_JUST_PAUSED;
+			}
+		break;
+		
 		case ENGINE_PLAYING:
-		case ENGINE_EDITING:
-			
-			/* once the engine is set to quit, nothing should stop it... */
-			if(engine_state == ENGINE_QUIT)
-				return;	
-				
-			engine_state = state;
+			if(engine_state & ENGINE_PAUSED)
+			{
+				engine_state = ENGINE_PLAYING | ENGINE_JUST_RESUMED;
+			}
 		break;
 	}
+}
+
+int engine_GetEngineState()
+{
+	return engine_state;
 }
 
 void engine_UpdateDeltaTime()

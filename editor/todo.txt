@@ -2,7 +2,8 @@
 	- Serializers	
 	- Animation system
 	- Navigation system
-		- Expose functions to scripts
+//		- Expose functions to scripts
+		- Fix weird bug that sometimes messes up routes
 		
 
 	- Sound system
@@ -14,21 +15,31 @@
 			- hierarchical transform update 
 			- hierarchical aabb update
 		
-		- Controller component
-			- Physics controller
-			- Player controller
-			- AI controller
-			- remove controller
-
+//		- Controller component
+//			- Physics controller
+//			- Script controller
+			
 		- Script component
+	
 
+	- Script system
+		- String type
+//		- Vector types
+//		- Matrix types
+		- Expose entities
+//			- Allow modifications to the current entity
+//			- Allow querying of components
+			- Allow querying of other entities 
+
+		- Expose cameras
+		- Expose sound playback
 	
 	- Physics system
 		- Character collider
-			- step up steps
-			- stop still on slopes
-//				- stop still
-				- limit slope angle
+			- Step up steps
+			- Stop still on slopes
+//				- Stop still
+				- Limit slope angle
 
 
 		- Rigid body constraints

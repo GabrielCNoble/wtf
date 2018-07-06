@@ -34,6 +34,10 @@ void *entity_ScriptGetOrientation();
 
 void *entity_ScriptGetForwardVector();
 
+struct component_handle_t entity_ScriptGetCurrentComponent(int component_index);
+
+struct component_handle_t entity_ScriptGetComponent(struct entity_handle_t entity, int component_index);
+
 void entity_ScriptRotate(vec3_t *axis, float angle, int set);
 
 /*

@@ -70,6 +70,7 @@ int navigation_CreateWaypoint(vec3_t position)
 	int waypoint_index;
 	struct waypoint_t *waypoint;
 	
+	char name[512];
 	
 	if(nav_waypoint_stack_top >= 0)
 	{
@@ -92,6 +93,10 @@ int navigation_CreateWaypoint(vec3_t position)
 	waypoint->flags = 0;
 	waypoint->parent = NULL;
 	
+	sprintf(name, "waypoint.%d", waypoint_index);
+	
+	waypoint->name = memory_Strdup(name, "navigation_CreateWaypoint");
+	
 	return waypoint_index;
 }
 
@@ -106,10 +111,17 @@ void navigation_DestroyWaypoint(int waypoint_index)
 		{
 			waypoint = nav_waypoints + waypoint_index;
 			
+			waypoint->flags |= WAYPOINT_FLAG_INVALID;
+			
 			for(i = 0; waypoint->links_count; i++)
 			{
 				navigation_UnlinkWaypoints(waypoint_index, waypoint->links[i].waypoint_index);
 			}
+			
+			memory_Free(waypoint->name);
+			
+			nav_waypoint_stack_top++;
+			nav_waypoint_stack[nav_waypoint_stack_top] = waypoint_index;
 		}
 	}
 	

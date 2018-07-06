@@ -91,6 +91,18 @@ void *entity_ScriptGetForwardVector()
 	return &transform->orientation.r2;
 }
 
+struct component_handle_t entity_ScriptGetCurrentComponent(int component_index)
+{
+	return entity_ScriptGetComponent(ent_current_entity, component_index);
+}
+
+struct component_handle_t entity_ScriptGetComponent(struct entity_handle_t entity, int component_index)
+{
+	struct entity_t *entity_ptr;
+	entity_ptr = entity_GetEntityPointerIndex(entity);
+	return entity_ptr->components[component_index];
+}
+
 void entity_ScriptRotate(vec3_t *axis, float angle, int set)
 {
 	struct entity_t *entity;

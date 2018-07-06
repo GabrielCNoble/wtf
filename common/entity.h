@@ -134,6 +134,14 @@ struct component_handle_t entity_AllocComponent(int component_type, int alloc_fo
 
 void entity_DeallocComponent(struct component_handle_t component);
 
+void entity_AddTransformToTopList(struct component_handle_t transform);
+
+void entity_RemoveTransformFromTopList(struct component_handle_t transform);
+
+void entity_ParentTransformComponent(struct component_handle_t parent_transform, struct component_handle_t child_transform);
+
+void entiyt_UnparentTransformComponent(struct component_handle_t parent_transform, struct component_handle_t child_transform);
+
 /*
 ==============================================================
 ==============================================================
@@ -153,9 +161,9 @@ void entity_SetModel(struct entity_handle_t entity, int model_index);
 
 void entity_SetCollider(struct entity_handle_t entity, void *collider);
 
-void entity_SetEntityAIScript(struct entity_handle_t entity, void *script);
-
 void entity_SetControllerScript(struct entity_handle_t entity, void *script);
+
+void entity_SetCamera(struct entity_handle_t entity, camera_t *camera);
 
 /*
 ==============================================================
@@ -169,8 +177,6 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 void entity_RemoveEntity(int entity_index);
 
 struct entity_t *entity_GetEntityPointer(char *name, int get_def);
-
-//struct entity_t *entity_GetEntityPointerIndex(int entity_index);
 
 __forceinline struct entity_t *entity_GetEntityPointerIndex(struct entity_handle_t entity);
 
@@ -195,11 +201,13 @@ void entity_FindPath(struct entity_handle_t entity, vec3_t to);
 ==============================================================
 */
 
-void entity_UpdateEntityAabbIndex(int entity_index);
+void entity_UpdateEntityAabbIndex(struct entity_handle_t entity);
 
 void entity_UpdateScriptControllerComponents();
 
 void entity_UpdateTransformComponents();
+
+void entity_UpdateCameraComponents();
 
 /*
 ==============================================================

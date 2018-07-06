@@ -6,7 +6,7 @@
 #include "bsp_common.h"
 #include "scr_common.h"
 #include "nav_common.h"
-
+#include "camera_types.h"
 
 
 #define ENTITY_NAME_MAX_LEN 24				/* including trailing null... */
@@ -70,6 +70,7 @@ enum COMPONENT_TYPES
 	COMPONENT_TYPE_MODEL,	
 	COMPONENT_TYPE_LIGHT,
 	COMPONENT_TYPE_SCRIPT,
+	COMPONENT_TYPE_CAMERA,
 	COMPONENT_TYPE_LAST,
 	COMPONENT_TYPE_NONE = COMPONENT_TYPE_LAST
 };
@@ -85,6 +86,7 @@ enum COMPONENT_INDEXES
 	COMPONENT_INDEX_MODEL,
 	COMPONENT_INDEX_LIGHT,
 	COMPONENT_INDEX_SCRIPT,
+	COMPONENT_INDEX_CAMERA,
 	COMPONENT_INDEX_LAST,	
 	COMPONENT_INDEX_NONE = COMPONENT_INDEX_LAST,
 };
@@ -116,6 +118,7 @@ struct component_t
 	int type;
 };
 
+
 struct transform_component_t
 {
 	struct component_t base;
@@ -124,14 +127,14 @@ struct transform_component_t
 	vec3_t scale;
 	vec3_t position;
 		
-	int entity_index;
+	int top_list_index;
 	
 	int flags;
 	
-	int parent_index;
+	struct component_handle_t parent;
 	int children_count;
 	int max_children;
-	int *child_transforms; 
+	struct component_handle_t *child_transforms;
 };
 
 struct entity_aabb_t
@@ -209,6 +212,7 @@ struct light_component_t
 {
 	struct component_t base;
 	int light_index;
+	struct component_handle_t transform;
 };
 
 /*
@@ -221,6 +225,19 @@ struct script_component_t
 {
 	struct component_t base;
 	struct script_t *script;
+};
+
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
+struct camera_component_t
+{
+	struct component_t base;
+	camera_t *camera;
+	struct component_handle_t transform;
 };
 
 /*

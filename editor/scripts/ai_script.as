@@ -12,7 +12,7 @@ void OnFirstRun()
 	/*end_pos[0] = 0.0;
 	end_pos[1] = 0.0;
 	end_pos[2] = 10.0;*/
-	entity_FindPath(vec3_t(0.0, 0.0, 10.0));
+	entity_FindPath(vec3_t(0.0, 0.0, 25.0));
 }
 
 float pitch = 0.0;

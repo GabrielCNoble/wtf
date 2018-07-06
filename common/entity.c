@@ -7,6 +7,8 @@
 #include "script.h"
 #include "navigation.h"
 
+#include "engine.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,6 +73,11 @@ int ent_entity_list_size = 0;
 int ent_free_stack_top = -1;
 int *ent_free_stack = NULL;
 struct entity_t *ent_entities = NULL;
+
+
+int ent_max_top_transforms = 0;
+int ent_top_transform_count = 0;
+struct component_handle_t *ent_top_transforms = NULL;
 
 
 /*
@@ -138,12 +145,10 @@ int entity_Init()
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_TRANSFORM, sizeof(struct transform_component_t));
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_PHYSICS_CONTROLLER, sizeof(struct physics_controller_component_t));
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_SCRIPT_CONTROLLER, sizeof(struct script_controller_component_t));
-	//DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_PLAYER_CONTROLLER, sizeof(struct player_controller_component_t));
-	//DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_AI_CONTROLLER, sizeof(struct ai_controller_component_t));
-	//DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_REMOTE_CONTROLLER, sizeof(struct remote_controller_component_t));
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_MODEL, sizeof(struct model_component_t));
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_LIGHT, sizeof(struct light_component_t));
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_SCRIPT, sizeof(struct script_component_t));
+	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_CAMERA, sizeof(struct camera_component_t));
 	
 	for(def_list = 0; def_list < 2; def_list++)
 	{
@@ -182,6 +187,8 @@ void entity_Finish()
 	memory_Free(ent_entity_aabbs);
 	memory_Free(ent_global_transforms);
 	
+	memory_Free(ent_top_transforms);
+	
 	for(j = 0; j < 2; j++)
 	{
 		for(i = COMPONENT_TYPE_TRANSFORM; i < COMPONENT_TYPE_LAST; i++)
@@ -208,8 +215,12 @@ struct component_list_t entity_CreateComponentList(int component_size, int max_c
 
 void entity_DestroyComponentList(struct component_list_t *component_list)
 {
-	memory_Free(component_list->free_stack);
-	memory_Free(component_list->components);
+	if(component_list->components)
+	{
+		memory_Free(component_list->free_stack);
+		memory_Free(component_list->components);
+	}
+	
 }
 
 int entity_AddComponentToList(struct component_list_t *component_list, void *component)
@@ -283,20 +294,23 @@ inline int entity_IndexForType(int component_type)
 	switch(component_type)
 	{
 	 	case COMPONENT_TYPE_TRANSFORM:
-	 		return COMPONENT_INDEX_TRANSFORM;														
-		break;														
+	 		return COMPONENT_INDEX_TRANSFORM;																												
 																				
 		case COMPONENT_TYPE_PHYSICS_CONTROLLER:		
-		case COMPONENT_TYPE_SCRIPT_CONTROLLER:
-		//case COMPONENT_TYPE_PLAYER_CONTROLLER:
-		//case COMPONENT_TYPE_AI_CONTROLLER:
-		//case COMPONENT_TYPE_REMOTE_CONTROLLER:				
-			return COMPONENT_INDEX_CONTROLLER;													
-		break;														
+		case COMPONENT_TYPE_SCRIPT_CONTROLLER:				
+			return COMPONENT_INDEX_CONTROLLER;																											
 																				
 		case COMPONENT_TYPE_MODEL:									
 			return COMPONENT_INDEX_MODEL;												
-		break;
+		
+		case COMPONENT_TYPE_LIGHT:
+			return COMPONENT_INDEX_LIGHT;
+		
+		case COMPONENT_TYPE_SCRIPT:
+			return COMPONENT_INDEX_SCRIPT;
+		
+		case COMPONENT_TYPE_CAMERA:
+			return COMPONENT_INDEX_CAMERA;
 	}	
 	
 	return -1;
@@ -309,7 +323,8 @@ struct component_handle_t entity_AllocComponent(int component_type, int alloc_fo
 {
 	struct component_list_t *list;
 	struct component_t *component;
-	//int component_index;
+	struct transform_component_t *transform;
+	struct component_handle_t *transforms;
 	struct component_handle_t handle;
 	
 	handle.def = 0;
@@ -328,6 +343,18 @@ struct component_handle_t entity_AllocComponent(int component_type, int alloc_fo
 		
 		component = entity_GetComponentPointer(handle);
 		component->type = component_type;
+		
+		if(!alloc_for_def)
+		{
+			switch(component_type)
+			{
+				case COMPONENT_TYPE_TRANSFORM:
+					entity_AddTransformToTopList(handle);
+				break;
+			}
+		}
+		
+		
 	}
 	else
 	{
@@ -346,8 +373,151 @@ void entity_DeallocComponent(struct component_handle_t component)
 	
 	if(list)
 	{
+		if(!component.def)
+		{
+			if(component.type == COMPONENT_TYPE_TRANSFORM)
+			{
+				entity_RemoveTransformFromTopList(component);
+			}
+		}
+		
+		
 		entity_RemoveComponentFromList(list, component.index);
 	}
+}
+
+void entity_AddTransformToTopList(struct component_handle_t transform)
+{
+	struct component_handle_t *transforms;
+	struct transform_component_t *transform_ptr;
+	
+	if(transform.def)
+	{
+		printf("entity_AddTransformToTopList: can't add def transform component to top list\n");
+		return;
+	}
+	
+	transform_ptr = entity_GetComponentPointer(transform);	
+	
+//	if(transform_ptr->top_list_index >= 0 && transform_ptr->top_list_index < ent_top_transform_count)
+//	{
+//		printf("entity_AddTransformToTopList: transform component already in top list\n");
+//		return;
+//	}
+	
+	if(ent_top_transform_count >= ent_max_top_transforms)
+	{
+		transforms = memory_Malloc(sizeof(struct component_handle_t) * (ent_max_top_transforms + 64), "entity_AllocComponent");
+				
+		if(ent_top_transforms)
+		{
+			memcpy(transforms, ent_top_transforms, sizeof(struct component_handle_t) * ent_max_top_transforms);
+			memory_Free(ent_top_transforms);
+		}
+						
+		ent_top_transforms = transforms;
+		ent_max_top_transforms += 64;
+	}
+					
+	ent_top_transforms[ent_top_transform_count] = transform;
+	transform_ptr->top_list_index = ent_top_transform_count;
+	ent_top_transform_count++;
+}
+
+void entity_RemoveTransformFromTopList(struct component_handle_t transform)
+{
+	struct transform_component_t *transform_ptr;
+	struct transform_component_t *other;
+	if(transform.def)
+	{
+		printf("entity_RemoveTransformFromTopList: can't remove def transform component from top list\n");
+		return;
+	}
+	
+	transform_ptr = entity_GetComponentPointer(transform);
+	
+	if(transform_ptr->top_list_index < 0)
+	{
+		printf("entity_RemoveTransformFromTopList: transform component already removed from list\n");
+		return;
+	}
+	
+	if(transform_ptr->top_list_index < ent_top_transform_count - 1)
+	{
+		ent_top_transforms[transform_ptr->top_list_index] = ent_top_transforms[ent_top_transform_count - 1];
+	}
+	
+	ent_top_transform_count--;
+	
+	other = entity_GetComponentPointer(ent_top_transforms[transform_ptr->top_list_index]);
+	other->top_list_index = transform_ptr->top_list_index;
+	transform_ptr->top_list_index = -1;
+}
+
+void entity_ParentTransformComponent(struct component_handle_t parent_transform, struct component_handle_t child_transform)
+{
+	struct transform_component_t *parent;
+	struct transform_component_t *child;
+	struct transform_component_t *other;
+	struct component_handle_t *transforms;
+	
+	if(parent_transform.def != child_transform.def)
+	{
+		printf("entity_ParentTransformComponent: cannot parent def transform with non def transform\n");
+		return;
+	}
+	
+	parent = entity_GetComponentPointer(parent_transform);
+	child = entity_GetComponentPointer(child_transform);
+	
+	if(parent->children_count >= parent->max_children)
+	{
+		transforms = memory_Malloc(sizeof(struct component_handle_t) * (parent->max_children + 4), "entity_ParentTransformComponent");
+		memcpy(transforms, parent->child_transforms, sizeof(struct component_handle_t) * parent->max_children);
+		memory_Free(parent->child_transforms);
+		parent->child_transforms = transforms;
+		parent->max_children += 4;
+	}
+	
+	parent->child_transforms[parent->children_count] = child_transform;
+	parent->children_count++;
+	
+	child->parent = parent_transform;
+	
+	if(!parent_transform.def)
+	{
+		entity_RemoveTransformFromTopList(child_transform);
+	}
+}
+
+void entiyt_UnparentTransformComponent(struct component_handle_t parent_transform, struct component_handle_t child_transform)
+{
+	int i;
+	struct transform_component_t *transform;
+	
+	if(parent_transform.def != child_transform.def)
+	{
+		printf("entity_UnparentTransformComponent: cannot unparent def transform from non def transform\n");
+		return;
+	}
+	
+	transform = entity_GetComponentPointer(parent_transform);
+	
+	for(i = 0; i < transform->children_count; i++)
+	{
+		if(*(int *)&transform->child_transforms[i] == *(int *)&child_transform)
+		{
+			if(i < transform->children_count - 1)
+			{
+				transform->child_transforms[i] = transform->child_transforms[transform->children_count - 1];
+			}
+			
+			transform->children_count--;
+			
+			entity_AddTransformToTopList(child_transform);
+		}
+	}
+	
 }
 
 /*
@@ -396,11 +566,11 @@ struct entity_handle_t entity_CreateEntityDef(char *name)
 	
 	transform_component->children_count = 0;
 	transform_component->max_children = 4;
-	transform_component->child_transforms = memory_Malloc(sizeof(int) * transform_component->max_children, "entity_CreateEntityDef");
+	transform_component->child_transforms = memory_Malloc(sizeof(struct component_handle_t) * transform_component->max_children, "entity_CreateEntityDef");
 	
 	for(i = 0; i < transform_component->max_children; i++)
 	{
-		transform_component->child_transforms[i] = -1;
+		transform_component->child_transforms[i].type = COMPONENT_TYPE_NONE;
 	}
 	
 	for(i = 0; i < COMPONENT_INDEX_LAST; i++)
@@ -429,13 +599,15 @@ void entity_DestroyEntityDef(struct entity_handle_t entity)
 struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int component_type)
 {
 	struct entity_t *entity_ptr;
-	
 	int component_index;
+	
+	struct component_handle_t component_transform;
 	struct component_handle_t component;
 	
 	struct model_component_t *model_component;
 	struct physics_controller_component_t *physics_controller;
 	struct script_controller_component_t *script_controller;
+	struct camera_component_t *camera_component;
 	struct entity_aabb_t *aabb;
 	struct component_t *component_ptr;
 	
@@ -477,57 +649,26 @@ struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int
 		entity_ptr->components[component_index] = component;
 		component_ptr->entity = entity;
 		
-		if(component_ptr->type == COMPONENT_TYPE_SCRIPT_CONTROLLER)
+		switch(component_ptr->type)
 		{
-			script_controller = (struct script_controller_component_t *)component_ptr;
-			script_controller->flags = SCRIPT_CONTROLLER_FLAG_FIRST_RUN;
+			case COMPONENT_TYPE_SCRIPT_CONTROLLER:
+				script_controller = (struct script_controller_component_t *)component_ptr;
+				script_controller->flags = SCRIPT_CONTROLLER_FLAG_FIRST_RUN;
+			break;
+			
+			case COMPONENT_TYPE_CAMERA:
+				component_transform = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, entity.def);
+				camera_component = (struct camera_component_t *)component_ptr;
+				
+				camera_component->transform = component_transform;
+				
+				entity_ParentTransformComponent(entity_ptr->components[COMPONENT_INDEX_TRANSFORM], component_transform);
+			break;
 		}
 	}
 	
-	return component;
+	//controller->flags = 0;
 }
-
-
-void entity_RemoveComponent(struct entity_handle_t entity, int component_type, int component_index)
-{
-	/*struct entity_t *entity;
-	
-	int component;
-	
-	if(remove_from_def)
-	{
-		if(entity_index < 0 || entity_index >= ent_entity_def_list_cursor)
-		{
-			printf("entity_RemoveComponent: bad entity def index!\n");
-			return;
-		}
-		
-		entity = ent_entity_defs + entity_index;
-	}
-	else
-	{
-		if(entity_index < 0 || entity_index >= ent_entity_list_cursor)
-		{
-			printf("entity_RemoveComponent: bad entity index!\n");
-			return;
-		}
-		
-		entity = ent_entities + entity_index;
-	}
-	
-	component_index = entity_IndexForType(component_type);
-	
-	if(component_index != COMPONENT_INDEX_NONE)
-	{
-		if(entity->components[component_index] >= 0)
-		{
-			entity_DeallocComponent(entity->components[component_index], component_type, remove_from_def);
-		}
-	}
-	
-	return;*/
-}
-
 
 void entity_SetModel(struct entity_handle_t entity, int model_index)
 {
@@ -636,58 +777,6 @@ void entity_SetCollider(struct entity_handle_t entity, void *collider)
 	controller->flags = 0;
 }
 
-void entity_SetEntityAIScript(struct entity_handle_t entity, void *script)
-{
-	//struct controller_component_t *controller;
-	//struct physics_controller_component_t *physics_controller;
-	/*struct ai_controller_component_t *ai_controller;
-	struct entity_t *entity_ptr;
-		
-	entity_ptr = entity_GetEntityPointerIndex(entity);
-	
-	if(!entity_ptr)
-	{
-		if(entity.def)
-		{
-			printf("entity_SetEntityAIScript: bad entity def handle\n");
-		}
-		else
-		{
-			printf("entity_SetEntityAIScript: bad entity handle\n");
-		}
-		return;
-	}
-	
-	ai_controller = entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_AI_CONTROLLER]);
-	
-	if(!ai_controller)
-	{
-		if(entity.def)
-		{
-			printf("entity_SetEntityAIScript: entity def [%s] doesn't have a valid ai controller component\n", entity_ptr->name);
-		}
-		else
-		{
-			printf("entity_SetEntityAIScript: entity [%s] doesn't have a valid ai controller component\n", entity_ptr->name);
-		}
-		return;
-	}
-	
-	if(ai_controller->controller.type != COMPONENT_TYPE_AI_CONTROLLER)
-	{
-		if(entity.def)
-		{
-			printf("entity_SetEntityAIScript: entity def [%s] has incorrect controller component\n", entity_ptr->name);
-		}
-		else
-		{
-			printf("entity_SetEntityAIScript: entity [%s] has incorrect  controller component\n", entity_ptr->name);
-		}
-		return;
-	}
-	
-	ai_controller->script = script;*/
-}
 
 void entity_SetControllerScript(struct entity_handle_t entity, void *script)
 {
@@ -741,6 +830,16 @@ void entity_SetControllerScript(struct entity_handle_t entity, void *script)
 	controller->flags = SCRIPT_CONTROLLER_FLAG_FIRST_RUN;
 }
 
+void entity_SetCamera(struct entity_handle_t entity, camera_t *camera)
+{
+	struct entity_t *entity_ptr;
+	struct camera_component_t *camera_component;
+	
+	entity_ptr = entity_GetEntityPointerIndex(entity);
+	camera_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_CAMERA]);
+	camera_component->camera = camera;
+}
+
 /*
 ==============================================================
 ==============================================================
@@ -774,6 +873,7 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 	struct component_handle_t component;
 	
 	int i;
+	int j;
 	
 	if(ent_free_stack_top >= 0)
 	{
@@ -802,9 +902,6 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 		entity_ptr->components[i].type = COMPONENT_TYPE_NONE;
 	}
 	
-	
-	
-	
 	entity_ptr->components[COMPONENT_INDEX_TRANSFORM] = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, 0);
 	transform_component = (struct transform_component_t *)entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_TRANSFORM]);
 	aabb = ent_entity_aabbs + entity_ptr->components[COMPONENT_INDEX_TRANSFORM].index;
@@ -817,51 +914,53 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 	aabb->original_extents.y = 0.0;
 	aabb->original_extents.z = 0.0;
 	
-	
-	if(entity_def_ptr->components[COMPONENT_INDEX_MODEL].type != COMPONENT_TYPE_NONE)
+	for(i = 0; i < COMPONENT_INDEX_LAST; i++)
 	{
-		entity_ptr->components[COMPONENT_INDEX_MODEL] = entity_AllocComponent(COMPONENT_TYPE_MODEL, 0);
-		
-		model_component = (struct model_component_t *)entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_MODEL]);
-		def_model_component = (struct model_component_t *)entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_INDEX_MODEL]);
-		
-		model_component->model_index = def_model_component->model_index;
-		
-		model = model_GetModelPointerIndex(model_component->model_index);
-		
-		aabb->original_extents = model->aabb_max;
-		aabb->current_extents = aabb->original_extents;
-	}
-	
-	if(entity_def_ptr->components[COMPONENT_INDEX_CONTROLLER].type != COMPONENT_TYPE_NONE)
-	{
-		component = entity_def_ptr->components[COMPONENT_INDEX_CONTROLLER];
-		
-		entity_ptr->components[COMPONENT_INDEX_CONTROLLER] = entity_AllocComponent(component.type, 0);	
-		controller = entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_CONTROLLER]);
-		def_controller = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_INDEX_CONTROLLER]);
-			
-		controller->collider.collider_index = physics_CreateCollider(orientation, position, scale, def_controller->collider.collider_def, 0);
-		
-		if(controller->base.type == COMPONENT_TYPE_SCRIPT_CONTROLLER)
+		//switch(entity_def_ptr->components[i].type)
+		if(entity_def_ptr->components[i].type != COMPONENT_TYPE_NONE)
 		{
-			def_script_controller = (struct script_controller_component_t *)def_controller;
-			script_controller = (struct script_controller_component_t *)controller;
-			script_controller->script = def_script_controller->script;
-			script_controller->flags = def_script_controller->flags;
+			switch(i)
+			{
+				case COMPONENT_INDEX_MODEL:
+					entity_ptr->components[COMPONENT_INDEX_MODEL] = entity_AllocComponent(COMPONENT_TYPE_MODEL, 0);
 			
-			script_controller->route = NULL;
-			script_controller->route_length = 0;
-			script_controller->max_route_length = 0;
+					model_component = (struct model_component_t *)entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_MODEL]);
+					def_model_component = (struct model_component_t *)entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_INDEX_MODEL]);
+					
+					model_component->model_index = def_model_component->model_index;
+					
+					model = model_GetModelPointerIndex(model_component->model_index);
+					
+					aabb->original_extents = model->aabb_max;
+					aabb->current_extents = aabb->original_extents;
+				break;	
+				
+				case COMPONENT_INDEX_CONTROLLER:
+					component = entity_def_ptr->components[COMPONENT_INDEX_CONTROLLER];
+			
+					entity_ptr->components[COMPONENT_INDEX_CONTROLLER] = entity_AllocComponent(component.type, 0);	
+					controller = entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_CONTROLLER]);
+					def_controller = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_INDEX_CONTROLLER]);
+						
+					controller->collider.collider_index = physics_CreateCollider(orientation, position, scale, def_controller->collider.collider_def, 0);
+					
+					if(controller->base.type == COMPONENT_TYPE_SCRIPT_CONTROLLER)
+					{
+						def_script_controller = (struct script_controller_component_t *)def_controller;
+						script_controller = (struct script_controller_component_t *)controller;
+						script_controller->script = def_script_controller->script;
+						script_controller->flags = def_script_controller->flags;
+						
+						script_controller->route = NULL;
+						script_controller->route_length = 0;
+						script_controller->max_route_length = 0;
+					}
+				break;
+			}
 		}
 		
 	}
-	
-	if(!transform_component->child_transforms)
-	{
-		transform_component->max_children = 4;
-		transform_component->child_transforms = memory_Malloc(sizeof(int) * transform_component->max_children, "entity_SpawnEntity");
-	}
+
 	
 	transform_component->children_count = 0;
 	transform_component->flags = 0;
@@ -870,9 +969,7 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 	transform_component->position = position;
 	transform_component->scale = scale;
 	
-	transform_component->parent_index = -1;
-	transform_component->entity_index = entity_index;
-	
+	transform_component->parent.type = COMPONENT_TYPE_NONE;
 	
 	for(i = 0; i < COMPONENT_INDEX_LAST; i++)
 	{
@@ -1160,7 +1257,7 @@ void entity_FindPath(struct entity_handle_t entity, vec3_t to)
 		{
 			controller->route_length = route_length;
 			
-			a
+			if(route_length > controller->max_route_length)
 			{
 				if(controller->route)
 				{
@@ -1190,9 +1287,9 @@ self explanatory...
 
 =========================
 */
-void entity_UpdateEntityAabbIndex(int entity_index)
+void entity_UpdateEntityAabbIndex(struct entity_handle_t entity)
 {
-	struct entity_t *entity;
+	struct entity_t *entity_ptr;
 	struct transform_component_t *transform_component; 
 	struct entity_transform_t *global_transform;
 	struct entity_aabb_t *aabb;
@@ -1203,18 +1300,24 @@ void entity_UpdateEntityAabbIndex(int entity_index)
 	vec3_t min;
 	vec3_t center;
 	
-	
-	if(entity_index >= 0 && entity_index < ent_entity_list_cursor)
+	if(entity.def)
 	{
-		entity = &ent_entities[entity_index];
+		printf("entity_UpdateEntityAabbIndex: can't update aabb from entity def\n");
+		return;
+	}
+	
+	
+	if(entity.entity_index >= 0 && entity.entity_index < ent_entity_list_cursor)
+	{
+		entity_ptr = &ent_entities[entity.entity_index];
 			
-		if(!(entity->flags & ENTITY_INVALID))
+		if(!(entity_ptr->flags & ENTITY_INVALID))
 		{
 			
 			//transform_component = (struct transform_component_t *)ent_transform_components.components + entity->components[COMPONENT_INDEX_TRANSFORM];
-			transform_component = (struct transform_component_t *)entity_GetComponentPointer(entity->components[COMPONENT_INDEX_TRANSFORM]);
-			global_transform = ent_global_transforms + entity->components[COMPONENT_INDEX_TRANSFORM].index;
-			aabb = ent_entity_aabbs + entity->components[COMPONENT_INDEX_TRANSFORM].index;
+			transform_component = (struct transform_component_t *)entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_TRANSFORM]);
+			global_transform = ent_global_transforms + entity_ptr->components[COMPONENT_INDEX_TRANSFORM].index;
+			aabb = ent_entity_aabbs + entity_ptr->components[COMPONENT_INDEX_TRANSFORM].index;
 			
 			/*aabb = &ent_aabbs[entity_index];*/
 			
@@ -1274,7 +1377,7 @@ void entity_UpdateScriptControllerComponents()
 	int i;
 	int c;
 	
-	static int last_update = 0;
+	//static int last_update = 0;
 	
 	struct script_controller_component_t *script_controllers;
 	struct script_controller_component_t *script_controller;
@@ -1283,7 +1386,7 @@ void entity_UpdateScriptControllerComponents()
 	script_controllers = (struct script_controller_component_t *)ent_components[0][COMPONENT_TYPE_SCRIPT_CONTROLLER].components;
 	c = ent_components[0][COMPONENT_TYPE_SCRIPT_CONTROLLER].component_count;
 	
-	if(r_frame - last_update > 1)
+	if(engine_GetEngineState() & ENGINE_JUST_RESUMED)
 	{
 		for(i = 0; i < c; i++)
 		{
@@ -1301,7 +1404,7 @@ void entity_UpdateScriptControllerComponents()
 		}
 	}
 	
-	last_update = r_frame;
+	//last_update = r_frame;
 }
 
 void entity_UpdateTransformComponents()
@@ -1330,23 +1433,25 @@ void entity_UpdateTransformComponents()
 	
 	
 	transform_components = (struct transform_component_t *)ent_components[0][COMPONENT_TYPE_TRANSFORM].components;
-	c = ent_components[0][COMPONENT_TYPE_TRANSFORM].component_count;
+	//c = ent_components[0][COMPONENT_TYPE_TRANSFORM].component_count;
+	c = ent_top_transform_count;
 	
 	physics_controller_components = (struct physics_controller_component_t *)ent_components[0][COMPONENT_TYPE_PHYSICS_CONTROLLER].components;
 	
 	for(i = 0; i < c; i++)
 	{
-		if(transform_components[i].flags & COMPONENT_FLAG_INVALID)
+		/*if(transform_components[i].flags & COMPONENT_FLAG_INVALID)
 		{
 			continue;
-		}
+		}*/
 		
 		global_transform = ent_global_transforms + i;
-		local_transform = transform_components + i;
+		//local_transform = transform_components + i;
+		local_transform = transform_components + ent_top_transforms[i].index;
 		
-		if(local_transform->entity_index >= 0)
+		if(local_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
 		{
-			entity = ent_entities + local_transform->entity_index;
+			entity = ent_entities + local_transform->base.entity.entity_index;
 			
 			if(entity->components[COMPONENT_INDEX_CONTROLLER].type != COMPONENT_TYPE_NONE)
 			{
@@ -1364,11 +1469,59 @@ void entity_UpdateTransformComponents()
 			
 			if(entity->components[COMPONENT_INDEX_MODEL].type != COMPONENT_TYPE_NONE)
 			{
-				entity_UpdateEntityAabbIndex(local_transform->entity_index);
+				entity_UpdateEntityAabbIndex(local_transform->base.entity);
 			}
 		}
 		
 	}
+}
+
+
+void entity_UpdateCameraComponents()
+{
+	int i;
+	int c;
+	
+	struct camera_component_t *camera_components;
+	struct camera_component_t *camera_component;
+	struct entity_transform_t *world_transform;
+	camera_t *camera;
+	
+	camera_components = (struct camera_component_t *)ent_components[0][COMPONENT_TYPE_CAMERA].components;
+	c = ent_components[0][COMPONENT_TYPE_CAMERA].component_count;
+	
+	
+	for(i = 0; i < c; i++)
+	{
+		camera_component = camera_components + i;
+		world_transform = entity_GetWorldTransformPointer(camera_component->transform);
+		
+		if(camera_component->camera)
+		{
+			camera = camera_component->camera;
+			
+			camera->world_position.x = world_transform->transform.floats[3][0];
+			camera->world_position.y = world_transform->transform.floats[3][1];
+			camera->world_position.z = world_transform->transform.floats[3][2];
+			
+			
+			camera->world_orientation.floats[0][0] = world_transform->transform.floats[0][0];
+			camera->world_orientation.floats[0][1] = world_transform->transform.floats[0][1];
+			camera->world_orientation.floats[0][2] = world_transform->transform.floats[0][2];
+			
+			camera->world_orientation.floats[1][0] = world_transform->transform.floats[1][0];
+			camera->world_orientation.floats[1][1] = world_transform->transform.floats[1][1];
+			camera->world_orientation.floats[1][2] = world_transform->transform.floats[1][2];
+			
+			camera->world_orientation.floats[2][0] = world_transform->transform.floats[2][0];
+			camera->world_orientation.floats[2][1] = world_transform->transform.floats[2][1];
+			camera->world_orientation.floats[2][2] = world_transform->transform.floats[2][2];
+			
+			camera_ComputeWorldToCameraMatrix(camera);
+		}
+	}
+	
+	
 }
 
 

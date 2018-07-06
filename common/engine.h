@@ -66,6 +66,8 @@ void engine_WriteConfig();
 
 void engine_SetEngineState(int state);
 
+int engine_GetEngineState();
+
 void engine_UpdateDeltaTime();
 
 float engine_GetDeltaTime();

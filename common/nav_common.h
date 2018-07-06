@@ -36,6 +36,8 @@ struct waypoint_t
 	short links_count;
 	short max_links;
 	struct waypoint_link_t *links;
+	
+	char *name;
 };
 
 

@@ -84,8 +84,10 @@ struct script_t
 
 	char *name;
 	char *file_name;
-		
+	
+	int update_count;
 };
+
 
 
 
