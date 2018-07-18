@@ -1,6 +1,7 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+#include <io.h>
 
 enum MEMORY_MODE
 {

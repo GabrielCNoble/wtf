@@ -944,9 +944,9 @@ void bsp_ClipPortalsToBounds(bsp_node_t *bsp, bsp_portal_t *portals)
 	//while(0)
 	{
 			
-		if(bsp_ClassifyPolygon(p->portal_polygon, vec3(0.0, y_max, 0.0), vec3(0.0, -1.0, 0.0)) == POLYGON_STRADDLING)
+		if(bsp_ClassifyPolygon(p->portal_polygon, vec3_t_c(0.0, y_max, 0.0), vec3_t_c(0.0, -1.0, 0.0)) == POLYGON_STRADDLING)
 		{
-			bsp_SplitPolygon(p->portal_polygon, vec3(0.0, y_max, 0.0), vec3(0.0, -1.0, 0.0), &front, &back);
+			bsp_SplitPolygon(p->portal_polygon, vec3_t_c(0.0, y_max, 0.0), vec3_t_c(0.0, -1.0, 0.0), &front, &back);
 			
 			#ifndef USE_MEMORY_MALLOC
 			free(p->portal_polygon->vertices);
@@ -965,9 +965,9 @@ void bsp_ClipPortalsToBounds(bsp_node_t *bsp, bsp_portal_t *portals)
 		}
 			
 		
-		if(bsp_ClassifyPolygon(p->portal_polygon, vec3(0.0, y_min, 0.0), vec3(0.0, 1.0, 0.0)) == POLYGON_STRADDLING)
+		if(bsp_ClassifyPolygon(p->portal_polygon, vec3_t_c(0.0, y_min, 0.0), vec3_t_c(0.0, 1.0, 0.0)) == POLYGON_STRADDLING)
 		{
-			bsp_SplitPolygon(p->portal_polygon, vec3(0.0, y_min, 0.0), vec3(0.0, 1.0, 0.0), &front, &back);
+			bsp_SplitPolygon(p->portal_polygon, vec3_t_c(0.0, y_min, 0.0), vec3_t_c(0.0, 1.0, 0.0), &front, &back);
 			
 			#ifndef USE_MEMORY_MALLOC
 			free(p->portal_polygon->vertices);
@@ -986,9 +986,9 @@ void bsp_ClipPortalsToBounds(bsp_node_t *bsp, bsp_portal_t *portals)
 		}
 			
 			
-		if(bsp_ClassifyPolygon(p->portal_polygon, vec3(x_max, 0.0, 0.0), vec3(-1.0, 0.0, 0.0)) == POLYGON_STRADDLING)
+		if(bsp_ClassifyPolygon(p->portal_polygon, vec3_t_c(x_max, 0.0, 0.0), vec3_t_c(-1.0, 0.0, 0.0)) == POLYGON_STRADDLING)
 		{
-			bsp_SplitPolygon(p->portal_polygon, vec3(x_max, 0.0, 0.0), vec3(-1.0, 0.0, 0.0), &front, &back);
+			bsp_SplitPolygon(p->portal_polygon, vec3_t_c(x_max, 0.0, 0.0), vec3_t_c(-1.0, 0.0, 0.0), &front, &back);
 			
 			#ifndef USE_MEMORY_MALLOC
 			free(p->portal_polygon->vertices);
@@ -1007,9 +1007,9 @@ void bsp_ClipPortalsToBounds(bsp_node_t *bsp, bsp_portal_t *portals)
 		}
 			
 			
-		if(bsp_ClassifyPolygon(p->portal_polygon, vec3(x_min, 0.0, 0.0), vec3(1.0, 0.0, 0.0)) == POLYGON_STRADDLING)
+		if(bsp_ClassifyPolygon(p->portal_polygon, vec3_t_c(x_min, 0.0, 0.0), vec3_t_c(1.0, 0.0, 0.0)) == POLYGON_STRADDLING)
 		{
-			bsp_SplitPolygon(p->portal_polygon, vec3(x_min, 0.0, 0.0), vec3(1.0, 0.0, 0.0), &front, &back);
+			bsp_SplitPolygon(p->portal_polygon, vec3_t_c(x_min, 0.0, 0.0), vec3_t_c(1.0, 0.0, 0.0), &front, &back);
 			
 			#ifndef USE_MEMORY_MALLOC
 			free(p->portal_polygon->vertices);
@@ -1028,9 +1028,9 @@ void bsp_ClipPortalsToBounds(bsp_node_t *bsp, bsp_portal_t *portals)
 		}
 			
 			
-		if(bsp_ClassifyPolygon(p->portal_polygon, vec3(0.0, 0.0, z_max), vec3(0.0, 0.0, -1.0)) == POLYGON_STRADDLING)
+		if(bsp_ClassifyPolygon(p->portal_polygon, vec3_t_c(0.0, 0.0, z_max), vec3_t_c(0.0, 0.0, -1.0)) == POLYGON_STRADDLING)
 		{
-			bsp_SplitPolygon(p->portal_polygon, vec3(0.0, 0.0, z_max), vec3(0.0, 0.0, -1.0), &front, &back);
+			bsp_SplitPolygon(p->portal_polygon, vec3_t_c(0.0, 0.0, z_max), vec3_t_c(0.0, 0.0, -1.0), &front, &back);
 			
 			#ifndef USE_MEMORY_MALLOC
 			free(p->portal_polygon->vertices);
@@ -1049,9 +1049,9 @@ void bsp_ClipPortalsToBounds(bsp_node_t *bsp, bsp_portal_t *portals)
 		}
 			
 			
-		if(bsp_ClassifyPolygon(p->portal_polygon, vec3(0.0, 0.0, z_min), vec3(0.0, 0.0, 1.0)) == POLYGON_STRADDLING)
+		if(bsp_ClassifyPolygon(p->portal_polygon, vec3_t_c(0.0, 0.0, z_min), vec3_t_c(0.0, 0.0, 1.0)) == POLYGON_STRADDLING)
 		{
-			bsp_SplitPolygon(p->portal_polygon, vec3(0.0, 0.0, z_min), vec3(0.0, 0.0, 1.0), &front, &back);
+			bsp_SplitPolygon(p->portal_polygon, vec3_t_c(0.0, 0.0, z_min), vec3_t_c(0.0, 0.0, 1.0), &front, &back);
 			
 			#ifndef USE_MEMORY_MALLOC
 			free(p->portal_polygon->vertices);

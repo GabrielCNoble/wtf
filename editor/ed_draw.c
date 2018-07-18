@@ -86,9 +86,9 @@ void editor_Draw3dHandle(vec3_t position, int transform_mode)
 			//glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);		
 			d = sqrt(cursor_position.x * cursor_position.x + cursor_position.y * cursor_position.y + cursor_position.z * cursor_position.z);
 			
-			right_vector = vec3(1.0, 0.0, 0.0);
-			up_vector = vec3(0.0, 1.0, 0.0);
-			forward_vector = vec3(0.0, 0.0, 1.0);
+			right_vector = vec3_t_c(1.0, 0.0, 0.0);
+			up_vector = vec3_t_c(0.0, 1.0, 0.0);
+			forward_vector = vec3_t_c(0.0, 0.0, 1.0);
 			
 			d *= 0.2;		
 			//d = 1.0;

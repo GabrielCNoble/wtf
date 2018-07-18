@@ -9,11 +9,11 @@ extern "C"
 {
 #endif
 
-void physics_Jump(int character_collider_index, float jump_force);
+void physics_Jump(struct collider_handle_t character_collider, float jump_force);
 
-void physics_Move(int character_collider_index, vec3_t direction);
+void physics_Move(struct collider_handle_t character_collider, vec3_t direction);
 
-void physics_UpdateCharacterCollider(int character_collider_index);
+void physics_UpdateCharacterCollider(struct collider_handle_t character_collider);
 
 #ifdef __cplusplus
 }

@@ -14,14 +14,15 @@ float length3(vec3_t vec)
 	return sqrt((vec.floats[0]*vec.floats[0]) + (vec.floats[1]*vec.floats[1]) + (vec.floats[2]*vec.floats[2]));
 }
 
-vec3_t vec3(float x, float y, float z)
+/*vec3_t vec3(float x, float y, float z)
 {
 	vec3_t result;
 	result.floats[0]=x;
 	result.floats[1]=y;
 	result.floats[2]=z;
 	return result;
-}
+}*/
+
 
 vec4_t vec4(float x, float y, float z, float w)
 {

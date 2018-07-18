@@ -1,9 +1,10 @@
 #include "ed_ui_explorer.h"
 #include "ed_ui.h"
-#include "gui.h"
-#include "path.h"
+#include "..\..\common\gui.h"
+#include "..\..\common\path.h"
 //#include "ed_proj.h"
-#include "memory.h"
+#include "..\..\common\memory.h"
+#include "..\..\common\resource_loader.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -27,7 +28,7 @@
 ******************************************************************************************
 ******************************************************************************************
 */
-
+/*
 
 #define EXPLORER_DIALOG_BOX_WIDTH 400
 #define EXPLORER_DIALOG_BOX_HEIGHT 300
@@ -59,12 +60,15 @@ static button_t *explorer_window_cancel_button = NULL;
 
 #define EXPLORER_WINDOW_ACTION_ON_FILE_BUTTON_WIDTH 100
 #define EXPLORER_WINDOW_ACTION_ON_FILE_BUTTON_HEIGHT 20
-static button_t *explorer_window_action_on_file_button = NULL;
+static button_t *explorer_window_action_on_file_button = NULL;*/
 
 //char *ed_explorer_selected_file;
 
 static int ed_explorer_selected_file_count = 0;
 static int ed_explorer_selected_file_read_index = 0;
+int ed_explorer_open = 0;
+char ed_explorer_path_text_buffer[PATH_MAX];
+char ed_explorer_file_text_buffer[PATH_MAX];
 static char *ed_explorer_selected_files[EXPLORER_MAX_SELECTIONS];
 
 
@@ -121,7 +125,7 @@ char full_path_to_file[1024];
 =======================================
 */
 
-void editor_ExplorerPathTextFieldCallback(widget_t *widget)
+/*void editor_ExplorerPathTextFieldCallback(widget_t *widget)
 {
 	text_field_t *field;
 	char *path;
@@ -149,9 +153,9 @@ void editor_ExplorerPathTextFieldCallback(widget_t *widget)
 			}	
 		}
 	}
-}
+}*/
 
-void editor_ExplorerListCallback(widget_t *widget)
+/*void editor_ExplorerListCallback(widget_t *widget)
 {
 	option_list_t *option_list;
 	option_t *option;
@@ -215,9 +219,9 @@ void editor_ExplorerListCallback(widget_t *widget)
 		}
 	}
 	
-}
+}*/
 
-void editor_ExplorerCachedPathListCallback(widget_t *widget)
+/*void editor_ExplorerCachedPathListCallback(widget_t *widget)
 {
 	option_list_t *option_list;
 	option_t *option;
@@ -237,9 +241,9 @@ void editor_ExplorerCachedPathListCallback(widget_t *widget)
 			editor_OpenExplorerWindow((char *)option->widget.data, explorer_file_mode);
 		}
 	}
-}
+}*/
 
-void editor_ExplorerCancelButtonCallback(widget_t *widget)
+/*void editor_ExplorerCancelButtonCallback(widget_t *widget)
 {
 	button_t *button;
 	
@@ -252,9 +256,9 @@ void editor_ExplorerCancelButtonCallback(widget_t *widget)
 	{
 		editor_CloseExplorerWindow();
 	}
-}
+}*/
 
-void editor_ExplorerActionOnFileButtonCallback(widget_t *widget)
+/*void editor_ExplorerActionOnFileButtonCallback(widget_t *widget)
 {
 	char *ext;
 	
@@ -289,10 +293,10 @@ void editor_ExplorerActionOnFileButtonCallback(widget_t *widget)
 			break;
 		}
 	}
-}
+}*/
 
 
-void editor_ExplorerDialogBoxProcessCallback(widget_t *widget)
+/*void editor_ExplorerDialogBoxProcessCallback(widget_t *widget)
 {
 	button_t *button;
 	
@@ -309,7 +313,7 @@ void editor_ExplorerDialogBoxProcessCallback(widget_t *widget)
 		}
 		
 	}
-}
+}*/
 
 /*
 =======================================
@@ -317,7 +321,7 @@ void editor_ExplorerDialogBoxProcessCallback(widget_t *widget)
 =======================================
 */
 
-void editor_ExplorerProcessCallback(widget_t *widget)
+/*void editor_ExplorerProcessCallback(widget_t *widget)
 {
 	option_list_t *option_list;
 	option_t *option;
@@ -347,7 +351,7 @@ void editor_ExplorerProcessCallback(widget_t *widget)
 		editor_ExplorerPathTextFieldCallback(widget);
 	}
 	
-}
+}*/
 
 /*
 ******************************************************************************************
@@ -355,7 +359,7 @@ void editor_ExplorerProcessCallback(widget_t *widget)
 ******************************************************************************************
 */
 
-void dummy_read(char *directory, char *file_name)
+/*void dummy_read(char *directory, char *file_name)
 {
 	printf("file %s read from %s\n", file_name, directory);
 }
@@ -363,11 +367,11 @@ void dummy_read(char *directory, char *file_name)
 void dummy_write(char *directory, char *file_name)
 {
 	printf("file %s written to %s\n", file_name, directory);
-}
+}*/
 
 void editor_InitExplorerUI()
 {
-	int i;
+	/*int i;
 	
 	linked_edge_t *linked;
 	
@@ -446,11 +450,11 @@ void editor_InitExplorerUI()
 	
 	explorer_dialog_box_cancel_button = gui_AddButton(explorer_dialog_box, "Cancel", -100, -80, 120, 40, 0, NULL);
 	gui_SetButtonText(explorer_dialog_box_cancel_button, "Cancel");
-	explorer_dialog_box_cancel_button->widget.process_callback = editor_ExplorerDialogBoxProcessCallback;
+	explorer_dialog_box_cancel_button->widget.process_callback = editor_ExplorerDialogBoxProcessCallback;*/
 	
 	
 	
-	editor_CloseExplorerDialogBox();
+/*	editor_CloseExplorerDialogBox();*/
 	
 	
 	//gui_var_t *current_directory = gui_CreateVar("Current directory", GUI_VAR_STRING, NULL, NULL, 0);
@@ -461,22 +465,22 @@ void editor_InitExplorerUI()
 	editor_CachePath("test3/path");
 	editor_CachePath("test4/path");*/
 	
-	editor_OpenExplorerWindow(path_GetUserDocumentsDirectory(), EXPLORER_FILE_MODE_READ);
+//	editor_OpenExplorerWindow(path_GetUserDocumentsDirectory(), EXPLORER_FILE_MODE_READ);
 	//editor_OpenExplorerDialogBox(NULL);	
 	//ed_explorer_selected_file = calloc(512, 1);
 	//ed_explorer_selected_file = memory_Calloc(512, 1, "editor_InitExplorerUI");
 	
+	int i;
 	
 	for(i = 0; i < EXPLORER_MAX_SELECTIONS; i++)
 	{
-		//ed_explorer_selected_files[i] = malloc(BSP_FILE_MAX_NAME_LEN);
 		ed_explorer_selected_files[i] = memory_Malloc(PATH_MAX, "editor_InitExplorerUI");
 		ed_explorer_selected_files[i][0] = '\0';
 	}
 	
 	
-	editor_SetExplorerReadFileCallback(dummy_read);
-	editor_CloseExplorerWindow();
+	/*editor_SetExplorerReadFileCallback(dummy_read);
+	editor_CloseExplorerWindow();*/
 	
 	
 	//editor_OpenExplorerWindow(path_GetUserDocumentsDirectory(), EXPLORER_FILE_MODE_READ);
@@ -496,100 +500,278 @@ void editor_FinishExplorerUI()
 	editor_ClearCachedPaths();
 }
 
+void editor_ExplorerTopWindow()
+{
+	vec2_t window_size;
+	
+	window_size = gui_ImGuiGetContentRegionMax();
+	window_size.y = 120.0;
+	
+	gui_ImGuiBeginChild("Top window", window_size, 1, 0);
+	{
+		/* Path text field... */
+		gui_ImGuiNewLine();
+		gui_ImGuiSameLine(r_window_width - window_size.x * 0.4 - 150.0, -1.0);
+		gui_ImGuiPushItemWidth(window_size.x * 0.4);
+		if(gui_ImGuiInputText("Path", ed_explorer_path_text_buffer, PATH_MAX, ImGuiInputTextFlags_EnterReturnsTrue))
+		{
+			/* if user types in the path field, try to
+			change to the new path... */
+			path_SetDir(ed_explorer_path_text_buffer);
+		}
+		gui_ImGuiPopItemWidth();
+				
+		/* Close button... */
+		gui_ImGuiSameLine(0.0, -1.0);
+				
+		if(gui_ImGuiButton("Close", vec2(80.0, 22.0)))
+		{
+			ed_explorer_open = 0;
+		}
+				
+				
+		/*=================================================*/
+				
+				
+		/* File text field... */
+		gui_ImGuiNewLine();
+		gui_ImGuiSameLine(r_window_width - window_size.x * 0.4 - 150.0, -1.0);
+		gui_ImGuiPushItemWidth(window_size.x * 0.4);
+		if(gui_ImGuiInputText("File", ed_explorer_file_text_buffer, PATH_MAX, ImGuiInputTextFlags_EnterReturnsTrue))
+		{
+			
+		}
+		gui_ImGuiPopItemWidth();
+		
+		/* Open/save button... */
+		gui_ImGuiSameLine(0.0, -1.0);
+		
+		switch(explorer_file_mode)
+		{
+			case EXPLORER_FILE_MODE_READ:
+				if(gui_ImGuiButton("Open", vec2(80.0, 22.0)))
+				{
+				//	if(editor_ExplorerReadFileCallback)
+				//	{
+				//		editor_Explorer
+				//	}
+				}
+			break;
+			
+			case EXPLORER_FILE_MODE_WRITE:
+				if(gui_ImGuiButton("Save", vec2(80.0, 22.0)))
+				{
+					
+				}
+			break;
+		}		
+	}
+	gui_ImGuiEndChild();
+}
+
+void editor_ExplorerCachedDirListWindow()
+{
+	/* cached dirs list... */
+	
+	cached_path_t *path;
+	cached_path_t *paths;
+	cached_path_t *selected_cached_path;
+	
+	vec2_t window_size;
+	
+	window_size.x = gui_ImGuiGetColumnOffset(-1);
+	window_size.y = 0.0;
+				
+	selected_cached_path = NULL;
+				
+	gui_ImGuiBeginChild("Chached dirs window", window_size, 1, 0);
+	{
+		path = explorer_cached_paths;
+					
+		while(path)
+		{
+			if(gui_ImGuiMenuItem(path->path, NULL, NULL, 1) && selected_cached_path == NULL)
+			{
+				selected_cached_path = path;
+			}
+						
+			path = path->next;
+		}
+	}
+	gui_ImGuiEndChild();
+		
+	if(selected_cached_path)
+	{
+		path_SetDir(selected_cached_path->path);
+	}
+}
+
+void editor_ExplorerDirListWindow()
+{
+	vec2_t window_size;
+	vec2_t option_size;
+	
+	
+	dir_element_t *selected_dir_element = NULL;
+	
+	int i;
+	int go_up;
+	
+	int clicked;
+	
+	char option_text[PATH_MAX];
+	char cache_path[PATH_MAX];
+	
+	char selected = 1;
+	/* dir list... */
+	window_size.x = r_window_width - gui_ImGuiGetColumnOffset(-1) - 20;
+	window_size.y = 0.0;
+				
+	gui_ImGuiBeginChild("Dirs window", window_size, 1, 0);
+	{
+		option_size = gui_ImGuiGetWindowSize();
+		option_size.x = r_window_width - option_size.x - 30; 
+		option_size.y = 16.0;
+		
+		go_up = 0;
+						
+		for(i = 0; i < pth_dir_element_count; i++)
+		{
+			switch(pth_dir_elements[i].type)
+			{
+				case DIR_ELEMENT_TYPE_DIRECTORY:
+					strcpy(option_text, "<DIR> ");
+				break;
+							
+				case DIR_ELEMENT_TYPE_PARENT:
+					option_text[0] = '\0';
+				break;
+							
+				case DIR_ELEMENT_TYPE_FILE:
+					strcpy(option_text, "<FILE> ");
+				break;
+			}
+						
+			strcat(option_text, pth_dir_elements[i].name);
+				
+			//if(gui_ImGuiIsMouseDoubleClicked(0))
+			//{
+			//if(gui_ImGuiMenuItem(option_text, NULL, NULL, 1) && selected_dir_element == NULL)
+			if(gui_ImGuiSelectable(option_text, ImGuiSelectableFlags_AllowDoubleClick, option_size) && selected_dir_element == NULL)
+			{
+				if(gui_ImGuiIsMouseDoubleClicked(0))
+				{
+					if(pth_dir_elements[i].type == DIR_ELEMENT_TYPE_PARENT)
+					{
+						go_up = 1;
+					}
+					else
+					{
+						selected_dir_element = pth_dir_elements + i;
+					}
+				}
+			}
+			//}
+											
+			
+		}
+					
+		if(go_up)
+		{
+			path_GoUp();						
+		}
+		else if(selected_dir_element)
+		{
+			if(selected_dir_element->type == DIR_ELEMENT_TYPE_DIRECTORY)
+			{
+				path_GoDown(selected_dir_element->name);
+			}
+			else
+			{
+				strcpy(cache_path, ed_explorer_path_text_buffer);
+				editor_CachePath(cache_path);
+				
+				strcat(cache_path, "/");
+				strcat(cache_path, selected_dir_element->name);
+							
+				/* load file here... */
+				
+				resource_LoadResource(cache_path);
+				
+							
+				ed_explorer_open = 0;
+			}
+		}
+					
+		strcpy(ed_explorer_path_text_buffer, path_GetCurrentDirectory());
+					
+	}
+	gui_ImGuiEndChild();
+}
+
 void editor_UpdateExplorerUI()
 {
-	widget_t *parent;
-	if(explorer_window)
+	char option_text[512];
+	char cache_path[PATH_MAX];
+	dir_element_t *selected_dir_element = NULL;
+	vec2_t dir_list_pos;
+	vec2_t option_size;
+	vec2_t window_size;
+	char selected;
+	int go_up = 0;
+	int i;
+	
+	cached_path_t *path;
+	cached_path_t *selected_cached_path;
+	cached_path_t *paths;
+	
+	if(ed_explorer_open)
 	{
-		explorer_window->w = r_window_width * 0.5;
-		explorer_window->h = r_window_height * 0.5 - MENU_BAR_HEIGHT * 0.5;
-		explorer_window->x = 0;
-		explorer_window->y = -MENU_BAR_HEIGHT * 0.5;
-	}
-	
-	if(explorer_window_list)
-	{		
-		explorer_list_widget->h = explorer_window->h - 10;
-		
-		explorer_list_widget->x = explorer_window->w - explorer_list_widget->w;
-		explorer_list_widget->y = -explorer_window->h + explorer_list_widget->h;
-		
-		explorer_window_list->first_y = explorer_list_widget->h - 80;
-		explorer_window_list->bm_option_list_flags |= OPTION_LIST_UPDATE_EXTENTS;
-		explorer_window_list->max_visible_options = (explorer_list_widget->h * 2.0) / OPTION_HEIGHT;
-	}
-	
-	if(explorer_cached_paths_list)
-	{
-		explorer_cached_paths_list_widget->x = -explorer_window->w + explorer_cached_paths_list_widget->w;
-		explorer_cached_paths_list->bm_option_list_flags |= OPTION_LIST_UPDATE_EXTENTS;
-		
-		explorer_cached_paths_list->first_y = explorer_cached_paths_list_widget->h - 50;
-		explorer_cached_paths_list->widget.w = explorer_cached_paths_list_widget->w - 4;
-	}
-	
-	if(explorer_window_cancel_button)
-	{
-		parent = explorer_window_cancel_button->widget.parent;	
-		explorer_window_cancel_button->widget.x = parent->w - explorer_window_cancel_button->widget.w - 10;
-		explorer_window_cancel_button->widget.y = parent->h - explorer_window_cancel_button->widget.h - 10 - 40;
-	}
-	
-	if(explorer_window_action_on_file_button)
-	{
-		parent = explorer_window_action_on_file_button->widget.parent;
-		explorer_window_action_on_file_button->widget.x = parent->w - explorer_window_action_on_file_button->widget.w - 10;
-		explorer_window_action_on_file_button->widget.y = parent->h - explorer_window_action_on_file_button->widget.h - 10 - 10;
-	}
-	
-	if(explorer_window_path_text_field && explorer_window_file_name_text_field)
-	{
-		parent = explorer_window_path_text_field->widget.parent;
-		explorer_window_path_text_field->widget.y = explorer_window_action_on_file_button->widget.y;
-		explorer_window_file_name_text_field->widget.y = explorer_window_cancel_button->widget.y;
-	}
-	
-	if(explorer_dialog_box)
-	{
-	
-	}
-	
+		gui_ImGuiSetNextWindowSize(vec2(r_window_width, r_window_height - 18.0), 0);
+		gui_ImGuiSetNextWindowPos(vec2(0.0, 18.0), 0, vec2(0.0, 0.0));
+		gui_ImGuiPushStyleVarf(ImGuiStyleVar_WindowRounding, 0.0);
+		gui_ImGuiBegin("Explorer", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar);
+		gui_ImGuiPopStyleVar();
+		{
+			editor_ExplorerTopWindow();
+			
+			gui_ImGuiColumns(2, NULL, 1);
+			{
+				editor_ExplorerCachedDirListWindow();
+			}
+			gui_ImGuiNextColumn();
+			{	
+				editor_ExplorerDirListWindow();
+			}
+			gui_ImGuiNextColumn();
+			
+		}
+		gui_ImGuiEnd();
+	}	
 }
 
 
 void editor_OpenExplorerWindow(char *dir, int mode)
 {
-	int i;
-	
-	char item_text[512];
-	option_t *option;
-	if(explorer_window)
+	if(!dir)
 	{
-		gui_SetVisible(explorer_window);
-		gui_SetAsTop(explorer_window);
-		
-		if(!dir)
-		{
-			path_SetDir(path_GetUserDocumentsDirectory());
-		}
-		else
-		{
-			if(!path_SetDir(dir))
-			{
-				printf("editor_OpenExplorerWindow: couldn't set path to %s!\n", dir);
-			}
-		}
-		
-		editor_SetExplorerFileMode(mode);
-		editor_UpdateExplorerWindow();
-		
-		//editor_OpenExplorerDialogBox(NULL);
+		path_SetDir(path_GetUserDocumentsDirectory());
 	}
+	else
+	{
+		if(!path_SetDir(dir))
+		{
+			printf("editor_OpenExplorerWindow: couldn't set path to %s!\n", dir);
+		}
+	}
+	
+	explorer_file_mode = mode;
+	ed_explorer_open = 1;
 }
 
 void editor_UpdateExplorerCachedPaths()
 {
-	option_t *option;
+	/*option_t *option;
 	cached_path_t *cached;
 	
 	if(explorer_cached_paths_list)
@@ -604,12 +786,12 @@ void editor_UpdateExplorerCachedPaths()
 			option->widget.data = cached->path;
 			cached = cached->next;
 		}
-	}
+	}*/
 }
 
 void editor_UpdateExplorerWindow()
 {
-	int i;
+	/*int i;
 	option_t *option;
 	char option_text[512];
 	cached_path_t *cached;
@@ -644,23 +826,23 @@ void editor_UpdateExplorerWindow()
 		gui_SetText((widget_t *)explorer_window_file_name_text_field, "");
 	}
 	
-	editor_UpdateExplorerCachedPaths();
+	editor_UpdateExplorerCachedPaths();*/
 	
 	
 }
 
 void editor_CloseExplorerWindow()
 {
-	if(explorer_window)
+	/*if(explorer_window)
 	{
 		gui_SetInvisible(explorer_window);
 		editor_CloseExplorerDialogBox(NULL);
-	}
+	}*/
 }
 
 void editor_SetExplorerFileMode(int mode)
 {
-	if(explorer_window_action_on_file_button)
+	/*if(explorer_window_action_on_file_button)
 	{
 		switch(mode)
 		{
@@ -679,59 +861,59 @@ void editor_SetExplorerFileMode(int mode)
 				explorer_file_mode = mode;
 			break;
 		}
-	}
+	}*/
 }
 
 void editor_ExplorerReadFile(char *directory, char *file_name)
-{
+{/*
 	if(editor_ExplorerReadFileCallback)
 	{		
 		editor_CachePath(directory);
 		editor_ExplorerReadFileCallback(directory, file_name);
-	}
+	}*/
 }
 
 void editor_ExplorerWriteFile(char *directory, char *file_name)
 {
-	if(editor_ExplorerWriteFileCallback)
+	/*if(editor_ExplorerWriteFileCallback)
 	{		
 		editor_CachePath(directory);
 		editor_ExplorerWriteFileCallback(directory, file_name);
-	}
+	}*/
 }
 
 void editor_OpenExplorerDialogBox(char *text)
 {
-	if(explorer_dialog_box)
+/*	if(explorer_dialog_box)
 	{
 		gui_SetVisible(explorer_dialog_box);
 		gui_SetAsTop(explorer_dialog_box);
 		editor_LockExplorerUI();
 		editor_LockUI();
-	}
+	}*/
 	
 }
 
 void editor_CloseExplorerDialogBox()
 {
 	
-	
+/*	
 	if(explorer_dialog_box)
 	{
 		gui_SetInvisible(explorer_dialog_box);
 		editor_UnlockExplorerUI();
 		editor_UnlockUI();
-	}
+	}*/
 }
 
 void editor_LockExplorerUI()
 {		
-	gui_SetIgnoreMouse(explorer_window);
+	//gui_SetIgnoreMouse(explorer_window);
 }
 
 void editor_UnlockExplorerUI()
 {	
-	gui_SetReceiveMouse(explorer_window);
+//	gui_SetReceiveMouse(explorer_window);
 }
 
 void editor_ExplorerPathField(int enable)
@@ -758,17 +940,17 @@ void editor_ExplorerMultiFileSelection(int enable)
 
 void editor_SetExplorerFileClickCallback(void (*file_click_callback)())
 {
-	editor_FileClickCallback = file_click_callback;
+	//editor_FileClickCallback = file_click_callback;
 }
 
 void editor_SetExplorerReadFileCallback(void (*read_file_callback)(char *directory, char *file_name))
 {
-	editor_ExplorerReadFileCallback = read_file_callback;
+	//editor_ExplorerReadFileCallback = read_file_callback;
 }
 
 void editor_SetExplorerWriteFileCallback(void (*write_file_callback)(char *directory, char *file_name))
 {
-	editor_ExplorerReadFileCallback = write_file_callback;
+	//editor_ExplorerReadFileCallback = write_file_callback;
 }
 
 void editor_AddExplorerExtensionFilter(char *ext)

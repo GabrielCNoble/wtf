@@ -145,9 +145,9 @@ void mat4_t_rotate(mat4_t *mat, vec3_t axis, float angle, int b_set)
 		result.floats[2][1]+=nAxis.floats[1]*nAxis.floats[2]*(o_m_cos)-nAxis.floats[0]*Sin;
 		result.floats[2][2]+=nAxis.floats[2]*nAxis.floats[2]*(o_m_cos)+Cos;
 	
-		row1=(vec3(result.floats[0][0], result.floats[0][1], result.floats[0][2]));
-		row2=(vec3(result.floats[1][0], result.floats[1][1], result.floats[1][2]));
-		row3=(vec3(result.floats[2][0], result.floats[2][1], result.floats[2][2]));
+		row1=(vec3_t_c(result.floats[0][0], result.floats[0][1], result.floats[0][2]));
+		row2=(vec3_t_c(result.floats[1][0], result.floats[1][1], result.floats[1][2]));
+		row3=(vec3_t_c(result.floats[2][0], result.floats[2][1], result.floats[2][2]));
 	
 		result.floats[0][0]=row1.floats[0];
 		result.floats[0][1]=row1.floats[1];
@@ -189,7 +189,7 @@ void mat3_t_rotate(mat3_t *mat, vec3_t axis, float angle,  int b_set)
 	vec3_t row1, row2, row3;
 	float Sin, Cos;
 	float c_m_one;
-	mat3_t result;
+	mat3_t result; 
 	mat3_t temp;
 	
 	Sin=sin(3.14159265*angle); 
@@ -212,9 +212,9 @@ void mat3_t_rotate(mat3_t *mat, vec3_t axis, float angle,  int b_set)
 		temp.floats[2][1]=nAxis.floats[1]*nAxis.floats[2]*(c_m_one)-nAxis.floats[0]*Sin;
 		temp.floats[2][2]=nAxis.floats[2]*nAxis.floats[2]*(c_m_one)+Cos;
 	
-		row1=(vec3(temp.floats[0][0], temp.floats[0][1], temp.floats[0][2]));
-		row2=(vec3(temp.floats[1][0], temp.floats[1][1], temp.floats[1][2]));
-		row3=(vec3(temp.floats[2][0], temp.floats[2][1], temp.floats[2][2]));
+		row1=(vec3_t_c(temp.floats[0][0], temp.floats[0][1], temp.floats[0][2]));
+		row2=(vec3_t_c(temp.floats[1][0], temp.floats[1][1], temp.floats[1][2]));
+		row3=(vec3_t_c(temp.floats[2][0], temp.floats[2][1], temp.floats[2][2]));
 	
 		temp.floats[0][0]=row1.floats[0];
 		temp.floats[0][1]=row1.floats[1];

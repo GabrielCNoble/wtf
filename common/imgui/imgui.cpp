@@ -905,6 +905,8 @@ static void   (*GImAllocatorFreeFunc)(void* ptr, void* user_data) = FreeWrapper;
 static void*    GImAllocatorUserData = NULL;
 static size_t   GImAllocatorActiveAllocationsCount = 0;
 
+
+
 //-----------------------------------------------------------------------------
 // User facing structures
 //-----------------------------------------------------------------------------

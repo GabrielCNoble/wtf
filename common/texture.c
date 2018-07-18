@@ -78,7 +78,7 @@ int texture_Init()
 	
 	default_texture->bm_flags = 0;
 	default_texture->frame_count = 1;
-	default_texture->gl_handle = texture_GenEmptyGLTexture(GL_TEXTURE_2D_ARRAY, GL_NEAREST, GL_NEAREST, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
+	default_texture->gl_handle = texture_GenGLTexture(GL_TEXTURE_2D_ARRAY, GL_NEAREST, GL_NEAREST, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
 	default_texture->target = GL_TEXTURE_2D_ARRAY;
 	
 	default_texture_data = memory_Malloc(DEFAULT_TEXTURE_SIZE * DEFAULT_TEXTURE_SIZE * 4 * layer_count, "texture_Init");
@@ -175,7 +175,7 @@ void texture_Finish()
 	strcpy(texture_path, path);
 }*/
 
-unsigned int texture_GenEmptyGLTexture(int target, int min_filter, int mag_filter, int wrap_s, int wrap_t, int wrap_r, int base_level, int max_level)
+unsigned int texture_GenGLTexture(int target, int min_filter, int mag_filter, int wrap_s, int wrap_t, int wrap_r, int base_level, int max_level)
 {
 	unsigned int handle;
 	int temp;
@@ -495,7 +495,7 @@ int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 4);*/
 	
-	gl_tex_handle = texture_GenEmptyGLTexture(GL_TEXTURE_2D, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR_MIPMAP_LINEAR, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 4);
+	gl_tex_handle = texture_GenGLTexture(GL_TEXTURE_2D, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR_MIPMAP_LINEAR, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 4);
 	
 	texture->gl_handle = gl_tex_handle;
 	texture->bm_flags = bm_flags & (~TEXTURE_INVALID);

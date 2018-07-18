@@ -788,8 +788,8 @@ void brush_DestroyBrush(brush_t *brush)
 		memory_Free(brush->base_polygons);
 
 		
-		if(brush->intersections)
-			memory_Free(brush->intersections);
+		//if(brush->intersections)
+		//	memory_Free(brush->intersections);
 			
 		edge = brush->edges;
 		

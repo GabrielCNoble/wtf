@@ -14,20 +14,23 @@
 
 #include <stdio.h>
 
+#include "stack_list.h"
+
 
 /* from portal.c */
 extern int ptl_portal_list_cursor;
 extern portal_t *ptl_portals;
 
 /* from physics.c */
-extern int collider_list_cursor;
-extern collider_t *colliders;
+extern struct stack_list_t phy_colliders[COLLIDER_TYPE_LAST];
+//extern int collider_list_cursor;
+//extern collider_t *colliders;
 
 /* from entity.c */
 extern int ent_entity_list_cursor;
-extern struct entity_t *ent_entities;
+extern struct stack_list_t ent_entities[2];
 extern struct entity_transform_t *ent_global_transforms;
-extern struct entity_aabb_t *ent_entity_aabbs;
+extern struct stack_list_t ent_entity_aabbs;
 
 /* from navigation.c */
 extern int nav_waypoint_count;
@@ -636,12 +639,12 @@ void renderer_DrawViews()
 			renderer_SetModelMatrix(&view_transform);
 			//else
 			//{
-			near_color.r = 0.45;
-			near_color.g = 0.45;
+			near_color.r = 0.65;
+			near_color.g = 0.65;
 			near_color.b = 0.0;
 				
-			far_color.r = 0.25;
-			far_color.g = 0.25;
+			far_color.r = 0.45;
+			far_color.g = 0.45;
 			far_color.b = 0.0;
 			//}
 			
@@ -656,7 +659,7 @@ void renderer_DrawViews()
 			renderer_Vertex3f(view->frustum.left, view->frustum.top, -view->frustum.znear);
 			renderer_End();*/
 			
-			glLineWidth(1.0);
+			glLineWidth(2.0);
 			far = view->frustum.zfar / view->frustum.znear;
 			renderer_Begin(GL_TRIANGLE_FAN);
 			renderer_Color3f(far_color.r, far_color.g, far_color.b);
@@ -765,80 +768,122 @@ void renderer_DrawWaypoints()
 	
 }
 
+void renderer_DrawCharacterCollider(void *collider)
+{
+	struct collider_t *collider_ptr;
+	collider_ptr = (struct collider_t *)collider;
+}
+
 void renderer_DrawColliders()
 {
 	int i;
 	int j;
 	int k;
+	int type;
 	glPointSize(8.0);
 	float h_offset;
-	renderer_Color3f(1.0, 1.0, 1.0);
+	
 	vec3_t capsule_vert;
+	
+	struct collider_t *colliders;
+	int collider_count;
+	
+	//colliders
 	
 	renderer_SetModelMatrix(NULL);
 	
-	for(i = 0; i < collider_list_cursor; i++)
+	for(type = 0; type < COLLIDER_TYPE_LAST; type++)
 	{
-		switch(colliders[i].type)
+		colliders = (struct collider_t *)phy_colliders[type].elements;
+		collider_count = phy_colliders[type].element_count;
+		
+		for(i = 0; i < collider_count; i++)
 		{
-			case COLLIDER_TYPE_CHARACTER_COLLIDER:
+			if(colliders[i].flags & COLLIDER_INVALID)
+			{
+				continue;
+			}
 			
-				for(k = 0; k < 3; k++)
-				{
-					renderer_Begin(GL_LINE_LOOP);
-				
-					for(j = 0; j < CHARACTER_COLLIDER_CAPSULE_SEGMENTS; j++)
+			switch(colliders[i].type)
+			{
+				case COLLIDER_TYPE_CHARACTER_COLLIDER:
+					renderer_Color3f(1.0, 1.0, 1.0);
+					for(k = 0; k < 3; k++)
 					{
-						if(k < 2)
+						renderer_Begin(GL_LINE_LOOP);
+					
+						for(j = 0; j < CHARACTER_COLLIDER_CAPSULE_SEGMENTS; j++)
 						{
-							if(j < CHARACTER_COLLIDER_CAPSULE_SEGMENTS / 2 + 1)
+							if(k < 2)
 							{
-								h_offset = colliders[i].height * 0.5 - colliders[i].radius;
+								if(j < CHARACTER_COLLIDER_CAPSULE_SEGMENTS / 2 + 1)
+								{
+									h_offset = colliders[i].height * 0.5 - colliders[i].radius;
+								}
+								else
+								{
+									h_offset = -colliders[i].height * 0.5 + colliders[i].radius;
+								}
 							}
 							else
 							{
-								h_offset = -colliders[i].height * 0.5 + colliders[i].radius;
+								h_offset = 0.0;
 							}
-						}
-						else
-						{
-							h_offset = 0.0;
-						}
-						
-						
-						renderer_Vertex3f(r_collider_capsule_shape[k][j].x * colliders[i].radius + colliders[i].position.x, 
-										  r_collider_capsule_shape[k][j].y * colliders[i].radius + colliders[i].position.y + h_offset, 
-										  r_collider_capsule_shape[k][j].z * colliders[i].radius + colliders[i].position.z);
-						
-						
-						//capsule_vert.x = r_collider_capsule_shape[0][j].x * colliders[i].collider_data.character_collider_data.radius + colliders[i].position.x;
-						//capsule_vert.y = r_collider_capsule_shape[0][j].y * colliders[i].collider_data.character_collider_data.radius + colliders[i].position.y + h_offset;
-						//capsule_vert.z = r_collider_capsule_shape[0][j].z * colliders[i].collider_data.character_collider_data.radius + colliders[i].position.z;
-						/* this function is receiving garbage when the values get passed on
-						like this... */
-						//renderer_Vertex3f(capsule_vert.x, capsule_vert.y, capsule_vert.z);
-					}
-					renderer_End();	
-				}
-			
 							
-			break;
-			
-			case COLLIDER_TYPE_GENERIC_COLLIDER:
-			
-			break;
+							
+							renderer_Vertex3f(r_collider_capsule_shape[k][j].x * colliders[i].radius + colliders[i].position.x, 
+											  r_collider_capsule_shape[k][j].y * colliders[i].radius + colliders[i].position.y + h_offset, 
+											  r_collider_capsule_shape[k][j].z * colliders[i].radius + colliders[i].position.z);
+							
+							
+							//capsule_vert.x = r_collider_capsule_shape[0][j].x * colliders[i].collider_data.character_collider_data.radius + colliders[i].position.x;
+							//capsule_vert.y = r_collider_capsule_shape[0][j].y * colliders[i].collider_data.character_collider_data.radius + colliders[i].position.y + h_offset;
+							//capsule_vert.z = r_collider_capsule_shape[0][j].z * colliders[i].collider_data.character_collider_data.radius + colliders[i].position.z;
+							/* this function is receiving garbage when the values get passed on
+							like this... */
+							//renderer_Vertex3f(capsule_vert.x, capsule_vert.y, capsule_vert.z);
+						}
+						renderer_End();	
+					}
+				
+								
+				break;
+				
+				case COLLIDER_TYPE_PROJECTILE_COLLIDER:
+					
+					renderer_Color3f(1.0, 1.0, 0.0);
+					
+					for(k = 0; k < 3; k++)
+					{
+						renderer_Begin(GL_LINE_LOOP);
+					
+						for(j = 0; j < CHARACTER_COLLIDER_CAPSULE_SEGMENTS; j++)
+						{							
+							renderer_Vertex3f(r_collider_capsule_shape[k][j].x * colliders[i].radius + colliders[i].position.x, 
+											  r_collider_capsule_shape[k][j].y * colliders[i].radius + colliders[i].position.y, 
+											  r_collider_capsule_shape[k][j].z * colliders[i].radius + colliders[i].position.z);
+
+						}
+						renderer_End();	
+					}
+				break;
+				
+				case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
+				
+				break;
+			}
 		}
-		/*renderer_Begin(GL_POINTS);
-		renderer_Vertex3f(colliders[i].position.x, colliders[i].position.y, colliders[i].position.z);
-		renderer_End();*/
 	}
+	
+	
 }
 
 void renderer_DrawEntities()
 {
 	int i;
+	int c;
 	struct entity_t *entity;
-	struct entity_transform_t *global_transform;
+	struct entity_transform_t *world_transform;
 	struct entity_aabb_t *aabb;
 	
 	vec3_t world_position;
@@ -847,19 +892,21 @@ void renderer_DrawEntities()
 	//glPointSize(8.0);
 	renderer_SetModelMatrix(NULL);
 	
-	for(i = 0; i < ent_entity_list_cursor; i++)
+	c = ent_entities[0].element_count;
+	
+	for(i = 0; i < c; i++)
 	{
-		if(ent_entities[i].flags & ENTITY_INVALID)
+		entity = (struct entity_t *)ent_entities[0].elements + i;
+		if(entity->flags & ENTITY_INVALID)
 		{
 			continue;
 		}
 		
-		entity = ent_entities + i;
-		global_transform = ent_global_transforms + entity->components[COMPONENT_INDEX_TRANSFORM].index;
+		world_transform = entity_GetWorldTransformPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
 		
-		world_position.x = global_transform->transform.floats[3][0];
-		world_position.y = global_transform->transform.floats[3][1];
-		world_position.z = global_transform->transform.floats[3][2];
+		world_position.x = world_transform->transform.floats[3][0];
+		world_position.y = world_transform->transform.floats[3][1];
+		world_position.z = world_transform->transform.floats[3][2];
 		
 		glDisable(GL_DEPTH_TEST);
 		glPointSize(10.0);
@@ -877,9 +924,9 @@ void renderer_DrawEntities()
 		
 		
 		
-		if(entity->components[COMPONENT_INDEX_MODEL].type != COMPONENT_TYPE_NONE)
+		if(entity->components[COMPONENT_TYPE_MODEL].type != COMPONENT_TYPE_NONE)
 		{
-			aabb = ent_entity_aabbs + entity->components[COMPONENT_INDEX_TRANSFORM].index;
+			aabb = entity_GetAabbPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
 			
 			glDisable(GL_CULL_FACE);
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

@@ -45,13 +45,7 @@ int material_Init()
 {
 	mat_material_list_size = MAX_MATERIALS;
 	mat_material_count = 0;
-	mat_free_position_stack_top = -1;
-	//material_list_base = memory_Malloc(sizeof(material_t) * (material_list_size + 1), "material_Init");
-	//materials = material_list_base + 1;
-	
-	//material_list_name_base = memory_Malloc(sizeof(char *) * (material_list_size + 1), "material_Init");
-	//material_names = material_list_name_base + 1;
-	
+	mat_free_position_stack_top = -1;	
 	
 	mat_material_name_records = memory_Malloc(sizeof(material_name_record_t) * mat_material_list_size, "material_Init");
 	mat_materials = memory_Malloc(sizeof(material_t) * (mat_material_list_size + 1), "material_Init");
@@ -63,10 +57,8 @@ int material_Init()
 	mat_materials++;
 	mat_material_names++;
 	
-	mat_material_names[-1] = "default"; //memory_Strdup("_default_material_", "material_Init");
+	mat_material_names[-1] = "default";
 	default_material_name = mat_material_names[-1];
-	//default_material_name->name = memory_Strdup("_default_material_", "material_Init");
-	//default_material_name->incidence_count = 0;
 	
 	default_material->r = 255;
 	default_material->g = 255;
@@ -85,13 +77,7 @@ int material_Init()
 	default_material->ref_count = 0;
 	default_material->flags = 0;
 	default_material->draw_group = 0;
-	//default_material->last_referenced = -1;
-	//default_material->frame_ref_count = 0;
-	
 
-	
-	//default_material = material_CreateMaterial("default_material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);	
-	//red_default_material = material_CreateMaterial("red default material", vec4(1.0, 0.0, 0.0, 1.0), 1.0, 1.0, forward_pass_shader, -1, -1);
 	
 	return 1;
 }
@@ -111,6 +97,7 @@ void material_Finish()
 	memory_Free(mat_materials);
 	memory_Free(mat_material_names);
 	memory_Free(mat_material_name_records);
+	memory_Free(mat_free_position_stack);
 }
 
 

@@ -7,6 +7,7 @@
 #include "scr_common.h"
 #include "nav_common.h"
 #include "camera_types.h"
+#include "list.h"
 
 
 #define ENTITY_NAME_MAX_LEN 24				/* including trailing null... */
@@ -40,8 +41,10 @@ enum ENTITY_FLAGS
 	ENTITY_INVALID = 1,
 	ENTITY_HAS_MOVED = 1 << 1,
 	ENTITY_INVISIBLE = 1 << 2,
-	ENTITY_ANIMATED = 1 << 3,
-	ENTITY_GHOST = 1 << 4,					/* don't collide... */
+	ENTITY_MARKED_INVALID = 1 << 3,
+	ENTITY_ALREADY_SERIALIZED = 1 << 27,
+	//ENTITY_ANIMATED = 1 << 3,
+	//ENTITY_GHOST = 1 << 4,					/* don't collide... */
 };
 
 
@@ -52,6 +55,7 @@ enum COMPONENT_FLAGS
 {
 	COMPONENT_FLAG_INVALID = 1,
 	COMPONENT_FLAG_DEACTIVATED = 1 << 1,
+	COMPONENT_FLAG_NESTLED = 1 << 27,
 };
 
 enum SCRIPT_CONTROLLER_COMPONENT_FLAGS
@@ -63,34 +67,15 @@ enum SCRIPT_CONTROLLER_COMPONENT_FLAGS
 enum COMPONENT_TYPES
 {
 	COMPONENT_TYPE_TRANSFORM = 0,
-	
-	COMPONENT_TYPE_PHYSICS_CONTROLLER,
-	COMPONENT_TYPE_SCRIPT_CONTROLLER,
-	
+	COMPONENT_TYPE_PHYSICS,
 	COMPONENT_TYPE_MODEL,	
 	COMPONENT_TYPE_LIGHT,
 	COMPONENT_TYPE_SCRIPT,
 	COMPONENT_TYPE_CAMERA,
+	COMPONENT_TYPE_PARTICLE_SYSTEM,
 	COMPONENT_TYPE_LAST,
 	COMPONENT_TYPE_NONE = COMPONENT_TYPE_LAST
 };
-
-enum COMPONENT_INDEXES
-{
-	COMPONENT_INDEX_TRANSFORM = 0, 
-	
-	COMPONENT_INDEX_CONTROLLER,
-	COMPONENT_INDEX_PHYSICS_CONTROLLER = COMPONENT_INDEX_CONTROLLER,
-	COMPONENT_INDEX_SCRIPT_CONTROLLER = COMPONENT_INDEX_CONTROLLER,
-	
-	COMPONENT_INDEX_MODEL,
-	COMPONENT_INDEX_LIGHT,
-	COMPONENT_INDEX_SCRIPT,
-	COMPONENT_INDEX_CAMERA,
-	COMPONENT_INDEX_LAST,	
-	COMPONENT_INDEX_NONE = COMPONENT_INDEX_LAST,
-};
-
 
 struct component_handle_t
 {
@@ -106,6 +91,18 @@ struct entity_handle_t
 	unsigned entity_index : 31;
 };
 
+struct component_field_t
+{
+	char *field_name;
+	int script_type;
+	int offset;
+};
+
+struct component_fields_t
+{
+	struct component_field_t fields[16];	
+};
+
 /*
 ==============================================================
 ==============================================================
@@ -115,7 +112,8 @@ struct entity_handle_t
 struct component_t
 {
 	struct entity_handle_t entity;
-	int type;
+	short type;
+	short flags;
 };
 
 
@@ -128,6 +126,7 @@ struct transform_component_t
 	vec3_t position;
 		
 	int top_list_index;
+	int depth_index;
 	
 	int flags;
 	
@@ -154,41 +153,19 @@ struct entity_transform_t
 ==============================================================
 */
 
-struct controller_component_t
+struct physics_component_t
 {
 	struct component_t base;
 	
 	union
 	{
 		collider_def_t *collider_def;
-		int collider_index;
+		struct collider_handle_t collider_handle;
+		//int collider_index;
 	}collider;
 	
-	short flags;
-};
-
-
-
-struct physics_controller_component_t
-{
-	struct controller_component_t controller;
-	short flags;
-	short align;
-};
-
-struct script_controller_component_t
-{
-	struct controller_component_t controller;
-	struct script_t *script;
-		
 	int flags;
-	
-	int max_route_length;
-	int route_length;
-	struct waypoint_t **route;
-	int current_waypoint;
 };
-
 
 /*
 ==============================================================
@@ -211,8 +188,12 @@ struct model_component_t
 struct light_component_t
 {
 	struct component_t base;
-	int light_index;
-	struct component_handle_t transform;
+	
+	struct list_t light_list;
+	struct list_t transform_list;
+	
+	//int light_index;
+	//struct component_handle_t transform;
 };
 
 /*
@@ -225,6 +206,7 @@ struct script_component_t
 {
 	struct component_t base;
 	struct script_t *script;
+	int flags;
 };
 
 /*
@@ -246,19 +228,50 @@ struct camera_component_t
 ==============================================================
 */
 
-struct controller_script_t
+struct particle_system_component_t
 {
-	struct script_t script;
-	struct entity_handle_t *entity_handle;
-	void *on_first_run_entry_point;
+	struct component_t base;
+	int particle_system_t;
+	struct component_handle_t transform;
 };
 
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
+struct entity_script_t
+{
+	struct script_t script;
+	
+	struct entity_handle_t *entity_handle;
+	void *on_first_run_entry_point;
+	void *on_spawn_entry_point;
+	void *on_die_entry_point;
+	
+};
+
+struct entity_prop_t
+{
+	char *name;
+	int size;
+	void *memory;
+};
 
 struct entity_t
 {
-	struct component_handle_t components[COMPONENT_INDEX_LAST];
+	struct component_handle_t components[COMPONENT_TYPE_LAST];
+	
+	struct entity_handle_t def;
+	
+	int max_props;
+	int prop_count;
+	struct entity_prop_t *props;
+	
 	bsp_dleaf_t *leaf;
 	int flags;
+	int spawn_time;
 	char *name;
 };
 

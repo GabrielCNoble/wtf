@@ -215,7 +215,7 @@ void camera_InitViewData(view_data_t *view_data)
 {
 	int i;
 	
-	view_data->view_lights_list_cursor = 0;
+	/*view_data->view_lights_list_cursor = 0;
 	view_data->view_lights_list_size = 32;
 	view_data->view_lights = memory_Malloc(sizeof(view_light_t) * view_data->view_lights_list_size, "camera_InitViewData");
 	
@@ -239,17 +239,17 @@ void camera_InitViewData(view_data_t *view_data)
 	
 	view_data->view_triangles_size = 1024;
 	view_data->view_triangles_cursor = 0;
-	view_data->view_triangles = memory_Malloc(sizeof(bsp_striangle_t) * view_data->view_triangles_size, "camera_InitViewData");
+	view_data->view_triangles = memory_Malloc(sizeof(bsp_striangle_t) * view_data->view_triangles_size, "camera_InitViewData");*/
 }
 
 void camera_DeleteViewData(view_data_t *view_data)
 {
-	memory_Free(view_data->view_lights);
+	/*memory_Free(view_data->view_lights);
 	memory_Free(view_data->view_portals);
 	memory_Free(view_data->view_entities);
 	memory_Free(view_data->view_draw_commands);
 	memory_Free(view_data->view_triangles);
-	memory_Free(view_data->view_leaves);
+	memory_Free(view_data->view_leaves);*/
 }
 
 void camera_DestroyCamera(camera_t *camera)
@@ -259,6 +259,7 @@ void camera_DestroyCamera(camera_t *camera)
 		if(camera == cameras)
 		{
 			cameras = cameras->next;
+			
 			if(cameras)
 			{
 				cameras->prev = NULL;
@@ -279,7 +280,7 @@ void camera_DestroyCamera(camera_t *camera)
 		}
 		
 		camera_DeleteViewData(&camera->view_data);
-		
+		memory_Free(camera->name);
 		memory_Free(camera);
 		
 		camera_count--;
@@ -288,15 +289,9 @@ void camera_DestroyCamera(camera_t *camera)
 
 void camera_DestroyAllCameras()
 {
-	
 	while(cameras)
-	{
-		last_camera = cameras->next;
-		
-		camera_DeleteViewData(&cameras->view_data);
-		
-		memory_Free(cameras);
-		cameras = last_camera;
+	{	
+		camera_DestroyCamera(cameras);
 	}
 
 	camera_count = 0;

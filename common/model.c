@@ -18,6 +18,9 @@
 #include "r_debug.h"
 
 #include "mpk_read.h"
+
+#include "stack_list.h"
+
 //#include "physics.h"
 
 
@@ -34,12 +37,16 @@ mesh_t *mdl_meshes;
 //mesh_t *mdl_last_mesh;
 
 
-int mdl_model_free_stack_top;
-int *mdl_model_free_stack;
-int mdl_max_models;
-int mdl_model_list_cursor;
-struct model_t *mdl_models = NULL;
-struct model_t *mdl_last_model = NULL;
+//int mdl_model_free_stack_top;
+//int *mdl_model_free_stack;
+//int mdl_max_models;
+//int mdl_model_list_cursor;
+//struct model_t *mdl_models = NULL;
+//struct model_t *mdl_last_model = NULL;
+
+
+struct stack_list_t mdl_models;
+
 
 
 
@@ -47,6 +54,29 @@ struct model_t *mdl_last_model = NULL;
 extern "C"
 {
 #endif
+
+void model_DisposeModelCallback(void *element)
+{
+	struct model_t *model;
+	
+	model = (struct model_t *)element;
+	
+	if(model->name)
+	{
+		memory_Free(model->name);
+	}
+	
+	if(model->batches)
+	{
+		memory_Free(model->batches);
+	}
+	
+	if(model->file_name)
+	{
+		memory_Free(model->file_name);
+	}
+}
+
 
 int model_Init()
 {
@@ -61,13 +91,15 @@ int model_Init()
 	mdl_meshes = NULL;
 	//mdl_last_mesh = NULL;
 	
-	mdl_max_models = 512;
-	mdl_model_list_cursor = 0;
-	mdl_model_free_stack_top = -1;
+	//mdl_max_models = 512;
+	//mdl_model_list_cursor = 0;
+	//mdl_model_free_stack_top = -1;
 	
 	
-	mdl_models = memory_Malloc(sizeof(struct model_t) * mdl_max_models, "model_Init");
-	mdl_model_free_stack = memory_Malloc(sizeof(int) * mdl_max_models, "model_Init");
+	//mdl_models = memory_Malloc(sizeof(struct model_t) * mdl_max_models, "model_Init");
+	//mdl_model_free_stack = memory_Malloc(sizeof(int) * mdl_max_models, "model_Init");
+	
+	mdl_models = stack_list_create(sizeof(struct model_t), 32, model_DisposeModelCallback);
 	
 	return 1;
 }
@@ -86,18 +118,23 @@ void model_Finish()
 		mdl_meshes = next;
 	}
 
-	memory_Free(mdl_model_free_stack);
+	//memory_Free(mdl_model_free_stack);
 	
-	for(i = 0; i < mdl_model_list_cursor; i++)
-	{
-		if(!mdl_models[i].vert_count)
-			continue;
+	stack_list_destroy(&mdl_models);
+	
+	//for(i = 0; i < mdl_model_list_cursor; i++)
+	//{
+	//	if(!mdl_models[i].vert_count)
+	//		continue;
 			
-		memory_Free(mdl_models[i].name);
-		memory_Free(mdl_models[i].file_name);
-		memory_Free(mdl_models[i].batches);
-	}
-	memory_Free(mdl_models);
+	//	memory_Free(mdl_models[i].name);
+	//	memory_Free(mdl_models[i].file_name);
+	//	memory_Free(mdl_models[i].batches);
+	//}
+	//memory_Free(mdl_models);
+	
+	
+	
 }
 
 
@@ -252,7 +289,7 @@ int model_CreateModel(char *file_name, char *name, mesh_t *mesh, batch_t *batche
 		return -1;
 	}
 	
-	if(mdl_model_free_stack_top > -1)
+	/*if(mdl_model_free_stack_top > -1)
 	{
 		model_index = mdl_model_free_stack[mdl_model_free_stack_top];
 		mdl_model_free_stack_top--;
@@ -273,9 +310,12 @@ int model_CreateModel(char *file_name, char *name, mesh_t *mesh, batch_t *batche
 			mdl_models = model;
 			mdl_max_models += 32;
 		}
-	}
+	}*/
 	
-	model = &mdl_models[model_index];
+	model_index = stack_list_add(&mdl_models, NULL);
+	model = (struct model_t *)stack_list_get(&mdl_models, model_index);
+	
+	//model = &mdl_models[model_index];
 	
 	//model = memory_Malloc(sizeof(struct model_t), "model_CreateModel");
 	
@@ -415,15 +455,29 @@ int model_LoadModel(char *file_name, char *model_name)
 int model_GetModel(char *model_name)
 {
 	int i;
+	int c;
 	
-/*	for(i = 0; i < mdl_model_list_cursor; i++)
+	struct model_t *models;
+	struct model_t *model;
+	
+	models = (struct model_t *)mdl_models.elements;
+	c = mdl_models.element_count;
+	
+	for(i = 0; i < c; i++)
 	{
-		if(!strcmp(mdl_models[i].name, model_name))
+		model = models + i;
+		
+		if(model->flags & MODEL_INVALID)
+		{
+			continue;
+		}
+		
+		if(!strcmp(model->name, model_name))
 		{
 			return i;
 		}
-	}*/
-	
+	}
+
 	return -1;
 }
 
@@ -434,11 +488,14 @@ struct model_t *model_GetModelPointer(char *model_name)
 
 struct model_t *model_GetModelPointerIndex(int model_index)
 {
-	if(model_index >= 0 && model_index < mdl_model_list_cursor)
+	struct model_t *model;
+	if(model_index >= 0 && model_index < mdl_models.element_count)
 	{
-		if(!(mdl_models[model_index].flags & MODEL_INVALID))
+		model = (struct model_t *)mdl_models.elements + model_index;
+		
+		if(!(model->flags & MODEL_INVALID))
 		{
-			return &mdl_models[model_index];
+			return model;
 		}
 	}
 	
@@ -479,12 +536,11 @@ int model_IncModelMaterialsRefs(int model_index)
 	int i;
 	struct model_t *model;
 	
-	if(model_index >= 0 && model_index < mdl_model_list_cursor)
+	if(model_index >= 0 && model_index < mdl_models.element_count)
 	{
-		if(!(mdl_models[model_index].flags & MODEL_INVALID))
+		model = (struct model_t *)mdl_models.elements + model_index;
+		if(!(model->flags & MODEL_INVALID))
 		{
-			model = &mdl_models[model_index];
-			
 			for(i = 0; i < model->batch_count; i++)
 			{
 				if(!material_IncRefCount(model->batches[i].material_index))
@@ -504,12 +560,12 @@ int model_DecModelMaterialsRefs(int model_index)
 	int i;
 	struct model_t *model;
 	
-	if(model_index >= 0 && model_index < mdl_model_list_cursor)
+	if(model_index >= 0 && model_index < mdl_models.element_count)
 	{
-		if(!(mdl_models[model_index].flags & MODEL_INVALID))
+		model = (struct model_t *)mdl_models.elements + model_index;
+		
+		if(!(model->flags & MODEL_INVALID))
 		{
-			model = &mdl_models[model_index];
-			
 			for(i = 0; i < model->batch_count; i++)
 			{
 				if(!material_DecRefCount(model->batches[i].material_index))

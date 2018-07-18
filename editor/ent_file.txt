@@ -1,0 +1,79 @@
+[entity record start]
+[collider record start]
+[collision shape record]
+[collision shape record]
+[collision shape record]
+.
+.
+.
+[collider record end]
+[component record]
+[component record]
+[component record]
+.
+.
+.
+[prop record]
+[prop record]
+[prop record]
+.
+.
+.
+[nestled transform record]
+[nestled transform record]
+.
+.
+.
+[entity record end]
+
+nestled entity records (if any) will show up amidst the nestled transform records. In this case
+the file will look like this:
+
+.
+.
+.
+[nestled transform record]
+[nestled transform record]
+	[entity record start]
+	.
+	.
+	.
+	[entity record end]
+[nestled transform record]
+.
+.
+.
+[entity record end]
+
+
+this can happen an arbitrary number of times.
+
+.
+.
+.
+[nestled transform record]
+	[entity record start]
+	.
+	.
+	.
+	[nestled transform record]
+	[nestled transform record]
+		[entity record start]
+		.
+		.
+		.
+		[nestled transform record]
+			[entity record start]
+			.
+			.
+			.
+			[entity record end]
+		[entity record end]
+	[nestled transform record]
+		[entity record start]
+		.
+		.
+		.
+		[entity record end]
+	[entity record end]
+[entity record end]

@@ -104,7 +104,7 @@ void texture_Finish();
 
 void texture_SetPath(char *path);
 
-unsigned int texture_GenEmptyGLTexture(int target, int min_filter, int mag_filter, int wrap_s, int wrap_t, int wrap_r, int base_level, int max_level);
+unsigned int texture_GenGLTexture(int target, int min_filter, int mag_filter, int wrap_s, int wrap_t, int wrap_r, int base_level, int max_level);
 
 //int texture_LoadTexture(char *file_name, char *name, int bm_flags);
 

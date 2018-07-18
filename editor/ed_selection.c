@@ -20,6 +20,7 @@
 #include "..\..\common\r_debug.h"
 #include "..\..\common\r_shader.h"
 #include "..\..\common\navigation.h"
+#include "..\..\common\containers\stack_list.h"
 
 #include "ed_globals.h"
 
@@ -44,7 +45,7 @@ extern portal_t *ptl_portals;
 
 /* from entity.c */
 extern int ent_entity_list_cursor;
-extern struct entity_t *ent_entities;
+extern struct stack_list_t ent_entities[2];
 
 
 /* from l_main.c */
@@ -196,12 +197,12 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 		i++;
 	}
 	
-	c = ent_entity_list_cursor;
+//	c = ent_entity_list_cursor;
 	
 	value = PICK_ENTITY;
 	renderer_SetNamedUniform1f("pick_type", *(float *)&value);
 	
-	for(i = 0; i < c; i++)
+	//for(i = 0; i < c; i++)
 	{
 		/*if(ent_entities[i].flags & ENTITY_INVALID)
 			continue;
@@ -1152,7 +1153,7 @@ void editor_CopySelections(pick_list_t *pick_list)
 			case PICK_LIGHT:
 				light_pos = &l_light_positions[records[i].index0];
 				light_parms = &l_light_params[records[i].index0];
-				new_index = light_CreateLight("copy_light", &light_pos->orientation, light_pos->position, vec3((float)light_parms->r / 255.0, (float)light_parms->g / 255.0, (float)light_parms->b / 255.0), (float)(LIGHT_ENERGY(light_parms->energy)), (float)(LIGHT_RADIUS(light_parms->radius)), light_parms->bm_flags);
+				new_index = light_CreateLight("copy_light", &light_pos->orientation, light_pos->position, vec3_t_c((float)light_parms->r / 255.0, (float)light_parms->g / 255.0, (float)light_parms->b / 255.0), (float)(LIGHT_ENERGY(light_parms->energy)), (float)(LIGHT_RADIUS(light_parms->radius)), light_parms->bm_flags);
 				records[i].index0 = new_index;
 			break;
 			

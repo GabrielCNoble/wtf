@@ -3,7 +3,6 @@
 
 #include "ed_ui.h"
 #include "ed_proj.h"
-#include "gui.h"
 #include "engine.h"
 #include "bsp_cmp.h"
 #include "editor.h"
@@ -11,7 +10,9 @@
 #include "log.h"
 #include "material.h"
 #include "texture.h"
-#include "..\..\common\script.h"
+#include "..\..\common\script\script.h"
+#include "..\..\common\gui.h"
+#include "..\..\common\memory.h"
 
 #include "GL\glew.h"
 
@@ -473,173 +474,6 @@ void editor_MiscDropdownCallback(widget_t *widget)
 }
 
 
-//void add_to_world_menu_callback(widget_t *widget)
-void editor_AddToWorldMenuCallback(widget_t *widget)
-{
-	option_t *option;
-	brush_t *brush;
-	mat3_t r = mat3_t_id();
-	pick_record_t record;
-	int light_index;
-	int brush_index;
-	int index;
-	
-	if(widget->type == WIDGET_OPTION)
-	{
-		option = (option_t *)widget;
-		
-		if(option->unique_index == add_light_unique_index)
-		{
-			
-			light_index = light_CreateLight("light", &r, ed_3d_cursor_position, vec3(1.0, 1.0, 1.0), 25.0, 20.0, LIGHT_GENERATE_SHADOWS);
-			
-			record.type = PICK_LIGHT;
-			record.index0 = light_index;
-		
-			//editor_ClearSelection();
-			//editor_AddSelection(&record);
-			
-			ed_3d_handle_position = ed_3d_cursor_position;		
-		}
-		else if(option->unique_index == add_cube_brush_unique_index)
-		{
-			
-			brush = brush_CreateBrush(ed_3d_cursor_position, &r, vec3(1.0, 1.0, 1.0), BRUSH_CUBE, 0);
-			
-			
-			record.type = PICK_BRUSH;
-			//record.index0 = brush_index;
-			record.pointer = brush;
-			
-			//editor_ClearSelection();
-			//editor_AddSelection(&record);
-			
-			ed_3d_handle_position = ed_3d_cursor_position;
-		}
-		/*else if(option->unique_index == add_cylinder_brush_unique_index)
-		{
-			brush_index = brush_CreateBrush(cursor_3d_position, &r, vec3(1.0, 1.0, 1.0), BRUSH_CYLINDER, 0);
-			
-			
-			record.type = PICK_BRUSH;
-			record.index0 = brush_index;
-			
-			editor_ClearSelection();
-			editor_AddSelection(&record);
-			
-			handle_3d_position = cursor_3d_position;
-		}*/
-		else if(option->unique_index == add_spawn_point_unique_index)
-		{
-//			index = player_CreateSpawnPoint(ed_3d_cursor_position, "spawn point");
-		
-	
-	//		record.type = PICK_SPAWN_POINT;
-	//		record.index0 = index;
-			
-			//editor_ClearSelection();
-			//editor_AddSelection(&record);
-			
-		//	ed_3d_handle_position = ed_3d_cursor_position;
-			
-		}
-		
-		
-		/*switch(option->index)
-		{
-			case 0:
-				light_CreateLight("light", &r, vec3(0.0, 5.0, 0.0), vec3(1.0, 1.0, 1.0), 25.0, 20.0);
-			break;
-			
-			case 1:
-			
-			break;
-			
-			case 2:
-				
-			break;
-		}*/
-	}
-}
-
-
-void editor_DeleteSelectionMenuCallback(widget_t *widget)
-{
-	option_t *option;
-	
-	switch(widget->type)
-	{
-		case WIDGET_OPTION:
-			//editor_DestroySelection();
-		break;
-	}
-}
-
-
-
-void snap_value_dropdown_callbac(widget_t *widget)
-{
-	dropdown_t *dropdown;
-	int i = 0;
-	if(widget->type == WIDGET_DROPDOWN)
-	{
-		dropdown = (dropdown_t *)widget;
-		
-		if(!(dropdown->bm_dropdown_flags & DROPDOWN_DROPPED))
-			return;
-		
-		gui_RemoveAllOptions(snap_values_list);
-		switch(ed_3d_handle_transform_mode)
-		{
-			case ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION:
-			case ED_3D_HANDLE_TRANSFORM_MODE_SCALE:
-				while(ed_editor_linear_snap_values_str[i])
-				{
-					gui_AddOptionToList(snap_values_list, ed_editor_linear_snap_values_str[i], ed_editor_linear_snap_values_str[i]);
-					i++;
-				}
-			break;
-			
-			case ED_3D_HANDLE_TRANSFORM_MODE_ROTATION:
-				while(ed_editor_angular_snap_values_str[i])
-				{
-					gui_AddOptionToList(snap_values_list, ed_editor_angular_snap_values_str[i], ed_editor_angular_snap_values_str[i]);
-					i++;
-				}
-			break;
-		}
-		
-	}
-}
-
-void set_snap_value_callback(widget_t *widget)
-{
-	option_t *option;
-	int i;
-	if(widget->type == WIDGET_OPTION)
-	{
-		option = (option_t *)widget;	
-		
-		//gui_RemoveAllOptions(snap_values_list);
-		
-		switch(ed_3d_handle_transform_mode)
-		{
-			case ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION:
-			case ED_3D_HANDLE_TRANSFORM_MODE_SCALE:
-				ed_editor_linear_snap_value = ed_editor_linear_snap_values[option->index];
-				ed_editor_snap_value_str = ed_editor_linear_snap_values_str[option->index];
-				ed_editor_linear_snap_value_index = option->index;
-			break;
-			
-			case ED_3D_HANDLE_TRANSFORM_MODE_ROTATION:
-				ed_editor_angular_snap_value = ed_editor_angular_snap_values[option->index];
-				ed_editor_snap_value_str = ed_editor_angular_snap_values_str[option->index];
-				ed_editor_angular_snap_value_index = option->index;
-			break;
-		}
-	}
-	
-}
 
 
 /*
@@ -648,19 +482,19 @@ void set_snap_value_callback(widget_t *widget)
 ************************************************************************
 */
 
-int awesome_int = 0;
+//int awesome_int = 0;
 
 void editor_InitUI()
 {
 	 
-	int i;
+	//int i;
 	//widget_t *w;
-	editor_t *editor;
-	option_t *option;
-	option_list_t *o;
+	//editor_t *editor;
+	//option_t *option;
+	//option_list_t *o;
 	
 	//menu_bar = gui_CreateWidget("menu_bar", 0, r_window_height * 0.5 - MENU_BAR_HEIGHT * 0.5, r_window_width, MENU_BAR_HEIGHT);	
-	menu_bar = gui_AddWidget(NULL, "menu_bar", 0, r_window_height * 0.5 - MENU_BAR_HEIGHT * 0.5, r_window_width, MENU_BAR_HEIGHT);
+/*	menu_bar = gui_AddWidget(NULL, "menu_bar", 0, r_window_height * 0.5 - MENU_BAR_HEIGHT * 0.5, r_window_width, MENU_BAR_HEIGHT);
 	
 	menu_dropdown_bar = gui_AddWidgetBar(menu_bar, "menu widget bar", 0, 0, r_window_width, MENU_BAR_HEIGHT, WIDGET_BAR_FIXED_SIZE);
 	 
@@ -690,74 +524,10 @@ void editor_InitUI()
 	
 	
 	editor_dropdown = gui_CreateDropdown("Editors", "Editors", 0, 0, EDITORS_DROPDOWN_WIDTH, 0, editor_EditorsDropdownCallback);
-	editors_list = gui_AddOptionList((widget_t *)editor_dropdown, "editors", 0, 0, EDITORS_DROPDOWN_WIDTH, 0, 8, editor_EditorsDropdownCallback);
-	/*editor = ed_editors;
-	
-	while(editor)
-	{
-		option = gui_AddOption(editor_dropdown, editor->name, editor->name);
-		option->widget.data = editor->name;
-		editor = editor->next;
-	}*/
-	
-	
-	gui_AddWidgetToBar((widget_t *)editor_dropdown, menu_dropdown_bar);
-	
-/*	world_dropdown = gui_CreateDropdown("world", "world", 0, 0, WORLD_DROPDOWN_WIDTH, 0, editor_WorldDropdownCallback);
-	gui_AddOption(world_dropdown, "compile bsp", "compile bsp");
-	gui_AddOption(world_dropdown, "stop pvs calculation", "stop pvs calculation");
-	gui_AddOption(world_dropdown, "clear bsp", "clear bsp");
-	gui_AddOption(world_dropdown, "export bsp", "export bsp");
-	gui_AddOption(world_dropdown, "draw portals", "draw portals");
-	gui_AddOption(world_dropdown, "draw brushes", "draw brushes");
-	gui_AddOption(world_dropdown, "draw leaves", "draw leaves");
-	gui_AddOption(world_dropdown, "draw light leaves", "draw light leaves");
-	gui_AddOption(world_dropdown, "draw world polygons", "draw world polygons");
-	gui_AddOption(world_dropdown, "draw brush polygons", "draw brush polygons");
-	gui_AddOption(world_dropdown, "draw collision polygons", "draw collision polygons");
-	
-	
-	gui_AddWidgetToBar((widget_t *) world_dropdown, menu_dropdown_bar);*/
-	
-	
-/*	misc_dropdown = gui_CreateDropdown("misc", "misc", 0, 0, MISC_DROPDOWN_WIDTH, 0, editor_MiscDropdownCallback);
-	gui_AddOption(misc_dropdown, "hot reload shaders", "hot reload shaders");
-	gui_AddOption(misc_dropdown, "enable z prepass", "enable z prepass");
-	gui_AddOption(misc_dropdown, "enable shadow mapping", "enable shadow mapping");
-	gui_AddOption(misc_dropdown, "flush log", "flush log");
-	gui_AddOption(misc_dropdown, "step pvs", "step pvs");
-	gui_AddOption(misc_dropdown, "enable bloom", "enable bloom");
-	gui_AddOption(misc_dropdown, "enable tonemapping", "enable tonemapping");
-	gui_AddOption(misc_dropdown, "enable deferred rendering", "enable deferred rendering");
-	gui_AddOption(misc_dropdown, "enable gui", "enable gui");
-	
-	gui_AddWidgetToBar((widget_t *)misc_dropdown, menu_dropdown_bar);*/
-	
-		
-	
-	//ed_add_to_world_menu = gui_AddOptionList(NULL, "add to world", 0, 0, 200, 0, 8, NULL);
-	
-	/*gui_AddOptionToList(ed_add_to_world_menu, "add light", "add light");
-	gui_AddOptionToList(ed_add_to_world_menu, "add brush", "add brush");
-	gui_AddOptionToList(ed_add_to_world_menu, "add spawn point", "add spawn point");
-	
-	add_light_unique_index = gui_GetOptionUniqueIndex(ed_add_to_world_menu, 0);
-	add_spawn_point_unique_index = gui_GetOptionUniqueIndex(ed_add_to_world_menu, 2);
-	
-	brush_types_option_list = gui_NestleOptionList(ed_add_to_world_menu, 1, "brush type options");
-	gui_AddOptionToList(brush_types_option_list, "cube brush", "cube brush");
-	gui_AddOptionToList(brush_types_option_list, "cylinder brush", "cylinder brush");
-	
-	
-	add_cube_brush_unique_index = gui_GetOptionUniqueIndex(brush_types_option_list, 0);
-	add_cylinder_brush_unique_index = gui_GetOptionUniqueIndex(brush_types_option_list, 1);*/
-//	editor_CloseAddToWorldMenu();
-	
+	editors_list = gui_AddOptionList((widget_t *)editor_dropdown, "editors", 0, 0, EDITORS_DROPDOWN_WIDTH, 0, 8, editor_EditorsDropdownCallback);*/
 
-/*	ed_delete_menu = gui_AddOptionList(NULL, "delete", 0, 0, 100, 0, 8, editor_DeleteSelectionMenuCallback);
-	gui_AddOptionToList(ed_delete_menu, "delete", "delete?");
-	editor_CloseDeleteSelectionMenu();*/
 	
+	//gui_AddWidgetToBar((widget_t *)editor_dropdown, menu_dropdown_bar);
 	editor_InitExplorerUI();	
 }
 
@@ -768,11 +538,99 @@ void editor_FinishUI()
 
 void editor_ProcessUI()
 {
-	menu_bar->y = r_window_height * 0.5 - MENU_BAR_HEIGHT * 0.5;
+	/*menu_bar->y = r_window_height * 0.5 - MENU_BAR_HEIGHT * 0.5;
 	menu_bar->w = r_window_width;
 		
 	menu_dropdown_bar->widget.w = r_window_width * 0.5;
-	menu_dropdown_bar->bm_flags |= WIDGET_BAR_ADJUST_WIDGETS;
+	menu_dropdown_bar->bm_flags |= WIDGET_BAR_ADJUST_WIDGETS;*/
+	editor_t *editor;
+	editor_t *selected_editor;
+	
+	
+	if(gui_ImGuiBeginMainMenuBar())
+	{
+		if(gui_ImGuiBeginMenu("File"))
+		{
+			if(gui_ImGuiMenuItem("New...", NULL, NULL, 1))
+			{
+				
+			}
+			if(gui_ImGuiMenuItem("Save...", NULL, NULL, 1))
+			{
+				editor_OpenExplorerWindow(NULL, EXPLORER_FILE_MODE_WRITE);
+			}
+			if(gui_ImGuiMenuItem("Open...", NULL, NULL, 1))
+			{
+				editor_OpenExplorerWindow(NULL, EXPLORER_FILE_MODE_READ);
+			}
+			if(gui_ImGuiMenuItem("Exit", NULL, NULL, 1))
+			{
+				engine_SetEngineState(ENGINE_QUIT);
+			}
+			
+			gui_ImGuiEndMenu();
+		}
+		
+		if(gui_ImGuiBeginMenu("Misc"))
+		{
+			if(gui_ImGuiMenuItem("Reload shaders", NULL, NULL, 1))
+			{
+				shader_HotReload();
+			}
+			if(gui_ImGuiMenuItem("Reload scripts", NULL, NULL, 1))
+			{
+				script_ReloadScripts();
+			}
+			if(gui_ImGuiMenuItem("Check memory", NULL, NULL, 1))
+			{
+				memory_CheckCorrupted();
+			}
+			if(gui_ImGuiMenuItem("Report memory", NULL, NULL, 1))
+			{
+				memory_Report();
+			}
+			
+			
+			if(r_flat)
+			{
+				if(gui_ImGuiMenuItem("Disable fullbright", NULL, NULL, 1))
+				{
+					r_flat = 0;
+				}
+			}
+			else
+			{
+				if(gui_ImGuiMenuItem("Enable fullbright", NULL, NULL, 1))
+				{
+					r_flat = 1;
+				}
+			}
+			gui_ImGuiEndMenu();
+		}
+		
+		if(gui_ImGuiBeginMenu("Editors"))
+		{
+			editor = ed_editors;
+			selected_editor = NULL;
+			while(editor)
+			{
+				if(gui_ImGuiMenuItem(editor->name, NULL, NULL, 1) && !selected_editor)
+				{
+					selected_editor = editor;
+				}
+				
+				editor = editor->next;
+			}
+			gui_ImGuiEndMenu();
+			
+			if(selected_editor)
+			{
+				editor_StartEditor(selected_editor->name);
+			}
+		}	
+		gui_ImGuiEndMainMenuBar();
+	}
+	
 	
 	editor_UpdateExplorerUI();	
 }
@@ -799,7 +657,7 @@ void editor_ShowUI()
 
 void editor_EnumerateEditors()
 {
-	editor_t *editor;
+	/*editor_t *editor;
 	editor = ed_editors;
 	option_t *option;
 	
@@ -810,7 +668,7 @@ void editor_EnumerateEditors()
 		option = gui_AddOptionToList(editors_list, editor->name, editor->name);
 		option->widget.data = editor->name;
 		editor = editor->next;
-	}
+	}*/
 }
 
 

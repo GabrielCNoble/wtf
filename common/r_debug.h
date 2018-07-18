@@ -3,6 +3,10 @@
 
 #include "vector.h"
 
+#include "ent_common.h"
+#include "phy_common.h"
+#include "camera_types.h"
+
 
 #ifdef R_DBG_NO_DEBUG
 	#define R_DBG_PUSH_FUNCTION_NAME()
@@ -123,6 +127,8 @@ void renderer_Draw2dLine(vec2_t from, vec2_t to, vec3_t color, float width, int 
 ==============================================================
 */
 
+
+
 void renderer_DrawPortalsOulines();
 
 void renderer_DrawPortalViews();
@@ -131,9 +137,17 @@ void renderer_DrawViews();
 
 void renderer_DrawWaypoints();
 
+void renderer_DrawCharacterCollider(void *collider);
+
 void renderer_DrawColliders();
 
 void renderer_DrawEntities();
+
+
+
+
+
+
 
 /*
 ==============================================================

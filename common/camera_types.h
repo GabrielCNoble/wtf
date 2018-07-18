@@ -15,7 +15,9 @@
 
 #define PACK_LIGHT_VIEW_CLUSTER_INDEXES(light_index, view_cluster_index) ((light_index<<7)|(view_cluster_index))
 #define UNPACK_LIGHT_VIEW_CLUSTER_INDEXES(light_index, view_cluster_index, packed_indexes) light_index=((packed_indexes>>7)&0x000003ff);	\
-																						   view_cluster_index=packed_indexes&0x0000007f;
+																							view_cluster_index=packed_indexes&0x0000007f;
+																							
+#define CAMERA_NAME_MAX_LEN 24																							
 
 enum CAMERA_FLAGS
 {

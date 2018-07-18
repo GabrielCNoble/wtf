@@ -33,7 +33,7 @@ float mouse_dy = 0.0;
 
 int text_buffer_in = 0;
 int text_buffer_out = 0;
-short text_buffer[TEXT_BUFFER_SIZE];
+int text_buffer[TEXT_BUFFER_SIZE];
 
 int b_text_input = 0;
 
@@ -390,7 +390,9 @@ void input_BufferTextInput()
 	//printf("buffer\n");
 	
 	/* flush buffer... */
-	text_buffer_out = text_buffer_in;
+	//text_buffer_out = text_buffer_in;
+	
+	text_buffer_out = 0;
 	
 	while(SDL_PollEvent(&kb_event))
 	{
@@ -553,33 +555,35 @@ void input_BufferTextInput()
 				break;
 			} 
 			
-			text_buffer[text_buffer_in] = key;
-			text_buffer_in = (text_buffer_in + 1) % TEXT_BUFFER_SIZE;
+			if(text_buffer_out == TEXT_BUFFER_SIZE - 1)
+			{
+				break;
+			}
+				
+			text_buffer[text_buffer_out] = key;
+			text_buffer_out++;
+			//text_buffer_in = (text_buffer_out + 1) % TEXT_BUFFER_SIZE;
 			
 		}
 		
-		/* buffer is full, bail out... */
-		if(text_buffer_in == (text_buffer_out + 1) % TEXT_BUFFER_SIZE)
-			break;
-		
-	}
-	
-	
-	
-	/*i = text_buffer_out;
-	c = text_buffer_in;*/
-	
-	
-	/*while(text_buffer_out != text_buffer_in)
-	{
-		printf("%c", text_buffer[text_buffer_out]);
-		text_buffer_out = (text_buffer_out + 1) % TEXT_BUFFER_SIZE;
-	}*/
-	
-	//printf("\n");
-	
-	
-		
+		text_buffer[text_buffer_out] = 0;		
+	}		
+}
+
+int *input_GetTextBuffer()
+{
+	return text_buffer;
+}
+
+void input_ClearTextBuffer()
+{
+	text_buffer[0] = 0;
+	text_buffer_out = 0;
+}
+
+char *input_GetKeyArray()
+{
+	return kb_keys;
 }
 
 int input_GetKeyPressed(int key)
@@ -604,16 +608,23 @@ int input_GetMouseButton(int button)
 	int i = 0;
 	switch(button)
 	{
-		case SDL_BUTTON_LEFT:
+		//case SDL_BUTTON_LEFT:
+		case MOUSE_BUTTON_LEFT:
 			i = bm_mouse & (MOUSE_LEFT_BUTTON_CLICKED | MOUSE_LEFT_BUTTON_JUST_CLICKED | MOUSE_LEFT_BUTTON_JUST_RELEASED);
 		break;
 		
-		case SDL_BUTTON_MIDDLE:
+		//case SDL_BUTTON_MIDDLE:
+		case MOUSE_BUTTON_MIDDLE:
 			i = bm_mouse & (MOUSE_MIDDLE_BUTTON_CLICKED | MOUSE_MIDDLE_BUTTON_JUST_CLICKED | MOUSE_MIDDLE_BUTTON_JUST_RELEASED);
 		break;
 		
-		case SDL_BUTTON_RIGHT:
+		//case SDL_BUTTON_RIGHT:
+		case MOUSE_BUTTON_RIGHT:
 			i = bm_mouse & (MOUSE_RIGHT_BUTTON_CLICKED | MOUSE_RIGHT_BUTTON_JUST_CLICKED | MOUSE_RIGHT_BUTTON_JUST_RELEASED);
+		break;
+		
+		case MOUSE_BUTTON_WHEEL:
+			i = bm_mouse & (MOUSE_WHEEL_UP | MOUSE_WHEEL_DOWN);
 		break;
 	}
 	

@@ -25,6 +25,7 @@
 #include "script.h"
 #include "navigation.h"
 #include "event.h"
+#include "resource_loader.h"
 
 
 

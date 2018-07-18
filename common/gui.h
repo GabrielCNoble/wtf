@@ -13,6 +13,8 @@
 #include "gui_surface.h"
 #include "gui_item_list.h"
 
+#include "gui_imgui.h"
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -101,6 +103,14 @@ void gui_LinkLeftEdge(widget_t *widget, widget_t *right_edge);
 void gui_LinkBottomEdge(widget_t *widget, widget_t *bottom_edge);
 
 linked_edge_t *gui_LinkEdges(widget_t *to_link, widget_t *link_to, int to_link_edge, int link_to_edge);
+
+
+
+
+
+void gui_DrawGUI();
+
+
 
 
 #ifdef __cplusplus

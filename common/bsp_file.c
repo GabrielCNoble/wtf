@@ -12,6 +12,7 @@
 
 void bsp_SaveBsp(char *file_name)
 {
+	#if 0
 	FILE *file;
 	bsp_header_t *header;
 	texture_section_header_t *texture_section;
@@ -63,6 +64,8 @@ void bsp_SaveBsp(char *file_name)
 	header->reserved13 = 0;
 	header->reserved14 = 0;
 	header->reserved15 = 0;
+	
+	#endif
 	
 }
 

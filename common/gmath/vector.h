@@ -17,6 +17,9 @@ extern "C"
 #endif
 
 
+#define vec3_t_c(x,y,z) ((vec3_t){x,y,z})
+
+
 vec2_t vec2(float x, float y);
 
 vec2_t add2(vec2_t vec1, vec2_t vec2);
@@ -29,7 +32,7 @@ vec2_t getmiddle2(vec2_t A, vec2_t B);
 
 vec2_t Vec3ToVec2(vec3_t vec_3);
 
-static inline vec3_t vec3(float x, float y, float z);
+//static inline vec3_t vec3(float x, float y, float z);
 
 static inline vec4_t vec4(float x, float y, float z, float w);
 

@@ -107,8 +107,11 @@ typedef int ImGuiInputTextFlags;    // flags: for InputText*()                  
 typedef int ImGuiSelectableFlags;   // flags: for Selectable()                  // enum ImGuiSelectableFlags_
 typedef int ImGuiTreeNodeFlags;     // flags: for TreeNode*(),CollapsingHeader()// enum ImGuiTreeNodeFlags_
 typedef int ImGuiWindowFlags;       // flags: for Begin*()                      // enum ImGuiWindowFlags_
+
+#ifdef __cplusplus
 typedef int (*ImGuiTextEditCallback)(ImGuiTextEditCallbackData *data);
 typedef void (*ImGuiSizeCallback)(ImGuiSizeCallbackData* data);
+#endif
 
 // Scalar data types
 typedef signed int          ImS32;  // 32-bit signed integer == int
@@ -121,6 +124,10 @@ typedef signed   long long  ImS64;  // 64-bit signed integer
 typedef unsigned long long  ImU64;  // 64-bit unsigned integer
 #endif
 
+
+#ifdef __cplusplus
+
+#ifndef GUI_MODULE_HACK
 // 2D vector (often used to store positions, sizes, etc.)
 struct ImVec2
 {
@@ -133,7 +140,16 @@ struct ImVec2
 #endif
 };
 
+#endif /* GUI_MODULE_HACK */
+
+#endif /* __cplusplus */
+
+
+#ifdef __cplusplus
 // 4D vector (often used to store floating-point colors)
+
+#ifndef GUI_MODULE_HACK
+
 struct ImVec4
 {
     float     x, y, z, w;
@@ -144,6 +160,12 @@ struct ImVec4
 #endif
 };
 
+#endif /* GUI_MODULE_HACK */
+
+#endif /* __cplusplus */
+
+
+#ifdef __cplusplus
 // Dear ImGui end-user API
 // (In a namespace so you can add extra functions in your own separate file. Please don't modify imgui.cpp/.h!)
 namespace ImGui
@@ -583,6 +605,7 @@ namespace ImGui
     IMGUI_API void          MemFree(void* ptr);
 
 } // namespace ImGui
+#endif
 
 // Flags for ImGui::Begin()
 enum ImGuiWindowFlags_
@@ -1009,6 +1032,8 @@ enum ImGuiCond_
 #endif
 };
 
+
+#ifdef __cplusplus
 // You may modify the ImGui::GetStyle() main instance during initialization and before NewFrame().
 // During the frame, use ImGui::PushStyleVar(ImGuiStyleVar_XXXX)/PopStyleVar() to alter the main style values, and ImGui::PushStyleColor(ImGuiCol_XXX)/PopStyleColor() for colors.
 struct ImGuiStyle
@@ -1047,7 +1072,10 @@ struct ImGuiStyle
     IMGUI_API ImGuiStyle();
     IMGUI_API void ScaleAllSizes(float scale_factor);
 };
+#endif
 
+
+#ifdef __cplusplus
 // This is where your app communicate with ImGui. Access via ImGui::GetIO().
 // Read 'Programmer guide' section in .cpp file for general usage.
 struct ImGuiIO
@@ -1168,7 +1196,11 @@ struct ImGuiIO
 
     IMGUI_API   ImGuiIO();
 };
+#endif
 
+
+
+#ifdef __cplusplus
 //-----------------------------------------------------------------------------
 // Obsolete functions (Will be removed! Read 'API BREAKING CHANGES' section in imgui.cpp for details)
 //-----------------------------------------------------------------------------
@@ -1205,10 +1237,15 @@ namespace ImGui
     static inline bool  CollapsingHeader(const char* label, const char* str_id, bool framed = true, bool default_open = false) { (void)str_id; (void)framed; ImGuiTreeNodeFlags default_open_flags = 1 << 5; return CollapsingHeader(label, (default_open ? default_open_flags : 0)); }
 }
 #endif
+#endif
 
 //-----------------------------------------------------------------------------
 // Helpers
 //-----------------------------------------------------------------------------
+
+
+#ifdef __cplusplus
+#if 1
 
 // Helper: Lightweight std::vector<> like class to avoid dragging dependencies (also: Windows implementation of STL with debug enabled is absurdly slow, so let's bypass it so our code runs fast in debug).
 // *Important* Our implementation does NOT call C++ constructors/destructors. This is intentional, we do not require it but you have to be mindful of that. Do _not_ use this class as a std::vector replacement in your code!
@@ -1275,6 +1312,12 @@ public:
     inline int          index_from_pointer(const_iterator it) const     { IM_ASSERT(it >= Data && it <= Data+Size); const ptrdiff_t off = it - Data; return (int)off; }
 };
 
+
+#endif
+#endif
+
+
+#ifdef __cplusplus
 // Helper: IM_NEW(), IM_PLACEMENT_NEW(), IM_DELETE() macros to call MemAlloc + Placement New, Placement Delete + MemFree
 // We call C++ constructor on own allocated memory via the placement "new(ptr) Type()" syntax.
 // Defining a custom placement new() with a dummy parameter allows us to bypass including <new> which on some platforms complains when user has disabled exceptions.
@@ -1284,7 +1327,11 @@ inline void  operator delete(void*, ImNewDummy, void*)   {} // This is only requ
 #define IM_PLACEMENT_NEW(_PTR)              new(ImNewDummy(), _PTR)
 #define IM_NEW(_TYPE)                       new(ImNewDummy(), ImGui::MemAlloc(sizeof(_TYPE))) _TYPE
 template<typename T> void IM_DELETE(T* p)   { if (p) { p->~T(); ImGui::MemFree(p); } }
+#endif
 
+
+
+#ifdef __cplusplus
 // Helper: Execute a block of code at maximum once a frame. Convenient if you want to quickly create an UI within deep-nested code that runs multiple times every frame.
 // Usage: static ImGuiOnceUponAFrame oaf; if (oaf) ImGui::Text("This will be called only once per frame");
 struct ImGuiOnceUponAFrame
@@ -1293,12 +1340,18 @@ struct ImGuiOnceUponAFrame
     mutable int RefFrame;
     operator bool() const { int current_frame = ImGui::GetFrameCount(); if (RefFrame == current_frame) return false; RefFrame = current_frame; return true; }
 };
+#endif
 
+
+#ifdef __cplusplus
 // Helper: Macro for ImGuiOnceUponAFrame. Attention: The macro expands into 2 statement so make sure you don't use it within e.g. an if() statement without curly braces.
 #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS    // Will obsolete
 #define IMGUI_ONCE_UPON_A_FRAME     static ImGuiOnceUponAFrame imgui_oaf; if (imgui_oaf)
 #endif
+#endif
 
+
+#ifdef __cplusplus
 // Helper: Parse and apply text filters. In format "aaaaa[,bbbb][,ccccc]"
 struct ImGuiTextFilter
 {
@@ -1330,6 +1383,11 @@ struct ImGuiTextFilter
     bool                IsActive() const { return !Filters.empty(); }
 };
 
+#endif
+
+
+
+#ifdef __cplusplus
 // Helper: Text buffer for logging/accumulating text
 struct ImGuiTextBuffer
 {
@@ -1347,7 +1405,11 @@ struct ImGuiTextBuffer
     IMGUI_API void      appendf(const char* fmt, ...) IM_FMTARGS(2);
     IMGUI_API void      appendfv(const char* fmt, va_list args) IM_FMTLIST(2);
 };
+#endif
 
+
+
+#ifdef __cplusplus
 // Helper: Simple Key->value storage
 // Typically you don't have to worry about this since a storage is held within each Window.
 // We use it to e.g. store collapse state for a tree (Int 0/1)
@@ -1397,6 +1459,12 @@ struct ImGuiStorage
     IMGUI_API void      BuildSortByKey();
 };
 
+#endif
+
+
+
+
+#ifdef __cplusplus
 // Shared state of InputText(), passed to callback when a ImGuiInputTextFlags_Callback* flag is used and the corresponding callback is triggered.
 struct ImGuiTextEditCallbackData
 {
@@ -1424,6 +1492,10 @@ struct ImGuiTextEditCallbackData
     IMGUI_API void    InsertChars(int pos, const char* text, const char* text_end = NULL);
     bool              HasSelection() const { return SelectionStart != SelectionEnd; }
 };
+#endif
+
+
+#ifdef __cplusplus
 
 // Resizing callback data to apply custom constraint. As enabled by SetNextWindowSizeConstraints(). Callback is called during the next Begin().
 // NB: For basic min/max size constraint on each axis you don't need to use the callback! The SetNextWindowSizeConstraints() parameters are enough.
@@ -1434,7 +1506,11 @@ struct ImGuiSizeCallbackData
     ImVec2  CurrentSize;    // Read-only.   Current window size.
     ImVec2  DesiredSize;    // Read-write.  Desired size, based on user's mouse position. Write to this field to restrain resizing.
 };
+#endif
 
+
+
+#ifdef __cplusplus
 // Data payload for Drag and Drop operations
 struct ImGuiPayload
 {
@@ -1456,6 +1532,7 @@ struct ImGuiPayload
     bool IsPreview() const                  { return Preview; }
     bool IsDelivery() const                 { return Delivery; }
 };
+#endif
 
 // Helpers macros to generate 32-bits encoded colors
 #ifdef IMGUI_USE_BGRA_PACKED_COLOR
@@ -1476,6 +1553,8 @@ struct ImGuiPayload
 #define IM_COL32_BLACK       IM_COL32(0,0,0,255)        // Opaque black
 #define IM_COL32_BLACK_TRANS IM_COL32(0,0,0,0)          // Transparent black = 0x00000000
 
+
+#ifdef __cplusplus
 // Helper: ImColor() implicity converts colors to either ImU32 (packed 4x1 byte) or ImVec4 (4x1 float)
 // Prefer using IM_COL32() macros if you want a guaranteed compile-time ImU32 for usage with ImDrawList API.
 // **Avoid storing ImColor! Store either u32 of ImVec4. This is not a full-featured color class. MAY OBSOLETE.
@@ -1496,7 +1575,11 @@ struct ImColor
     inline void    SetHSV(float h, float s, float v, float a = 1.0f){ ImGui::ColorConvertHSVtoRGB(h, s, v, Value.x, Value.y, Value.z); Value.w = a; }
     static ImColor HSV(float h, float s, float v, float a = 1.0f)   { float r,g,b; ImGui::ColorConvertHSVtoRGB(h, s, v, r, g, b); return ImColor(r,g,b,a); }
 };
+#endif
 
+
+
+#ifdef __cplusplus
 // Helper: Manually clip large list of items.
 // If you are submitting lots of evenly spaced items and you have a random access to the list, you can perform coarse clipping based on visibility to save yourself from processing those items at all.
 // The clipper calculates the range of visible items and advance the cursor to compensate for the non-visible items we have skipped.
@@ -1526,7 +1609,11 @@ struct ImGuiListClipper
     IMGUI_API void Begin(int items_count, float items_height = -1.0f);  // Automatically called by constructor if you passed 'items_count' or by Step() in Step 1.
     IMGUI_API void End();                                               // Automatically called on the last call of Step() that returns false.
 };
+#endif
 
+
+
+#ifdef __cplusplus
 //-----------------------------------------------------------------------------
 // Draw List
 // Hold a series of drawing commands. The user provides a renderer for ImDrawData which essentially contains an array of ImDrawList.
@@ -1537,7 +1624,10 @@ struct ImGuiListClipper
 // Draw callback may be useful for example, A) Change your GPU render state, B) render a complex 3D scene inside a UI element (without an intermediate texture/render target), etc.
 // The expected behavior from your rendering function is 'if (cmd.UserCallback != NULL) cmd.UserCallback(parent_list, cmd); else RenderTriangles()'
 typedef void (*ImDrawCallback)(const ImDrawList* parent_list, const ImDrawCmd* cmd);
+#endif
 
+
+#ifdef __cplusplus
 // Typically, 1 command = 1 GPU draw call (unless command is a callback)
 struct ImDrawCmd
 {
@@ -1549,12 +1639,14 @@ struct ImDrawCmd
 
     ImDrawCmd() { ElemCount = 0; ClipRect.x = ClipRect.y = ClipRect.z = ClipRect.w = 0.0f; TextureId = NULL; UserCallback = NULL; UserCallbackData = NULL; }
 };
+#endif
 
 // Vertex index (override with '#define ImDrawIdx unsigned int' inside in imconfig.h)
 #ifndef ImDrawIdx
 typedef unsigned short ImDrawIdx;
 #endif
 
+#ifdef __cplusplus
 // Vertex layout
 #ifndef IMGUI_OVERRIDE_DRAWVERT_STRUCT_LAYOUT
 struct ImDrawVert
@@ -1570,7 +1662,10 @@ struct ImDrawVert
 // NOTE: IMGUI DOESN'T CLEAR THE STRUCTURE AND DOESN'T CALL A CONSTRUCTOR SO ANY CUSTOM FIELD WILL BE UNINITIALIZED. IF YOU ADD EXTRA FIELDS (SUCH AS A 'Z' COORDINATES) YOU WILL NEED TO CLEAR THEM DURING RENDER OR TO IGNORE THEM.
 IMGUI_OVERRIDE_DRAWVERT_STRUCT_LAYOUT;
 #endif
+#endif
 
+
+#ifdef __cplusplus
 // Draw channels are used by the Columns API to "split" the render list into different channels while building, so items of each column can be batched together.
 // You can also use them to simulate drawing layers and submit primitives in a different order than how they will be rendered.
 struct ImDrawChannel
@@ -1578,6 +1673,7 @@ struct ImDrawChannel
     ImVector<ImDrawCmd>     CmdBuffer;
     ImVector<ImDrawIdx>     IdxBuffer;
 };
+#endif
 
 enum ImDrawCornerFlags_
 {
@@ -1598,6 +1694,8 @@ enum ImDrawListFlags_
     ImDrawListFlags_AntiAliasedFill  = 1 << 1
 };
 
+
+#ifdef __cplusplus
 // Draw command list
 // This is the low-level list of polygons that ImGui functions are filling. At the end of the frame, all command lists are passed to your ImGuiIO::RenderDrawListFn function for rendering.
 // Each ImGui window contains its own ImDrawList. You can use ImGui::GetWindowDrawList() to access the current window draw list and draw custom primitives.
@@ -1693,7 +1791,11 @@ struct ImDrawList
     IMGUI_API void  UpdateClipRect();
     IMGUI_API void  UpdateTextureID();
 };
+#endif
 
+
+
+#ifdef __cplusplus
 // All draw data to render an ImGui frame
 // (NB: the style and the naming convention here is a little inconsistent but we preserve them for backward compatibility purpose)
 struct ImDrawData
@@ -1713,7 +1815,10 @@ struct ImDrawData
     IMGUI_API void  DeIndexAllBuffers();                // Helper to convert all buffers from indexed to non-indexed, in case you cannot render indexed. Note: this is slow and most likely a waste of resources. Always prefer indexed rendering!
     IMGUI_API void  ScaleClipRects(const ImVec2& sc);   // Helper to scale the ClipRect field of each ImDrawCmd. Use if your final output buffer is at a different scale than ImGui expects, or if there is a difference between your window resolution and framebuffer resolution.
 };
+#endif
 
+
+#ifdef __cplusplus
 struct ImFontConfig
 {
     void*           FontData;               //          // TTF/OTF data
@@ -1739,7 +1844,10 @@ struct ImFontConfig
 
     IMGUI_API ImFontConfig();
 };
+#endif
 
+
+#ifdef __cplusplus
 struct ImFontGlyph
 {
     ImWchar         Codepoint;          // 0x0000..0xFFFF
@@ -1747,6 +1855,7 @@ struct ImFontGlyph
     float           X0, Y0, X1, Y1;     // Glyph corners
     float           U0, V0, U1, V1;     // Texture coordinates
 };
+#endif
 
 enum ImFontAtlasFlags_
 {
@@ -1754,6 +1863,9 @@ enum ImFontAtlasFlags_
     ImFontAtlasFlags_NoMouseCursors     = 1 << 1    // Don't build software mouse cursors into the atlas
 };
 
+
+
+#ifdef __cplusplus
 // Load and rasterize multiple TTF/OTF fonts into a same texture.
 // Sharing a texture for multiple fonts allows us to reduce the number of draw calls during rendering.
 // We also add custom graphic data into the texture that serves for ImGui.
@@ -1863,7 +1975,10 @@ struct ImFontAtlas
     ImVector<ImFontConfig>      ConfigData;         // Internal data
     int                         CustomRectIds[1];   // Identifiers of custom texture rectangle used by ImFontAtlas/ImDrawList
 };
+#endif
 
+
+#ifdef __cplusplus
 // Font runtime data and rendering
 // ImFontAtlas automatically loads a default embedded font for you when you call GetTexDataAsAlpha8() or GetTexDataAsRGBA32().
 struct ImFont
@@ -1915,6 +2030,8 @@ struct ImFont
     typedef ImFontGlyph Glyph; // OBSOLETE 1.52+
 #endif
 };
+
+#endif
 
 #if defined(__clang__)
 #pragma clang diagnostic pop

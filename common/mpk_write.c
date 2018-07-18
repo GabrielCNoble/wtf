@@ -987,7 +987,7 @@ void mpk_write(char *output_name, vertex_t *vertices, int vertice_count, mpk_ver
 	if(vertice_count)
 	{
 		file_size = sizeof(mpk_header_t) + sizeof(mpk_vertex_record_t) * vertex_record_count + sizeof(vertex_t) * vertice_count;
-		file_buffer = malloc(file_size);
+		file_buffer = calloc(file_size, 1);
 		
 		out = file_buffer;
 		

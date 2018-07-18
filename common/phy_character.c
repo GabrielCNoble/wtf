@@ -2,6 +2,9 @@
 #include "physics.h"
 #include "r_debug.h"
 
+extern "C++"
+{
+
 #include "btBulletCollisionCommon.h"
 #include "btBulletDynamicsCommon.h"
 #include "BulletCollision/CollisionShapes/btCollisionShape.h"
@@ -16,6 +19,8 @@ extern btCollisionObject *world_collision_object;
 extern btCollisionDispatcher *narrow_phase;
 extern btBvhTriangleMeshShape *world_collision_mesh;
 extern btTriangleMesh *world_triangles;
+
+}
 
 #ifdef __cplusplus
 extern "C"
@@ -124,9 +129,9 @@ struct AllConvexResultCallback : public btCollisionWorld::ConvexResultCallback
 
 
 
-void physics_Jump(int character_collider_index, float jump_force)
+void physics_Jump(struct collider_handle_t character_collider, float jump_force)
 {
-	collider_t *collider;
+	struct collider_t *collider;
 	btRigidBody *rigid_body;
 	
 	if(!world_collision_object)
@@ -136,7 +141,7 @@ void physics_Jump(int character_collider_index, float jump_force)
 		return;
 	}
 	
-	collider = physics_GetColliderPointerIndex(character_collider_index);
+	collider = physics_GetColliderPointerHandle(character_collider);
 	
 	if(collider->type != COLLIDER_TYPE_CHARACTER_COLLIDER)
 	{
@@ -151,9 +156,9 @@ void physics_Jump(int character_collider_index, float jump_force)
 	}
 }
 
-void physics_Move(int character_collider_index, vec3_t direction)
+void physics_Move(struct collider_handle_t character_collider, vec3_t direction)
 {
-	collider_t *collider;
+	struct collider_t *collider;
 	btRigidBody *rigid_body;
 	
 	if(!world_collision_object)
@@ -163,28 +168,36 @@ void physics_Move(int character_collider_index, vec3_t direction)
 		return;
 	}
 	
-	collider = physics_GetColliderPointerIndex(character_collider_index);
+	collider = physics_GetColliderPointerHandle(character_collider);
 	
 	if(collider->type != COLLIDER_TYPE_CHARACTER_COLLIDER)
 	{
 		return;
 	}
 	
-	rigid_body = (btRigidBody *)collider->rigid_body;
-	rigid_body->activate(true);
-	rigid_body->applyCentralForce(btVector3(direction.x, 0.0, direction.z));	
+	if(direction.x != 0.0 && direction.z != 0.0)
+	{
+		collider->character_collider_flags |= CHARACTER_COLLIDER_FLAG_WALKING;
+		rigid_body = (btRigidBody *)collider->rigid_body;
+		rigid_body->activate(true);
+		rigid_body->applyCentralForce(btVector3(direction.x, 0.0, direction.z));
+	}
+	
+		
 }
 
-void physics_UpdateCharacterCollider(int character_collider_index)
+void physics_UpdateCharacterCollider(struct collider_handle_t character_collider)
 {
 	
-	collider_t *collider;
+	struct collider_t *collider;
 	btRigidBody *rigid_body;
 	btCapsuleShape *capsule;
 	btTransform transform_from;
 	btTransform transform_to;
 	btVector3 from;
 	btVector3 to;
+	
+	struct collider_handle_t handle;
 	
 	int persistent_manifolds_count;
 	btPersistentManifold **persistent_manifolds;
@@ -232,6 +245,7 @@ void physics_UpdateCharacterCollider(int character_collider_index)
 	int index_stride;
 	int *indexes;
 	
+	float horizontal_delta;
 	
 	float stop_force_weight;
 	float gravity_proj;
@@ -250,12 +264,23 @@ void physics_UpdateCharacterCollider(int character_collider_index)
 		return;
 	}
 	
-	collider = physics_GetColliderPointerIndex(character_collider_index);
+	/*handle.index = character_collider_index;
+	handle.type = COLLIDER_TYPE_CHARACTER_COLLIDER;
+	
+	collider = physics_GetColliderPointerHandle(handle);
 	
 	if(collider->type != COLLIDER_TYPE_CHARACTER_COLLIDER)
 	{
 		return;
+	}*/
+	
+	if(character_collider.type != COLLIDER_TYPE_CHARACTER_COLLIDER)
+	{
+		return;
 	}
+	
+	
+	collider = physics_GetColliderPointerHandle(character_collider);
 	
 	rigid_body = (btRigidBody *)collider->rigid_body;
 	capsule = (btCapsuleShape *)rigid_body->getCollisionShape();
@@ -413,8 +438,8 @@ void physics_UpdateCharacterCollider(int character_collider_index)
 					dist = collider->position.y - hit_point_y;
 					hit_time = (1.0 - (dist / bottom_hit_dist));
 					
-					renderer_DrawPoint(point, vec3(0.0, 1.0, 0.0), 8.0, 1, 0, 1);
-					renderer_DrawLine(point, vec3(point.x + contact_point.m_normalWorldOnB[0], point.y + contact_point.m_normalWorldOnB[1], point.z + contact_point.m_normalWorldOnB[2]), vec3(1.0, 1.0, 0.0), 1.0, 1);
+					renderer_DrawPoint(point, vec3_t_c(0.0, 1.0, 0.0), 8.0, 1, 0, 1);
+					renderer_DrawLine(point, vec3_t_c(point.x + contact_point.m_normalWorldOnB[0], point.y + contact_point.m_normalWorldOnB[1], point.z + contact_point.m_normalWorldOnB[2]), vec3_t_c(1.0, 1.0, 0.0), 1.0, 1);
 					
 					
 					if(hit_time <= 1.0 && hit_time >= 0.0)
@@ -461,8 +486,6 @@ void physics_UpdateCharacterCollider(int character_collider_index)
 				}
 				
 			}
-			
-		
 		}
 		
 	}
@@ -477,9 +500,39 @@ void physics_UpdateCharacterCollider(int character_collider_index)
 		gravity_on_plane = gravity_on_plane - smallest_hit_normal * gravity_proj;
 
 		rigid_body->applyCentralForce(gravity_on_plane);
+	} 
+	
+	if(collider->character_collider_flags & CHARACTER_COLLIDER_FLAG_WALKING)
+	{
+		linear_velocity = rigid_body->getLinearVelocity();
+		
+		horizontal_delta = sqrt(linear_velocity[0] * linear_velocity[0] + linear_velocity[2] * linear_velocity[2]);
+		
+		if(horizontal_delta > MAX_HORIZONTAL_DELTA)
+		{
+			horizontal_delta = MAX_HORIZONTAL_DELTA / horizontal_delta;
+			
+			linear_velocity[0] *= horizontal_delta;
+			linear_velocity[2] *= horizontal_delta;
+			
+			rigid_body->setLinearVelocity(linear_velocity);
+		}
+		
+	}
+	else 
+	{
+		//if(collider->character_collider_flags & CHARACTER_COLLIDER_FLAG_ON_GROUND)
+		{
+			linear_velocity = rigid_body->getLinearVelocity();
+			linear_velocity[0] *= 4.0;
+			linear_velocity[1] = 0.0;
+			linear_velocity[2] *= 4.0;
+			rigid_body->applyCentralForce(-linear_velocity);
+			//rigid_body->setLinearVelocity(linear_velocity);
+		}
 	}
 	
-	
+	collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_WALKING;
 	
 	world_collision_mesh->getMeshInterface()->unLockVertexBase(0);	
 }
@@ -491,5 +544,7 @@ void physics_UpdateCharacterCollider(int character_collider_index)
 
 
 #ifdef __cplusplus
+}
+}
 }
 #endif

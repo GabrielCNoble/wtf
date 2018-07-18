@@ -94,6 +94,7 @@ enum WIDGET_TYPES
 	WIDGET_TEXT_FIELD,
 	WIDGET_SURFACE,
 	WIDGET_ITEM_LIST,
+	WIDGET_ITEM_TREE,
 	WIDGET_LAST,
 };
 
@@ -169,6 +170,9 @@ enum ITEM_LIST_FLAGS
 	ITEM_LIST_NAME_JUSTIFY_TOP = 1 << 7,
 	ITEM_LIST_DOUBLE_CLICK_SELECTION = 1 << 8,
 };
+
+
+
 
 
 
@@ -426,14 +430,14 @@ typedef struct
 
 typedef struct
 {
-	widget_t *widget;
+	widget_t widget;
 	
 	int flags;
 	
 	short x_offset;
 	short y_offset;
 	
-}tree_t;
+}item_tree_t;
 
 
 #endif

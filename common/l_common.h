@@ -31,7 +31,7 @@
 #define LIGHT_RADIUS(radius) (LIGHT_MIN_RADIUS+(LIGHT_MAX_RADIUS-LIGHT_MIN_RADIUS)*((float)((unsigned short)radius)/(float)0xffff))
 #define LIGHT_ENERGY(energy) (LIGHT_MIN_ENERGY+(LIGHT_MAX_ENERGY-LIGHT_MIN_ENERGY)*((float)((unsigned short)energy)/(float)0xffff))
 
-#define SET_LIGHT_RADIUS(radius) ((unsigned short)(0xffff * (radius / (LIGHT_MAX_RADIUS - LIGHT_MIN_RADIUS))))
+#define SET_LIGHT_RADIUS(radius) ((unsigned short)(0xffff * (radius / (LIGHT_MAX_RADIUS + LIGHT_MIN_RADIUS))))
 #define SET_LIGHT_ENERGY(energy) ((unsigned short)(0xffff * (energy / LIGHT_MAX_ENERGY)))
 
 #define PACK_CLUSTER_INDEXES(x, y, z) ((z<<24)|(x<<16)|(y))

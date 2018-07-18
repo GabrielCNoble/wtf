@@ -2,11 +2,14 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "matrix.h"
+
 #include "gpu.h"
 #include "particle.h"
 #include "memory.h"
 
 #include "script.h"
+#include "stack_list.h"
 
 
 
@@ -17,12 +20,13 @@ int ps_particle_system_defs_stack_top = -1;
 int *ps_particle_system_defs_stack = NULL;
 
 
+struct stack_list_t ps_particle_systems;
 
-int ps_particle_system_count = 0;
-int ps_max_particle_systems = 0;
-particle_system_t *ps_particle_systems = NULL;
-int ps_particle_systems_stack_top = -1;
-int *ps_particle_systems_stack = NULL;
+//int ps_particle_system_count = 0;
+//int ps_max_particle_systems = 0;
+//particle_system_t *ps_particle_systems = NULL;
+//int ps_particle_systems_stack_top = -1;
+//int *ps_particle_systems_stack = NULL;
  
 int ps_particle_quad_handle;
 int ps_particle_quad_start;
@@ -40,6 +44,23 @@ extern "C"
 {
 #endif
 
+
+void particle_DisposeParticleSystemCallback(void *particle_system)
+{
+	struct particle_system_t *ps;
+	
+	ps = (struct particle_system_t *)particle_system;
+	
+	if(ps->particles)
+	{
+		memory_Free(ps->particles);
+		memory_Free(ps->particle_frames);
+		memory_Free(ps->particle_positions);
+	}
+	
+}
+
+
 int particle_Init()
 {
 	int i;
@@ -55,9 +76,11 @@ int particle_Init()
 		ps_particle_system_defs[i].name = NULL;
 	}
 	
-	ps_max_particle_systems = 512;
-	ps_particle_systems = memory_Malloc(sizeof(particle_system_t) * ps_max_particle_systems, "particle_Init");
-	ps_particle_systems_stack = memory_Malloc(sizeof(int) * ps_max_particle_systems, "particle_Init");
+	//ps_max_particle_systems = 512;
+	//ps_particle_systems = memory_Malloc(sizeof(particle_system_t) * ps_max_particle_systems, "particle_Init");
+	//ps_particle_systems_stack = memory_Malloc(sizeof(int) * ps_max_particle_systems, "particle_Init");
+	
+	ps_particle_systems = stack_list_create(sizeof(struct particle_system_t), 512, particle_DisposeParticleSystemCallback);
 	
 	ps_particle_quad_handle = gpu_AllocAlign(sizeof(vec4_t) * 4, sizeof(vec4_t), 0);
 	ps_particle_quad_start = gpu_GetAllocStart(ps_particle_quad_handle) / sizeof(vec4_t);
@@ -104,8 +127,10 @@ void particle_Finish()
 	memory_Free(ps_particle_system_defs);
 	memory_Free(ps_particle_system_defs_stack);
 	
-	memory_Free(ps_particle_systems);
-	memory_Free(ps_particle_systems_stack);
+	stack_list_destroy(&ps_particle_systems);
+	
+	//memory_Free(ps_particle_systems);
+	//memory_Free(ps_particle_systems_stack);
 }
 
 /*
@@ -171,6 +196,7 @@ int particle_CreateParticleSystemDef(char *name, short max_particles, short max_
 	def->respawn_time = respawn_time;
 	def->texture = texture;
 	def->script = script;
+	def->flags = flags;
 	def->name = memory_Strdup(name, "particle_CreateParticleSystemDef");
 	
 	return def_index;
@@ -216,6 +242,21 @@ particle_system_def_t *particle_GetParticleSystemDefPointerName(char *particle_d
 	return NULL;
 }
 
+int particle_GetParticleSystemDef(char *def_name)
+{
+	int i;
+	
+	for(i = 0; i < ps_particle_system_defs_count; i++)
+	{
+		if(!strcmp(ps_particle_system_defs[i].name, def_name))
+		{
+			return i;
+		}
+	}
+	
+	return -1;
+}
+
 
 /*
 ===========================================================================================
@@ -227,7 +268,7 @@ particle_system_def_t *particle_GetParticleSystemDefPointerName(char *particle_d
 int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientation, int particle_system_def)
 {
 	particle_system_def_t *def;
-	particle_system_t *ps;
+	struct particle_system_t *ps;
 	int ps_index;
 	
 	
@@ -240,7 +281,10 @@ int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientat
 	}
 	
 	
-	if(ps_particle_systems_stack_top >= 0)
+	ps_index = stack_list_add(&ps_particle_systems, NULL);
+	
+	
+	/*if(ps_particle_systems_stack_top >= 0)
 	{
 		ps_index = ps_particle_systems_stack[ps_particle_systems_stack_top];
 		ps_particle_systems_stack_top--;
@@ -261,13 +305,41 @@ int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientat
 			ps_particle_systems = ps;
 			ps_max_particle_systems += 64;
 		}
-	}
+	}*/
 	
 	
-	ps = ps_particle_systems + ps_index;
+	//ps = ps_particle_systems + ps_index;
+	//ps = particle_GetParticleSystemPointer(ps_index);
+	ps = stack_list_get(&ps_particle_systems, ps_index);
 	ps->def = particle_system_def;
 	
 	ps->flags = def->flags | PARTICLE_SYSTEM_FLAG_JUST_SPAWNED;
+	
+	
+	if(!ps->particles)
+	{
+		ps->particles = memory_Malloc(sizeof(particle_t) * def->max_particles, "particle_SpawnParticleSystem");
+		ps->particle_positions = memory_Malloc(sizeof(vec4_t) * def->max_particles, "particle_SpawnParticleSystem");
+		ps->particle_frames = memory_Malloc(sizeof(int) * def->max_particles, "particle_SpawnParticleSystem");
+	}
+	else
+	{
+		if(ps->max_particles < def->max_particles)
+		{
+			memory_Free(ps->particles);
+			memory_Free(ps->particle_positions);
+			memory_Free(ps->particle_frames);
+			
+			ps->particles = memory_Malloc(sizeof(particle_t) * ps->max_particles, "particle_SpawnParticleSystem");
+			ps->particle_positions = memory_Malloc(sizeof(vec4_t) * ps->max_particles, "particle_SpawnParticleSystem");
+			ps->particle_frames = memory_Malloc(sizeof(int) * ps->max_particles, "particle_SpawnParticleSystem");
+		}
+		
+		
+	}
+	
+	
+	
 	
 	//ps->max_frame = def->max_frame;
 	ps->max_frame = 1;
@@ -278,7 +350,17 @@ int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientat
 	ps->particle_count = 0;
 	ps->position = position;
 	ps->scale = scale;
-	ps->orientation = *orientation;
+	
+	if(!orientation)
+	{
+		ps->orientation = mat3_t_id();
+	}
+	else
+	{
+		ps->orientation = *orientation;
+	}
+	
+	
 	ps->script = def->script;
 	ps->spawn_frame = ps_frame;
 	
@@ -286,15 +368,72 @@ int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientat
 	
 	/* particle system spawing is supposed to be a fast operation, and 
 	malloc is everything but fast... */
-	ps->particles = memory_Malloc(sizeof(particle_t) * ps->max_particles, "particle_SpawnParticleSystem");
-	ps->particle_positions = memory_Malloc(sizeof(vec4_t) * ps->max_particles, "particle_SpawnParticleSystem");
-	ps->particle_frames = memory_Malloc(sizeof(int) * ps->max_particles, "particle_SpawnParticleSystem");
+	
+	
 	//ps->particle_velocities = memory_Malloc(sizeof(vec3_t) * ps->max_particles, "particle_SpawnParticleSystem");
 	
 }
 
 void particle_RemoveParticleSystem(int particle_system)
 {
+	struct particle_system_t *ps;
+	
+	ps = particle_GetParticleSystemPointer(particle_system);
+	
+	if(ps)
+	{
+		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_INVALID))
+		{
+			ps->flags |= PARTICLE_SYSTEM_FLAG_MARKED_INVALID;
+		}
+	}
+	
+	/*if(particle_system >= 0 && particle_system < ps_particle_systems.element_count)
+	{
+		ps = (particle_system_t *)ps_particle_systems.elements + particle_system_index;
+		
+		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_INVALID))
+		{
+			ps->flags |= PARTICLE_SYSTEM_FLAG_MARKED_INVALID;
+		}
+	}*/
+	
+}
+
+void particle_DeallocParticleSystem(int particle_system)
+{
+	struct particle_system_t *ps;
+	
+	ps = particle_GetParticleSystemPointer(particle_system);
+	
+	if(ps)
+	{
+		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_INVALID))
+		{
+			ps->flags &= ~PARTICLE_SYSTEM_FLAG_MARKED_INVALID;
+			ps->flags |= PARTICLE_SYSTEM_FLAG_INVALID;
+			
+			stack_list_remove(&ps_particle_systems, particle_system);
+		}
+	}
+}
+
+
+struct particle_system_t *particle_GetParticleSystemPointer(int particle_system)
+{
+	struct particle_system_t *ps;
+	
+	if(particle_system >= 0 && particle_system < ps_particle_systems.element_count)
+	{
+		ps = (struct particle_system_t *)ps_particle_systems.elements + particle_system;
+		
+		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_INVALID))
+		{
+			return ps;
+		}
+	}
+	
+	return NULL;
 	
 }
 
@@ -309,6 +448,7 @@ void particle_RemoveParticleSystem(int particle_system)
 void particle_UpdateParticleSystems(double delta_time)
 {
 	int i;
+	int c;
 	int j;
 	int k;
 	int particle_count;
@@ -318,8 +458,8 @@ void particle_UpdateParticleSystems(double delta_time)
 	
 	int elapsed_frames = 0;
 	
-	particle_system_t *ps;
-	
+	struct particle_system_t *ps;
+	struct particle_system_t *particle_systems;
 	//elapsed_frames = (int)(delta_time / PS_FRAME_TIME);
 	
 	ps_elapsed += delta_time;
@@ -337,73 +477,85 @@ void particle_UpdateParticleSystems(double delta_time)
 	
 	ps_frame += elapsed_frames;
 	
-	//for(; elapsed_frames > 0; elapsed_frames--)
-	//{
-	for(i = 0; i < ps_particle_system_count; i++)
+	particle_systems = (struct particle_system_t *)ps_particle_systems.elements;
+	c = ps_particle_systems.element_count;
+	for(i = 0; i < c; i++)
 	{
-		if(ps_particle_systems[i].flags & PARTICLE_SYSTEM_FLAG_INVALID)
+		if(particle_systems[i].flags & PARTICLE_SYSTEM_FLAG_INVALID)
 		{
 			continue;
 		}
-			
-		ps = ps_particle_systems + i;
+					
+		ps = particle_systems + i;
 			
 		
-		if(ps->respawn_time)
+		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_MARKED_INVALID))
 		{
-			/* how many times we went over the respawn
-			threshold since last update... */	
-			
-			ps->respawn_countdown += elapsed_frames;
-			spawn_particle_count = ps->respawn_countdown;
-			
-			spawn_particle_count /= ps->respawn_time;
-			ps->respawn_countdown %= ps->respawn_time;
+			if(ps->respawn_time)
+			{
+				/* how many times we went over the respawn
+				threshold since last update... */	
+				
+				ps->respawn_countdown += elapsed_frames;
+				spawn_particle_count = ps->respawn_countdown;
+				
+				spawn_particle_count /= ps->respawn_time;
+				ps->respawn_countdown %= ps->respawn_time;
+				
+				//current_respawn_countdown = ps->respawn_countdown;
+			}
+			else
+			{
+				ps->respawn_countdown = 0;
+				spawn_particle_count = ps->max_particles;
+			}
 			
 			//current_respawn_countdown = ps->respawn_countdown;
+			
+				
+			if(spawn_particle_count)
+			{	
+				for(k = spawn_particle_count; k > 0; k--)
+				{
+					if(ps->particle_count >= ps->max_particles)
+					{
+						break;
+					}
+					
+					/* each particle created starts with life == 0, and it gets
+					incremented each 16.66 ms. If more time than that has passed
+					since last time we checked, we need to account for that when 
+					creating new particles... */
+					particle_life = ps->respawn_time * (k - 1) + ps->respawn_countdown;
+					
+					if(particle_life >= ps->max_life)
+					{
+						/* don't bother creating a particle
+						we know will be deleted in the next
+						loop... */
+						continue;
+					}
+					
+					ps->particles[ps->particle_count].life = particle_life;
+							
+					ps->particle_positions[ps->particle_count].x = ps->position.x;
+					ps->particle_positions[ps->particle_count].y = ps->position.y;
+					ps->particle_positions[ps->particle_count].z = ps->position.z;
+					ps->particle_positions[ps->particle_count].w = 1.0;
+					ps->particle_frames[ps->particle_count] = 0;		
+					ps->particle_count++;
+				}
+			}
 		}
 		else
 		{
-			ps->respawn_countdown = 0;
-			spawn_particle_count = ps->max_particles;
-		}
-		
-		//current_respawn_countdown = ps->respawn_countdown;
-		
-			
-		if(spawn_particle_count)
-		{	
-			for(k = spawn_particle_count; k > 0; k--)
+			if(!particle_systems[i].particle_count)
 			{
-				if(ps->particle_count >= ps->max_particles)
-				{
-					break;
-				}
-				
-				/* each particle created starts with life == 0, and it gets
-				incremented each 16.66 ms. If more time than that has passed
-				since last time we checked, we need to account for that when 
-				creating new particles... */
-				particle_life = ps->respawn_time * (k - 1) + ps->respawn_countdown;
-				
-				if(particle_life >= ps->max_life)
-				{
-					/* don't bother creating a particle
-					we know will be deleted in the next
-					loop... */
-					continue;
-				}
-				
-				ps->particles[ps->particle_count].life = particle_life;
-						
-				ps->particle_positions[ps->particle_count].x = ps->position.x;
-				ps->particle_positions[ps->particle_count].y = ps->position.y;
-				ps->particle_positions[ps->particle_count].z = ps->position.z;
-				ps->particle_positions[ps->particle_count].w = 0.1;
-				ps->particle_frames[ps->particle_count] = 0;		
-				ps->particle_count++;
+				particle_DeallocParticleSystem(i);
+				continue;
 			}
 		}
+		
 
 			 
 		//ps->respawn_countdown++;			
@@ -432,10 +584,10 @@ void particle_UpdateParticleSystems(double delta_time)
 			
 			/* NOTE: this can lock up the engine if too many frames passes
 			without update... */
-			for(j = 0; j < elapsed_frames; j++)
+			//for(j = 0; j < elapsed_frames; j++)
 			{
 				//script_ExecuteScriptImediate(ps->script, ps, particle_SetupParticleScriptCallback);
-				script_ExecuteScriptImediate((struct script_t *)ps->script, ps);
+				script_ExecuteScriptImediate((struct script_t *)ps->script, (void *)i);
 			}
 		}
 		
@@ -453,16 +605,25 @@ void particle_UpdateParticleSystems(double delta_time)
 ===========================================================================================
 */
 
+
+int ps_current_particle_system;
+
 void *particle_SetupScriptDataCallback(struct script_t *script, void *particle_system)
 {
 	struct particle_system_script_t *ps_script = (struct particle_system_script_t *)script;
-	particle_system_t *ps = (particle_system_t *)particle_system;
+	//struct particle_system_t *ps = (struct particle_system_t *)particle_system;
+	struct particle_system_t *ps;
 	void *entry_point = NULL;
+	
+	ps = stack_list_get(&ps_particle_systems, (int)particle_system);
+	ps_current_particle_system = (int)particle_system;
 				
-	((script_generic_array_t *)ps_script->particle_array)->buffer = ps->particles;
-	((script_generic_array_t *)ps_script->particle_frame_array)->buffer = ps->particle_frames;
-	((script_generic_array_t *)ps_script->particle_position_array)->buffer = ps->particle_positions;
-	*((particle_system_t **)ps_script->particle_system) = ps;
+	((struct script_array_t *)ps_script->particle_array)->buffer = ps->particles;
+	((struct script_array_t *)ps_script->particle_frame_array)->buffer = ps->particle_frames;
+	((struct script_array_t *)ps_script->particle_position_array)->buffer = ps->particle_positions;
+	*((struct particle_system_t **)ps_script->particle_system) = ps;
+	
+	
 				
 	if(ps->flags & PARTICLE_SYSTEM_FLAG_JUST_SPAWNED)
 	{

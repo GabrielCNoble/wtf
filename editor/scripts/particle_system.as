@@ -10,9 +10,9 @@ particle_system_t @ps_particle_system;
 
 void ps_init()
 {
-	ps_particle_system.max_particles = 360;
-	ps_particle_system.respawn_time = 1;
-	ps_particle_system.max_life = 360;
+	//ps_particle_system.max_particles = 360;
+	//ps_particle_system.respawn_time = 1;
+	//ps_particle_system.max_life = 360;
 }
 
 void main()
@@ -50,4 +50,10 @@ void main()
 		ps_particles[i].velocity.x *= 0.95;
 		ps_particles[i].velocity.z *= 0.95;
 	}
+	
+	if(particle_GetLife() > 30)
+	{
+		particle_Die();
+	}
+	
 }

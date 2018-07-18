@@ -87,6 +87,7 @@ void engine_Init(int width, int height, int init_mode, int argc, char *argv[])
 	
 	b_init_properly = 1;
 	
+	b_init_properly &= resource_Init();
 	b_init_properly &= renderer_Init(width, height, init_mode);
 	b_init_properly &= shader_Init();
 	b_init_properly &= script_Init();
@@ -100,7 +101,7 @@ void engine_Init(int width, int height, int init_mode, int argc, char *argv[])
 	b_init_properly &= world_Init();
 	b_init_properly &= camera_Init();
 	b_init_properly &= sound_Init();
-	b_init_properly &= player_Init();
+	//b_init_properly &= player_Init();
 	b_init_properly &= gui_Init();
 	b_init_properly &= physics_Init();
 	b_init_properly &= material_Init();
@@ -108,7 +109,7 @@ void engine_Init(int width, int height, int init_mode, int argc, char *argv[])
 	b_init_properly &= font_Init();
 	b_init_properly &= navigation_Init();
 	b_init_properly &= bsp_Init();
-	b_init_properly &= portal_Init();
+	//b_init_properly &= portal_Init();
 	memory_CheckCorrupted();
 	
 	if(b_init_properly)
@@ -141,7 +142,7 @@ void engine_Finish()
 	{
 		
 		memory_CheckCorrupted();
-		portal_Finish();
+		//portal_Finish();
 		shader_Finish();
 		navigation_Finish();
 		material_Finish();
@@ -157,12 +158,13 @@ void engine_Finish()
 		entity_Finish();
 		gui_Finish();
 		bsp_Finish();
-		player_Finish();
+		//player_Finish();
 		script_Finish();
 		font_Finish();
 		physics_Finish();
 		gpu_Finish();
 		renderer_Finish();
+		resource_Finish();
 		log_LogMessage(LOG_MESSAGE_NOTIFY, "Massacre engine finished properly!");
 	}
 
@@ -214,31 +216,33 @@ void engine_MainLoop()
 		
 		renderer_OpenFrame();
 		input_GetInput(delta_time);
-		gui_ProcessGUI();
+		//gui_ProcessGUI();
 		
-		//gui_OpenGuiFrame();
+		gui_OpenGuiFrame();
 		
 		if(engine_GameMain)
 		{
 			engine_GameMain(delta_time);
 		}
 		
-		//gui_CloseGuiFrame();
+		/*gui_ImGuiSetNextWindowPos(vec2(0.0, 0.0), ImGuiCond_Once, vec2(0.0, 0.0));
+		gui_ImGuiBegin("test", NULL, 0);
+		gui_ImGuiEnd();*/
+		
 		
 		if(engine_state & ENGINE_PLAYING)
 		{
-		//	player_ProcessActivePlayer(delta_time);
-			//player_UpdateActivePlayer(delta_time);
-		//	player_ProcessAI(delta_time);
-		//	player_UpdatePlayers(delta_time);
-			entity_UpdateScriptControllerComponents();
+			entity_UpdateScriptComponents();
 			physics_ProcessCollisions(delta_time);
-		//	player_PostUpdatePlayers(delta_time);
 		} 
 
-		sound_ProcessSound();
 		entity_UpdateTransformComponents();
 		entity_UpdateCameraComponents();
+		
+		script_ExecuteScripts(delta_time);
+		
+		
+		sound_ProcessSound();
 		particle_UpdateParticleSystems(delta_time);
 		
 		world_MarkLightsOnLeaves();
@@ -247,6 +251,8 @@ void engine_MainLoop()
 		world_VisibleWorld();
 		world_VisibleEntities();
 		world_VisibleLights();
+		
+		gui_CloseGuiFrame();
 		
 		renderer_DrawFrame();		
 	

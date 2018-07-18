@@ -122,7 +122,7 @@ int shader_Init()
 	r_blit_texture_shader = shader_LoadShader("engine/blit_texture");
 	r_portal_shader = shader_LoadShader("engine/portal");
 	
-	r_gui_shader = shader_LoadShader("engine/gui");
+	r_gui_shader = shader_LoadShader("engine/gui/gui");
 	
 	r_imediate_color_shader = shader_LoadShader("engine/imediate draw/imediate_color");
 	
@@ -476,6 +476,15 @@ int shader_LoadShader(char *file_name)
 	
 	glAttachShader(shader_program, vertex_shader_object);
 	glAttachShader(shader_program, fragment_shader_object);
+	
+/*	
+	glBindAttribLocation(shader_program, 0, "vertex_position");
+	glBindAttribLocation(shader_program, 1, "vertex_normal");
+	glBindAttribLocation(shader_program, 2, "vertex_tangent");
+	glBindAttribLocation(shader_program, 3, "vertex_tex_coords");
+	glBindAttribLocation(shader_program, 4, "vertex_color");*/
+	
+	
 	glLinkProgram(shader_program);
 	
 	/* flag those shaders for deletion, so they
@@ -545,13 +554,30 @@ int shader_LoadShader(char *file_name)
 	shader->file_name = memory_Strdup(file_name, "shader_LoadShader");
 	//shader->file_name = strdup(file_name);
 	
+	
+	/*glBindAttribLocation(shader->shader_program, 0, "vertex_position");
+	glBindAttribLocation(shader->shader_program, 1, "vertex_normal");
+	glBindAttribLocation(shader->shader_program, 2, "vertex_tangent");
+	glBindAttribLocation(shader->shader_program, 3, "vertex_tex_coords");
+	glBindAttribLocation(shader->shader_program, 4, "vertex_color");*/
+	
 	shader->vertex_position = glGetAttribLocation(shader->shader_program, "vertex_position");
 	shader->vertex_normal = glGetAttribLocation(shader->shader_program, "vertex_normal");
 	shader->vertex_tangent = glGetAttribLocation(shader->shader_program, "vertex_tangent");
 	shader->vertex_tex_coords = glGetAttribLocation(shader->shader_program, "vertex_tex_coords");	
 	shader->vertex_color = glGetAttribLocation(shader->shader_program, "vertex_color");
 	
-	//shader->uniforms = malloc(sizeof(uniform_t ) * UNIFORM_LAST_UNIFORM);
+	
+/*	shader->vertex_position = 0;
+	shader->vertex_normal = 1;
+	shader->vertex_tangent = 2;
+	shader->vertex_tex_coords = 3;	
+	shader->vertex_color = 4;*/
+	
+	
+//	shader->uniforms = memory_Malloc(sizeof(uniform_t ) * UNIFORM_LAST_UNIFORM, "shader_LoadShader");
+	
+	
 	shader->default_uniforms = memory_Malloc(sizeof(uniform_t) * UNIFORM_LAST_UNIFORM, "shader_LoadShader");
 	
 	shader_GetShaderDefaultUniformsLocations(shader);

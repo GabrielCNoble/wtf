@@ -389,10 +389,13 @@ char *path_GetFileExtension(char *file_name)
 	if(i)
 	{
 		i++;
+		strcpy(path_GetFileExtension_Return, file_name + i);
 	}
-	
-	strcpy(path_GetFileExtension_Return, file_name + i);
-	
+	else
+	{
+		path_GetFileExtension_Return[0] = '\0';
+	}
+
 	return path_GetFileExtension_Return;
 }
 

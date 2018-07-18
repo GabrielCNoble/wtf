@@ -169,45 +169,45 @@ int light_Init()
 	
 	
 	m=mat3_t_id();
-	mat3_t_rotate(&m, vec3(0.0, 1.0, 0.0), -0.5, 1);
-	mat3_t_rotate(&m, vec3(1.0, 0.0, 0.0), -1.0, 0);
+	mat3_t_rotate(&m, vec3_t_c(0.0, 1.0, 0.0), -0.5, 1);
+	mat3_t_rotate(&m, vec3_t_c(1.0, 0.0, 0.0), -1.0, 0);
 	//mat3_t_transpose(&m);
-	mat4_t_compose(&l_shadow_map_mats[0], &m, vec3(0.0, 0.0, 0.0));
+	mat4_t_compose(&l_shadow_map_mats[0], &m, vec3_t_c(0.0, 0.0, 0.0));
 	
 	
 	
 	m=mat3_t_id();
-	mat3_t_rotate(&m, vec3(0.0, 1.0, 0.0), 0.5, 1);
-	mat3_t_rotate(&m, vec3(1.0, 0.0, 0.0), 1.0, 0);
-	mat4_t_compose(&l_shadow_map_mats[1], &m, vec3(0.0, 0.0, 0.0));
+	mat3_t_rotate(&m, vec3_t_c(0.0, 1.0, 0.0), 0.5, 1);
+	mat3_t_rotate(&m, vec3_t_c(1.0, 0.0, 0.0), 1.0, 0);
+	mat4_t_compose(&l_shadow_map_mats[1], &m, vec3_t_c(0.0, 0.0, 0.0));
 	
 	
 	
 	m=mat3_t_id();
-	mat3_t_rotate(&m, vec3(1.0, 0.0, 0.0), -0.5, 1);
+	mat3_t_rotate(&m, vec3_t_c(1.0, 0.0, 0.0), -0.5, 1);
 	//mat3_t_rotate(&m, vec3(0.0, 1.0, 0.0), 1.0, 0);
-	mat4_t_compose(&l_shadow_map_mats[2], &m, vec3(0.0, 0.0, 0.0));
+	mat4_t_compose(&l_shadow_map_mats[2], &m, vec3_t_c(0.0, 0.0, 0.0));
 	
 	
 	
 	m=mat3_t_id();
-	mat3_t_rotate(&m, vec3(1.0, 0.0, 0.0), 0.5, 1);
+	mat3_t_rotate(&m, vec3_t_c(1.0, 0.0, 0.0), 0.5, 1);
 	//mat3_t_rotate(&m, vec3(0.0, 1.0, 0.0), 0.5, 0);
-	mat4_t_compose(&l_shadow_map_mats[3], &m, vec3(0.0, 0.0, 0.0));
+	mat4_t_compose(&l_shadow_map_mats[3], &m, vec3_t_c(0.0, 0.0, 0.0));
 	
 	
 	
 	m=mat3_t_id();
 	//mat3_t_rotate(&m, vec3(0.0, 1.0, 0.0), -1.0, 1);
-	mat3_t_rotate(&m, vec3(0.0, 0.0, 1.0), 1.0, 1);
-	mat4_t_compose(&l_shadow_map_mats[5], &m, vec3(0.0, 0.0, 0.0));
+	mat3_t_rotate(&m, vec3_t_c(0.0, 0.0, 1.0), 1.0, 1);
+	mat4_t_compose(&l_shadow_map_mats[5], &m, vec3_t_c(0.0, 0.0, 0.0));
 	
 	
 	
 	m=mat3_t_id();
-	mat3_t_rotate(&m, vec3(0.0, 1.0, 0.0), 1.0, 1);
-	mat3_t_rotate(&m, vec3(0.0, 0.0, 1.0), -1.0, 0);
-	mat4_t_compose(&l_shadow_map_mats[4], &m, vec3(0.0, 0.0, 0.0));
+	mat3_t_rotate(&m, vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
+	mat3_t_rotate(&m, vec3_t_c(0.0, 0.0, 1.0), -1.0, 0);
+	mat4_t_compose(&l_shadow_map_mats[4], &m, vec3_t_c(0.0, 0.0, 0.0));
 	
 	
 	while(glGetError() != GL_NO_ERROR);

@@ -23,13 +23,13 @@ OverrideOutputName=mcvtr2.exe
 HostApplication=
 UseCustomMakefile=0
 CustomMakefile=
-CommandLine=-o bus_stop.mpk -f bus_stop.obj
+CommandLine=-o cube.mpk -f cube.obj
 Folders=
 IncludeVersionInfo=0
 SupportXPThemes=0
 CompilerSet=3
 CompilerSettings=0001000100000000001000000
-UnitCount=6
+UnitCount=8
 
 [VersionInfo]
 Major=1
@@ -102,6 +102,26 @@ BuildCmd=
 
 [Unit6]
 FileName=mpk_write.h
+CompileCpp=0
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit7]
+FileName=memory.c
+CompileCpp=0
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit8]
+FileName=memory.h
 CompileCpp=0
 Folder=
 Compile=1

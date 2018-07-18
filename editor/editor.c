@@ -38,8 +38,8 @@
 #include "ed_proj.h"
 
 
-#include "level editor/ed_level.h"
-#include "entity editor/ed_entity.h"
+#include "ed_level.h"
+#include "ed_entity.h"
 #include "ed_selection.h"
 
 #include "model.h"
@@ -105,7 +105,7 @@ extern brush_t *brushes;
 
 /* from entity.c */
 extern int ent_entity_list_cursor;
-extern struct entity_t *ent_entities;
+extern struct stack_list_t ent_entities[2];
 
 
 /* from material.c */
@@ -507,10 +507,10 @@ void editor_Init(int argc, char *argv[])
 	
 //	editor_SetProjectName("untitled.wtf");
 	
-	editor_RegisterEditor("level editor", editor_LevelEditorInit, editor_LevelEditorFinish, editor_LevelEditorRestart, editor_LevelEditorSetup, editor_LevelEditorShutdown, editor_LevelEditorMain);
-	editor_RegisterEditor("entity editor", editor_EntityEditorInit, editor_EntityEditorFinish, editor_EntityEditorRestart, editor_EntityEditorSetup, editor_EntityEditorShutdown, editor_EntityEditorMain);
+	editor_RegisterEditor("Level editor", editor_LevelEditorInit, editor_LevelEditorFinish, editor_LevelEditorRestart, editor_LevelEditorSetup, editor_LevelEditorShutdown, editor_LevelEditorMain);
+	editor_RegisterEditor("Entity editor", editor_EntityEditorInit, editor_EntityEditorFinish, editor_EntityEditorRestart, editor_EntityEditorSetup, editor_EntityEditorShutdown, editor_EntityEditorMain);
 	
-	editor_StartEditor("level editor");
+	editor_StartEditor("Level editor");
 	
 	
 	renderer_PopFunctionName();
@@ -599,12 +599,12 @@ extern wsurface_t *edit_uv_window;
 
 void editor_Main(float delta_time)
 {	
+	editor_ProcessUI();
+	
 	if(ed_current_editor->main_callback)
 	{
 		ed_current_editor->main_callback(delta_time);
 	}
-	
-	editor_ProcessUI();
 }
 
 int editor_PickOnBrush(brush_t *brush)

@@ -19,8 +19,9 @@ enum PARTICLE_SYSTEM_FLAGS
 {
 	PARTICLE_SYSTEM_FLAG_SELF_DESTRUCT = 1,
 	PARTICLE_SYSTEM_FLAG_INVALID = 1 << 1,
-	PARTICLE_SYSTEM_FLAG_APPLY_ROTATION_TO_PARTICLES = 1 << 2,
-	PARTICLE_SYSTEM_FLAG_JUST_SPAWNED = 1 << 3,
+	PARTICLE_SYSTEM_FLAG_MARKED_INVALID = 1 << 2,
+	PARTICLE_SYSTEM_FLAG_APPLY_ROTATION_TO_PARTICLES = 1 << 3,
+	PARTICLE_SYSTEM_FLAG_JUST_SPAWNED = 1 << 4,
 };
 
 
@@ -68,7 +69,7 @@ typedef struct
 	vec3_t position;
 }particle_position_t;*/
 
-typedef struct
+struct particle_system_t
 {
 	int def;
 	
@@ -94,7 +95,7 @@ typedef struct
 	vec3_t scale;
 	vec3_t position;
 	
-}particle_system_t;
+};
 
 
 #ifdef __cplusplus
@@ -120,6 +121,8 @@ particle_system_def_t *particle_GetParticleSystemDefPointerIndex(int def_index);
 
 particle_system_def_t *particle_GetParticleSystemDefPointerName(char *def_index);
 
+int particle_GetParticleSystemDef(char *def_name);
+
 /*
 ===========================================================================================
 ===========================================================================================
@@ -129,6 +132,8 @@ particle_system_def_t *particle_GetParticleSystemDefPointerName(char *def_index)
 int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientation, int particle_system_def);
 
 void particle_RemoveParticleSystem(int particle_system);
+
+struct particle_system_t *particle_GetParticleSystemPointer(int particle_system);
 
 /*
 ===========================================================================================

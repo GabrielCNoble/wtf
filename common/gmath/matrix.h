@@ -15,6 +15,9 @@ extern "C"
 {
 #endif
 
+#define mat3_t_c0(r0, r1, r2) (mat3_t){r0.x,r0.y,r0.z,r1.x,r1.y,r1.z,r2.x,r2.y,r2.z};
+
+//#define mat3_t_c0(r0, r1, r2) (mat3_t){.r0=r0,.r1=r1,.r2=2}
 
 void CreatePerspectiveMatrix(mat4_t *mat,  float fovY, float aspect, float znear, float zfar, float x_shift, float y_shift, frustum_t *generated_frustum);
 

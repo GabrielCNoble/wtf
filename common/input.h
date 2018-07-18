@@ -50,6 +50,14 @@ enum KEYBOARD_FLAGS
 	KEY_JUST_RELEASED = 1 << 2,
 };
 
+enum MOUSE_BUTTON
+{
+	MOUSE_BUTTON_LEFT = 1,
+	MOUSE_BUTTON_RIGHT,
+	MOUSE_BUTTON_MIDDLE,
+	MOUSE_BUTTON_WHEEL,
+};
+
 typedef struct
 {
 	short key;
@@ -90,6 +98,12 @@ void input_SetCursor(int cursor);
 void input_EnableTextInput(int enable);
 
 void input_BufferTextInput();
+
+int *input_GetTextBuffer(); 
+
+void input_ClearTextBuffer();
+
+char *input_GetKeyArray();
 
 int input_GetKeyPressed(int key);
 

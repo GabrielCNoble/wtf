@@ -8,7 +8,9 @@
 #include "r_imediate.h"
 #include "r_text.h"
 
-#include "..\editor\level editor\ed_level_draw.h"
+#include "stack_list.h"
+
+//#include "..\editor\level editor\ed_level_draw.h"
 
 #include "camera.h"
 #include "player.h"
@@ -103,8 +105,9 @@ extern unsigned short w_visible_lights[];
 
 
 /* from particle.c */
-extern int ps_particle_system_count;
-extern particle_system_t *ps_particle_systems;
+//extern int ps_particle_system_count;
+//extern particle_system_t *ps_particle_systems;
+extern struct stack_list_t ps_particle_systems;
 extern int ps_particle_quad_start;
 
 
@@ -314,7 +317,7 @@ int renderer_Init(int width, int height, int init_mode)
 	
 	SDL_GL_MakeCurrent(window, context);
 
-	SDL_GL_SetSwapInterval(1);
+	SDL_GL_SetSwapInterval(0);
 	
 	if(glewInit() != GLEW_NO_ERROR)
 	{
@@ -2097,6 +2100,7 @@ void renderer_DrawFrame()
 	if(r_draw_gui)
 	{
 		renderer_DrawGUI();
+		gui_DrawGUI();
 	}
 	
 	//printf("renderer_DrawGUI: %f\n", renderer_StopGpuTimer());
@@ -2719,8 +2723,10 @@ void renderer_DrawShadowMaps()
 void renderer_DrawParticles()
 {
 	int i;
+	int c;
 	camera_t *active_camera;
-	particle_system_t *ps;
+	struct particle_system_t *ps;
+	struct particle_system_t *particle_systems;
 	
 	active_camera = camera_GetActiveCamera();
 	
@@ -2738,9 +2744,12 @@ void renderer_DrawParticles()
 	
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 4, GL_FLOAT, 0, 0, NULL);
 	
-	for(i = 0; i < ps_particle_system_count; i++)
+	particle_systems = (struct particle_system_t *)ps_particle_systems.elements;
+	c = ps_particle_systems.element_count;
+	
+	for(i = 0; i < c; i++)
 	{
-		ps = ps_particle_systems + i;
+		ps = particle_systems + i;
 		
 		if(ps->flags & PARTICLE_SYSTEM_FLAG_INVALID)
 		{

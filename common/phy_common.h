@@ -20,7 +20,7 @@
 #define GROUND_DELTA_INCREMENT 0.45
 #define AIR_DELTA_INCREMENT 0.35
 
-#define MAX_HORIZONTAL_DELTA 0.25
+#define MAX_HORIZONTAL_DELTA 8.25
 
 #define JUMP_DELTA 0.85 
 
@@ -87,21 +87,25 @@ enum COLLIDER_DEF_FLAGS
 
 enum COLLIDER_TYPE
 {
-	COLLIDER_TYPE_CHARACTER_COLLIDER = 1,
-	COLLIDER_TYPE_GENERIC_COLLIDER
+	COLLIDER_TYPE_CHARACTER_COLLIDER = 0,
+	COLLIDER_TYPE_RIGID_BODY_COLLIDER,
+	COLLIDER_TYPE_PROJECTILE_COLLIDER,
+	COLLIDER_TYPE_LAST,
+	COLLIDER_TYPE_NONE = COLLIDER_TYPE_LAST,
 };
 
 enum COLLIDER_FLAGS
 {
 	COLLIDER_INVALID = 1,
 	COLLIDER_UPDATE_RIGID_BODY = 1 << 1,
-	COLLIDER_NO_SCALE_HINT = 1 << 1,
+	COLLIDER_NO_SCALE_HINT = 1 << 2,
 };
 
 enum CHARACTER_COLLIDER_FLAGS
 {
 	CHARACTER_COLLIDER_FLAG_CROUCHED = 1,
 	CHARACTER_COLLIDER_FLAG_ON_GROUND = 1 << 1,
+	CHARACTER_COLLIDER_FLAG_WALKING = 1 << 2,
 };
 
 enum COLLISION_SHAPES
@@ -128,25 +132,25 @@ typedef struct collider_def_t
 	struct collider_def_t *next;
 	struct collider_def_t *prev;
 	
-	union
-	{
-		struct
-		{
-			int max_collision_shapes;
-			int collision_shape_count;
-			collision_shape_t *collision_shape;	
-		}generic_collider_data;
+	//union
+	//{
+	//	struct
+	//	{
+	int max_collision_shapes;
+	int collision_shape_count;
+	collision_shape_t *collision_shape;	
+	//	}generic_collider_data;
 		
-		struct
-		{
-			void *collision_shape;
-			float height;
-			float crouch_height;
-			float radius;
-			float step_height;
-			float slope_angle;
-		}character_collider_data;
-	}collider_data;
+	//	struct
+	//	{
+	//void *collision_shape;
+	float height;
+	float crouch_height;
+	float radius;
+	float step_height;
+	float slope_angle;
+	//	}character_collider_data;
+	//}collider_data;
 	
 	
 	void *cached_collision_shape;	
@@ -159,7 +163,16 @@ typedef struct collider_def_t
 	char *name;
 }collider_def_t;
 
-typedef struct
+
+#define INVALID_COLLIDER_INDEX 0x1fffffff
+
+struct collider_handle_t
+{
+	unsigned type : 3;
+	unsigned index : 29;
+};
+
+struct collider_t
 {
 	//union
 	//{
@@ -190,7 +203,7 @@ typedef struct
 	unsigned short flags;
 	unsigned short type;
 	
-}collider_t;
+};
 
 
 

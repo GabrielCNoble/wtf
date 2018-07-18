@@ -21,6 +21,8 @@
 #include "l_main.h"
 #include "l_cache.h"
 
+#include "stack_list.h"
+
 #include "bsp_common.h"
 #include "bsp.h"
 #include "bsp_file.h"
@@ -95,10 +97,10 @@ extern int forward_pass_shader;
 
 /* from entity.c */
 extern int ent_entity_list_cursor;
-extern struct entity_t *ent_entities;
-extern struct component_list_t ent_components[2][COMPONENT_TYPE_LAST];
-extern struct entity_aabb_t *ent_entity_aabbs;
-extern struct entity_transform_t *ent_global_transforms; 
+extern struct stack_list_t ent_entities[2];
+extern struct stack_list_t ent_components[2][COMPONENT_TYPE_LAST];
+extern struct stack_list_t ent_entity_aabbs;
+extern struct stack_list_t ent_world_transforms; 
 
 
 
@@ -2376,32 +2378,45 @@ void world_EntitiesOnPortals()
 void world_VisibleEntities()
 {
 	int i;
+	int c;
 	int j;
 	
 	struct entity_t *entity;
-	struct entity_transform_t *global_transform;
+	struct entity_transform_t *world_transforms;
+	struct entity_transform_t *world_transform;
 	struct model_component_t *model_component;
 	struct model_t *model;
 	batch_t *batch;
 	
-	for(i = 0; i < ent_entity_list_cursor; i++)
+	world_transforms = (struct entity_transform_t *)ent_world_transforms.elements;
+	
+	c = ent_entities[0].element_count;
+	
+	for(i = 0; i < c; i++)
 	{
-		if(ent_entities[i].flags & ENTITY_INVALID)
+		/*if(ent_entities[i].flags & ENTITY_INVALID)
+		{
+			continue;
+		}*/
+		
+		entity = entity_GetEntityPointerIndex(i);
+		
+		if(!entity)
 		{
 			continue;
 		}
 		
-		entity = ent_entities + i;
+		//entity = ent_entities + i;
 		
-		if(entity->components[COMPONENT_INDEX_MODEL].type == COMPONENT_TYPE_NONE)
+		if(entity->components[COMPONENT_TYPE_MODEL].type == COMPONENT_TYPE_NONE)
 		{
 			/* entities without models won't get rendered... */
 			continue;
 		}
 		
 		//model_component = (struct model_component_t *)ent_components[0][COMPONENT_TYPE_MODEL].components + entity->components[COMPONENT_INDEX_MODEL].index;
-		model_component = (struct model_component_t *)entity_GetComponentPointer(entity->components[COMPONENT_INDEX_MODEL]);
-		global_transform = ent_global_transforms + entity->components[COMPONENT_INDEX_TRANSFORM].index;
+		model_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_MODEL]);
+		world_transform = world_transforms + entity->components[COMPONENT_TYPE_TRANSFORM].index;
 		
 		
 		model = model_GetModelPointerIndex(model_component->model_index);
@@ -2410,7 +2425,7 @@ void world_VisibleEntities()
 		for(j = 0; j < model->batch_count; j++)
 		{
 			batch = model->batches + j;
-			renderer_SubmitDrawCommand(&global_transform->transform, model->draw_mode, model->vert_start + batch->start, batch->next, batch->material_index, 0);
+			renderer_SubmitDrawCommand(&world_transform->transform, model->draw_mode, model->vert_start + batch->start, batch->next, batch->material_index, 0);
 		}
 	}
 	
