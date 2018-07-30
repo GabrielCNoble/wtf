@@ -28,17 +28,35 @@ void renderer_Begin(GLenum mode);
 
 void renderer_End();
 
-void renderer_Vertex3f(float x, float y, float z);
+/* 
 
-void renderer_Normal3f(float nx, float ny, float nz);
+NOTE:
 
-void renderer_TexCoord2f(float s, float t);
+Those functions could do just fine with float params only, but for
+some reason gcc is passing floats (4 bytes) as double (8 bytes), which
+makes the function read garbage from the stack when retrieving its params.
 
-void renderer_Color3f(float r, float g, float b);
+Not sure this is a expected behaviour, given that this won't happen in 
+some places. In some calls, gcc pushes the params of those functions 
+onto the stack by copying its value into eax and then eax into the stack.
 
-void renderer_Color4f(float r, float g, float b, float a);
+Where it happens however, gcc is fld'ing a double (from a QWORD 
+address) and fstp'ing it into the stack to a (QWORD address), which means 
+that the type it's reading is 64 bytes long...
 
-void renderer_Rectf(float x0, float y0, float x1, float y1);
+*/
+
+void renderer_Vertex3f(double x, double y, double z);
+
+void renderer_Normal3f(double nx, double ny, double nz);
+
+void renderer_TexCoord2f(double s, double t);
+
+void renderer_Color3f(double r, double g, double b);
+
+void renderer_Color4f(double r, double g, double b, double a);
+
+void renderer_Rectf(double x0, double y0, double x1, double y1);
 
 void renderer_DrawVerts(GLenum mode, int count, int size, int stride, void *verts);
 

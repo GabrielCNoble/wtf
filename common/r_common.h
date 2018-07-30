@@ -120,14 +120,42 @@ typedef struct
 	int material_index;
 }batch_t;
 
+#define FRAMEBUFFER_MAX_COLOR_ATTACHMENTS 3
 
-typedef struct
+
+struct framebuffer_attachment_t
+{
+	unsigned int handle;
+	int format;
+	int internal_format;
+	int type;
+};
+
+
+struct framebuffer_t
 {
 	unsigned int framebuffer_id;
-	unsigned int color_attachment;
+	//unsigned int color_attachments[FRAMEBUFFER_MAX_COLOR_ATTACHMENTS];
+	
+	struct
+	{
+		int handle;
+		int format;
+		int internal_format;
+		int type;
+		
+	}color_attachments[FRAMEBUFFER_MAX_COLOR_ATTACHMENTS];
+	
 	unsigned int depth_attachment;
 	unsigned int stencil_attachment;
-}framebuffer_t;
+	
+	unsigned short width;
+	unsigned short height;
+	
+	//unsigned int format;
+	//unsigned int internal_format;
+	//unsigned int type;
+};
 
 typedef struct
 {

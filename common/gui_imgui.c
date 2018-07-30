@@ -155,6 +155,12 @@ vec2_t gui_ImGuiGetContentRegionMax()
 	return (vec2_t){size.x, size.y};
 }
 
+vec2_t gui_ImGuiGetContentRegionAvail()
+{
+	ImVec2 size = ImGui::GetContentRegionAvail();
+	return (vec2_t){size.x, size.y};
+}
+
 /*
 ===========================================================
 ===========================================================
@@ -259,6 +265,24 @@ void gui_ImGuiUnindent(float indent_w)
 {
 	ImGui::Unindent(indent_w);
 }
+
+vec2_t gui_ImGuiGetCursorPos()
+{
+	ImVec2 pos = ImGui::GetCursorPos();
+	return (vec2_t){pos.x, pos.y};
+}
+
+void gui_ImGuiSetCursorPos(vec2_t local_pos)
+{
+	ImGui::SetCursorPos(ImVec2(local_pos.x, local_pos.y));
+}
+
+vec2_t gui_ImGuiGetCursorScreenPos()
+{
+	ImVec2 pos = ImGui::GetCursorScreenPos();
+	return (vec2_t){pos.x, pos.y};
+}
+
 /*
 ===========================================================
 ===========================================================
@@ -418,6 +442,22 @@ void gui_ImGuiProgressBar(float fraction, vec2_t size_arg, const char *overlay)
 void gui_ImGuiBullet()
 {
 	ImGui::Bullet();
+}
+
+/*
+===========================================================
+===========================================================
+===========================================================
+*/
+
+int gui_ImGuiBeginCombo(const char *label, const char *preview_value, int flags)
+{
+	return ImGui::BeginCombo(label, preview_value, flags);
+}
+
+void gui_ImGuiEndCombo()
+{
+	ImGui::EndCombo();
 }
 
 /*
@@ -669,6 +709,11 @@ int gui_ImGuiIsItemDeactivated()
 ===========================================================
 */
 
+int gui_ImGuiIsMouseDown(int button)
+{
+	return ImGui::IsMouseDown(button);
+}
+
 int gui_ImGuiIsMouseClicked(int button, int repeat)
 {
 	return ImGui::IsMouseClicked(button, repeat);
@@ -677,6 +722,12 @@ int gui_ImGuiIsMouseClicked(int button, int repeat)
 int gui_ImGuiIsMouseDoubleClicked(int button)
 {
 	return ImGui::IsMouseDoubleClicked(button);
+}
+
+vec2_t gui_ImGuiGetMouseDragDelta(int button)
+{
+	ImVec2 drag = ImGui::GetMouseDragDelta(button);
+	return (vec2_t){drag.x, drag.y};
 }
 
 

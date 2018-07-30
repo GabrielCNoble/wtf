@@ -1,0 +1,1 @@
+ libozz_animation_tools.a ../../../options/libozz_options.a ../libozz_animation_offline.a ../../runtime/libozz_animation.a ../../../base/libozz_base.a json/libjson.a -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 

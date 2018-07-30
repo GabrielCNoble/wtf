@@ -1,6 +1,8 @@
 #ifndef ED_LEVEL_UI_H
 #define ED_LEVEL_UI_H
 
+#include "brush.h"
+
 
 void editor_LevelEditorUIInit();
 
@@ -21,7 +23,13 @@ void editor_LevelEditorUpdateUI();
 
 void editor_LevelEditorCloseAllMenus();
 
+void editor_LevelEditorMenuWindow();
+
 void editor_LevelEditorLightOptionsMenu();
+
+void editor_LevelEditorBrushOptionsMenu();
+
+void editor_LevelEditorBrushUVMenu();
 
 void editor_LevelEditorWorldMenu();
 

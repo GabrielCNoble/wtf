@@ -29,6 +29,8 @@ void mat4_t_rotate(mat4_t *mat, vec3_t axis, float angle, int b_set);
 
 void mat3_t_rotate(mat3_t *mat, vec3_t axis, float angle, int b_set);
 
+void mat3_t_euler(mat3_t *mat, vec3_t *euler);
+
 void mat2_t_rotate(mat2_t *mat, float angle, int b_set);
 
 void mat4_t_scale(mat4_t *mat, vec3_t axis, float scale_factor);

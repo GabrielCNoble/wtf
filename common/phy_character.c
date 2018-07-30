@@ -152,7 +152,8 @@ void physics_Jump(struct collider_handle_t character_collider, float jump_force)
 	{
 		rigid_body = (btRigidBody *)collider->rigid_body;
 		rigid_body->activate(true);
-		rigid_body->applyCentralForce(btVector3(0.0, jump_force, 0.0));
+		rigid_body->applyCentralImpulse(btVector3(0.0, jump_force, 0.0));
+		//rigid_body->applyCentralForce(btVector3(0.0, jump_force, 0.0));
 	}
 }
 

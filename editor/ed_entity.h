@@ -2,6 +2,7 @@
 #define ED_ENTITY_H
 
 #include "..\ed_common.h"
+#include "..\common\ent_common.h"
 
 void editor_EntityEditorInit();
 
@@ -20,6 +21,15 @@ void editor_EntityEditorMain(float delta_time);
 ===============================================================
 ===============================================================
 */
+
+void editor_EntityEditorSetCurrentEntityDef(struct entity_handle_t entity_def);
+
+/*
+===============================================================
+===============================================================
+===============================================================
+*/
+
 
 void editor_EntityEditorCheck3dHandle(float mouse_x, float mouse_y);
 

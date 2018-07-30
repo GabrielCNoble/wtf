@@ -112,8 +112,6 @@ void script_test_type_OpHndlAssign(test_type_t *other, test_type_t *this_pointer
 
 void *script_particle_system_Factory();
 
-
-
 void script_string_function(void *param);
 
 

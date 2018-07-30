@@ -97,7 +97,7 @@ void editor_LevelEditorStopPIE();
 
 void editor_LevelEditorCopyLevelData();
 
-void editor_LevelEditorClearLevel();
+void editor_LevelEditorClearLevelData();
 
 void editor_LevelEditorRestoreLevelData();
 

@@ -399,6 +399,30 @@ char *path_GetFileExtension(char *file_name)
 	return path_GetFileExtension_Return;
 }
 
+static char path_GetNameNoExt_Return[1024];
+
+char *path_GetNameNoExt(char *file_name)
+{
+	int i = 0;
+	
+	while(file_name[i] && file_name[i] != '.')
+	{
+		i++;
+	}
+	
+	if(!file_name[i])
+	{
+		return file_name;
+	}
+	else
+	{
+		memcpy(path_GetNameNoExt_Return, file_name, i);
+		path_GetNameNoExt_Return[i] = '\0';
+	}
+	
+	return path_GetNameNoExt_Return;
+}
+
 static char path_FormatPath_Return[1024];
 
 char *path_FormatPath(char *path)

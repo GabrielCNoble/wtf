@@ -37,8 +37,47 @@ void renderer_DrawArraysInstanced(int mode, int first, int count, int primcount)
 ===============================================================================
 ===============================================================================
 ===============================================================================
+*/ 
+
+struct framebuffer_t renderer_CreateFramebuffer(int width, int height);
+
+void renderer_DestroyFramebuffer(struct framebuffer_t *framebuffer);
+
+void renderer_ResizeFramebuffer(struct framebuffer_t *framebuffer, int width, int height);
+
+void renderer_AddAttachment(struct framebuffer_t *framebuffer, int attachment, int internal_format);
+
+void renderer_PushFramebuffer(struct framebuffer_t *framebuffer);
+
+void renderer_PopFramebuffer();
+
+void renderer_SampleFramebuffer(double x, double y, void *sample);
+
+/*
+===============================================================================
+===============================================================================
+===============================================================================
 */
 
+void renderer_PushViewport(int x, int y, int width, int height);
+
+void renderer_PopViewport();
+
+void renderer_GetViewport(int *x, int *y, int *w, int *h);
+
+/*
+===============================================================================
+===============================================================================
+===============================================================================
+*/
+
+unsigned int renderer_GenGLTexture(int target, int min_filter, int mag_filter, int wrap_s, int wrap_t, int wrap_r, int base_level, int max_level);
+
+/*
+===============================================================================
+===============================================================================
+===============================================================================
+*/
 
 char *renderer_GetGLEnumString(GLenum name);
 

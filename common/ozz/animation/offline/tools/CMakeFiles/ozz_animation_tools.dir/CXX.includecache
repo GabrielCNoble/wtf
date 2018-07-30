@@ -1,0 +1,416 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/extern/jsoncpp/dist/json/json-forwards.h
+cpptl/config.h
+-
+config.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/extern/jsoncpp/dist/json/config.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/extern/jsoncpp/dist/json/json.h
+cpptl/config.h
+-
+config.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/extern/jsoncpp/dist/json/config.h
+forwards.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/extern/jsoncpp/dist/json/forwards.h
+forwards.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/extern/jsoncpp/dist/json/forwards.h
+string
+-
+vector
+-
+exception
+-
+map
+-
+cpptl/smallmap.h
+-
+cpptl/forwards.h
+-
+features.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/extern/jsoncpp/dist/json/features.h
+value.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/extern/jsoncpp/dist/json/value.h
+deque
+-
+iosfwd
+-
+stack
+-
+string
+-
+istream
+-
+value.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/extern/jsoncpp/dist/json/value.h
+vector
+-
+string
+-
+ostream
+-
+stdlib.h
+-
+sstream
+-
+config.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/extern/jsoncpp/dist/json/config.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/additive_animation_builder.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/animation_builder.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/animation_optimizer.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/raw_animation.h
+ozz/base/containers/string.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/containers/string.h
+ozz/base/containers/vector.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/containers/vector.h
+ozz/base/io/archive_traits.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/io/archive_traits.h
+ozz/base/maths/quaternion.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/maths/quaternion.h
+ozz/base/maths/vec_float.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/maths/vec_float.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/raw_skeleton.h
+ozz/base/containers/string.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/containers/string.h
+ozz/base/containers/vector.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/containers/vector.h
+ozz/base/io/archive_traits.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/io/archive_traits.h
+ozz/base/maths/transform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/maths/transform.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/raw_track.h
+ozz/base/containers/string.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/containers/string.h
+ozz/base/containers/vector.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/containers/vector.h
+ozz/base/io/archive_traits.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/io/archive_traits.h
+ozz/base/maths/quaternion.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/maths/quaternion.h
+ozz/base/maths/vec_float.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/maths/vec_float.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/skeleton_builder.h
+ozz/base/containers/string.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/containers/string.h
+ozz/base/containers/vector.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/containers/vector.h
+ozz/base/maths/transform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/ozz/base/maths/transform.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/tools/import2ozz.h
+ozz/base/containers/vector.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/tools/ozz/base/containers/vector.h
+ozz/animation/offline/raw_animation.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/tools/ozz/animation/offline/raw_animation.h
+ozz/animation/offline/raw_skeleton.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/tools/ozz/animation/offline/raw_skeleton.h
+ozz/animation/offline/raw_track.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/tools/ozz/animation/offline/raw_track.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/track_builder.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/offline/track_optimizer.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/runtime/animation.h
+ozz/base/io/archive_traits.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/runtime/ozz/base/io/archive_traits.h
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/runtime/ozz/base/platform.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/runtime/skeleton.h
+ozz/base/io/archive_traits.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/runtime/ozz/base/io/archive_traits.h
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/runtime/ozz/base/platform.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/runtime/track.h
+ozz/base/io/archive_traits.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/runtime/ozz/base/io/archive_traits.h
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/runtime/ozz/base/platform.h
+ozz/base/maths/quaternion.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/runtime/ozz/base/maths/quaternion.h
+ozz/base/maths/vec_float.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/animation/runtime/ozz/base/maths/vec_float.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/containers/map.h
+cstring
+-
+map
+-
+ozz/base/containers/std_allocator.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/containers/ozz/base/containers/std_allocator.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/containers/set.h
+set
+-
+ozz/base/containers/std_allocator.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/containers/ozz/base/containers/std_allocator.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/containers/std_allocator.h
+new
+-
+ozz/base/memory/allocator.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/containers/ozz/base/memory/allocator.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/containers/string.h
+string
+-
+ozz/base/containers/std_allocator.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/containers/ozz/base/containers/std_allocator.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/containers/vector.h
+vector
+-
+ozz/base/containers/std_allocator.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/containers/ozz/base/containers/std_allocator.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/endianness.h
+cstddef
+-
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/ozz/base/platform.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/io/archive.h
+ozz/base/endianness.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/io/ozz/base/endianness.h
+ozz/base/io/stream.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/io/ozz/base/io/stream.h
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/io/ozz/base/platform.h
+stdint.h
+-
+cassert
+-
+ozz/base/io/archive_traits.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/io/ozz/base/io/archive_traits.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/io/archive_traits.h
+stdint.h
+-
+cstddef
+-
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/io/stream.h
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/io/ozz/base/platform.h
+cstddef
+-
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/log.h
+iostream
+-
+cstring
+-
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/math_constant.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/math_ex.h
+cassert
+-
+cmath
+-
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/ozz/base/platform.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/quaternion.h
+cassert
+-
+ozz/base/maths/math_constant.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/ozz/base/maths/math_constant.h
+ozz/base/maths/math_ex.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/ozz/base/maths/math_ex.h
+ozz/base/maths/vec_float.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/ozz/base/maths/vec_float.h
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/ozz/base/platform.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/transform.h
+ozz/base/maths/quaternion.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/ozz/base/maths/quaternion.h
+ozz/base/maths/vec_float.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/ozz/base/maths/vec_float.h
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/ozz/base/platform.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/vec_float.h
+cassert
+-
+cmath
+-
+ozz/base/maths/math_constant.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/ozz/base/maths/math_constant.h
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/maths/ozz/base/platform.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/memory/allocator.h
+cstddef
+-
+new
+-
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/memory/ozz/base/platform.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/base/platform.h
+stdint.h
+-
+cassert
+-
+cstddef
+-
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/include/ozz/options/options.h
+cstddef
+-
+string
+-
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/./animation/offline/tools/import2ozz_anim.h
+ozz/base/endianness.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/./animation/offline/tools/ozz/base/endianness.h
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/./animation/offline/tools/ozz/base/platform.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/./animation/offline/tools/import2ozz_config.h
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/./animation/offline/tools/ozz/base/platform.h
+json/json-forwards.h
+-
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/./animation/offline/tools/import2ozz_skel.h
+ozz/base/endianness.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/./animation/offline/tools/ozz/base/endianness.h
+ozz/base/platform.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/./animation/offline/tools/ozz/base/platform.h
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/import2ozz.cc
+ozz/animation/offline/tools/import2ozz.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/tools/import2ozz.h
+cstdlib
+-
+cstring
+-
+animation/offline/tools/import2ozz_anim.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/animation/offline/tools/import2ozz_anim.h
+animation/offline/tools/import2ozz_config.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/animation/offline/tools/import2ozz_config.h
+animation/offline/tools/import2ozz_skel.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/animation/offline/tools/import2ozz_skel.h
+ozz/base/log.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/base/log.h
+ozz/base/io/stream.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/base/io/stream.h
+ozz/options/options.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/options/options.h
+json/json.h
+-
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/import2ozz_anim.cc
+ozz/animation/offline/tools/import2ozz.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/tools/import2ozz.h
+cstdlib
+-
+cstring
+-
+animation/offline/tools/import2ozz_config.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/animation/offline/tools/import2ozz_config.h
+ozz/animation/offline/additive_animation_builder.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/additive_animation_builder.h
+ozz/animation/offline/animation_builder.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/animation_builder.h
+ozz/animation/offline/animation_optimizer.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/animation_optimizer.h
+ozz/animation/offline/raw_animation.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/raw_animation.h
+ozz/animation/offline/raw_skeleton.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/raw_skeleton.h
+ozz/animation/offline/raw_track.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/raw_track.h
+ozz/animation/offline/skeleton_builder.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/skeleton_builder.h
+ozz/animation/offline/track_builder.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/track_builder.h
+ozz/animation/offline/track_optimizer.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/track_optimizer.h
+ozz/animation/runtime/animation.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/runtime/animation.h
+ozz/animation/runtime/skeleton.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/runtime/skeleton.h
+ozz/animation/runtime/track.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/runtime/track.h
+ozz/base/io/archive.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/base/io/archive.h
+ozz/base/io/stream.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/base/io/stream.h
+ozz/base/log.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/base/log.h
+ozz/options/options.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/options/options.h
+json/json.h
+-
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/import2ozz_config.cc
+animation/offline/tools/import2ozz_config.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/animation/offline/tools/import2ozz_config.h
+fstream
+-
+sstream
+-
+ozz/animation/offline/animation_optimizer.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/animation_optimizer.h
+ozz/animation/offline/track_optimizer.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/track_optimizer.h
+ozz/base/containers/string.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/base/containers/string.h
+ozz/base/log.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/base/log.h
+ozz/options/options.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/options/options.h
+json/json.h
+-
+
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/import2ozz_skel.cc
+animation/offline/tools/import2ozz_skel.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/animation/offline/tools/import2ozz_skel.h
+cstdlib
+-
+cstring
+-
+iomanip
+-
+animation/offline/tools/import2ozz_config.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/animation/offline/tools/import2ozz_config.h
+ozz/animation/offline/tools/import2ozz.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/tools/import2ozz.h
+ozz/animation/offline/raw_skeleton.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/raw_skeleton.h
+ozz/animation/offline/skeleton_builder.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/offline/skeleton_builder.h
+ozz/animation/runtime/skeleton.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/animation/runtime/skeleton.h
+ozz/base/containers/map.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/base/containers/map.h
+ozz/base/containers/set.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/base/containers/set.h
+ozz/base/io/archive.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/base/io/archive.h
+ozz/base/io/stream.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/base/io/stream.h
+ozz/base/log.h
+N:/Files/Gabriel Noble/Compiler/ozz-animation/src/animation/offline/tools/ozz/base/log.h
+json/json.h
+-
+

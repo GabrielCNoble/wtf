@@ -30,6 +30,8 @@ void *list_get(struct list_t *list, int index);
 
 int list_get_count(struct list_t *list);
 
+void list_resize(struct list_t *list, int new_size);
+
 #ifdef __cplusplus
 }
 #endif 

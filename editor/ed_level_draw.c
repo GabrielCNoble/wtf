@@ -433,7 +433,7 @@ void editor_LevelEditorDrawGrid()
 	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix); 
 	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
 	renderer_SetModelMatrix(NULL);
-	 
+	  
 	renderer_EnableImediateDrawing();
 	renderer_Begin(GL_QUADS);
 	renderer_Color3f(0.3, 0.3, 0.3);
@@ -684,52 +684,52 @@ void editor_LevelEditorDrawSelected()
 						polygon = polygon->next;
 					}
 				}
-				
-				
-							
-				
-				
+
+
 				if(level_editor_brush_face_pick_list.record_count)
 				{
-					record = &level_editor_brush_face_pick_list.records[level_editor_brush_face_pick_list.record_count - 1];	
-	
-					switch(record->type)
+					for(i = 0; i < level_editor_brush_face_pick_list.record_count; i++)
 					{
-						case PICK_BRUSH_FACE:
-							
-							brush = record->pointer;
-							polygon = &brush->base_polygons[record->index0];
-							
-							renderer_Color4f(1.0, 0.0, 0.0, 0.25);
-							glEnable(GL_BLEND);
-							glDisable(GL_STENCIL_TEST);
-							glDisable(GL_DEPTH_TEST);
-							glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-							
-							renderer_Begin(GL_TRIANGLE_FAN);
-							for(j = 0; j < polygon->vert_count; j++)
-							{
-								renderer_Vertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
-							}
-							renderer_End();
-							
-							glDisable(GL_BLEND);
-							glEnable(GL_DEPTH_TEST);
-							glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	
-							
-							renderer_Begin(GL_LINE_LOOP);
-							for(j = 0; j < polygon->vert_count; j++)
-							{
-								renderer_Vertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
-							}
-							renderer_End();
-							
-							glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-						break;	
+						record = &level_editor_brush_face_pick_list.records[i];
+						
+						switch(record->type)
+						{
+							case PICK_BRUSH_FACE:
+								
+								brush = record->pointer;
+								polygon = &brush->base_polygons[record->index0];
+								
+								renderer_Color4f(1.0, 0.0, 0.0, 0.25);
+								glEnable(GL_BLEND);
+								glDisable(GL_STENCIL_TEST);
+								glDisable(GL_DEPTH_TEST);
+								glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+								
+								renderer_Begin(GL_TRIANGLE_FAN);
+								for(j = 0; j < polygon->vert_count; j++)
+								{
+									renderer_Vertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+								}
+								renderer_End();
+								
+								glDisable(GL_BLEND);
+								glEnable(GL_DEPTH_TEST);
+								glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		
+								
+								renderer_Begin(GL_LINE_LOOP);
+								for(j = 0; j < polygon->vert_count; j++)
+								{
+									renderer_Vertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+								}
+								renderer_End();
+								
+								glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+							break;	
+						}
 					}
 					
-				}	
+				}
 			}
 				
 			

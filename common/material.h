@@ -181,6 +181,10 @@ char *material_GetMaterialName(int material_index);
 
 int material_GetMaterial(char *material_name);
 
+material_t *material_GetMaterialPointer(char *material_name);
+
+material_t *material_GetMaterialPointerIndex(int material_index);
+
 void material_DestroyAllMaterials();
 
 

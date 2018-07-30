@@ -8,16 +8,16 @@ particle_system_t @ps_particle_system;
 
 
 
-void ps_init()
+void OnSpawn()
 {
-	//ps_particle_system.max_particles = 360;
-	//ps_particle_system.respawn_time = 1;
-	//ps_particle_system.max_life = 360;
+	/*ps_particle_system.max_particles = 360;
+	ps_particle_system.respawn_time = 1;
+	ps_particle_system.max_life = 360;*/
 }
 
 void main()
 {
-	int i;
+/*	int i;
 	int particle_count;
 	particle_count = ps_particle_system.particle_count;
 
@@ -54,6 +54,6 @@ void main()
 	if(particle_GetLife() > 30)
 	{
 		particle_Die();
-	}
+	}*/
 	
 }

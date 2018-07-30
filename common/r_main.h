@@ -173,6 +173,8 @@ void renderer_ZPrePass();
 
 void renderer_DrawWorld();
 
+void renderer_ExecuteDrawCmds();
+
 void renderer_DrawOpaque();
 
 void renderer_DrawTranslucent();

@@ -12,6 +12,7 @@
 #include "matrix.h"
 
 #include "stack_list.h"
+#include "list.h"
 
 
 #include "camera.h"
@@ -32,6 +33,8 @@ collider_def_t *collider_defs = NULL;
 collider_def_t *last_collider_def = NULL;
 
 
+
+
 //int collider_list_cursor = 0;
 //int max_colliders = 0;
 //collider_t *colliders = NULL;
@@ -45,19 +48,21 @@ extern bsp_pnode_t *world_hull;
 
 
 struct stack_list_t phy_colliders[COLLIDER_TYPE_LAST]; 
+struct list_t phy_collision_records;
 
 
 /* I'm not sure why this works, but it does... */
 extern "C++"
 {
-	#include "btBulletCollisionCommon.h"
-	#include "btBulletDynamicsCommon.h"
-	#include "BulletCollision/CollisionShapes/btCollisionShape.h"
-	#include "BulletCollision/CollisionShapes/btBoxShape.h"
-	#include "BulletCollision/CollisionShapes/btCylinderShape.h"
-	#include "BulletCollision/CollisionShapes/btSphereShape.h"
-	#include "BulletCollision/CollisionShapes/btCapsuleShape.h"
-	#include "BulletCollision/CollisionShapes/btCompoundShape.h"
+	#include "bullet/include/btBulletCollisionCommon.h"
+	#include "bullet/include/btBulletDynamicsCommon.h"
+	#include "bullet/include/BulletCollision/CollisionShapes/btCollisionShape.h"
+	#include "bullet/include/BulletCollision/CollisionShapes/btBoxShape.h"
+	#include "bullet/include/BulletCollision/CollisionShapes/btCylinderShape.h"
+	#include "bullet/include/BulletCollision/CollisionShapes/btSphereShape.h"
+	#include "bullet/include/BulletCollision/CollisionShapes/btCapsuleShape.h"
+	#include "bullet/include/BulletCollision/CollisionShapes/btCompoundShape.h"
+	#include "bullet/include/BulletCollision/NarrowPhaseCollision/btPersistentManifold.h"
 	
 	btDefaultCollisionConfiguration *collision_configuration = NULL;
 	btCollisionDispatcher *narrow_phase = NULL;
@@ -97,8 +102,8 @@ int physics_Init()
 	{
 		phy_colliders[i] = stack_list_create(sizeof(collider_t), 64, NULL);
 	}
-	
-	
+
+	phy_collision_records = list_create(sizeof(struct collision_record_t), 32000, NULL);
 	
 	
 	return 1;
@@ -124,24 +129,12 @@ void physics_Finish()
 		collider_defs = last_collider_def;
 	}
 	
-	/*for(i = 0; i < collider_list_cursor; i++)
-	{
-		if(colliders[i].flags & COLLIDER_INVALID)
-			continue;
-		
-		collider_rigid_body = (btRigidBody *)colliders[i].rigid_body;
-		physics_DestroyCollisionShape(collider_rigid_body->getCollisionShape());
-		physics_world->removeRigidBody(collider_rigid_body);	
-		delete collider_rigid_body;
-	}*/
-	
-//	memory_Free(colliders);
-//	memory_Free(colliders_free_positions_stack);
-	
 	for(i = 0; i < COLLIDER_TYPE_LAST; i++)
 	{
 		stack_list_destroy(&phy_colliders[i]);
 	}
+	
+	list_destroy(&phy_collision_records);
 	
 	delete physics_world;
 	delete solver;
@@ -179,88 +172,7 @@ void physics_ProcessCollisions(double delta_time)
 
 	physics_UpdateColliders();
 	physics_world->stepSimulation(delta_time * 0.001, 8, 1.0 / 120.0);
-	//physics_world->stepSimulation(1.0 / 60.0);
-	physics_PostUpdateColliders();
-	
-	//steps = (int)(delta_time / STEP_DELTA);
-	
-	
-	//for(step = 0; step < steps; step++)
-	/*while(remaining_delta > 0.0)
-	{
-		for(i = 0; i < player_count; i++)
-		{
-			l = players[i].delta.x * players[i].delta.x + players[i].delta.z * players[i].delta.z;
-			
-			if(l > MAX_HORIZONTAL_DELTA * MAX_HORIZONTAL_DELTA)
-			{
-				l = sqrt(l);
-				l = MAX_HORIZONTAL_DELTA / l;
-				
-				players[i].delta.x *= l;
-				players[i].delta.z *= l;
-			} 
-			
-			players[i].delta.y -= GRAVITY * STEP_DELTA * 0.05;
-						
-			if(!(players[i].bm_movement & PLAYER_ON_GROUND))
-			{
-				players[i].delta.x *= 1.0 - (AIR_FRICTION * STEP_DELTA * 0.01);
-				players[i].delta.z *= 1.0 - (AIR_FRICTION * STEP_DELTA * 0.01);
-			}  
-			else 
-			{
-				if(!(players[i].bm_movement & (MOVE_FORWARD | MOVE_BACKWARD | MOVE_STRAFE_LEFT | MOVE_STRAFE_RIGHT)))
-				{
-					players[i].delta.x /= 1.0 + (GROUND_FRICTION * STEP_DELTA * 0.01);
-					players[i].delta.z /= 1.0 + (GROUND_FRICTION * STEP_DELTA * 0.01);
-				}
-			}
-			
-			player_Move(&players[i], STEP_DELTA);
-			
-			players[i].player_position.x = players[i].collision_box_position.x;
-			players[i].player_position.z = players[i].collision_box_position.z;
-			
-			if(players[i].bm_movement & PLAYER_STEPPING_UP)
-			{ 
-				
-				s = fabs(players[i].player_position.y);
-				c = fabs(players[i].collision_box_position.y);
-						
-				players[i].player_position.y += (players[i].collision_box_position.y - players[i].player_position.y) * 0.1 * STEP_DELTA * 0.075;
-
-						
-				if(fabs(s - c) <= 0.01)
-					players[i].bm_movement &= ~PLAYER_STEPPING_UP;
-				
-			}
-			else
-			{
-				players[i].player_position.y += (players[i].collision_box_position.y - players[i].player_position.y) * 0.25 * STEP_DELTA * 0.075;
-				players[i].bm_movement &= ~PLAYER_STEPPING_UP;
-			}
-		}
-		
-		remaining_delta -= STEP_DELTA;
-		
-	}
-		
-	for(i = 0; i < player_count; i++)
-	{
-				
-		players[i].player_camera->world_position.x = players[i].player_position.x;
-		players[i].player_camera->world_position.y = players[i].player_position.y + PLAYER_CAMERA_HEIGHT;
-		players[i].player_camera->world_position.z = players[i].player_position.z;
-		
-		camera_PitchYawCamera(players[i].player_camera, players[i].yaw, players[i].pitch);
-			
-		if(players[i].player_camera == active_camera)
-		{
-			camera_ComputeWorldToCameraMatrix(players[i].player_camera);
-		}	
-	}*/
-	
+	physics_PostUpdateColliders();	
 }
 
 collider_def_t *physics_CreateColliderDef(char *name)
@@ -470,7 +382,7 @@ void physics_AddCollisionShape(collider_def_t *def, vec3_t scale, vec3_t relativ
 		{
 			case COLLISION_SHAPE_BOX:
 			case COLLISION_SHAPE_CYLINDER:
-			//case COLLISION_SHAPE_SPHERE:
+			case COLLISION_SHAPE_SPHERE:
 				collision_shape_index = def->collision_shape_count++;
 		
 				if(collision_shape_index >= def->max_collision_shapes)
@@ -631,6 +543,10 @@ void *physics_BuildCollisionShape(collider_def_t *def)
 							case COLLISION_SHAPE_CYLINDER:
 								compound_shape->addChildShape(collision_shape_transform, new btCylinderShape(btVector3(def_collision_shape->scale.x, def_collision_shape->scale.y, def_collision_shape->scale.z)));
 							break;
+							
+							case COLLISION_SHAPE_SPHERE:
+								compound_shape->addChildShape(collision_shape_transform, new btSphereShape(def_collision_shape->scale.x));
+							break;
 						}
 					}
 					collision_shape = compound_shape;
@@ -646,6 +562,10 @@ void *physics_BuildCollisionShape(collider_def_t *def)
 						
 						case COLLISION_SHAPE_CYLINDER:
 							collision_shape = new btCylinderShape(btVector3(def_collision_shape->scale.x, def_collision_shape->scale.y, def_collision_shape->scale.z));
+						break;
+						
+						case COLLISION_SHAPE_SPHERE:
+							collision_shape = new btSphereShape(def_collision_shape->scale.x);
 						break;
 					}
 				}
@@ -857,6 +777,9 @@ struct collider_handle_t physics_CreateEmptyCollider(int type)
 	collider->type = type;
 	collider->rigid_body = NULL;
 	collider->def = NULL;
+	collider->max_collision_records = 32;
+	collider->collision_record_count = 0;
+	collider->first_collision_record = 0;
 	//collider->collision_shape = NULL;
 	
 	return handle;
@@ -894,7 +817,7 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	collider->position = position;
 	collider->scale = scale;
 	collider->type = def->type;
-	collider->flags = COLLIDER_UPDATE_RIGID_BODY;
+	collider->flags = COLLIDER_FLAG_UPDATE_RIGID_BODY;
 	collider->def = def;
 	
 	collider_transform.setIdentity();
@@ -914,7 +837,7 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	}
 	
 	
-	if((flags & COLLIDER_NO_SCALE_HINT) && def->cached_collision_shape)
+	if((flags & COLLIDER_FLAG_NO_SCALE_HINT) && def->cached_collision_shape)
 	{
 		collider_collision_shape = (btCollisionShape *)def->cached_collision_shape;
 	}
@@ -933,6 +856,8 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	collider_rigid_body->setWorldTransform(collider_transform);
 	collider_rigid_body->setLinearVelocity(btVector3(0.0, 0.0, 0.0));
 	collider_rigid_body->setAngularVelocity(btVector3(0.0, 0.0, 0.0));
+	collider_rigid_body->setUserIndex(*(int *)&handle);
+	
 	
 	if(def->type == COLLIDER_TYPE_CHARACTER_COLLIDER || def->type == COLLIDER_TYPE_PROJECTILE_COLLIDER)
 	{
@@ -1011,9 +936,9 @@ void physics_DestroyColliderHandle(struct collider_handle_t collider)
 		{
 			collider_ptr = (struct collider_t *)list->elements + collider.index;
 			
-			if(!(collider_ptr->flags & COLLIDER_INVALID))
+			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
 			{
-				collider_ptr->flags |= COLLIDER_INVALID;
+				collider_ptr->flags |= COLLIDER_FLAG_INVALID;
 				collider_rigid_body = (btRigidBody *)collider_ptr->rigid_body;
 				 
 				physics_world->removeRigidBody(collider_rigid_body);
@@ -1045,7 +970,7 @@ struct collider_t *physics_GetColliderPointerHandle(struct collider_handle_t col
 		if(collider.index >= 0 && collider.index < list->element_count)
 		{
 			collider_ptr = (struct collider_t *)list->elements + collider.index;
-			if(!(collider_ptr->flags & COLLIDER_INVALID))
+			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
 			{
 				return collider_ptr;
 			}
@@ -1071,7 +996,7 @@ void physics_GetColliderAabb(struct collider_handle_t collider, vec3_t *aabb)
 		{
 			collider_ptr = (struct collider_t *)list->elements + collider.index;
 			
-			if(!(collider_ptr->flags & COLLIDER_INVALID))
+			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
 			{
 				//collider = colliders + collider_index;
 				rigid_body = (btRigidBody *) collider_ptr->rigid_body;
@@ -1107,10 +1032,10 @@ void physics_SetColliderPosition(struct collider_handle_t collider, vec3_t posit
 		{
 			collider_ptr = (struct collider_t *)list->elements + collider.index;
 			
-			if(!(collider_ptr->flags & COLLIDER_INVALID))
+			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
 			{
 				collider_ptr->position = position;
-				collider_ptr->flags |= COLLIDER_UPDATE_RIGID_BODY;
+				collider_ptr->flags |= COLLIDER_FLAG_UPDATE_RIGID_BODY;
 			}
 		}
 	}
@@ -1131,10 +1056,10 @@ void physics_SetColliderOrientation(struct collider_handle_t collider, mat3_t *o
 		{
 			collider_ptr = (struct collider_t *)list->elements + collider.index;
 			
-			if(!(collider_ptr->flags & COLLIDER_INVALID))
+			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
 			{
 				collider_ptr->orientation = *orientation;
-				collider_ptr->flags |= COLLIDER_UPDATE_RIGID_BODY;
+				collider_ptr->flags |= COLLIDER_FLAG_UPDATE_RIGID_BODY;
 			}
 		}
 	}
@@ -1153,15 +1078,42 @@ void physics_SetColliderScale(struct collider_handle_t collider, vec3_t scale)
 		{
 			collider_ptr = (struct collider_t *)list->elements + collider.index;
 			
-			if(!(collider_ptr->flags & COLLIDER_INVALID))
+			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
 			{
-				if(collider_ptr->flags & COLLIDER_NO_SCALE_HINT)
+				if(collider_ptr->flags & COLLIDER_FLAG_NO_SCALE_HINT)
 				{
 					return;
 				}
 
 				collider_ptr->scale = scale;
-				collider_ptr->flags |= COLLIDER_UPDATE_RIGID_BODY;
+				collider_ptr->flags |= COLLIDER_FLAG_UPDATE_RIGID_BODY;
+			}
+		}
+	}
+}
+
+void physics_SetColliderVelocity(struct collider_handle_t collider, vec3_t velocity)
+{
+	struct collider_t *collider_ptr;
+	struct stack_list_t *list;
+	btRigidBody *rigid_body;
+	
+	if(collider.type != COLLIDER_TYPE_NONE)
+	{
+		list = &phy_colliders[collider.type];
+		
+		if(collider.index >= 0 && collider.index < list->element_count)
+		{
+			collider_ptr = (struct collider_t *)list->elements + collider.index;
+			
+			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
+			{
+				//rigid_body = (btRigidBody *)collider_ptr->rigid_body;
+				//rigid_body->activate(true);
+				//rigid_body->setLinearVelocity(btVector3(velocity.x, velocity.y, velocity.z));
+				
+				collider_ptr->linear_velocity = velocity;
+				collider_ptr->flags |= COLLIDER_FLAG_UPDATE_RIGID_BODY;
 			}
 		}
 	}
@@ -1228,12 +1180,12 @@ void physics_UpdateColliders()
 			
 			collider = (struct collider_t *)list->elements + i;
 			
-			if(collider->flags & COLLIDER_INVALID)
+			if(collider->flags & COLLIDER_FLAG_INVALID)
 			{
 				continue;
 			}
 				
-			if(!(collider->flags & COLLIDER_UPDATE_RIGID_BODY))
+			if(!(collider->flags & COLLIDER_FLAG_UPDATE_RIGID_BODY))
 			{
 				continue;
 			}
@@ -1249,7 +1201,7 @@ void physics_UpdateColliders()
 			{
 				rigid_body_transform.setBasis(&collider->orientation.floats[0][0]);
 				
-				if(!(collider->flags & COLLIDER_NO_SCALE_HINT))
+				if(!(collider->flags & COLLIDER_FLAG_NO_SCALE_HINT))
 				{
 					collision_shape = rigid_body->getCollisionShape();
 					
@@ -1258,11 +1210,11 @@ void physics_UpdateColliders()
 			}
 			
 			rigid_body->setWorldTransform(rigid_body_transform);
-			rigid_body->setLinearVelocity(btVector3(0.0, 0.0, 0.0));
-			rigid_body->setAngularVelocity(btVector3(0.0, 0.0, 0.0));
+			rigid_body->setLinearVelocity(btVector3(collider->linear_velocity.x, collider->linear_velocity.y, collider->linear_velocity.z));
+			//rigid_body->setAngularVelocity(btVector3(0.0, 0.0, 0.0));
 			rigid_body->activate(true);
 			
-			collider->flags &= ~COLLIDER_UPDATE_RIGID_BODY;
+			collider->flags &= ~COLLIDER_FLAG_UPDATE_RIGID_BODY;
 		}
 	}
 	
@@ -1273,7 +1225,12 @@ void physics_PostUpdateColliders()
 {
 	int i;
 	int j;
+	int contact_point_index;
+	int contact_point_count;
 	int collider_count;
+	
+	int prev_start = 0;
+	int collision_record_index;
 	
 	struct collider_t *collider;
 	struct stack_list_t *list;
@@ -1282,10 +1239,23 @@ void physics_PostUpdateColliders()
 	btTransform collider_rigid_body_transform;
 	btVector3 collider_rigid_body_position;
 	btMatrix3x3 collider_rigid_body_orientation;
+	btPersistentManifold **persistent_manifolds;
+	btPersistentManifold *persistent_manifold;
+	//btManifoldPoint &contact_point = NULL;
+	
+	struct collision_record_t *collision_records;
+	
+	btRigidBody *body0;
+	btRigidBody *body1;
+	 
+	struct collider_t *collider0;
+	struct collider_t *collider1;
+	
+	int handle0;
+	int handle1;
 	
 	for(j = 0; j < COLLIDER_TYPE_LAST; j++)
 	{
-		
 		list = &phy_colliders[j];
 		collider_count = list->element_count;
 		
@@ -1293,8 +1263,19 @@ void physics_PostUpdateColliders()
 		{
 			collider = (struct collider_t *)list->elements + i;
 			
-			if(collider->flags & COLLIDER_INVALID)
+			if(collider->flags & COLLIDER_FLAG_INVALID)
 				continue;
+			
+			if(collider->collision_record_count > collider->max_collision_records)
+			{
+				j = collider->collision_record_count;
+				collider->max_collision_records = (j + 3) & (~3);
+			}
+				
+			collider->collision_record_count = 0;
+			collider->first_collision_record = prev_start;	
+			
+			prev_start += collider->max_collision_records;
 			
 			switch(collider->type)
 			{
@@ -1340,6 +1321,66 @@ void physics_PostUpdateColliders()
 		}
 	}
 	
+	if(prev_start > phy_collision_records.max_elements)
+	{
+		list_resize(&phy_collision_records, prev_start);
+	}
+	
+	j = narrow_phase->getNumManifolds();
+	
+	persistent_manifolds = narrow_phase->getInternalManifoldPointer();
+	
+	collision_records = (struct collision_record_t *)phy_collision_records.elements;
+	
+	if(persistent_manifolds)
+	{
+		for(i = 0; i < j; i++)
+		{
+			persistent_manifold = persistent_manifolds[i];
+			
+			body0 = (btRigidBody *)persistent_manifold->getBody0();
+			body1 = (btRigidBody *)persistent_manifold->getBody1();
+			
+			handle0 = body0->getUserIndex();
+			handle1 = body1->getUserIndex();
+					 
+			collider0 = physics_GetColliderPointerHandle(*(struct collider_handle_t *)&handle0);
+			collider1 = physics_GetColliderPointerHandle(*(struct collider_handle_t *)&handle1);
+			
+			//assert(collider0 != collider1);
+			
+			contact_point_count = persistent_manifold->getNumContacts();
+			
+			for(contact_point_index = 0; contact_point_index < contact_point_count; contact_point_index++)
+			{
+				btManifoldPoint &contact_point = persistent_manifold->getContactPoint(contact_point_index);
+				
+				if(collider0)
+				{
+					if(collider0->collision_record_count < collider0->max_collision_records)
+					{
+						collision_record_index = collider0->first_collision_record + collider0->collision_record_count;
+						collision_records[collision_record_index].collider = *(struct collider_handle_t *)&handle1;
+						collision_records[collision_record_index].life = contact_point.m_lifeTime;	
+					}
+					collider0->collision_record_count++;
+				}
+				
+				
+				if(collider1)
+				{
+					if(collider1->collision_record_count < collider1->max_collision_records)
+					{
+						collision_record_index = collider1->first_collision_record + collider1->collision_record_count;
+						collision_records[collision_record_index].collider = *(struct collider_handle_t *)&handle0;
+						collision_records[collision_record_index].life = contact_point.m_lifeTime;
+					}
+					collider1->collision_record_count++;
+				}
+			}
+		}
+	}
+	
 	
 }
 
@@ -1350,7 +1391,75 @@ void physics_PostUpdateColliders()
 =================================================================
 */
 
+int physics_AreColliding(struct collider_handle_t collider_a, struct collider_handle_t collider_b)
+{
+	struct collider_t *collider;
+	struct collision_record_t *collision_records;
+	int i;
+	int first_collision_record;
+	
+	collider = physics_GetColliderPointerHandle(collider_a);
+	collision_records = (struct collision_record_t *)phy_collision_records.elements;
+	
+	if(collider)
+	{
+		first_collision_record = collider->first_collision_record;
+		
+		for(i = 0; i < collider->collision_record_count; i++)
+		{
+			if(collider_b.type == collision_records[first_collision_record + i].collider.type)
+			{
+				if(collider_b.index == collision_records[first_collision_record + i].collider.index)
+				{
+					return 1;
+				}
+			}
+		}
+	} 
+	
+	return 0;
+}
 
+int physics_HasNewCollisions(struct collider_handle_t collider)
+{
+	struct collider_t *collider_ptr;
+	struct collision_record_t *collision_records;
+	int i;
+	
+	collider_ptr = physics_GetColliderPointerHandle(collider);
+	
+	if(collider_ptr)
+	{
+		collision_records = (struct collision_record_t *)phy_collision_records.elements;
+		
+		for(i = 0; i < collider_ptr->collision_record_count; i++)
+		{
+			if(collision_records[collider_ptr->first_collision_record + i].life <= 1)
+			{
+				return 1;
+			}
+		}
+	}
+	
+	return 0;
+}
+
+struct collision_record_t *physics_GetColliderCollisionRecords(struct collider_handle_t collider)
+{
+	struct collider_t *collider_ptr;
+	
+	collider_ptr = physics_GetColliderPointerHandle(collider);
+	
+	if(collider_ptr)
+	{
+		if(collider_ptr->collision_record_count)
+		{
+			return (struct collision_record_t *)phy_collision_records.elements + collider_ptr->first_collision_record;
+		}
+	}
+	
+	return NULL;
+}
 
 /*
 =================================================================
@@ -1418,6 +1527,7 @@ void physics_ClearWorldCollisionMesh()
 void physics_BuildWorldCollisionMesh()
 {
 	int i;
+	struct collider_handle_t handle = {COLLIDER_TYPE_NONE, INVALID_COLLIDER_INDEX};
 	
 	//btTriangleMesh *triangle_mesh;
 	
@@ -1441,6 +1551,7 @@ void physics_BuildWorldCollisionMesh()
 	
 	world_collision_object = new btCollisionObject();
 	world_collision_object->setCollisionShape(world_collision_mesh);
+	world_collision_object->setUserIndex(*(int *)&handle);
 	
 	physics_world->addCollisionObject(world_collision_object);
 }

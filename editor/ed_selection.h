@@ -29,6 +29,8 @@ pick_record_t editor_PickBrushFace(brush_t *brush, float mouse_x, float mouse_y)
 
 int editor_Check3dHandle(double mouse_x, double mouse_y, vec3_t handle_position, int mode);
 
+vec3_t editor_3dCursorPosition(float mouse_x, float mouse_y);
+
 float editor_GetMouseOffsetFrom3dHandle(float mouse_x, float mouse_y, vec3_t handle_position, vec3_t axis, int transform_mode, float linear_snap_value, float angular_snap_value);
 
 

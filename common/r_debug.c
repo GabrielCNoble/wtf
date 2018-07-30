@@ -201,20 +201,17 @@ void renderer_FinishDebug()
 
 void renderer_Debug(int enable, int verbose)
 {
-	if(enable)
+	r_debug = enable && 1;	
+	
+	if(verbose)
 	{
-		r_debug = 1;
-		
-		if(verbose)
-		{
-			r_debug_verbose = 1;
-			glEnable(GL_DEBUG_OUTPUT);
-		}
-		else
-		{
-			r_debug_verbose = 0;
-			glDisable(GL_DEBUG_OUTPUT);
-		}
+		r_debug_verbose = 1;
+		glEnable(GL_DEBUG_OUTPUT);
+	}
+	else
+	{
+		r_debug_verbose = 0;
+		glDisable(GL_DEBUG_OUTPUT);
 	}
 }
 
@@ -799,7 +796,7 @@ void renderer_DrawColliders()
 		
 		for(i = 0; i < collider_count; i++)
 		{
-			if(colliders[i].flags & COLLIDER_INVALID)
+			if(colliders[i].flags & COLLIDER_FLAG_INVALID)
 			{
 				continue;
 			}
@@ -897,7 +894,8 @@ void renderer_DrawEntities()
 	for(i = 0; i < c; i++)
 	{
 		entity = (struct entity_t *)ent_entities[0].elements + i;
-		if(entity->flags & ENTITY_INVALID)
+		
+		if(entity->flags & ENTITY_FLAG_INVALID)
 		{
 			continue;
 		}
@@ -1006,6 +1004,12 @@ void renderer_DrawDebug()
 	{
 		renderer_DrawPortalsOulines();
 	}*/
+	
+	if(!r_debug)
+	{
+		return;
+	}
+	
 	
 	if(r_debug_draw_views)
 	{

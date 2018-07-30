@@ -7,39 +7,40 @@
 .
 .
 [collider record end]
-[component record]
-[component record]
-[component record]
-.
-.
-.
 [prop record]
 [prop record]
 [prop record]
 .
 .
 .
-[nestled transform record]
-[nestled transform record]
+[component record]
+[component record]
+[component record]
+.
+.
+.
+[nestled transform (component record)] (Those are just normal 'component records'. Those transforms get nestled into this entity's transform component)
+[nestled transform (component record)]
 .
 .
 .
 [entity record end]
 
-nestled entity records (if any) will show up amidst the nestled transform records. In this case
+Nestled entity records (if any) will show up amidst the nestled transform records. In this case
 the file will look like this:
 
+[entity record start]
 .
 .
 .
-[nestled transform record]
-[nestled transform record]
+[nestled transform (component record)]
+[nestled transform (component record)]
 	[entity record start]
 	.
 	.
 	.
 	[entity record end]
-[nestled transform record]
+[nestled transform (component record)]
 .
 .
 .
@@ -48,28 +49,29 @@ the file will look like this:
 
 this can happen an arbitrary number of times.
 
+[entity record start]
 .
 .
 .
-[nestled transform record]
+[nestled transform (component record)]
 	[entity record start]
 	.
 	.
 	.
-	[nestled transform record]
-	[nestled transform record]
+	[nestled transform (component record)]
+	[nestled transform (component record)]
 		[entity record start]
 		.
 		.
 		.
-		[nestled transform record]
+		[nestled transform (component record)]
 			[entity record start]
 			.
 			.
 			.
 			[entity record end]
 		[entity record end]
-	[nestled transform record]
+	[nestled transform (component record)]
 		[entity record start]
 		.
 		.
@@ -77,3 +79,6 @@ this can happen an arbitrary number of times.
 		[entity record end]
 	[entity record end]
 [entity record end]
+
+
+If a component references a transform component (or more), the referenced transform(s) will be serialized right after this component. This means that the order in which the transforms were in the child list of their parent transform is not preserved.

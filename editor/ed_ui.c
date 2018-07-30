@@ -62,54 +62,6 @@ extern int forward_pass_shader;
 
 extern editor_t *ed_editors;
 
-/*
-************************************************************************
-************************************************************************
-************************************************************************
-*/
-
-widget_t *menu_bar = NULL;
-widget_bar_t *menu_dropdown_bar = NULL;
-dropdown_t *file_dropdown = NULL;
-dropdown_t *editor_dropdown = NULL;
-option_list_t *editors_list = NULL;
-
-dropdown_t *world_dropdown = NULL;
-
-option_list_t *option_list = NULL;
-
-option_list_t *ed_add_to_world_menu = NULL;
-option_list_t *brush_types_option_list = NULL;
-option_list_t *entity_defs_option_list = NULL;
-dropdown_t *misc_dropdown = NULL;
-
-
-option_list_t *ed_delete_menu = NULL;
-
-
-widget_t *save_project_window = NULL;
-text_field_t *save_project_text_field = NULL;
-button_t *confirm_save_project_button = NULL;
-button_t *cancel_save_project_button = NULL;
-
-
-
-widget_t *open_project_window = NULL;
-text_field_t *open_project_text_field = NULL;
-button_t *confirm_open_project_button = NULL;
-button_t *cancel_open_project_button = NULL;
-
-
-text_field_t *fps_display = NULL;
-text_field_t *handle_3d_mode_display = NULL;
-
-int ed_light_properties_window_open = 0;
-widget_t *light_properties_window = NULL;
-slider_t *selected_light_r = NULL;
-slider_t *selected_light_g = NULL;
-slider_t *selected_light_b = NULL;
-slider_t *selected_light_radius = NULL;
-slider_t *selected_light_energy = NULL;
 
 
 /*
@@ -190,344 +142,8 @@ float insane_float2 = 0.5;
 /* from input.c */
 extern int bm_mouse;
 
-//static char *no_tex = "None";
-
-
-/*
-************************************************************************
-************************************************************************
-************************************************************************
-*/
-
-/*void confirm_save_project_button_callback(widget_t *widget)
-{
-	editor_SetProjectName(save_project_text_field->text);
-	editor_SaveProject();
-	gui_SetInvisible(save_project_window);
-}*/
-
-/*void cancel_save_project_button_callback(widget_t *widget)
-{
-	gui_SetInvisible(save_project_window);
-}*/
-
-//void confirm_open_project_button_callback(widget_t *widget)
-//{
-	//if(editor_OpenProject(open_project_text_field->text))
-	/*{
-		editor_SetProjectName(open_project_text_field->text);
-	}*/
-	
-//	editor_OpenProject(open_project_text_field->text);
-//	gui_SetInvisible(open_project_window);
-//}
-
-//void cancel_open_project_button_callback(widget_t *widget)
-//{
-//	gui_SetInvisible(open_project_window);
-//}
-
-void editor_FileDropdownCallback(widget_t *widget)
-{
-	option_t *option;
-	if(widget->type == WIDGET_OPTION)
-	{
-		option = (option_t *)widget;
-		switch(option->index)
-		{
-			case 0:
-//				editor_NewProject();
-			break;
-			
-			case 1:
-				//editor_OpenSaveProjectWindow();
-				editor_OpenExplorerWindow(NULL, EXPLORER_FILE_MODE_WRITE);
-			break;	
-			
-			case 2:
-				//editor_OpenOpenProjectWindow();
-				editor_OpenExplorerWindow(NULL, EXPLORER_FILE_MODE_READ);
-			break;
-			
-			case 3:
-				engine_SetEngineState(ENGINE_QUIT);
-			break;
-		}
-	}
-	
-}
-
-void editor_EditorsDropdownCallback(widget_t *widget)
-{
-	option_t *option;
-	if(widget->type == WIDGET_OPTION)
-	{
-		option = (option_t *)widget;
-		editor_StartEditor((char *)option->widget.data);
-	}
-}
-
-
-void editor_WorldDropdownCallback(widget_t *widget)
-{
-	option_t *option;
-	
-	#if 0
-	
-	if(widget->type == WIDGET_OPTION)
-	{
-		option = (option_t *)widget;
-		
-		switch(option->index)
-		{
-			case 0:
-				brush_SetAllInvisible();
-				bsp_CompileBsp(0);
-			break;
-			
-			case 1:
-				bsp_Stop();
-			break;
-			
-			case 2:
-				
-				
-				bsp_DeleteBsp();
-				brush_SetAllVisible();
-			break;
-			
-			case 3:
-//				editor_ExportBsp(ed_full_project_name);
-			break;
-			
-			case 4:
-				b_draw_portals ^= 1;
-			break;
-			
-			case 5:
-				b_draw_brushes ^= 1;
-			break;
-			
-			case 6:
-				b_draw_leaves ^= 1;
-			break;
-			
-			case 7:
-				b_draw_light_leaves ^= 1;
-			break;
-			
-			case 8:
-				b_draw_world_polygons ^= 1;
-			break;
-			
-			case 9:
-				b_draw_brush_polygons ^= 1;
-			break;
-			
-			case 10:
-				b_draw_collision_polygons ^= 1;
-			break;
-			/*case 10:
-				b_draw_pvs_steps ^= 1;
-			break;*/
-			
-			
-		}
-	}
-	#endif
-}
-
-void editor_MiscDropdownProcessCallback(widget_t *widget)
-{
-	option_t *option;
-	
-	if(widget->type == WIDGET_OPTION)
-	{
-		option = (option_t *)widget;
-		
-		if(widget->bm_flags & WIDGET_JUST_RECEIVED_LEFT_MOUSE_BUTTON)
-		{
-			if(!strcmp(option->widget.name, "reload shaders"))
-			{
-				shader_HotReload();
-			}
-			else if(!strcmp(option->widget.name, "reload scripts"))
-			{
-				script_ReloadScripts();
-			}
-			else if(!strcmp(option->widget.name, "verbose debug"))
-			{
-				if(r_debug_verbose)
-				{
-					renderer_VerboseDebugOutput(0);
-				}
-				else
-				{
-					renderer_VerboseDebugOutput(1);
-				}
-			}
-			else if(!strcmp(option->widget.name, "draw portal outlines"))
-			{
-				r_debug_draw_portal_outlines ^= 1;
-				
-				if(r_debug_draw_portal_outlines)
-				{
-					gui_SetOptionText(option, "disable draw portal outlines");
-				}
-				else
-				{
-					gui_SetOptionText(option, "enable draw portal outlines");
-				}
-				
-			}
-			else if(!strcmp(option->widget.name, "draw views"))
-			{
-				r_debug_draw_views ^= 1;
-				
-				if(r_debug_draw_views)
-				{
-					gui_SetOptionText(option, "disable draw views");
-				}
-				else
-				{
-					gui_SetOptionText(option, "enable draw views");
-				}
-				
-			}
-			else if(!strcmp(option->widget.name, "draw flat"))
-			{
-				r_flat ^= 1;
-				
-				if(r_flat)
-				{
-					gui_SetOptionText(option, "disable fullbright");
-				}
-				else
-				{
-					gui_SetOptionText(option, "enable fullbright");
-				}
-			}
-			
-		}
-		
-		
-	}
-}
-
-void editor_MiscDropdownCallback(widget_t *widget)
-{
-	option_t *option;
-	
-	if(widget->type == WIDGET_OPTION)
-	{
-		option = (option_t *) widget;
-		
-		if(!strcmp(option->widget.name, "reload shaders"))
-		{
-			shader_HotReload();
-		}
-		
-		//else if(!strcmp(option->widget.name, ""))
-		
-		/*switch(option->index)
-		{
-			case 0:
-				shader_HotReload();
-			break;
-			
-			case 1:
-				r_z_prepass ^= 1;
-			break;
-			
-			case 2:
-				r_draw_shadow_maps ^= 1;
-			break;
-			
-			case 3:
-				log_FlushLog();
-			break;
-			
-			case 4:
-				b_step ^= 1;
-				
-				if(!SDL_SemValue(step_semaphore))
-					SDL_SemPost(step_semaphore);
-			break;
-			
-			case 5:
-				r_bloom ^= 1;
-			break;
-			
-			case 6:
-				r_tonemap ^= 1;
-			break;
-			
-			case 7:
-				r_deferred ^= 1;
-			break;
-			
-			case 8:
-				r_draw_gui ^= 1;
-			break;
-		}*/
-	}
-}
-
-
-
-
-/*
-************************************************************************
-************************************************************************
-************************************************************************
-*/
-
-//int awesome_int = 0;
-
 void editor_InitUI()
 {
-	 
-	//int i;
-	//widget_t *w;
-	//editor_t *editor;
-	//option_t *option;
-	//option_list_t *o;
-	
-	//menu_bar = gui_CreateWidget("menu_bar", 0, r_window_height * 0.5 - MENU_BAR_HEIGHT * 0.5, r_window_width, MENU_BAR_HEIGHT);	
-/*	menu_bar = gui_AddWidget(NULL, "menu_bar", 0, r_window_height * 0.5 - MENU_BAR_HEIGHT * 0.5, r_window_width, MENU_BAR_HEIGHT);
-	
-	menu_dropdown_bar = gui_AddWidgetBar(menu_bar, "menu widget bar", 0, 0, r_window_width, MENU_BAR_HEIGHT, WIDGET_BAR_FIXED_SIZE);
-	 
-	file_dropdown = gui_CreateDropdown("file", "file", 0, 0, FILE_DROPDOWN_WIDTH, 0, editor_FileDropdownCallback);
-	gui_AddOption(file_dropdown, "new", "new...");
-	gui_AddOption(file_dropdown, "save", "save");
-	gui_AddOption(file_dropdown, "open", "open");
-	gui_AddOption(file_dropdown, "exit", "exit");
-	
-	gui_AddWidgetToBar((widget_t *) file_dropdown, menu_dropdown_bar);
-	
-	 
-	
-	misc_dropdown = gui_CreateDropdown("misc", "misc", 0, 0, MISC_DROPDOWN_WIDTH, 0, NULL);
-	
-	misc_dropdown->widget.process_callback = editor_MiscDropdownProcessCallback;
-	
-	gui_AddOption(misc_dropdown, "reload shaders", "reload shaders");
-	gui_AddOption(misc_dropdown, "reload scripts", "reload scripts");
-	gui_AddOption(misc_dropdown, "draw portal outlines", "draw portal outlines");
-	gui_AddOption(misc_dropdown, "draw views", "draw views");
-	gui_AddOption(misc_dropdown, "draw flat", "enable fullbright");
-	gui_AddOption(misc_dropdown, "verbose debug", "verbose debug");
-	gui_AddWidgetToBar((widget_t *) misc_dropdown, menu_dropdown_bar);
-	
-	
-	
-	
-	editor_dropdown = gui_CreateDropdown("Editors", "Editors", 0, 0, EDITORS_DROPDOWN_WIDTH, 0, editor_EditorsDropdownCallback);
-	editors_list = gui_AddOptionList((widget_t *)editor_dropdown, "editors", 0, 0, EDITORS_DROPDOWN_WIDTH, 0, 8, editor_EditorsDropdownCallback);*/
-
-	
-	//gui_AddWidgetToBar((widget_t *)editor_dropdown, menu_dropdown_bar);
 	editor_InitExplorerUI();	
 }
 
@@ -538,11 +154,6 @@ void editor_FinishUI()
 
 void editor_ProcessUI()
 {
-	/*menu_bar->y = r_window_height * 0.5 - MENU_BAR_HEIGHT * 0.5;
-	menu_bar->w = r_window_width;
-		
-	menu_dropdown_bar->widget.w = r_window_width * 0.5;
-	menu_dropdown_bar->bm_flags |= WIDGET_BAR_ADJUST_WIDGETS;*/
 	editor_t *editor;
 	editor_t *selected_editor;
 	
@@ -605,6 +216,38 @@ void editor_ProcessUI()
 					r_flat = 1;
 				}
 			}
+			
+			if(r_debug)
+			{
+				if(gui_ImGuiMenuItem("Disable debug", NULL, NULL, 1))
+				{
+					renderer_Debug(0, r_debug_verbose);
+				}
+			}
+			else
+			{
+				if(gui_ImGuiMenuItem("Enable debug", NULL, NULL, 1))
+				{
+					renderer_Debug(1, r_debug_verbose);
+				}
+			}
+			
+			
+			if(r_debug_verbose)
+			{
+				if(gui_ImGuiMenuItem("Disable verbose debug", NULL, NULL, 1))
+				{
+					renderer_Debug(r_debug, 0);
+				}
+			}
+			else
+			{
+				if(gui_ImGuiMenuItem("Enable verbose debug", NULL, NULL, 1))
+				{
+					renderer_Debug(r_debug, 1);
+				}
+			}
+			
 			gui_ImGuiEndMenu();
 		}
 		
@@ -637,12 +280,12 @@ void editor_ProcessUI()
 
 void editor_LockUI()
 {
-	gui_SetIgnoreMouse((widget_t *)menu_bar);
+	//gui_SetIgnoreMouse((widget_t *)menu_bar);
 }
 
 void editor_UnlockUI()
 {
-	gui_SetReceiveMouse((widget_t *)menu_bar);
+	//gui_SetReceiveMouse((widget_t *)menu_bar);
 }
 
 void editor_HideUI()

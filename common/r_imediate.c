@@ -221,7 +221,7 @@ void renderer_End()
 ==============================================================
 */
 
-void renderer_Vertex3f(float x, float y, float z)
+void renderer_Vertex3f(double x, double y, double z)
 {
 	GLenum cur_mode;
 	
@@ -262,7 +262,7 @@ void renderer_Vertex3f(float x, float y, float z)
 	
 }
 
-void renderer_Normal3f(float nx, float ny, float nz)
+void renderer_Normal3f(double nx, double ny, double nz)
 {
 	r_imediate_current_normal.x = nx;
 	r_imediate_current_normal.y = ny;
@@ -270,7 +270,7 @@ void renderer_Normal3f(float nx, float ny, float nz)
 	r_imediate_current_normal.w = 1.0;
 }
 
-void renderer_TexCoord2f(float s, float t)
+void renderer_TexCoord2f(double s, double t)
 {	
 	r_imediate_current_tex_coords.x = s;
 	r_imediate_current_tex_coords.y = t;
@@ -278,7 +278,7 @@ void renderer_TexCoord2f(float s, float t)
 	r_imediate_current_tex_coords.w = 0.0;
 }
 
-void renderer_Color3f(float r, float g, float b)
+void renderer_Color3f(double r, double g, double b)
 {	
 	r_imediate_current_color.r = r;
 	r_imediate_current_color.g = g;
@@ -286,7 +286,7 @@ void renderer_Color3f(float r, float g, float b)
 	r_imediate_current_color.a = 1.0;
 }
 
-void renderer_Color4f(float r, float g, float b, float a)
+void renderer_Color4f(double r, double g, double b, double a)
 {
 	r_imediate_current_color.r = r;
 	r_imediate_current_color.g = g;
@@ -294,7 +294,7 @@ void renderer_Color4f(float r, float g, float b, float a)
 	r_imediate_current_color.a = a;
 }
 
-void renderer_Rectf(float x0, float y0, float x1, float y1)
+void renderer_Rectf(double x0, double y0, double x1, double y1)
 {
 	int i;
 	GLenum cur_mode;

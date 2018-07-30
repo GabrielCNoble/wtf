@@ -165,24 +165,12 @@ void brush_Init()
 
 void brush_Finish()
 {
-	int i;
-	/*for(i = 0; i < brush_count; i++)
+	while(brushes)
 	{
-		if(brushes[i].type != BRUSH_BOUNDS && brushes[i].type != BRUSH_INVALID)
-		{
-			memory_Free(brushes[i].base_polygons_vertices);
-			memory_Free(brushes[i].batches);
-			
-			glDeleteBuffers(1, &brushes[i].element_buffer);	
-		}
-		
+		last_brush = brushes->next;
+		brush_DestroyBrush(brushes);
+		brushes = last_brush;
 	}
-	
-	memory_Free(brushes);
-	memory_Free(free_position_stack);
-	
-	if(expanded_brushes)
-		memory_Free(expanded_brushes);*/
 		
 	
 	
@@ -192,9 +180,7 @@ void brush_Finish()
 void brush_ProcessBrushes()
 {
 	int i;
-	
 	brush_CheckIntersecting();
-
 }
 
 brush_t *brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short type, short b_subtractive)
@@ -765,6 +751,9 @@ void brush_DestroyBrush(brush_t *brush)
 	bsp_polygon_t *next;
 	bsp_edge_t *edge;
 	bsp_edge_t *next_edge;
+	brush_t *other;
+	intersection_record_t *intersection_record;
+	intersection_record_t *next_intersection_record;
 	int brush_index;
 	
 	if(brush->type == BRUSH_INVALID)
@@ -776,6 +765,7 @@ void brush_DestroyBrush(brush_t *brush)
 	if(brush->type != BRUSH_BOUNDS)
 	{
 		
+		bsp_DeleteSolidBsp(brush->brush_bsp, 0);
 		
 		//if(brush->triangle_groups)
 		if(brush->batches)
@@ -786,10 +776,7 @@ void brush_DestroyBrush(brush_t *brush)
 		memory_Free(brush->base_polygons_vertices);
 		memory_Free(brush->batches);
 		memory_Free(brush->base_polygons);
-
-		
-		//if(brush->intersections)
-		//	memory_Free(brush->intersections);
+		memory_Free(brush->clipped_polygons_indexes);
 			
 		edge = brush->edges;
 		
@@ -804,12 +791,16 @@ void brush_DestroyBrush(brush_t *brush)
 		glDeleteBuffers(1, &brush->element_buffer);
 	}
 	
-	/*brush->type = BRUSH_INVALID;
-	brush->base_polygons = NULL;
-	brush->base_polygons_count = 0;
-	brush->batches = NULL;
-	brush->batch_count = 0;*/
+	intersection_record = brush->intersection_records;
 	
+	while(intersection_record)
+	{
+		next_intersection_record = intersection_record->next;
+		brush_RemoveIntersectionRecord(intersection_record->intersecting_brush, brush, 1);
+		intersection_record = next_intersection_record;
+	}
+	
+		
 	if(brush == brushes)
 	{
 		brushes = brushes->next;
@@ -833,6 +824,8 @@ void brush_DestroyBrush(brush_t *brush)
 	}
 	
 	brush_count--;
+	
+	memory_Free(brush);
 	
 	R_DBG_POP_FUNCTION_NAME();
 	
@@ -1223,7 +1216,7 @@ void brush_BuildBrushBsp(brush_t *brush)
 	if(brush)
 	{
 		if(brush->brush_bsp)
-			bsp_DeleteSolidBsp(brush->brush_bsp);
+			bsp_DeleteSolidBsp(brush->brush_bsp, 0);
 			
 		brush->brush_bsp = bsp_SolidBsp(brush->base_polygons);	
 		
@@ -1834,7 +1827,7 @@ void brush_CheckIntersecting()
 				}
 				else
 				{
-					brush_RemoveIntersectionRecord(brush, brush2);
+					brush_RemoveIntersectionRecord(brush, brush2, 0);
 				}
 								
 				brush2 = brush2->next;					
@@ -1869,7 +1862,7 @@ void brush_CheckIntersecting()
 				}
 				else
 				{
-					brush_RemoveIntersectionRecord(brush, brush2);
+					brush_RemoveIntersectionRecord(brush, brush2, 0);
 				}
 				
 				brush2 = brush2->next;						
@@ -2151,7 +2144,7 @@ void brush_AddIntersectionRecord(brush_t *add_to, brush_t *to_add)
 	}
 }
 
-void brush_RemoveIntersectionRecord(brush_t *remove_from, brush_t *to_remove)
+void brush_RemoveIntersectionRecord(brush_t *remove_from, brush_t *to_remove, int free_record)
 {
 	intersection_record_t *record = NULL;
 
@@ -2188,9 +2181,16 @@ void brush_RemoveIntersectionRecord(brush_t *remove_from, brush_t *to_remove)
 					}
 				}
 				
-				
-				record->next = remove_from->freed_records;
-				remove_from->freed_records = record;	
+				if(free_record)
+				{
+					memory_Free(record);
+				}
+				else
+				{
+					record->next = remove_from->freed_records;
+					remove_from->freed_records = record;
+				}
+					
 				remove_from->bm_flags |= BRUSH_CLIP_POLYGONS;
 				break;
 			}

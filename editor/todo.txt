@@ -1,5 +1,11 @@
 - Engine 
-	- Serializers	
+	- Serializers
+		- Entity serializer
+			- Entity file (.ent)
+
+
+		- Light serializer
+	
 	- Animation system
 	- Navigation system
 //		- Expose functions to scripts
@@ -9,7 +15,7 @@
 	- Sound system
 	- Translucent rendering
 	- ECS
-		- Entity instancing (correctly spawning an entity based on its def)
+//		- Entity instancing (correctly spawning an entity based on its def)
 		
 		- Transform component
 //			- hierarchical transform update 
@@ -19,18 +25,20 @@
 //			- Physics controller
 //			- Script controller
 			
-		- Script component
+//		- Script component
+	
 	
 
 	- Script system
-		- String type
+//		- String type
 //		- Vector types
 //		- Matrix types
-		- Expose entities
+//		- Expose entities
 //			- Allow modifications to the current entity
 //			- Allow querying of components
 			- Allow adding / removing components
-			- Allow querying of other entities 
+//			- Allow adding / removing props
+//			- Allow querying of other entities 
 
 		- Expose cameras
 		- Expose sound playback
@@ -50,7 +58,7 @@
 
 
 - GUI
-	- Tree list
+//	- Tree list
 
 
 - Editor

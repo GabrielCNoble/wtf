@@ -2601,7 +2601,7 @@ bsp_polygon_t *bsp_ClipContiguousPolygonsToBsp(int op, bsp_node_t *bsp0, bsp_nod
 			r = p;
 		}
 		
-		bsp_DeleteSolidBsp(bsp1);	
+		bsp_DeleteSolidBsp(bsp1, 1);	
 	}
 	
 	if(clipped)
@@ -2997,8 +2997,8 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brush_list, int brush_list_count)
 			/* get rid of those bsp's, they're 
 			useless now. Such useless motherfuckers... */
 			/* NOTE: this has become a HUGE bottleneck... */
-			bsp_DeleteSolidBsp(bsp_a);
-			bsp_DeleteSolidBsp(bsp_b);
+			bsp_DeleteSolidBsp(bsp_a, 1);
+			bsp_DeleteSolidBsp(bsp_b, 1);
 			
 			p = polygons_a;
 			
@@ -3127,7 +3127,7 @@ bsp_polygon_t *bsp_ClipBrushes2(brush_t *brush_list, int brush_list_count)
 			polygons_b = polygons_b->next;
 		}
 		
-		bsp_DeleteSolidBsp(bsp_a);
+		bsp_DeleteSolidBsp(bsp_a, 1);
 	}
 	
 	end = engine_GetDeltaTime();
@@ -4939,7 +4939,7 @@ bsp_node_t *bsp_SolidLeafBsp(bsp_polygon_t *polygons)
 }
 
 
-void bsp_DeleteSolidBsp(bsp_node_t *bsp)
+void bsp_DeleteSolidBsp(bsp_node_t *bsp, int free_splitters)
 {
 	bsp_leaf_t *leaf;
 	
@@ -4948,16 +4948,19 @@ void bsp_DeleteSolidBsp(bsp_node_t *bsp)
 	
 	if(bsp->type == BSP_NODE)
 	{
-		#ifndef USE_MEMORY_MALLOC
-		free(bsp->splitter->vertices);
-		free(bsp->splitter);
-		#else
-		memory_Free(bsp->splitter->vertices);
-		memory_Free(bsp->splitter);
-		#endif
-		bsp_DeleteSolidBsp(bsp->front);
-		bsp_DeleteSolidBsp(bsp->back);
+		if(free_splitters)
+		{
+			#ifndef USE_MEMORY_MALLOC
+			free(bsp->splitter->vertices);
+			free(bsp->splitter);
+			#else
+			memory_Free(bsp->splitter->vertices);
+			memory_Free(bsp->splitter);
+			#endif
+		}
 		
+		bsp_DeleteSolidBsp(bsp->front, free_splitters);
+		bsp_DeleteSolidBsp(bsp->back, free_splitters);
 	}
 	
 	#ifndef USE_MEMORY_MALLOC
@@ -4969,7 +4972,7 @@ void bsp_DeleteSolidBsp(bsp_node_t *bsp)
 
 int bsp_DeleteSolidBspAssyncFn(void *bsp)
 {
-	bsp_DeleteSolidBsp(bsp);
+	bsp_DeleteSolidBsp(bsp, 1);
 	return 0;
 }
 

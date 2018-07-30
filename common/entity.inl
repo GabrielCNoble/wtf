@@ -52,7 +52,7 @@ __forceinline struct entity_aabb_t *entity_GetAabbPointer(struct component_handl
 
 __forceinline struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity)
 {
-	struct entity_t *entity_ptr;
+	struct entity_t *entity_ptr = NULL;
 	int cursor;
 
 	if(entity.entity_index != INVALID_ENTITY_INDEX)
@@ -61,14 +61,42 @@ __forceinline struct entity_t *entity_GetEntityPointerHandle(struct entity_handl
 		{
 			entity_ptr = (struct entity_t *)ent_entities[entity.def].elements + entity.entity_index;
 			
-			if(!(entity_ptr->flags & ENTITY_INVALID))
+			if(entity_ptr->flags & ENTITY_FLAG_INVALID)
 			{
-				return entity_ptr;
+				entity_ptr = NULL;
 			}
 		}
 	}
 	
-	return NULL;
+	return entity_ptr;
+}
+
+__forceinline struct entity_t *entity_GetEntityParentPointerHandle(struct entity_handle_t entity)
+{
+	struct entity_t *entity_ptr = NULL;
+	struct entity_t *parent_entity_ptr = NULL;
+	struct transform_component_t *transform = NULL;
+	
+	if(entity.entity_index != INVALID_ENTITY_INDEX)
+	{
+		if(entity.entity_index >= 0 && entity.entity_index < ent_entities[entity.def].element_count)
+		{
+			entity_ptr = (struct entity_t *)ent_entities[entity.def].elements + entity.entity_index;
+			
+			if(!(entity_ptr->flags & ENTITY_FLAG_INVALID))
+			{
+				transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+				transform = entity_GetComponentPointer(transform->parent);
+				
+				if(transform)
+				{
+					parent_entity_ptr = (struct entity_t *)ent_entities[transform->base.entity.def].elements + transform->base.entity.entity_index;
+				}
+			}
+		}
+	}
+	
+	return parent_entity_ptr;
 }
 
 __forceinline struct entity_t *entity_GetEntityPointerIndex(int entity_index)
@@ -82,7 +110,7 @@ __forceinline struct entity_t *entity_GetEntityPointerIndex(int entity_index)
 		{
 			entity_ptr = (struct entity_t *)ent_entities[0].elements + entity_index;
 			
-			if(!(entity_ptr->flags & ENTITY_INVALID))
+			if(!(entity_ptr->flags & ENTITY_FLAG_INVALID))
 			{
 				return entity_ptr;
 			}
@@ -103,7 +131,7 @@ __forceinline struct entity_t *entity_GetEntityDefPointerIndex(int entity_def_in
 		{
 			entity_ptr = (struct entity_t *)ent_entities[1].elements + entity_def_index;
 			
-			if(!(entity_ptr->flags & ENTITY_INVALID))
+			if(!(entity_ptr->flags & ENTITY_FLAG_INVALID))
 			{
 				return entity_ptr;
 			}
@@ -131,7 +159,7 @@ __forceinline struct entity_handle_t entity_GetEntityHandle(char *name, int get_
 	{
 		entity = (struct entity_t *)ent_entities[get_def].elements + i;
 		
-		if(entity->flags & ENTITY_INVALID)
+		if(entity->flags & ENTITY_FLAG_INVALID)
 		{
 			continue;
 		}
@@ -148,7 +176,64 @@ __forceinline struct entity_handle_t entity_GetEntityHandle(char *name, int get_
 	return handle;
 }
 
+
+struct entity_handle_t entity_GetNestledEntityHandle_Stack[1024];
+
+__forceinline struct entity_handle_t entity_GetNestledEntityHandle(struct entity_handle_t parent_entity, char *entity)
+{
+	struct entity_t *entity_ptr;
+	struct transform_component_t *transform;
+	struct transform_component_t *child_transform;
+	
+	int i;
+	int stack_cursor = 0;
+	int cur_top = -1;
+	int next_top = -1;
+	
+	entity_GetNestledEntityHandle_Stack[0] = parent_entity;
+	next_top++;
+
+	do
+	{
+		cur_top = next_top;
+		
+		for(;stack_cursor <= cur_top; stack_cursor++)
+		{
+			entity_ptr = entity_GetEntityPointerHandle(entity_GetNestledEntityHandle_Stack[stack_cursor]);
+			
+			if(entity_ptr)
+			{
+				if(!strcmp(entity_ptr->name, entity))
+				{
+					return entity_GetNestledEntityHandle_Stack[stack_cursor];
+				}
+				 
+				transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+				
+				for(i = 0; i < transform->children_count; i++)
+				{
+					child_transform = entity_GetComponentPointer(transform->child_transforms[i]);
+					
+					if(child_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
+					{
+						next_top++;
+						entity_GetNestledEntityHandle_Stack[next_top] = child_transform->base.entity;
+					}
+				}
+			}
+		}
+		
+	}while(cur_top != next_top);
+	
+	return (struct entity_handle_t){parent_entity.def, INVALID_ENTITY_INDEX};
+}
+
 #endif
+
+
+
+
+
 
 
 

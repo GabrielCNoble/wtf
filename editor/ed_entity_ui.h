@@ -32,7 +32,7 @@ void editor_EntityEditorDefTree();
 
 
 
-void editor_EntityEditorOpenAddComponentMenu(int x, int y, struct entity_handle_t entity);
+void editor_EntityEditorOpenAddComponentMenu(int x, int y, struct entity_handle_t entity, struct component_handle_t transform);
 
 void editor_EntityEditorOpenSetComponentValueMenu(int x, int y, struct entity_handle_t entity, int component_type);
 

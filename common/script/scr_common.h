@@ -72,6 +72,45 @@ typedef struct
 	void *main;
 }script_exec_data_t;
 
+
+enum SCRIPT_ARG_TYPE
+{
+	SCRIPT_ARG_TYPE_BYTE = 0,
+	SCRIPT_ARG_TYPE_WORD,
+	SCRIPT_ARG_TYPE_DWORD,
+	SCRIPT_ARG_TYPE_QWORD,
+	SCRIPT_ARG_TYPE_FLOAT,
+	SCRIPT_ARG_TYPE_DOUBLE,
+	SCRIPT_ARG_TYPE_ADDRESS,
+};
+
+
+
+struct script_arg_t
+{
+	int type;
+	
+	union
+	{
+		char byte_arg;
+		short word_arg;
+		int dword_arg;
+		long int qword_arg;
+		float float_arg;
+		double double_arg;
+		void *address_arg;
+	}arg;
+};
+
+#define MAX_SCRIPT_ARGS 8
+
+struct script_entry_point_t
+{
+	void *entry_point;
+	int arg_count;
+	struct script_arg_t args[MAX_SCRIPT_ARGS];
+};
+
 struct script_t
 {
 	struct script_t *next;

@@ -74,12 +74,13 @@ extern vec3_t level_editor_3d_handle_position;
 unsigned int prev_fbo;
 unsigned int prev_draw_buffer;
 int prev_viewport[4];
-void editor_EnablePicking()
+
+ void editor_EnablePicking(int width, int height)
 {
 	//renderer_PushFunctionName("editor_EnablePicking");
 	R_DBG_PUSH_FUNCTION_NAME();
 	
-	glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_fbo);
+	/*glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_fbo);
 	glGetIntegerv(GL_DRAW_BUFFER, &prev_draw_buffer);
 	glGetIntegerv(GL_VIEWPORT, prev_viewport);
 	
@@ -87,7 +88,11 @@ void editor_EnablePicking()
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, ed_pick_framebuffer_id);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	glReadBuffer(GL_COLOR_ATTACHMENT0);
-	glViewport(0, 0, r_window_width, r_window_height);
+	glViewport(0, 0, r_window_width, r_window_height);*/
+	
+	renderer_PushFramebuffer(&ed_pick_framebuffer);
+	renderer_PushViewport(0, 0, width, height);
+	
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	
 	R_DBG_POP_FUNCTION_NAME();
@@ -98,9 +103,10 @@ void editor_SamplePickingBuffer(float mouse_x, float mouse_y, int *sample)
 {
 	R_DBG_PUSH_FUNCTION_NAME();
 	
-	int x = r_window_width * (mouse_x * 0.5 + 0.5);
-	int y = r_window_height * (mouse_y * 0.5 + 0.5);
-	glReadPixels(x, y, 1, 1, GL_RGB, GL_FLOAT, sample);
+	renderer_SampleFramebuffer(mouse_x, mouse_y, sample);
+	//int x = r_window_width * (mouse_x * 0.5 + 0.5);
+	//int y = r_window_height * (mouse_y * 0.5 + 0.5);
+	//glReadPixels(x, y, 1, 1, GL_RGB, GL_FLOAT, sample);
 	
 	R_DBG_POP_FUNCTION_NAME();
 }
@@ -111,9 +117,12 @@ void editor_DisablePicking()
 	
 	R_DBG_PUSH_FUNCTION_NAME();
 	
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prev_fbo);
-	glDrawBuffer(prev_draw_buffer);
-	glViewport(prev_viewport[0], prev_viewport[1], prev_viewport[2], prev_viewport[3]);
+	renderer_PopViewport();
+	renderer_PopFramebuffer();
+	
+	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prev_fbo);
+	//glDrawBuffer(prev_draw_buffer);
+	//glViewport(prev_viewport[0], prev_viewport[1], prev_viewport[2], prev_viewport[3]);
 	
 	R_DBG_POP_FUNCTION_NAME();
 	//renderer_PopFunctionName();
@@ -173,7 +182,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	
 	int value;
 	
-	editor_EnablePicking();
+	editor_EnablePicking(r_window_width, r_window_height);
 	
 	gpu_BindGpuHeap();
 	
@@ -246,7 +255,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	glDisable(GL_POINT_SMOOTH);
 	glPointSize(1.0);
 
-
+/*
 	value = PICK_PORTAL;
 	renderer_SetNamedUniform1f("pick_type", *(float *)&value);
 	renderer_SetModelMatrix(NULL);
@@ -276,7 +285,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 		renderer_Vertex3f(center.x + right_vector.x - up_vector.x, center.y + right_vector.y - up_vector.y, center.z + right_vector.z - up_vector.z);
 		renderer_Vertex3f(center.x + right_vector.x + up_vector.x, center.y + right_vector.y + up_vector.y, center.z + right_vector.z + up_vector.z);
 		renderer_End();
-	}
+	}*/
 	
 	value = PICK_WAYPOINT;
 	renderer_SetNamedUniform1f("pick_type", *(float *)&value);
@@ -400,53 +409,20 @@ pick_record_t editor_PickBrushFace(brush_t *brush, float mouse_x, float mouse_y)
 	int i;
 	int c;
 	int j;
-	//int j;
-	//int k;
-	//int x;
-	//int y;
-	
-	int pick_type;
-	int pick_index0;
-	int pick_index1;
-	int pick_index2;
 	
 	pick_record_t record;
 	pick_record_t *records;
-	//model_t *model;
-	//mesh_t *mesh;
-	//portal_t *portal;
-	
-	//vec3_t right_vector;
-	//vec3_t up_vector;
-	//vec3_t center;
-	
-	//int lshift;
-	
-	//int start;
-	
-	//vec3_t pos;
-	//mat4_t transform;
-	
-	//renderer_PushFunctionName("editor_PickObject");
+
 	R_DBG_PUSH_FUNCTION_NAME();
 	
-	
 	camera_t *active_camera = camera_GetActiveCamera();
-	//triangle_group_t *triangle_group;
-	//batch_t *batch;
-	//material_t *material;
-	//bsp_polygon_t *polygon;
-	//brush_t *brush;
 	bsp_polygon_t *polygon;
 	
-	//unsigned int q[4];
 	unsigned int pick_sample[4];
 	
 	int value;
 	
-	editor_EnablePicking();
-	
-	//gpu_BindGpuHeap();
+	editor_EnablePicking(r_window_width, r_window_height);
 	
 	renderer_SetShader(ed_pick_shader);
 	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
@@ -457,11 +433,6 @@ pick_record_t editor_PickBrushFace(brush_t *brush, float mouse_x, float mouse_y)
 	value = PICK_BRUSH_FACE;
 	renderer_SetNamedUniform1f("pick_type", *(float *)&value);
 		
-	//brush = brushes;
-	//i = 1;
-	//while(brush)
-	//{	
-	
 	for(c = 0; c < brush->base_polygons_count; c++)
 	{
 		value = c + 1;
@@ -475,36 +446,22 @@ pick_record_t editor_PickBrushFace(brush_t *brush, float mouse_x, float mouse_y)
 		}
 		renderer_End();
 	}
-		
-		
-		
-		
-		//renderer_DrawVertsIndexed(GL_TRIANGLES, brush->clipped_polygons_index_count, 4, sizeof(vertex_t), brush->clipped_polygons_vertices, brush->clipped_polygons_indexes);
-	//	brush = brush->next;
-	//	i++;
-	//}
-	
-	
+
 	renderer_DisableImediateDrawing();
 	glEnable(GL_CULL_FACE);	
 
-	
 	editor_SamplePickingBuffer(mouse_x, mouse_y, pick_sample);
 						 
 	editor_DisablePicking();
 	
 	record.type = pick_sample[0];
-	
-	//printf("%d %d\n", pick_sample[0], pick_sample[1]);
 	switch(record.type)
 	{
 		case PICK_BRUSH_FACE:
 			record.pointer = brush;
 			record.index0 = pick_sample[1] - 1;
 		break;
-	}
-		
-	//gpu_UnbindGpuHeap();	
+	}	
 	R_DBG_POP_FUNCTION_NAME();
 	
 	return record;
@@ -528,13 +485,10 @@ int editor_Check3dHandle(double mouse_x, double mouse_y, vec3_t handle_position,
 	
 	R_DBG_PUSH_FUNCTION_NAME();
 	
-	editor_EnablePicking();
+	editor_EnablePicking(r_window_width, r_window_height);
 	editor_Draw3dHandle(handle_position, mode);	
 	
-	x = r_window_width * (mouse_x * 0.5 + 0.5);
-	y = r_window_height * (mouse_y * 0.5 + 0.5);
-	glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, q);
-	
+	editor_SamplePickingBuffer(mouse_x, mouse_y, (int *)q);
 	editor_DisablePicking();
 			
 	if(q[0])
@@ -557,6 +511,73 @@ int editor_Check3dHandle(double mouse_x, double mouse_y, vec3_t handle_position,
 	R_DBG_POP_FUNCTION_NAME();
 	return flags;
 	
+}
+
+vec3_t editor_3dCursorPosition(float mouse_x, float mouse_y)
+{
+	int i;
+	int c;
+	int j;
+	int k;
+	int x;
+	int y;
+	
+	camera_t *active_camera = camera_GetActiveCamera();
+	brush_t *brush;
+	
+	mat4_t camera_to_world_matrix;
+	
+	vec4_t pos;
+	
+	float q[4];
+	float z;
+	float qr;
+	float qt;
+	
+	gpu_BindGpuHeap();
+	
+	editor_EnablePicking(r_window_width, r_window_height);
+	glClearColor(active_camera->frustum.zfar, active_camera->frustum.zfar, active_camera->frustum.zfar, active_camera->frustum.zfar);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glClearColor(0.0, 0.0, 0.0, 1.0);
+
+	renderer_SetShader(ed_brush_dist_shader);
+	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
+	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+	renderer_SetModelMatrix(NULL);
+	renderer_EnableImediateDrawing();
+
+	brush = brushes;
+	while(brush)
+	{	
+		renderer_DrawVertsIndexed(GL_TRIANGLES, brush->clipped_polygons_index_count, 4, sizeof(vertex_t), brush->clipped_polygons_vertices, brush->clipped_polygons_indexes);
+		brush = brush->next;
+	}
+
+	editor_SamplePickingBuffer(mouse_x, mouse_y, (int *)q);
+	
+	editor_DisablePicking();
+	mat4_t_compose(&camera_to_world_matrix, &active_camera->world_orientation, active_camera->world_position);
+	qr = active_camera->frustum.znear / active_camera->frustum.right;
+	qt = active_camera->frustum.znear / active_camera->frustum.top;
+
+	if(q[0] == active_camera->frustum.zfar)
+	{
+		z = -10.0;
+	}
+	else
+	{
+		z = -q[0];
+	}
+	
+	pos.x = (mouse_x / qr) * (-z);
+	pos.y = (mouse_y / qt) * (-z);
+	pos.z = z;
+	pos.w = 1.0;
+		
+	mat4_t_vec4_t_mult(&camera_to_world_matrix, &pos);
+	
+	return pos.vec3;
 }
 
 
@@ -801,63 +822,12 @@ void editor_DropSelection(pick_record_t *record, pick_list_t *pick_list)
 	}
 	
 	pick_list->last_selection_type = records[pick_list->record_count - 1].type;
-	
-	/*if(ed_selection_count)
-	{
-		switch(ed_selections[ed_selection_count - 1].type)
-		{
-			case PICK_LIGHT:
-				ed_selected_light_params = &l_light_params[ed_selections[ed_selection_count - 1].index0];
-				ed_selected_light_position = &l_light_positions[ed_selections[ed_selection_count - 1].index0];
-				
-				ed_selected_brush = NULL;
-				ed_selected_brush_polygon_index = -1;
-				ed_selected_brush_selection_index = -1;
-				
-			break;
-						
-			case PICK_BRUSH:
-				ed_selected_brush = ed_selections[ed_selection_count - 1].pointer;				
-			break;
-		}
-					
-		ed_selection_type = ed_selections[ed_selection_count - 1].type;
-	}
-	else
-	{
-		ed_selection_type = PICK_NONE;
-	}*/
 }
 
 void editor_ClearSelection(pick_list_t *pick_list)
-{
-	
-	/*if(ed_editing_mode == EDITING_MODE_UV)
-	{
-		ed_selection_count = ed_selected_brush_selection_index + 1;
-		ed_selection_type = PICK_BRUSH;
-	}
-	else
-	{
-		ed_selection_count = 0;
-		ed_selection_type = PICK_NONE;
-		
-		ed_selected_light_params = NULL;
-		ed_selected_light_position = NULL;
-		
-		ed_selected_brush = NULL;
-		ed_selected_brush_polygon_index = -1;
-		ed_selected_brush_polygon_vertex_index = -1;
-		ed_selected_brush_selection_index = -1;
-	}
-	
-	editor_CloseLightPropertiesWindow();
-	editor_CloseBrushPropertiesWindow();*/
-	
-	
+{	
 	pick_list->record_count = 0;
 	pick_list->last_selection_type = PICK_NONE;
-	
 }
 
 pick_record_t editor_GetLastSelection(pick_list_t *pick_list)
@@ -1198,7 +1168,9 @@ void editor_DestroySelection(pick_list_t *pick_list)
 				//entity_DestroyEntityIndex(records[i].index0);
 			break;
 		}
-	}	
+	}
+	
+	pick_list->record_count = 0;	
 }
 
 

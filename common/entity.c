@@ -150,6 +150,7 @@ int entity_Init()
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_SCRIPT, sizeof(struct script_component_t));
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_CAMERA, sizeof(struct camera_component_t));
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_PARTICLE_SYSTEM, sizeof(struct particle_system_component_t));
+	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_LIFE, sizeof(struct life_component_t));
 		
 	DECLARE_COMPONENT_FIELDS(COMPONENT_TYPE_TRANSFORM, {
 															COMPONENT_FIELD("orientation", SCRIPT_VAR_TYPE_MAT3T, COMPONENT_FIELD_OFFSET(struct transform_component_t, orientation)),
@@ -159,10 +160,10 @@ int entity_Init()
 														});
 	
 	
-	DECLARE_COMPONENT_FIELDS(COMPONENT_TYPE_CAMERA, {
-															COMPONENT_FIELD("position", SCRIPT_VAR_TYPE_COMPONENT, COMPONENT_FIELD_OFFSET(struct camera_component_t, transform)),
-													 		COMPONENT_FIELD("orientation", SCRIPT_VAR_TYPE_COMPONENT, COMPONENT_FIELD_OFFSET(struct camera_component_t, transform))
-													});
+	//DECLARE_COMPONENT_FIELDS(COMPONENT_TYPE_CAMERA, {
+	//														COMPONENT_FIELD("position", SCRIPT_VAR_TYPE_COMPONENT, COMPONENT_FIELD_OFFSET(struct camera_component_t, transform)),
+	//												 		COMPONENT_FIELD("orientation", SCRIPT_VAR_TYPE_COMPONENT, COMPONENT_FIELD_OFFSET(struct camera_component_t, transform))
+	//												});
 	
 	dispose_component_callback[COMPONENT_TYPE_TRANSFORM] = entity_TransformComponentDisposeCallback;
 	
@@ -346,7 +347,7 @@ void entity_AddTransformToTopList(struct component_handle_t transform)
 	transform_ptr = entity_GetComponentPointer(transform);	
 
 	transform_ptr->top_list_index = list_add(&ent_top_transforms, &transform);
-	transform_ptr->depth_index = 0;
+	//transform_ptr->depth_index = 0;
 }
 
 void entity_RemoveTransformFromTopList(struct component_handle_t transform)
@@ -496,10 +497,63 @@ void entity_UnparentTransformComponent(struct component_handle_t parent_transfor
 	
 }
 
+void entity_ParentEntityToEntityTransform(struct component_handle_t parent_transform, struct entity_handle_t child)
+{
+	struct entity_t *child_entity;
+	struct entity_t *parent_entity;
+	
+	struct component_handle_t child_transform;
+	struct transform_component_t *transform_component;
+	struct transform_component_t *child_transform_component;
+	
+	if(parent_transform.def != child.def)
+	{
+		printf("entity_ParentEntityToTransform: can't parent entity def to non def\n");
+		return;
+	}
+	
+	child_entity = entity_GetEntityPointerHandle(child);
+	
+	if(parent_transform.def)
+	{
+		/* if this is a ref, we alloc a new transform component and make it point
+		to this def, thus configuring a entity def reference... */
+		child_transform = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, parent_transform.def);
+		transform_component = entity_GetComponentPointer(child_transform);
+		transform_component->base.entity = child;
+		child_entity->ref_count++;
+		
+		
+		if(!transform_component->instance_name)
+		{
+			transform_component->instance_name = memory_Malloc(ENTITY_NAME_MAX_LEN, "entity_ParentEntity");
+		}
+		
+		strcpy(transform_component->instance_name, child_entity->name);
+		
+		child_transform_component = entity_GetComponentPointer(child_entity->components[COMPONENT_TYPE_TRANSFORM]);
+		
+		transform_component->orientation = child_transform_component->orientation;
+		transform_component->position = child_transform_component->position;
+		transform_component->scale = child_transform_component->scale;		
+	}
+	else
+	{
+		child_transform = child_entity->components[COMPONENT_TYPE_TRANSFORM];
+	}
+	
+	entity_ParentTransformComponent(parent_transform, child_transform);
+}
+
 void entity_ParentEntity(struct entity_handle_t parent, struct entity_handle_t child)
 {
 	struct entity_t *parent_entity;
 	struct entity_t *child_entity;
+	
+	struct component_handle_t child_transform;
+	struct component_handle_t parent_transform;
+	struct transform_component_t *transform_component;
+	struct transform_component_t *child_transform_component;
 	
 	if(parent.def != child.def)
 	{
@@ -510,7 +564,37 @@ void entity_ParentEntity(struct entity_handle_t parent, struct entity_handle_t c
 	parent_entity = entity_GetEntityPointerHandle(parent);
 	child_entity = entity_GetEntityPointerHandle(child);
 	
-	entity_ParentTransformComponent(parent_entity->components[COMPONENT_TYPE_TRANSFORM], child_entity->components[COMPONENT_TYPE_TRANSFORM]);
+	if(parent.def)
+	{
+		/* if this is a ref, we alloc a new transform component and make it point
+		to this def, thus configuring a entity def reference... */
+		child_transform = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, parent.def);
+		transform_component = entity_GetComponentPointer(child_transform);
+		transform_component->base.entity = child;
+		child_entity->ref_count++;
+		
+		
+		if(!transform_component->instance_name)
+		{
+			transform_component->instance_name = memory_Malloc(ENTITY_NAME_MAX_LEN, "entity_ParentEntity");
+		}
+		
+		strcpy(transform_component->instance_name, child_entity->name);
+		
+		child_transform_component = entity_GetComponentPointer(child_entity->components[COMPONENT_TYPE_TRANSFORM]);
+		
+		transform_component->orientation = child_transform_component->orientation;
+		transform_component->position = child_transform_component->position;
+		transform_component->scale = child_transform_component->scale;
+
+		
+	}
+	else
+	{
+		child_transform = child_entity->components[COMPONENT_TYPE_TRANSFORM];
+	}
+	
+	entity_ParentTransformComponent(parent_entity->components[COMPONENT_TYPE_TRANSFORM], child_transform);
 }
 
 
@@ -518,6 +602,13 @@ void entity_UnparentEntity(struct entity_handle_t parent, struct entity_handle_t
 {
 	struct entity_t *parent_entity;
 	struct entity_t *child_entity;
+	
+	int i;
+	
+	struct transform_component_t *parent_transform;
+	struct transform_component_t *other_transform;
+	
+	struct component_handle_t child_transform;
 	
 	if(parent.def != child.def)
 	{
@@ -528,7 +619,33 @@ void entity_UnparentEntity(struct entity_handle_t parent, struct entity_handle_t
 	parent_entity = entity_GetEntityPointerHandle(parent);
 	child_entity = entity_GetEntityPointerHandle(child);
 	
-	entity_UnparentTransformComponent(parent_entity->components[COMPONENT_TYPE_TRANSFORM], child_entity->components[COMPONENT_TYPE_TRANSFORM]);
+	if(parent.def)
+	{
+		parent_transform = entity_GetComponentPointer(parent_entity->components[COMPONENT_TYPE_TRANSFORM]);
+		
+		for(i = 0; i < parent_transform->children_count; i++)
+		{
+			other_transform = entity_GetComponentPointer(parent_transform->child_transforms[i]);
+			
+			if(other_transform->base.entity.entity_index == child.entity_index)
+			{
+				child_transform = parent_transform->child_transforms[i];
+				child_entity->ref_count--;
+				break;
+			}
+		}
+		
+		if(i == parent_transform->children_count)
+		{
+			return;
+		}
+	}
+	else
+	{
+		child_transform = child_entity->components[COMPONENT_TYPE_TRANSFORM];
+	}
+	
+	entity_UnparentTransformComponent(parent_entity->components[COMPONENT_TYPE_TRANSFORM], child_transform);
 }
 
 /*
@@ -561,6 +678,7 @@ void entity_DestroyEntityDef(struct entity_handle_t entity)
 struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int component_type)
 {
 	struct entity_t *entity_ptr;
+	struct entity_t *entity_def_ptr;
 	int component_index;
 	
 	struct component_handle_t component_transform;
@@ -602,7 +720,6 @@ struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int
 		}
 	}
 	
-	
 	component = entity_AllocComponent(component_type, entity.def);
 	component_ptr = entity_GetComponentPointer(component);
 	component_ptr->entity = entity;
@@ -618,32 +735,102 @@ struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int
 		{		
 		
 			case COMPONENT_TYPE_TRANSFORM:
-				//transform_component = (struct transform_component_t *)component_ptr;
-				//transform_component->parent.index = INVALID_ENTITY_INDEX;
+				if(entity.def)
+				{
+					transform_component = (struct transform_component_t *)component_ptr;
+					
+					if(!transform_component->instance_name)
+					{
+						transform_component->instance_name = memory_Malloc(ENTITY_NAME_MAX_LEN, "entity_AddComponent");
+					}
+					
+					strcpy(transform_component->instance_name, entity_ptr->name);	
+				}
 			break;
 			
 			case COMPONENT_TYPE_CAMERA:
 				/* a camera component needs a transform component so it can be
 				updated by other transforms above it in the hierarchy... */
-				component_transform = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, entity.def);
-				camera_component = (struct camera_component_t *)component_ptr;
+				//component_transform = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, entity.def);
+				//transform_component = entity_GetComponentPointer(component_transform);
 				
-				camera_component->transform = component_transform;
+				//camera_component = (struct camera_component_t *)component_ptr;
+				//camera_component->transform = component_transform;
 				
 				/* parent this camera's transform to the entity's transform that owns the camera component... */
-				entity_ParentTransformComponent(entity_ptr->components[COMPONENT_TYPE_TRANSFORM], component_transform);
+				//entity_ParentTransformComponent(entity_ptr->components[COMPONENT_TYPE_TRANSFORM], component_transform);
+				
+	//			transform_component->orientation = mat3_t_id();
+	//			transform_component->position = vec3_t_c(0.0, 0.0, 0.0);
+	//			transform_component->scale = vec3_t_c(1.0, 1.0, 1.0);
+				
 			break;
 		}
 	}
+	 
+	
+	/* propagate the flag upwards, so this now modified 
+	entity gets serialized properly... */
+	if(!entity.def)
+	{
+		if(!(entity_ptr->flags & ENTITY_FLAG_NOT_INITIALIZED))
+		{
+			while(entity_ptr)
+			{
+				entity_ptr->flags |= ENTITY_FLAG_MODIFIED;
+				entity_ptr = entity_GetEntityParentPointerHandle(entity);
+			}
+		}
+		
+	}
 	
 	return component;
-	
-	//controller->flags = 0;
 }
 
-void entity_RemoveComponent(struct entity_handle_t entity, int component_type, int component_index)
+void entity_RemoveComponent(struct entity_handle_t entity, int component_type)
 {
+	struct entity_t *entity_ptr;
+	struct component_t *component;
+	struct camera_component_t *camera_component;
 	
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+	
+	if(entity_ptr)
+	{
+		if(component_type >= COMPONENT_TYPE_TRANSFORM && component_type < COMPONENT_TYPE_LAST)
+		{
+			if(entity_ptr->components[component_type].type != COMPONENT_TYPE_NONE)
+			{
+				component = entity_GetComponentPointer(entity_ptr->components[component_type]);
+				
+				switch(component_type)
+				{
+					case COMPONENT_TYPE_TRANSFORM:
+						printf("entity_RemoveComponent: cannot remove component!\n");
+					break;
+					
+					case COMPONENT_TYPE_CAMERA:
+						camera_component = (struct camera_component_t *)component;
+						
+						if(!entity.def)
+						{
+							camera_DestroyCamera(camera_component->camera);
+						}
+					break;
+				}
+				
+				entity_DeallocComponent(entity_ptr->components[component_type]);
+				entity_ptr->components[component_type].type = COMPONENT_TYPE_NONE;
+				
+				
+				if(!entity.def)
+				{
+					entity_ptr->flags |= ENTITY_FLAG_MODIFIED;
+				}
+				
+			}
+		}
+	}
 }
 
 void entity_AddProp(struct entity_handle_t entity, char *name, int size)
@@ -662,6 +849,11 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 	
 	if(entity_ptr)
 	{
+		
+		if(!entity.def)
+		{
+			entity_ptr->flags |= ENTITY_FLAG_MODIFIED;
+		}
 		
 		for(prop_index = 0; prop_index < entity_ptr->prop_count; prop_index++)
 		{
@@ -729,21 +921,20 @@ void entity_PropValue(struct entity_handle_t entity, char *name, void *value, in
 	
 	if(entity_ptr)
 	{
-		for(i = 0; i < entity_ptr->prop_count; i++)
+		prop = entity_GetPropPointer(entity, name);
+		
+		if(prop)
 		{
-			if(!strcmp(name, entity_ptr->props[i].name))
+			if(set)
 			{
-				if(set)
-				{
-					memcpy(entity_ptr->props[i].memory, value, entity_ptr->props[i].size);
-				}
-				else
-				{
-					memcpy(value, entity_ptr->props[i].memory, entity_ptr->props[i].size);
-				}
-				
-				return;
+				memcpy(prop->memory, value, prop->size);
 			}
+			else
+			{
+				memcpy(value, prop->memory, prop->size);
+			}
+				
+			return;
 		}
 	}
 }
@@ -756,6 +947,27 @@ void entity_SetProp(struct entity_handle_t entity, char *name, void *value)
 void entity_GetProp(struct entity_handle_t entity, char *name, void *value)
 {
 	entity_PropValue(entity, name, value, 0);
+}
+
+struct entity_prop_t *entity_GetPropPointer(struct entity_handle_t entity, char *name)
+{
+	int i;
+	struct entity_t *entity_ptr;
+	
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+	
+	if(entity_ptr)
+	{
+		for(i = 0; i < entity_ptr->prop_count; i++)
+		{
+			if(!strcmp(name, entity_ptr->props[i].name))
+			{
+				return entity_ptr->props + i;
+			}
+		}
+	}
+	
+	return NULL;
 }
 
 /*
@@ -829,6 +1041,7 @@ void entity_SetCollider(struct entity_handle_t entity, void *collider)
 	struct physics_component_t *physics_component;
 	struct entity_t *entity_ptr;
 	struct collider_handle_t handle;
+	struct collider_t *collider_ptr;
 
 	entity_ptr = entity_GetEntityPointerHandle(entity);
 	
@@ -869,6 +1082,8 @@ void entity_SetCollider(struct entity_handle_t entity, void *collider)
 	else
 	{
 		physics_component->collider.collider_handle = *(struct collider_handle_t *)collider;
+		collider_ptr = physics_GetColliderPointerHandle(physics_component->collider.collider_handle);
+		collider_ptr->entity_index = entity.entity_index;
 	}
 		
 	physics_component->flags = 0;
@@ -977,8 +1192,7 @@ void entity_SetTransform(struct entity_handle_t entity, mat3_t *orientation, vec
 			aabb->current_extents.x = 0.0;
 			aabb->current_extents.y = 0.0;
 			aabb->current_extents.z = 0.0;
-		}
-			
+		}	
 	}	
 }
 
@@ -991,20 +1205,26 @@ void entity_SetCameraTransform(struct entity_handle_t entity, mat3_t *orientatio
 	
 	entity_ptr = entity_GetEntityPointerHandle(entity);
 	
-	camera_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_CAMERA]);
-	transform_component = entity_GetComponentPointer(camera_component->transform);
+	//camera_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_CAMERA]);
 	
-	if(!orientation)
+	if(entity_ptr->components[COMPONENT_TYPE_CAMERA].type != COMPONENT_TYPE_NONE)
 	{
-		transform_component->orientation = mat3_t_id();
-	}
-	else
-	{
-		transform_component->orientation = *orientation;
+		transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+	
+		if(!orientation)
+		{
+			transform_component->orientation = mat3_t_id();
+		}
+		else
+		{
+			transform_component->orientation = *orientation;
+		}
+		
+		transform_component->position = position;
+		transform_component->scale = vec3_t_c(1.0, 1.0, 1.0);	
 	}
 	
-	transform_component->position = position;
-	transform_component->scale = vec3_t_c(1.0, 1.0, 1.0);	
+	
 }
 
 void entity_SetCamera(struct entity_handle_t entity, camera_t *camera)
@@ -1038,7 +1258,7 @@ struct entity_handle_t entity_CreateEntity(char *name, int def)
 	handle.entity_index = entity_index;
 
 	entity_ptr = stack_list_get(&ent_entities[def], entity_index);
-	entity_ptr->flags = 0;
+	entity_ptr->flags = ENTITY_FLAG_NOT_INITIALIZED;
 	entity_ptr->leaf = NULL;
 	entity_ptr->prop_count = 0;
 	
@@ -1073,10 +1293,11 @@ struct entity_handle_t entity_CreateEntity(char *name, int def)
 }
 
 
-struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, vec3_t scale, struct entity_handle_t entity_def, char *name)
+struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t position, vec3_t scale, struct entity_handle_t entity_def, struct component_handle_t transform, char *name)
 {
 	struct entity_t *entity_ptr;
 	struct entity_t *entity_def_ptr;
+	struct entity_t *rec_entity_def_ptr;
 	struct entity_handle_t handle;
 	struct entity_handle_t child_handle;
 	
@@ -1118,24 +1339,9 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 	int i;
 	int component_type;
 	int j;
-	
-	handle.entity_index = INVALID_ENTITY_INDEX;
-	handle.def = 0;
-	
-	if(!entity_def.def)
-	{
-		printf("entity_SpawnEntity: cannot spawn an entity from another\n");
-		return handle;
-	}
-	
-	if(entity_def.entity_index == INVALID_ENTITY_INDEX)
-	{
-		printf("entity_SpawnEntity: invalid entity def handle\n");
-		return handle;
-	}
-	
-	handle = entity_CreateEntity(name, 0);
-	 
+		
+	handle = entity_CreateEntity(name, 0);	
+		 
 	entity_ptr = entity_GetEntityPointerHandle(handle);
 	entity_def_ptr = entity_GetEntityPointerHandle(entity_def);
 	
@@ -1179,14 +1385,14 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 				
 				case COMPONENT_TYPE_CAMERA:
 					camera_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_CAMERA]);
-					def_camera_component = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_TYPE_CAMERA]);
+					/*def_camera_component = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_TYPE_CAMERA]);
 					
-					camera_transform_component = entity_GetComponentPointer(camera_component->transform);
-					def_camera_transform_component = entity_GetComponentPointer(def_camera_component->transform);
+					camera_transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+					def_camera_transform_component = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 					
 					camera_transform_component->orientation = def_camera_transform_component->orientation;
 					camera_transform_component->position = def_camera_transform_component->position;
-					camera_transform_component->scale = def_camera_transform_component->scale;
+					camera_transform_component->scale = def_camera_transform_component->scale;*/
 					
 					camera_component->camera = camera_CreateCamera("camera", vec3_t_c(0.0, 0.0, 0.0), NULL, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
 				break;
@@ -1207,6 +1413,24 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 	entity_ptr->flags = 0;
 	entity_ptr->def = entity_def;
 	
+	transform_component = entity_GetComponentPointer(transform);
+		
+	if(transform_component)
+	{
+		for(i = 0; i < transform_component->children_count; i++)
+		{
+			child_transform = entity_GetComponentPointer(transform_component->child_transforms[i]);
+			
+			if(child_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
+			{
+				rec_entity_def_ptr = entity_GetEntityPointerHandle(child_transform->base.entity);
+				child_handle = entity_RecursiveSpawnEntity(&child_transform->orientation, child_transform->position, child_transform->scale, child_transform->base.entity, transform_component->child_transforms[i], child_transform->instance_name);			
+				entity_ParentEntity(handle, child_handle);
+			}
+		}
+	}
+	
+	//entity_def_ptr = entity_GetEntityPointerHandle(entity_def);
 	transform_component = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 	
 	for(i = 0; i < transform_component->children_count; i++)
@@ -1215,14 +1439,45 @@ struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, 
 		
 		if(child_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
 		{
-			entity_def_ptr = entity_GetEntityPointerHandle(child_transform->base.entity);
-			child_handle = entity_SpawnEntity(&child_transform->orientation, child_transform->position, child_transform->scale, child_transform->base.entity, entity_def_ptr->name);			
+			rec_entity_def_ptr = entity_GetEntityPointerHandle(child_transform->base.entity);
+			child_handle = entity_RecursiveSpawnEntity(&child_transform->orientation, child_transform->position, child_transform->scale, child_transform->base.entity, transform_component->child_transforms[i], rec_entity_def_ptr->name);			
 			entity_ParentEntity(handle, child_handle);
 		}
-	
 	}
-		
+	
 	return handle;
+}
+
+struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, vec3_t scale, struct entity_handle_t entity_def, char *name)
+{
+	return entity_RecursiveSpawnEntity(orientation, position, scale, entity_def, (struct component_handle_t){COMPONENT_TYPE_NONE, 1, 0}, name);
+}
+
+void entity_MarkForRemoval(struct entity_handle_t entity)
+{
+	struct entity_t *entity_ptr;
+	struct component_handle_t component;
+	struct script_component_t *script_component;
+
+		
+	if(entity.def)
+	{
+		printf("entity_MarkForRemoval: can't mark entity def for removal\n");
+		return;
+	}
+	
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+	
+	if(entity_ptr)
+	{
+		entity_ptr->flags |= ENTITY_FLAG_MARKED_INVALID;
+		
+		if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type != COMPONENT_TYPE_NONE)
+		{
+			script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);		
+			script_ExecuteScriptImediate(script_component->script, script_component);
+		}
+	}	
 }
 
 void entity_RemoveEntity(struct entity_handle_t entity)
@@ -1249,15 +1504,15 @@ void entity_RemoveEntity(struct entity_handle_t entity)
 	
 	if(entity_ptr)
 	{
-		
-		/*entity_ptr->flags |= ENTITY_MARKED_INVALID;
+		 
+		entity_ptr->flags |= ENTITY_FLAG_MARKED_INVALID;
 		
 		if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type != COMPONENT_TYPE_NONE)
 		{
 			script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
 			
 			script_ExecuteScriptImediate(script_component->script, script_component);
-		}*/
+		}
 		
 		transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 		
@@ -1281,7 +1536,7 @@ void entity_RemoveEntity(struct entity_handle_t entity)
 					case COMPONENT_TYPE_CAMERA:
 						camera_component = entity_GetComponentPointer(component);
 						camera_DestroyCamera(camera_component->camera);
-						entity_DeallocComponent(camera_component->transform);
+			//			entity_DeallocComponent(camera_component->transform);
 					break;
 					
 					case COMPONENT_TYPE_PHYSICS:
@@ -1293,7 +1548,7 @@ void entity_RemoveEntity(struct entity_handle_t entity)
 			}			
 		}
 	
-		entity_ptr->flags |= ENTITY_INVALID;
+		entity_ptr->flags = ENTITY_FLAG_INVALID;
 		
 		stack_list_remove(&ent_entities[0], entity.entity_index);
 	}
@@ -1312,7 +1567,7 @@ void entity_RemoveAllEntities()
 	{
 		handle.def = 0;
 		handle.entity_index = i;
-		
+		 
 		if(entity_GetEntityPointerHandle(handle))
 		{
 			entity_RemoveEntity(handle);
@@ -1324,33 +1579,38 @@ struct entity_t *entity_GetEntityPointer(char *name, int get_def)
 {
 	/*int i;
 	int c;
+	int entity_index;
 	struct entity_t *entities;
+	struct transform_component_t *transform;
+	struct component_handle_t *transform;
+	
+	static char ent_scoped_name[1024];
+	
+	get_def = get_def && 1;
 	
 	if(get_def)
 	{
-		c = ent_entity_def_list_cursor;
-		entities = ent_entity_defs;
+		c = ent_entities[get_def].element_count;
+		
+		for(i = 0; i < c; i++)
+		{
+			
+		}
 	}
 	else
 	{
-		c = ent_entity_list_cursor;
-		entities = ent_entities;
-	}
-	
-	for(i = 0; i < c; i++)
-	{
-		if(entities[i].flags & ENTITY_INVALID)
+		c = ent_top_transforms.element_count;
+		transform = (struct component_handle_t *)ent_top_transforms.elements;
+		
+		for(i = 0; i < c; i++)
 		{
-			continue;
-		}
+			transform = entity_GetComponentPointer(transforms[i]);
 			
-		if(!strcmp(entities[i].name, name))
-		{
-			return entities + i;
+			entity_index
 		}
-	}
+	}*/
 	
-	return NULL;*/
+	return NULL;
 }
 
 
@@ -1495,6 +1755,58 @@ void entity_FindPath(struct entity_handle_t entity, vec3_t to)
 	#endif
 }
 
+#define MAX_TOUCHED_ENTITIES 1024
+struct entity_handle_t entity_touched_entities[MAX_TOUCHED_ENTITIES];
+
+struct entity_handle_t *entity_GetTouchedEntities(struct entity_handle_t entity, int *count)
+{
+	int i;
+	int start;
+	int touched = 0;
+	struct physics_component_t *physics_component;
+	struct collision_record_t *collision_records;
+	struct collider_t *collider;
+	struct collider_t *other;
+	struct entity_t *entity_ptr;
+	
+	if(entity.def)
+	{
+		return NULL;
+	}
+	
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+	
+	if(entity_ptr)
+	{
+		physics_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
+		collider = physics_GetColliderPointerHandle(physics_component->collider.collider_handle);
+		
+		collision_records = physics_GetColliderCollisionRecords(physics_component->collider.collider_handle);
+				
+		for(i = 0; i < collider->collision_record_count; i++)
+		{
+			//if(collision_records[start + i].collider.type != COLLIDER_TYPE_NONE)
+			//{
+			other = physics_GetColliderPointerHandle(collision_records[i].collider);
+				
+			if(other)
+			{
+				entity_touched_entities[touched].entity_index = other->entity_index;
+				entity_touched_entities[touched].def = 0;
+				
+				touched++;
+			}
+				
+			//}
+		}
+	}
+	
+	assert(touched < MAX_TOUCHED_ENTITIES);
+	
+	*count = touched;
+	return entity_touched_entities; 
+}
+
 
 /*
 =========================
@@ -1596,6 +1908,8 @@ void entity_UpdateScriptComponents()
 	int i;
 	int c;
 	
+	int engine_state;
+	
 	//static int last_update = 0;
 	
 	//struct script_controller_component_t *script_controllers;
@@ -1608,44 +1922,45 @@ void entity_UpdateScriptComponents()
 	struct stack_list_t *list;
 	
 	list = &ent_components[0][COMPONENT_TYPE_SCRIPT];
-	
-	//script_components = (struct script_component_t *)ent_components[0][COMPONENT_TYPE_SCRIPT].elements;
+
 	c = ent_components[0][COMPONENT_TYPE_SCRIPT].element_count;
 	
-	if(engine_GetEngineState() & ENGINE_JUST_RESUMED)
+	engine_state = engine_GetEngineState();
+	
+	if(engine_state & ENGINE_PLAYING)
 	{
-		for(i = 0; i < c; i++)
+		if(engine_GetEngineState() & ENGINE_JUST_RESUMED)
 		{
-			//script_component = script_components + i;	
-			script_component = (struct script_component_t *)list->elements + i;
-			
-			if(script_component->base.flags & COMPONENT_FLAG_INVALID)
+			for(i = 0; i < c; i++)
 			{
-				continue;
+				script_component = (struct script_component_t *)list->elements + i;
+				
+				if(script_component->base.flags & COMPONENT_FLAG_INVALID)
+				{
+					continue;
+				}
+				
+				entity = entity_GetEntityPointerHandle(script_component->base.entity);
+				entity->spawn_time = r_frame - 1;	
+				script_ExecuteScriptImediate((struct script_t *)script_component->script, script_component);
 			}
-			
-			script_component->flags |= SCRIPT_CONTROLLER_FLAG_FIRST_RUN;	
-			script_ExecuteScriptImediate((struct script_t *)script_component->script, script_component);
 		}
-	}
-	else
-	{
-		for(i = 0; i < c; i++)
-		{	
-			//script_component = script_components + i;	
-			//script_component = entity_GetComponentPointerIndex(i, COMPONENT_TYPE_SCRIPT, 0);
-			
-			script_component = (struct script_component_t *)list->elements + i;
-			
-			if(script_component->base.flags & COMPONENT_FLAG_INVALID)
-			{
-				continue;
+		else
+		{
+			for(i = 0; i < c; i++)
+			{				
+				script_component = (struct script_component_t *)list->elements + i;
+				
+				if(script_component->base.flags & COMPONENT_FLAG_INVALID)
+				{
+					continue;
+				}
+				script_ExecuteScriptImediate((struct script_t *)script_component->script, script_component);
 			}
-			script_ExecuteScriptImediate((struct script_t *)script_component->script, script_component);
 		}
 	}
 	
-	//last_update = r_frame;
+	
 }
 
 void entity_RecursiveUpdateTransform(struct entity_transform_t *parent_transform, struct component_handle_t child_transform)
@@ -1769,6 +2084,8 @@ void entity_UpdateCameraComponents()
 	struct camera_component_t *camera_components;
 	struct camera_component_t *camera_component;
 	struct entity_transform_t *world_transform;
+	
+	struct entity_t *entity;
 	camera_t *camera;
 	
 	camera_components = (struct camera_component_t *)ent_components[0][COMPONENT_TYPE_CAMERA].elements;
@@ -1778,58 +2095,95 @@ void entity_UpdateCameraComponents()
 	for(i = 0; i < c; i++)
 	{
 		camera_component = camera_components + i;
-		world_transform = entity_GetWorldTransformPointer(camera_component->transform);
 		
-		if(camera_component->base.flags & COMPONENT_FLAG_INVALID)
+		if(!(camera_component->base.flags & COMPONENT_FLAG_INVALID))
 		{
-			continue;
+			entity = entity_GetEntityPointerHandle(camera_component->base.entity);
+			world_transform = entity_GetWorldTransformPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+			
+			//world_transform = entity_GetWorldTransformPointer(camera_component->transform);
+			
+			if(camera_component->base.flags & COMPONENT_FLAG_INVALID)
+			{
+				continue;
+			}
+			
+			if(camera_component->camera)
+			{
+				camera = camera_component->camera;
+				
+				camera->world_position.x = world_transform->transform.floats[3][0];
+				camera->world_position.y = world_transform->transform.floats[3][1];
+				camera->world_position.z = world_transform->transform.floats[3][2];
+				
+				
+				camera->world_orientation.floats[0][0] = world_transform->transform.floats[0][0];
+				camera->world_orientation.floats[0][1] = world_transform->transform.floats[0][1];
+				camera->world_orientation.floats[0][2] = world_transform->transform.floats[0][2];
+				
+				camera->world_orientation.floats[1][0] = world_transform->transform.floats[1][0];
+				camera->world_orientation.floats[1][1] = world_transform->transform.floats[1][1];
+				camera->world_orientation.floats[1][2] = world_transform->transform.floats[1][2];
+				
+				camera->world_orientation.floats[2][0] = world_transform->transform.floats[2][0];
+				camera->world_orientation.floats[2][1] = world_transform->transform.floats[2][1];
+				camera->world_orientation.floats[2][2] = world_transform->transform.floats[2][2];
+				
+				camera_ComputeWorldToCameraMatrix(camera);
+			}
 		}
 		
-		if(camera_component->camera)
+		
+	}
+}
+
+void entity_ClearMarkedEntities()
+{
+	struct entity_t *entity;
+	struct entity_handle_t handle;
+	
+	int i;
+	int c;
+	
+	handle.def = 0;
+	
+	c = ent_entities[0].element_count;
+	
+	for(i = 0; i < c; i++)
+	{
+		handle.entity_index = i;
+		
+		entity = entity_GetEntityPointerHandle(handle);
+		
+		if(entity)
 		{
-			camera = camera_component->camera;
-			
-			camera->world_position.x = world_transform->transform.floats[3][0];
-			camera->world_position.y = world_transform->transform.floats[3][1];
-			camera->world_position.z = world_transform->transform.floats[3][2];
-			
-			
-			camera->world_orientation.floats[0][0] = world_transform->transform.floats[0][0];
-			camera->world_orientation.floats[0][1] = world_transform->transform.floats[0][1];
-			camera->world_orientation.floats[0][2] = world_transform->transform.floats[0][2];
-			
-			camera->world_orientation.floats[1][0] = world_transform->transform.floats[1][0];
-			camera->world_orientation.floats[1][1] = world_transform->transform.floats[1][1];
-			camera->world_orientation.floats[1][2] = world_transform->transform.floats[1][2];
-			
-			camera->world_orientation.floats[2][0] = world_transform->transform.floats[2][0];
-			camera->world_orientation.floats[2][1] = world_transform->transform.floats[2][1];
-			camera->world_orientation.floats[2][2] = world_transform->transform.floats[2][2];
-			
-			camera_ComputeWorldToCameraMatrix(camera);
+			if(entity->flags & ENTITY_FLAG_MARKED_INVALID)
+			{
+				entity_RemoveEntity(handle);
+			}
 		}
 	}
 }
 
 void entity_UpdateEntities()
 {
-	/*int i;
-	int c;
-	struct entity_t *entity;
+	//int i;
+	//int c;
+	//struct entity_t *entity;
 	
-	c = ent_entities[0].element_count;
+	//c = ent_entities[0].element_count;
 	
-	for(i = 0; i < c; i++)
-	{
-		entity = (struct entity_t *)ent_entities[0].elements + i;
+	//for(i = 0; i < c; i++)
+	//{
+	//	entity = (struct entity_t *)ent_entities[0].elements + i;
 		
-		if(entity->flags & ENTITY_INVALID)
-		{
-			continue;
-		}
+	//	if(entity->flags & ENTITY_INVALID)
+	//	{
+	//		continue;
+	//	}
 		
-		entity->life++;
-	}*/
+		//entity->life++;
+	//}
 }
 
 
@@ -1841,44 +2195,89 @@ void entity_UpdateEntities()
 
 struct entity_handle_t ent_current_entity;
 
+struct entity_handle_t entity_handles[1024];
+struct script_array_t script_array;
+
 void *entity_SetupScriptDataCallback(struct script_t *script, void *script_controller)
 {
-	//struct controller_script_t *controller_script;
 	struct entity_script_t *entity_script;
 	struct entity_t *ent;
 	void *entry_point;
-//	struct script_controller_component_t *controller;
+	
+	struct script_array_t *collided_entities;
+	
 	struct script_component_t *script_component;
+	struct physics_component_t *physics_component;
+	
+	
+	struct entity_handle_t *touched;
+	int touched_count;
+	
+	assert(script_controller);
 	
 	entity_script = (struct entity_script_t *)script;
 	script_component = (struct script_component_t *)script_controller;
-	//ent = entity_GetEntityPointerHandle(script_component->base.entity);
 	
-	//controller = entity_GetComponentPointer(ent->components[COMPONENT_INDEX_SCRIPT_CONTROLLER]);
 	
-//	*entity_script->entity_handle = script_component->base.entity;
+	//collided_entities = entity_script->collided_array;
+
 	ent_current_entity = script_component->base.entity;
+	ent = entity_GetEntityPointerHandle(ent_current_entity);
 	
-	//if(ent->flags & ENTITY_MARKED_INVALID)
-	//{
-	//	entry_point = entity_script->on_die_entry_point;
-	//}
-	//else
+	physics_component = entity_GetComponentPointer(ent->components[COMPONENT_TYPE_PHYSICS]);
+	
+	if(ent->flags & ENTITY_FLAG_MARKED_INVALID)
 	{
-		if(script_component->flags & SCRIPT_CONTROLLER_FLAG_FIRST_RUN)
+		script_QueueEntryPoint(entity_script->on_die_entry_point);
+	}
+	else
+	{
+		if(r_frame - ent->spawn_time <= 1)
 		{
-			entry_point = entity_script->on_first_run_entry_point;
+			script_QueueEntryPoint(entity_script->on_spawn_entry_point); 
 		}
-		else
+		
+		if(physics_component)
 		{
-			entry_point = entity_script->script.main_entry_point;
+			if(entity_script->on_collision_entry_point)
+			{
+				if(physics_HasNewCollisions(physics_component->collider.collider_handle))
+				{
+					touched = entity_GetTouchedEntities(ent_current_entity, &touched_count);
+					
+					if(touched_count)
+					{
+						memcpy(entity_handles, touched, sizeof(struct entity_handle_t) * touched_count);
+					
+						script_array.buffer = entity_handles;
+						script_array.element_size = sizeof(struct entity_handle_t);
+						script_array.element_count = touched_count;
+						
+					/*	if(collided_entities)
+						{
+							collided_entities->buffer = entity_handles;
+							collided_entities->element_size = sizeof(struct entity_handle_t);
+							collided_entities->element_count = touched_count;
+						}
+						else
+						{
+							
+						}*/
+						
+						
+						
+						script_QueueEntryPoint(entity_script->on_collision_entry_point);
+						script_PushArg(&script_array, SCRIPT_ARG_TYPE_ADDRESS);
+					}
+				}
+			}
+			
 		}
+		
+		script_QueueEntryPoint(entity_script->script.main_entry_point);
 	}
 	
-	
-	
 	script_component->flags &= ~SCRIPT_CONTROLLER_FLAG_FIRST_RUN;
-	
 	return entry_point;
 }
 
@@ -1890,6 +2289,9 @@ int entity_GetScriptDataCallback(struct script_t *script)
 	entity_script->on_first_run_entry_point = script_GetFunctionAddress("OnFirstRun", script);
 	entity_script->on_spawn_entry_point = script_GetFunctionAddress("OnSpawn", script);
 	entity_script->on_die_entry_point = script_GetFunctionAddress("OnDie", script);
+	entity_script->on_collision_entry_point = script_GetFunctionAddress("OnCollision", script);
+	
+	entity_script->collided_array = script_GetGlobalVarAddress("collided_entities", script);
 	
 /*	if(!entity_script->entity_handle)
 	{
@@ -1905,12 +2307,37 @@ struct entity_script_t *entity_LoadScript(char *file_name, char *script_name)
 	return (struct entity_script_t *)script_LoadScript(file_name, script_name, sizeof(struct entity_script_t), entity_GetScriptDataCallback, entity_SetupScriptDataCallback);
 }
 
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+ 
+void entity_EmitDrawCmdsForEntity(struct entity_handle_t entity, mat4_t *transform)
+{
+	struct entity_t *entity_ptr;
+	struct model_t *model;
+	
+	if(entity.def)
+	{
+		return;
+	}
+	
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+	
+	
+	
+	
+}
+
 
 /*
 ==============================================================
 ==============================================================
 ==============================================================
 */
+
+
 
 
 #ifdef __cplusplus

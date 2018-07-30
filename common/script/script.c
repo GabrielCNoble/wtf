@@ -1,6 +1,7 @@
 #include "script.h"
 #include "scr_math.h"
 #include "scr_types.h"
+#include "scr_typeof.h"
 #include "vector.h"
 #include "memory.h"
 #include "particle.h"
@@ -22,6 +23,7 @@ extern "C++"
 {
 #include "angelscript.h"
 #include "scriptstdstring.h"
+#include "scriptarray.h"
 }
 asIScriptEngine *scr_virtual_machine = NULL;
 
@@ -149,131 +151,6 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalProperty("const int r_frame", &r_frame);
 	scr_virtual_machine->RegisterGlobalProperty("const int ps_frame", &ps_frame);
 	
-	
-	
-	/*
-	===============================================
-	===============================================
-	===============================================
-	*/
-	
-	
-	scr_virtual_machine->RegisterEnum("MOUSE_FLAGS");
-	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_LEFT_BUTTON_CLICKED", MOUSE_LEFT_BUTTON_CLICKED);
-	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_LEFT_BUTTON_JUST_CLICKED", MOUSE_LEFT_BUTTON_JUST_CLICKED);
-	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_LEFT_BUTTON_JUST_RELEASED", MOUSE_LEFT_BUTTON_JUST_RELEASED);
-	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_LEFT_BUTTON_DOUBLE_CLICKED", MOUSE_LEFT_BUTTON_DOUBLE_CLICKED);
-	
-	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_RIGHT_BUTTON_CLICKED", MOUSE_RIGHT_BUTTON_CLICKED);
-	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_RIGHT_BUTTON_JUST_CLICKED", MOUSE_RIGHT_BUTTON_JUST_CLICKED);
-	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_RIGHT_BUTTON_JUST_RELEASED", MOUSE_RIGHT_BUTTON_JUST_RELEASED);
-	
-	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_MIDDLE_BUTTON_CLICKED", MOUSE_MIDDLE_BUTTON_CLICKED);
-	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_MIDDLE_BUTTON_JUST_CLICKED", MOUSE_MIDDLE_BUTTON_JUST_CLICKED);
-	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_MIDDLE_BUTTON_JUST_RELEASED", MOUSE_MIDDLE_BUTTON_JUST_RELEASED);
-	
-	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_WHEEL_UP", MOUSE_WHEEL_UP);
-	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_WHEEL_DOWN", MOUSE_WHEEL_DOWN);
-	
-	
-	scr_virtual_machine->RegisterEnum("KEYBOARD_FLAGS");
-	scr_virtual_machine->RegisterEnumValue("KEYBOARD_FLAGS", "KEY_PRESSED", KEY_PRESSED);
-	scr_virtual_machine->RegisterEnumValue("KEYBOARD_FLAGS", "KEY_JUST_PRESSED", KEY_JUST_PRESSED);
-	scr_virtual_machine->RegisterEnumValue("KEYBOARD_FLAGS", "KEY_JUST_RELEASED", KEY_JUST_RELEASED);
-	
-
-	scr_virtual_machine->RegisterGlobalFunction("int input_GetKeyStatus(int key)", asFUNCTION(input_GetKeyStatus), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("int input_GetMouseButton(int button)", asFUNCTION(input_GetMouseButton), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("int input_RegisterKey(int key)", asFUNCTION(input_RegisterKey), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("int input_UnregisterKey(int key)", asFUNCTION(input_UnregisterKey), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void input_GetMouseDelta(float &out dx, float &out dy)", asFUNCTION(input_GetMouseDelta), asCALL_CDECL);
-	
-	
-	scr_virtual_machine->RegisterEnum("COMPONENT_TYPES");
-	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_TRANSFORM", COMPONENT_TYPE_TRANSFORM);
-	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_PHYSICS", COMPONENT_TYPE_PHYSICS);
-	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_MODEL", COMPONENT_TYPE_MODEL);
-	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_LIGHT", COMPONENT_TYPE_LIGHT);
-	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_SCRIPT", COMPONENT_TYPE_SCRIPT);
-	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_CAMERA", COMPONENT_TYPE_CAMERA);
-	
-	
-	scr_virtual_machine->RegisterEnum("SDL_Scancode");
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_A", SDL_SCANCODE_A);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_B", SDL_SCANCODE_B);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_C", SDL_SCANCODE_C);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_D", SDL_SCANCODE_D);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_E", SDL_SCANCODE_E);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_F", SDL_SCANCODE_F);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_G", SDL_SCANCODE_G);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_H", SDL_SCANCODE_H);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_I", SDL_SCANCODE_I);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_J", SDL_SCANCODE_J);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_K", SDL_SCANCODE_K);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_L", SDL_SCANCODE_L);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_M", SDL_SCANCODE_M);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_N", SDL_SCANCODE_N);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_O", SDL_SCANCODE_O);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_P", SDL_SCANCODE_P);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_Q", SDL_SCANCODE_Q);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_R", SDL_SCANCODE_R);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_S", SDL_SCANCODE_S);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_T", SDL_SCANCODE_T);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_U", SDL_SCANCODE_U);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_V", SDL_SCANCODE_V);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_W", SDL_SCANCODE_W);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_X", SDL_SCANCODE_X);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_Y", SDL_SCANCODE_Y);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_Z", SDL_SCANCODE_Z);
-	
-	
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_1", SDL_SCANCODE_1);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_2", SDL_SCANCODE_2);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_3", SDL_SCANCODE_3);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_4", SDL_SCANCODE_4);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_5", SDL_SCANCODE_5);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_6", SDL_SCANCODE_6);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_7", SDL_SCANCODE_7);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_8", SDL_SCANCODE_8);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_9", SDL_SCANCODE_9);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_0", SDL_SCANCODE_0);
-	
-	
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_RETURN", SDL_SCANCODE_RETURN);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_SPACE", SDL_SCANCODE_SPACE);
-	
-	
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_LSHIFT", SDL_SCANCODE_LSHIFT);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_RSHIFT", SDL_SCANCODE_RSHIFT);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_LCTRL", SDL_SCANCODE_LCTRL);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_RCTRL", SDL_SCANCODE_RCTRL);
-	
-	
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_UP", SDL_SCANCODE_UP);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_DOWN", SDL_SCANCODE_DOWN);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_LEFT", SDL_SCANCODE_LEFT);
-	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_RIGHT", SDL_SCANCODE_RIGHT);
-	
-	
-	
-	
-	
-	/*
-	===============================================
-	===============================================
-	===============================================
-	*/
-	
-	//scr_virtual_machine->RegisterObjectType("string", sizeof(struct script_string_t), asOBJ_VALUE | asOBJ_APP_PRIMITIVE);
-	//scr_virtual_machine->RegisterStringFactory("string", asFUNCTION(script_string_function), asCALL_CDECL, NULL);
-	
-	RegisterStdString(scr_virtual_machine);
-	
-	scr_virtual_machine->RegisterGlobalFunction("void script_TestPrint(string &in message)", asFUNCTION(script_string_TestPrint), asCALL_CDECL);
-	
-	
-
-	 
 	/*
 	===============================================
 	===============================================
@@ -344,16 +221,156 @@ void script_RegisterTypesAndFunctions()
 	===============================================
 	*/ 
 	
-	scr_virtual_machine->RegisterObjectType("array<class T>", 0, asOBJ_REF | asOBJ_TEMPLATE);
+	
+	scr_virtual_machine->RegisterEnum("MOUSE_FLAGS");
+	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_LEFT_BUTTON_CLICKED", MOUSE_LEFT_BUTTON_CLICKED);
+	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_LEFT_BUTTON_JUST_CLICKED", MOUSE_LEFT_BUTTON_JUST_CLICKED);
+	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_LEFT_BUTTON_JUST_RELEASED", MOUSE_LEFT_BUTTON_JUST_RELEASED);
+	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_LEFT_BUTTON_DOUBLE_CLICKED", MOUSE_LEFT_BUTTON_DOUBLE_CLICKED);
+	
+	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_RIGHT_BUTTON_CLICKED", MOUSE_RIGHT_BUTTON_CLICKED);
+	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_RIGHT_BUTTON_JUST_CLICKED", MOUSE_RIGHT_BUTTON_JUST_CLICKED);
+	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_RIGHT_BUTTON_JUST_RELEASED", MOUSE_RIGHT_BUTTON_JUST_RELEASED);
+	
+	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_MIDDLE_BUTTON_CLICKED", MOUSE_MIDDLE_BUTTON_CLICKED);
+	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_MIDDLE_BUTTON_JUST_CLICKED", MOUSE_MIDDLE_BUTTON_JUST_CLICKED);
+	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_MIDDLE_BUTTON_JUST_RELEASED", MOUSE_MIDDLE_BUTTON_JUST_RELEASED);
+	
+	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_WHEEL_UP", MOUSE_WHEEL_UP);
+	scr_virtual_machine->RegisterEnumValue("MOUSE_FLAGS", "MOUSE_WHEEL_DOWN", MOUSE_WHEEL_DOWN);
+	
+	
+	scr_virtual_machine->RegisterEnum("KEYBOARD_FLAGS");
+	scr_virtual_machine->RegisterEnumValue("KEYBOARD_FLAGS", "KEY_PRESSED", KEY_PRESSED);
+	scr_virtual_machine->RegisterEnumValue("KEYBOARD_FLAGS", "KEY_JUST_PRESSED", KEY_JUST_PRESSED);
+	scr_virtual_machine->RegisterEnumValue("KEYBOARD_FLAGS", "KEY_JUST_RELEASED", KEY_JUST_RELEASED);
+	
+
+	scr_virtual_machine->RegisterGlobalFunction("int input_GetKeyStatus(int key)", asFUNCTION(input_GetKeyStatus), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("int input_GetMouseButton(int button)", asFUNCTION(input_GetMouseButton), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("int input_GetMouseStatus()", asFUNCTION(input_GetMouseStatus), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("int input_RegisterKey(int key)", asFUNCTION(input_RegisterKey), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("int input_UnregisterKey(int key)", asFUNCTION(input_UnregisterKey), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("vec2_t input_GetMouseDelta()", asFUNCTION(input_GetMouseDelta), asCALL_CDECL);
+	
+	
+	scr_virtual_machine->RegisterEnum("COMPONENT_TYPES");
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_TRANSFORM", COMPONENT_TYPE_TRANSFORM);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_PHYSICS", COMPONENT_TYPE_PHYSICS);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_MODEL", COMPONENT_TYPE_MODEL);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_LIGHT", COMPONENT_TYPE_LIGHT);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_SCRIPT", COMPONENT_TYPE_SCRIPT);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_CAMERA", COMPONENT_TYPE_CAMERA);
+	
+	
+	scr_virtual_machine->RegisterEnum("SDL_Scancode");
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_A", SDL_SCANCODE_A);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_B", SDL_SCANCODE_B);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_C", SDL_SCANCODE_C);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_D", SDL_SCANCODE_D);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_E", SDL_SCANCODE_E);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_F", SDL_SCANCODE_F);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_G", SDL_SCANCODE_G);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_H", SDL_SCANCODE_H);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_I", SDL_SCANCODE_I);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_J", SDL_SCANCODE_J);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_K", SDL_SCANCODE_K);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_L", SDL_SCANCODE_L);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_M", SDL_SCANCODE_M);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_N", SDL_SCANCODE_N);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_O", SDL_SCANCODE_O);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_P", SDL_SCANCODE_P);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_Q", SDL_SCANCODE_Q);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_R", SDL_SCANCODE_R);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_S", SDL_SCANCODE_S);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_T", SDL_SCANCODE_T);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_U", SDL_SCANCODE_U);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_V", SDL_SCANCODE_V);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_W", SDL_SCANCODE_W);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_X", SDL_SCANCODE_X);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_Y", SDL_SCANCODE_Y);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_Z", SDL_SCANCODE_Z);
+	
+	
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_1", SDL_SCANCODE_1);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_2", SDL_SCANCODE_2);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_3", SDL_SCANCODE_3);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_4", SDL_SCANCODE_4);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_5", SDL_SCANCODE_5);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_6", SDL_SCANCODE_6);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_7", SDL_SCANCODE_7);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_8", SDL_SCANCODE_8);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_9", SDL_SCANCODE_9);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_0", SDL_SCANCODE_0);
+	
+	
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_RETURN", SDL_SCANCODE_RETURN);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_SPACE", SDL_SCANCODE_SPACE);
+	
+	
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_LSHIFT", SDL_SCANCODE_LSHIFT);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_RSHIFT", SDL_SCANCODE_RSHIFT);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_LCTRL", SDL_SCANCODE_LCTRL);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_RCTRL", SDL_SCANCODE_RCTRL);
+	
+	
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_UP", SDL_SCANCODE_UP);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_DOWN", SDL_SCANCODE_DOWN);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_LEFT", SDL_SCANCODE_LEFT);
+	scr_virtual_machine->RegisterEnumValue("SDL_Scancode", "SDL_SCANCODE_RIGHT", SDL_SCANCODE_RIGHT);
+	
+	
+	scr_virtual_machine->RegisterEnum("MOUSE_BUTTON");
+	scr_virtual_machine->RegisterEnumValue("MOUSE_BUTTON", "MOUSE_BUTTON_LEFT", MOUSE_BUTTON_LEFT);
+	scr_virtual_machine->RegisterEnumValue("MOUSE_BUTTON", "MOUSE_BUTTON_RIGHT", MOUSE_BUTTON_RIGHT);
+	scr_virtual_machine->RegisterEnumValue("MOUSE_BUTTON", "MOUSE_BUTTON_MIDDLE", MOUSE_BUTTON_WHEEL);
+	scr_virtual_machine->RegisterEnumValue("MOUSE_BUTTON", "MOUSE_BUTTON_WHEEL", MOUSE_BUTTON_WHEEL);
+	
+	
+	
+	
+	
+	/*
+	===============================================
+	===============================================
+	===============================================
+	*/
+	
+	//scr_virtual_machine->RegisterObjectType("string", sizeof(struct script_string_t), asOBJ_VALUE | asOBJ_APP_PRIMITIVE);
+	//scr_virtual_machine->RegisterStringFactory("string", asFUNCTION(script_string_function), asCALL_CDECL, NULL);
+	
+	RegisterStdString(scr_virtual_machine);
+	
+	scr_virtual_machine->RegisterGlobalFunction("void script_TestPrint(string &in message)", asFUNCTION(script_string_TestPrint), asCALL_CDECL);
+	
+	
+
 	 
-	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_ADDREF, "void AddRef()", asFUNCTION(script_array_AddRef), asCALL_CDECL_OBJFIRST);
-	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_RELEASE, "void Release()", asFUNCTION(script_array_Release), asCALL_CDECL_OBJFIRST);
+	/*
+	===============================================
+	===============================================
+	===============================================
+	*/
 	
-	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_FACTORY, "array<T>@ Constructor(int &in sub_type)", asFUNCTION(script_array_Constructor), asCALL_CDECL);
-	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_FACTORY, "array<T>@ Constructor_Sized(int &in sub_type, int size)", asFUNCTION(script_array_Constructor_Sized), asCALL_CDECL);
 	
+	
+	scr_virtual_machine->RegisterObjectType("array<class T>", 0, asOBJ_REF | asOBJ_TEMPLATE | asOBJ_NOCOUNT);
+	 
+//	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_ADDREF, "void AddRef()", asFUNCTION(script_array_AddRef), asCALL_CDECL_OBJFIRST);
+//	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_RELEASE, "void Release()", asFUNCTION(script_array_Release), asCALL_CDECL_OBJFIRST);
+	
+	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_FACTORY, "array<T>@ Constructor(? &in sub_type)", asFUNCTION(script_array_Constructor), asCALL_CDECL);
+	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_FACTORY, "array<T>@ Constructor_Sized(? &in sub_type, int size)", asFUNCTION(script_array_Constructor_Sized), asCALL_CDECL);
 	scr_virtual_machine->RegisterObjectMethod("array<T>", "T &opIndex(int index)", asFUNCTION(script_array_ElementAt), asCALL_CDECL_OBJFIRST);
-	//scr_virtual_machine->RegisterObjectMethod("array<T>", "int Count()", asFUNCTION(script_generic_array_Count), asCALL_CDECL_OBJFIRST);
+	scr_virtual_machine->RegisterObjectProperty("array<T>", "int count", asOFFSET(struct script_array_t, element_count));
+
+
+	//RegisterScriptArray(scr_virtual_machine, true);
+	
+	
+	scr_virtual_machine->RegisterObjectType("typeof<class T>", 0, asOBJ_REF | asOBJ_TEMPLATE | asOBJ_NOCOUNT);
+	scr_virtual_machine->RegisterObjectBehaviour("typeof<T>", asBEHAVE_FACTORY, "typeof<T> @Typeof_Constructor(? &in type)", asFUNCTION(script_TypeofConstructor), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void typeof_test(? &in type)", asFUNCTION(script_TestTypeof), asCALL_CDECL);
 	
 	/*
 	===============================================
@@ -402,12 +419,21 @@ void script_RegisterTypesAndFunctions()
 	
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Jump(float jump_force)", asFUNCTION(entity_ScriptJump), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Move(vec3_t &in direction)", asFUNCTION(entity_ScriptMove), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_SetEntityVelocity(entity_handle_t entity, vec3_t &in velocity)", asFUNCTION(entity_ScriptSetEntityVelocity), asCALL_CDECL);
+	
 	
 	scr_virtual_machine->RegisterGlobalFunction("void entity_FindPath(vec3_t &in to)", asFUNCTION(entity_ScriptFindPath), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_GetWaypointDirection(vec3_t &out direction)", asFUNCTION(entity_ScriptGetWaypointDirection), asCALL_CDECL);
 	
-	scr_virtual_machine->RegisterGlobalFunction("mat3_t &entity_GetOrientation()", asFUNCTION(entity_ScriptGetOrientation), asCALL_CDECL);
-		
+	scr_virtual_machine->RegisterGlobalFunction("vec3_t &entity_GetPosition(int local)", asFUNCTION(entity_ScriptGetPosition), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("vec3_t &entity_GetEntityPosition(entity_handle_t entity, int local)", asFUNCTION(entity_ScriptGetEntityPosition), asCALL_CDECL);
+	
+	scr_virtual_machine->RegisterGlobalFunction("mat3_t &entity_GetOrientation(int local)", asFUNCTION(entity_ScriptGetOrientation), asCALL_CDECL);
+	
+	
+	scr_virtual_machine->RegisterGlobalFunction("int entity_GetLife()", asFUNCTION(entity_ScriptGetLife), asCALL_CDECL);
+	
+	scr_virtual_machine->RegisterGlobalFunction("entity_handle_t entity_GetCurrentEntity()", asFUNCTION(entity_ScriptGetCurrentEntity), asCALL_CDECL);	
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Rotate(vec3_t &in axis, float angle, int set)", asFUNCTION(entity_ScriptRotate), asCALL_CDECL);
 	
 	
@@ -416,28 +442,55 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("component_handle_t entity_GetEntityComponent(entity_handle_t entity, int component_index)", asFUNCTION(entity_ScriptGetEntityComponent), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("entity_handle_t entity_GetEntity(string &in name, int get_def)", asFUNCTION(entity_ScriptGetEntity), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("entity_handle_t entity_GetEntityDef(string &in name)", asFUNCTION(entity_ScriptGetEntityDef), asCALL_CDECL);
+	
+	scr_virtual_machine->RegisterGlobalFunction("entity_handle_t entity_GetChildEntity(string &in entity)", asFUNCTION(entity_ScriptGetChildEntity), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("entity_handle_t entity_GetEntityChildEntity(entity_handle_t parent_entity, string &in entity)", asFUNCTION(entity_ScriptGetEntityChildEntity), asCALL_CDECL);
+	
 	scr_virtual_machine->RegisterGlobalFunction("entity_handle_t entity_SpawnEntity(mat3_t &in orientation, vec3_t &in position, vec3_t &in scale, entity_handle_t def, string &in name)", asFUNCTION(entity_ScriptSpawnEntity), asCALL_CDECL);
 	
-	scr_virtual_machine->RegisterGlobalFunction("int entity_GetLife()", asFUNCTION(entity_ScriptGetLife), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void entity_GetPosition(vec3_t &out position, int local)", asFUNCTION(entity_ScriptGetPosition), asCALL_CDECL);
+	
 	
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Die()", asFUNCTION(entity_ScriptDie), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void entity_DIEYOUMOTHERFUCKER()", asFUNCTION(entity_ScriptDIEYOUMOTHERFUCKER), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_DIEYOUMOTHERFUCKER()", asFUNCTION(entity_ScriptDie), asCALL_CDECL);
 	
-	scr_virtual_machine->RegisterGlobalFunction("void entity_SetCameraPosition(vec3_t &in position)", asFUNCTION(entity_ScriptSetCameraPosition), asCALL_CDECL);
+	//scr_virtual_machine->RegisterGlobalFunction("void entity_SetCameraPosition(vec3_t &in position)", asFUNCTION(entity_ScriptSetCameraPosition), asCALL_CDECL);
 	//scr_virtual_machine->RegisterGlobalFunction("void entity_SetCamera()", asFUNCTION(entity_ScriptSetCamera), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_SetCamera(component_handle_t camera)", asFUNCTION(entity_ScriptSetCamera), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Print(string &in message)", asFUNCTION(entity_ScriptPrint), asCALL_CDECL);
 	
 	scr_virtual_machine->RegisterGlobalFunction("void entity_SetComponentValue3f(component_handle_t component, string &in field_name, vec3_t &in value)", asFUNCTION(entity_ScriptSetComponentValue3f), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_GetComponentValue3f(component_handle_t component, string &in field_name, vec3_t &out value)", asFUNCTION(entity_ScriptGetComponentValue3f), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_SetComponentValue33f(component_handle_t component, string &in field_name, mat3_t &in value)", asFUNCTION(entity_ScriptSetComponentValue33f), asCALL_CDECL);
 	
 	
 	scr_virtual_machine->RegisterGlobalFunction("void entity_AddEntityProp(entity_handle_t entity, string &in name, ? &in type)", asFUNCTION(entity_ScriptAddEntityProp), asCALL_CDECL);
+	
+	
+	scr_virtual_machine->RegisterGlobalFunction("void entity_AddEntityProp1i(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptAddEntityProp1i), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_AddEnttiyProp1f(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptAddEntityProp1f), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_AddEntityProp3f(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptAddEntityProp3f), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void entity_RemoveEntityProp3f(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptRemoveEntityProp3f), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void entity_GetEntityPropValue3f(entity_handle_t entity, string &in name, vec3_t &out value)", asFUNCTION(entity_ScriptGetEntityPropValue3f), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void entity_SetEntityPropValue3f(entity_handle_t entity, string &in name, vec3_t &in value)", asFUNCTION(entity_ScriptSetEntityPropValue3f), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_RemoveEntityProp(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptRemoveEntityProp), asCALL_CDECL);
+	
+	
+	scr_virtual_machine->RegisterGlobalFunction("void entity_SetEntityProp1i(entity_handle_t entity, string &in name, int value)", asFUNCTION(entity_ScriptSetEntityPropValue1i), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_SetEntityProp1iv(entity_handle_t entity, string &in name, int &in value)", asFUNCTION(entity_ScriptSetEntityPropValue1iv), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("int entity_GetEntityProp1i(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptGetEntityPropValue1i), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_GetEntityProp1iv(entity_handle_t entity, string &in name, int &in value)", asFUNCTION(entity_ScriptGetEntityPropValue1iv), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("int entity_IncEntityProp1i(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptIncEntityPropValue1i), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("int entity_DecEntityProp1i(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptDecEntityPropValue1i), asCALL_CDECL);
+	
+	scr_virtual_machine->RegisterGlobalFunction("void entity_SetEntityProp3f(entity_handle_t entity, string &in name, vec3_t &in value)", asFUNCTION(entity_ScriptSetEntityPropValue3f), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("vec3_t &entity_GetEntityProp3f(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptGetEntityPropValue3f), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_GetEntityProp3fv(entity_handle_t entity, string &in name, vec3_t &out value)", asFUNCTION(entity_ScriptGetEntityPropValue3fv), asCALL_CDECL);
+	
+	
+	
+	
+	
+	scr_virtual_machine->RegisterGlobalFunction("void entity_SetEntityPropValue(entity_handle_t entity, string &in name, ? &in value)", asFUNCTION(entity_ScriptSetEntityPropValue), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_GetEntityPropValue(entity_handle_t entity, string &in name, ? &out value)", asFUNCTION(entity_ScriptGetEntityPropValue), asCALL_CDECL);
+	
+	scr_virtual_machine->RegisterGlobalFunction("int entity_EntityHasProp(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptEntityHasProp), asCALL_CDECL);
 }
 
 void script_ExecuteScripts(double delta_time)
@@ -623,11 +676,18 @@ int script_CompileScriptSource(char *source, struct script_t *script)
 	else
 	{
 		
-		//if(script->script_module)
 		if(script->script_module)
 		{
-			temp_module = (asIScriptModule *)script->script_module;
-			temp_module->Discard();
+			/* for some reason discarding a module is making angelscript
+			get stuck on an assert at line 4270 of file as_scriptengine.cpp.
+			
+			The failed assertion is being triggered by the index operator
+			of the script_array_t object. 
+			
+			This will need further investigation, but time is short... */
+			
+			//temp_module = (asIScriptModule *)script->script_module;
+			//temp_module->Discard();
 		}
 		
 		success = 1;
@@ -635,8 +695,7 @@ int script_CompileScriptSource(char *source, struct script_t *script)
 		module->SetName(script->name);
 		script->script_module = module;
 		script->flags &= ~SCRIPT_FLAG_NOT_COMPILED;
-		
-		//script->main_entry_point = module->GetFunctionByName("main");
+
 		script->main_entry_point = script_GetFunctionAddress("main", script);
 		
 		if(script->get_data_callback)
@@ -703,6 +762,47 @@ struct script_t *script_GetScript(char *script_name)
 	return script;
 }
 
+#define MAX_SCRIPT_ENTRY_POINTS 16
+
+static int scr_entry_point_count = 0;
+static struct script_entry_point_t scr_entry_points[MAX_SCRIPT_ENTRY_POINTS];
+
+
+
+void script_QueueEntryPoint(void *entry_point)
+{
+	struct script_entry_point_t *script_entry_point;
+	
+	if(scr_entry_point_count < MAX_SCRIPT_ENTRY_POINTS)
+	{
+		script_entry_point = &scr_entry_points[scr_entry_point_count];
+		script_entry_point->arg_count = 0;
+		script_entry_point->entry_point = entry_point;
+		scr_entry_point_count++;
+	}
+}
+
+
+
+void script_PushArg(void *arg, int arg_type)
+{
+	struct script_entry_point_t *script_entry_point;
+	struct script_arg_t *script_arg;
+	
+	if(scr_entry_point_count)
+	{
+		script_entry_point = &scr_entry_points[scr_entry_point_count - 1];
+		
+		if(script_entry_point->arg_count < MAX_SCRIPT_ARGS)
+		{
+			script_arg = &script_entry_point->args[script_entry_point->arg_count];
+			script_arg->type = arg_type;
+			script_arg->arg.address_arg = arg;
+			
+			script_entry_point->arg_count++;
+		}
+	}
+}
 
 
 
@@ -711,10 +811,19 @@ void script_ExecuteScript(struct script_t *script, void *data)
 	
 }
 
+
 void script_ExecuteScriptImediate(struct script_t *script, void *data)
 {
 	asIScriptFunction *entry_point;
+	asIScriptModule *module;
 	asIScriptContext *context;
+	
+	void *arg_address;
+	
+	struct script_entry_point_t *script_entry_point;
+	
+	int i;
+	int j;
 	
 	if(script)
 	{
@@ -732,21 +841,53 @@ void script_ExecuteScriptImediate(struct script_t *script, void *data)
 			return;
 		}
 		
+		scr_entry_point_count = 0;
+		
 		if(script->setup_data_callback)
 		{
-			entry_point = (asIScriptFunction *)script->setup_data_callback(script, data);
+			script->setup_data_callback(script, data);
 		}
 		else
 		{
 			printf("script_ExecuteScriptImediate: script [%s] has no setup data callback. Executing main entry point\n", script->name);
-			entry_point = (asIScriptFunction *)script->main_entry_point;
+			scr_entry_points[0].entry_point = (asIScriptFunction *)script->main_entry_point;
+			scr_entry_points[0].arg_count = 0;
+			scr_entry_point_count++;
 		}
 		
-		if(entry_point)
-		{
-			context->Prepare(entry_point);
-			context->Execute();
-			//context->Unprepare();
+		if(scr_entry_point_count)
+		{	
+			for(i = 0; i < scr_entry_point_count; i++)
+			{				
+				script_entry_point = &scr_entry_points[i];
+				
+				if(script_entry_point->entry_point)
+				{
+					entry_point = (asIScriptFunction *)script_entry_point->entry_point;
+					context->Prepare(entry_point);
+					
+					for(j = 0; j < script_entry_point->arg_count; j++)
+					{						
+						switch(script_entry_point->args[j].type)
+						{
+							case SCRIPT_ARG_TYPE_BYTE:
+							
+							break;
+							
+							case SCRIPT_ARG_TYPE_WORD:
+							
+							break;
+							
+							case SCRIPT_ARG_TYPE_ADDRESS:
+								context->SetArgAddress(j, script_entry_point->args[j].arg.address_arg);
+							break;
+						}
+					}
+					
+					context->Execute();
+					context->Unprepare();
+				}
+			}
 		}
 		else
 		{
@@ -822,15 +963,45 @@ int script_GetTypeSize(void *type_info)
 	asITypeInfo *ti;
 	asITypeInfo *sti;
 	
+	int element_size = 0;
+	
 	ti = (asITypeInfo *)type_info;
 	sti = ti->GetSubType();
 	
 	if(sti)
 	{
-		return sti->GetSize();
+		element_size = sti->GetSize();
+	}
+	else
+	{
+		switch(ti->GetSubTypeId())
+		{
+			case asTYPEID_BOOL:
+				element_size = 1;
+			break;
+			
+			case asTYPEID_INT8:
+				element_size = 1;
+			break;
+			
+			case asTYPEID_INT16:
+				element_size = 2;
+			break;
+			
+			case asTYPEID_INT32:
+			case asTYPEID_FLOAT:	
+				element_size = 4;
+			break;
+			
+			case asTYPEID_INT64:
+			case asTYPEID_DOUBLE:
+				element_size = 8;
+			break;
+		}
+		//return ti->GetSize();
 	}
 	
-	return 0;
+	return element_size;
 }
 
 

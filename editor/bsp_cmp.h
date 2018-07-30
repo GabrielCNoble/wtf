@@ -182,7 +182,7 @@ bsp_node_t *bsp_SolidBsp(bsp_polygon_t *polygons);
 
 bsp_node_t *bsp_SolidLeafBsp(bsp_polygon_t *polygons);
 
-void bsp_DeleteSolidBsp(bsp_node_t *bsp);
+void bsp_DeleteSolidBsp(bsp_node_t *bsp, int free_splitters);
 
 void bsp_DeleteSolidBspAssync(bsp_node_t *bsp);
 

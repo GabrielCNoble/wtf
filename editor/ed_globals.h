@@ -39,9 +39,11 @@ EDITOR_GLOBAL(int ed_3d_handle_transform_mode);
 EDITOR_GLOBAL(int ed_editing_mode);
 EDITOR_GLOBAL(float ed_3d_rotation_handle_angles_lut[ROTATION_HANDLE_DIVS][2]);
 
-EDITOR_GLOBAL(unsigned int ed_pick_framebuffer_id);
-EDITOR_GLOBAL(unsigned int ed_pick_color_texture_id);
-EDITOR_GLOBAL(unsigned int ed_pick_depth_texture_id);
+//EDITOR_GLOBAL(unsigned int ed_pick_framebuffer_id);
+//EDITOR_GLOBAL(unsigned int ed_pick_color_texture_id);
+//EDITOR_GLOBAL(unsigned int ed_pick_depth_texture_id);
+
+EDITOR_GLOBAL(struct framebuffer_t ed_pick_framebuffer);
 
 EDITOR_GLOBAL(unsigned int ed_cursors_framebuffer_id);
 EDITOR_GLOBAL(unsigned int ed_cursors_color_texture_id);

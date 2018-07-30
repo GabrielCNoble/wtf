@@ -75,6 +75,8 @@ void entity_ParentTransformComponent(struct component_handle_t parent_transform,
 void entity_UnparentTransformComponent(struct component_handle_t parent_transform, struct component_handle_t child_transform);
 
 
+void entity_ParentEntityToEntityTransform(struct component_handle_t parent_transform, struct entity_handle_t child);
+
 
 void entity_ParentEntity(struct entity_handle_t parent, struct entity_handle_t child);
 
@@ -92,7 +94,7 @@ void entity_DestroyEntityDef(struct entity_handle_t entity_def);
 
 struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int component_type);
 
-void entity_RemoveComponent(struct entity_handle_t entity, int component_type, int component_index);
+void entity_RemoveComponent(struct entity_handle_t entity, int component_type);
 
 
 
@@ -103,6 +105,8 @@ void entity_RemoveProp(struct entity_handle_t entity, char *name);
 void entity_SetProp(struct entity_handle_t entity, char *name, void *value);
 
 void entity_GetProp(struct entity_handle_t entity, char *name, void *value);
+
+struct entity_prop_t *entity_GetPropPointer(struct entity_handle_t entity, char *name);
 
 
 
@@ -134,6 +138,8 @@ struct entity_handle_t entity_CreateEntity(char *name, int def);
 
 struct entity_handle_t entity_SpawnEntity(mat3_t *orientation, vec3_t position, vec3_t scale, struct entity_handle_t entity_def, char *name);
 
+void entity_MarkForRemoval(struct entity_handle_t entity);
+
 void entity_RemoveEntity(struct entity_handle_t entity);
 
 void entity_RemoveAllEntities();
@@ -142,11 +148,15 @@ struct entity_t *entity_GetEntityPointer(char *name, int get_def);
 
 __forceinline struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity);
 
+__forceinline struct entity_t *entity_GetEntityParentPointerHandle(struct entity_handle_t entity);
+
 __forceinline struct entity_t *entity_GetEntityPointerIndex(int entity_index);
 
 __forceinline struct entity_t *entity_GetEntityDefPointerIndex(int entity_def_index);
 
 __forceinline struct entity_handle_t entity_GetEntityHandle(char *name, int get_def);
+
+__forceinline struct entity_handle_t entity_GetNestledEntityHandle(struct entity_handle_t parent_entity, char *entity);
 
 
 /*
@@ -163,6 +173,8 @@ void entity_ScaleEntity(int entity_index, vec3_t axis, float amount);
 
 void entity_FindPath(struct entity_handle_t entity, vec3_t to);
 
+struct entity_handle_t *entity_GetTouchedEntities(struct entity_handle_t entity, int *count);
+
 /*
 ==============================================================
 ==============================================================
@@ -176,6 +188,8 @@ void entity_UpdateScriptComponents();
 void entity_UpdateTransformComponents();
 
 void entity_UpdateCameraComponents();
+
+void entity_ClearMarkedEntities();
 
 //void entity_Update
 
@@ -197,7 +211,13 @@ struct entity_script_t *entity_LoadScript(char *file_name, char *script_name);
 ==============================================================
 */
 
+void entity_EmitDrawCmdsForEntity(struct entity_handle_t entity, mat4_t *transform);
 
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
 
 
 

@@ -425,7 +425,8 @@ int material_CreateMaterial(char *name, vec4_t base_color, float metalness, floa
 	material->metalness_texture = -1;
 	material->roughness_texture = -1;
 	
-	material->shader_index = shader_index;
+	//material->shader_index = shader_index;
+	material->shader_index = r_forward_pass_shader;
 	material->draw_group = -1;
 	material->flags = 0;
 	//material->last_referenced = -1;
@@ -664,6 +665,24 @@ char *material_GetMaterialName(int material_index)
 		
 		return mat_material_names[material_index];
 	}
+}
+
+material_t *material_GetMaterialPointer(char *material_name)
+{
+	
+}
+
+material_t *material_GetMaterialPointerIndex(int material_index)
+{
+	if(material_index >= -1 && material_index < mat_material_list_cursor)
+	{
+		if(!(mat_materials[material_index].flags & MATERIAL_INVALID))
+		{
+			return &mat_materials[material_index];
+		}
+	}
+	
+	return NULL;
 }
 
 

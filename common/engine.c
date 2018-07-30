@@ -242,6 +242,9 @@ void engine_MainLoop()
 		script_ExecuteScripts(delta_time);
 		
 		
+		entity_ClearMarkedEntities();
+		
+		
 		sound_ProcessSound();
 		particle_UpdateParticleSystems(delta_time);
 		

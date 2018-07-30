@@ -33,7 +33,6 @@ void editor_SetEditingMode(int mode);
 
 void editor_ToggleBrushEditing();
 
-vec3_t editor_3dCursorPosition(float mouse_x, float mouse_y);
 
 /*
 ===============================================================

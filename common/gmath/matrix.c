@@ -249,6 +249,21 @@ void mat3_t_rotate(mat3_t *mat, vec3_t axis, float angle,  int b_set)
 
 	return;
 }
+
+void mat3_t_euler(mat3_t *mat, vec3_t *euler)
+{
+	float s;
+	float c;
+	
+	euler->x = atan2(mat->floats[1][2], mat->floats[2][2]);
+	euler->y = atan2(-mat->floats[0][2], sqrt(mat->floats[0][0] * mat->floats[0][0] + mat->floats[0][1] * mat->floats[0][1]));
+	
+	s = sin(euler->x);
+	c = cos(euler->x);
+	
+	euler->z = atan2(s * mat->floats[2][0] - c * mat->floats[1][0], c * mat->floats[1][1] - s * mat->floats[2][1]);
+}
+
 //########################################################################################################################
 
 void mat3_t_scale_x(mat3_t *mat, float scale)

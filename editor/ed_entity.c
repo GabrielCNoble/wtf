@@ -35,7 +35,7 @@ extern int r_window_height;
 
 
 /* from physics.c */
-extern collider_def_t *collider_defs;
+extern struct collider_def_t *collider_defs;
 
 
 /*
@@ -195,6 +195,17 @@ void editor_EntityEditorMain(float delta_time)
 	editor_EntityEditorUpdateUI();
 }
 
+/*
+===============================================================
+===============================================================
+===============================================================
+*/
+
+void editor_EntityEditorSetCurrentEntityDef(struct entity_handle_t entity_def)
+{
+	ed_entity_editor_entity_def = entity_def;
+	ed_entity_editor_update_preview_entity = 1;
+}
 
 /*
 ===============================================================

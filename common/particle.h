@@ -34,7 +34,7 @@ struct particle_system_script_t
 	void *particle_array;
 	void *particle_system;
 	
-	void *init;
+	void *on_spawn_entry_point;
 };
 
 

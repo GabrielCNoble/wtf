@@ -6,6 +6,7 @@
 #include "r_main.h"
 #include "r_debug.h"
 #include "r_imediate.h"
+#include "r_gl.h"
 #include "r_text.h"
 
 #include "stack_list.h"
@@ -53,17 +54,14 @@ unsigned int r_gbuffer_normal = 0;
 unsigned int r_gbuffer_depth = 0;
 
 
-unsigned int r_cbuffer_id = 0;
-unsigned int r_cbuffer_color = 0;
-unsigned int r_cbuffer_depth = 0;
+struct framebuffer_t r_cbuffer;
+struct framebuffer_t r_bbuffer;
 
 unsigned int r_pbuffer_id = 0;
 unsigned int r_pbuffer_color = 0;
 unsigned int r_pbuffer_depth = 0;
 
-unsigned int r_bbuffer_id = 0;
-unsigned int r_bbuffer_color = 0;
-unsigned int r_bbuffer_depth = 0;
+
 
 int r_z_pre_pass_shader;
 int r_forward_pass_shader;
@@ -347,6 +345,10 @@ int renderer_Init(int width, int height, int init_mode)
 	log_LogMessage(LOG_MESSAGE_NONE, "Vendor: %s", glGetString(GL_VENDOR));
 	log_LogMessage(LOG_MESSAGE_NONE, "Renderer: %s", glGetString(GL_RENDERER));
 	
+	
+	
+	r_cbuffer.framebuffer_id = 0;
+	r_bbuffer.framebuffer_id = 0;
 
 	renderer_SetRendererResolution(r_width, r_height, 1);
 	
@@ -433,7 +435,8 @@ void renderer_SetDiffuseTexture(int texture_index)
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, gl_handle);
 	
-	renderer_SetUniform1i(UNIFORM_texture_sampler0, 0);
+	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
+	//renderer_SetUniform1i(UNIFORM_texture_sampler0, 0);
 }
 
 void renderer_SetNormalTexture(int texture_index)
@@ -452,7 +455,7 @@ void renderer_SetNormalTexture(int texture_index)
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, gl_handle);
 	
-	renderer_SetDefaultUniform1f(UNIFORM_texture_sampler1, 1);
+	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler1, 1);
 }
 
 void renderer_SetShadowTexture()
@@ -1030,17 +1033,7 @@ resolution...
 ======================
 */
 void renderer_SetRendererResolution(int width, int height, int samples)
-{
-	
-	if(width == r_width || height == r_height)
-	{
-		if(r_cbuffer_id)
-		{
-			return;	
-		}
-		
-	}
-	
+{	
 	if(width < RENDERER_MIN_WIDTH)
 	{
 		width = RENDERER_MIN_WIDTH;
@@ -1050,7 +1043,6 @@ void renderer_SetRendererResolution(int width, int height, int samples)
 		width = RENDERER_MAX_WIDTH;
 	}
 	
-	
 	if(height < RENDERER_MIN_HEIGHT)
 	{
 		height = RENDERER_MIN_HEIGHT;
@@ -1058,8 +1050,7 @@ void renderer_SetRendererResolution(int width, int height, int samples)
 	else if(height > RENDERER_MAX_HEIGHT)
 	{
 		height = RENDERER_MAX_HEIGHT;
-	}
-	
+	}	
 	
 	if(samples < RENDERER_MIN_MSAA_SAMPLES)
 	{
@@ -1069,15 +1060,32 @@ void renderer_SetRendererResolution(int width, int height, int samples)
 	{
 		samples = RENDERER_MAX_MSAA_SAMPLES;
 	}
-	
+		
 	r_width = width;
 	r_height = height;
 	r_msaa_samples = 1;
 	
-	renderer_UpdateColorbuffer();
-	renderer_UpdatePortalbuffer();
-//	renderer_UpdateGeometryBuffer();
+	if(!r_cbuffer.framebuffer_id)
+	{
+		r_cbuffer = renderer_CreateFramebuffer(r_width, r_height);
+		renderer_AddAttachment(&r_cbuffer, GL_COLOR_ATTACHMENT0, GL_RGBA16F);
+		renderer_AddAttachment(&r_cbuffer, GL_DEPTH_ATTACHMENT, 0);
+	}
+	else
+	{
+		renderer_ResizeFramebuffer(&r_cbuffer, r_width, r_height);
+	}
 	
+	if(!r_bbuffer.framebuffer_id)
+	{
+		r_bbuffer = renderer_CreateFramebuffer(r_width, r_height);
+		renderer_AddAttachment(&r_bbuffer, GL_COLOR_ATTACHMENT0, GL_RGBA8);
+		renderer_AddAttachment(&r_bbuffer, GL_DEPTH_ATTACHMENT, 0);
+	}
+	else
+	{
+		renderer_ResizeFramebuffer(&r_bbuffer, r_width, r_height);
+	}
 	
 	if(r_width > r_window_width || r_height > r_window_height)
 	{
@@ -1219,16 +1227,20 @@ void renderer_UpdateColorbuffer()
 	int i;
 	int j;
 	
-	if(!r_cbuffer_id)
+	if(!r_cbuffer.framebuffer_id)
 	{
-		glGenFramebuffers(1, &r_cbuffer_id);
-		glGenFramebuffers(1, &r_bbuffer_id);
+		//r_cbuffer = renderer_CreateFramebuffer(r_width, r_height);
+		//renderer_AddAttachment(&r_cbuffer, GL_COLOR_ATTACHMENT0, GL_RGBA16F);
+		//renderer_AddAttachment(&r_cbuffer, GL_DEPTH_ATTACHMENT, 0);
+		
+		//glGenFramebuffers(1, &r_cbuffer_id);
+		//glGenFramebuffers(1, &r_bbuffer_id);
 		
 		/*glGenFramebuffers(1, &r_intensity_half_id);
 		glGenFramebuffers(1, &r_intensity_quarter_id);
 		glGenFramebuffers(1, &r_intensity_eight_id);*/
 		
-		glGenFramebuffers(1, &r_intensity_id);
+		/*glGenFramebuffers(1, &r_intensity_id);
 		
 		for(i = 0; i < 3; i++)
 		{
@@ -1257,13 +1269,13 @@ void renderer_UpdateColorbuffer()
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 			}
-		}
+		}*/
 		
 		
 		
 		
 		
-		glGenTextures(1, &r_cbuffer_color);
+	/*	glGenTextures(1, &r_cbuffer_color);
 		glBindTexture(GL_TEXTURE_2D, r_cbuffer_color);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -1280,26 +1292,30 @@ void renderer_UpdateColorbuffer()
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);*/
 		
 		
-		glGenTextures(1, &r_bbuffer_color);
-		glBindTexture(GL_TEXTURE_2D, r_bbuffer_color);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 		
-		glGenTextures(1, &r_bbuffer_depth);
-		glBindTexture(GL_TEXTURE_2D, r_bbuffer_depth);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		
+		
+		
+		//glGenTextures(1, &r_bbuffer_color);
+		//glBindTexture(GL_TEXTURE_2D, r_bbuffer_color);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		
+		//glGenTextures(1, &r_bbuffer_depth);
+		//glBindTexture(GL_TEXTURE_2D, r_bbuffer_depth);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 		
 		
 		
@@ -1310,39 +1326,45 @@ void renderer_UpdateColorbuffer()
 		glGenTextures(1, &r_intensity_eight_horizontal_color);
 		glGenTextures(1, &r_intensity_eight_vertical_color);*/
 	}
-	
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_cbuffer_id);
-	glBindTexture(GL_TEXTURE_2D, r_cbuffer_color);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, r_width, r_height, 0, GL_RGBA, GL_FLOAT, NULL);
-	glBindTexture(GL_TEXTURE_2D, r_cbuffer_depth);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, r_width, r_height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r_cbuffer_color, 0);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, r_cbuffer_depth, 0);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, r_cbuffer_depth, 0);
-	
-	if(glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	else
 	{
-		printf("renderer_UpdateColorbuffer: r_cbuffer not complete!\n");
+	//	renderer_ResizeFramebuffer(&r_cbuffer, r_width, r_height);
+	//	renderer_ResizeFra
 	}
 
 	
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer_id);	
-	glBindTexture(GL_TEXTURE_2D, r_bbuffer_color);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, r_width, r_height, 0, GL_RGBA, GL_FLOAT, NULL);
-	glBindTexture(GL_TEXTURE_2D, r_bbuffer_depth);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, r_width, r_height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r_bbuffer_color, 0);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, r_bbuffer_depth, 0);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, r_bbuffer_depth, 0);
+	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_cbuffer_id);
+	//glBindTexture(GL_TEXTURE_2D, r_cbuffer_color);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, r_width, r_height, 0, GL_RGBA, GL_FLOAT, NULL);
+	//glBindTexture(GL_TEXTURE_2D, r_cbuffer_depth);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, r_width, r_height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+	//glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r_cbuffer_color, 0);
+	//glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, r_cbuffer_depth, 0);
+	//glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, r_cbuffer_depth, 0);
+	
+	//if(glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	//{
+	//	printf("renderer_UpdateColorbuffer: r_cbuffer not complete!\n");
+	//}
 
-	if(glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-	{
-		printf("renderer_UpdateColorbuffer: r_bbuffer not complete!\n");
-	}
+	
+//	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer_id);	
+//	glBindTexture(GL_TEXTURE_2D, r_bbuffer_color);
+//	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, r_width, r_height, 0, GL_RGBA, GL_FLOAT, NULL);
+//	glBindTexture(GL_TEXTURE_2D, r_bbuffer_depth);
+//	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, r_width, r_height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+//	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r_bbuffer_color, 0);
+//	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, r_bbuffer_depth, 0);
+//	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, r_bbuffer_depth, 0);
+
+//	if(glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+//	{
+//		printf("renderer_UpdateColorbuffer: r_bbuffer not complete!\n");
+//	}
 	
 	
 	
-	glBindTexture(GL_TEXTURE_2D, r_intensity_color);
+/*	glBindTexture(GL_TEXTURE_2D, r_intensity_color);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
@@ -1375,7 +1397,7 @@ void renderer_UpdateColorbuffer()
 	}
 
 	glBindTexture(GL_TEXTURE_2D, 0);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);*/
 }
 
 
@@ -1469,12 +1491,12 @@ void renderer_BindColorbuffer(int clear, int read)
 	
 	if(read)
 	{
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, r_cbuffer_id);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, r_cbuffer.framebuffer_id);
 		glReadBuffer(GL_COLOR_ATTACHMENT0);
 	}
 	else
 	{
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_cbuffer_id);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_cbuffer.framebuffer_id);
 		glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	}
 	
@@ -1504,12 +1526,12 @@ void renderer_BindBackbuffer(int clear, int read)
 	
 	if(read)
 	{
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, r_bbuffer_id);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, r_bbuffer.framebuffer_id);
 		glReadBuffer(GL_COLOR_ATTACHMENT0);
 	}
 	else
 	{
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer_id);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer.framebuffer_id);
 		glDrawBuffer(GL_COLOR_ATTACHMENT0);	
 	}
 	
@@ -2388,50 +2410,19 @@ void renderer_DrawWorld()
 }
 
 
-
-void renderer_DrawOpaque()
+void renderer_ExecuteDrawCmds()
 {
-	//camera_t *active_camera = camera_GetActiveCamera();
-	mat4_t view_projection_matrix;
-	mat4_t model_matrix;
 	int i;
 	int j;
 	int draw_cmd_count;
-	unsigned int draw_mode;
-	unsigned int vert_start;
-	unsigned int vert_count;
-	float s;
-	float e;
 	
 	draw_command_t *draw_cmds;
-	
-	
-	if(r_flat)
-	{
-		renderer_SetShader(r_flat_pass_shader);
-	}
-	else
-	{
-		renderer_SetShader(r_forward_pass_shader);
-		//renderer_SetShadowTexture();
-		renderer_SetClusterTexture();
-		renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
-		renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
-		renderer_SetDefaultUniform1i(UNIFORM_r_frame, r_frame);
-	}
-	
-	
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(compact_vertex_t), &(((compact_vertex_t *)0)->position));
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(compact_vertex_t), &(((compact_vertex_t *)0)->normal));
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(compact_vertex_t), &(((compact_vertex_t *)0)->tangent));
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(compact_vertex_t), &(((compact_vertex_t *)0)->tex_coord));
-	
-	//s = engine_GetDeltaTime();
-	//renderer_StartGpuTimer()
-	/* this is taking a shitload of time... (~27 ms on the gpu side) */
-	//printf("%d\n", r_frame);
-	//glCullFace(GL_FRONT);
-	//glPointSize(12.0);
+
+	renderer_SetClusterTexture();
+	renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
+	renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
+	renderer_SetDefaultUniform1i(UNIFORM_r_frame, r_frame);
+
 	for(i = 0; i < r_draw_command_group_count; i++)
 	{
 		renderer_SetMaterial(r_draw_command_groups[i].material_index);
@@ -2454,14 +2445,42 @@ void renderer_DrawOpaque()
 			}
 		}
 	}
-	
-	//glPointSize(1.0);
-
-	
-	//e = engine_GetDeltaTime();
-	//printf("renderer_DrawOpaque - cpu: %0.3f	gpu: %0.3f\n", e - s, renderer_StopGpuTimer());
-		
 }
+
+
+void renderer_DrawOpaque()
+{
+	//camera_t *active_camera = camera_GetActiveCamera();
+	mat4_t view_projection_matrix;
+	mat4_t model_matrix;
+	int i;
+	int j;
+	int draw_cmd_count;
+	unsigned int draw_mode;
+	unsigned int vert_start;
+	unsigned int vert_count;
+	float s;
+	float e;
+	
+	draw_command_t *draw_cmds;
+	
+	if(r_flat)
+	{
+		renderer_SetShader(r_flat_pass_shader);
+	}
+	else
+	{
+		renderer_SetShader(r_forward_pass_shader);
+	}
+	
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(compact_vertex_t), &(((compact_vertex_t *)0)->position));
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(compact_vertex_t), &(((compact_vertex_t *)0)->normal));
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(compact_vertex_t), &(((compact_vertex_t *)0)->tangent));
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(compact_vertex_t), &(((compact_vertex_t *)0)->tex_coord));
+	
+	renderer_ExecuteDrawCmds();	
+}
+
 
 void renderer_DrawTranslucent()
 {
@@ -3544,7 +3563,7 @@ void renderer_DrawBloom()
 	renderer_EnableImediateDrawing();
 	
 	renderer_SetShader(r_bloom0_shader);	
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_cbuffer_color);
+	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_cbuffer.color_attachments[0].handle);
 	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
 		
 	renderer_SetProjectionMatrix(NULL);
@@ -3615,7 +3634,7 @@ void renderer_DrawBloom()
 	//renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_intensity_color);
 	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
 	
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_cbuffer_id);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_cbuffer.framebuffer_id);
 	glViewport(0, 0, r_width, r_height);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	
@@ -3629,174 +3648,6 @@ void renderer_DrawBloom()
 	glEnable(GL_CULL_FACE);
 	
 	renderer_DisableImediateDrawing();
-	
-	
-	
-	
-	/*	
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_TEXTURE_2D);
-
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_intensity_eight_vertical_color);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_cbuffer_id);
-	glViewport(0, 0, r_width, r_height);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	
-	glEnable(GL_BLEND);
-
-	glBegin(GL_QUADS);
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glVertex3f(-1.0, 1.0, -0.5);
-	glVertex3f(-1.0, -1.0, -0.5);
-	glVertex3f(1.0, -1.0, -0.5);
-	glVertex3f(1.0, 1.0, -0.5);
-	glEnd();
-	
-	glDisable(GL_TEXTURE_2D);
-	glDisable(GL_BLEND);
-	glEnable(GL_DEPTH_TEST);
-		
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, 0);*/
-	
-	/*glBegin(GL_QUADS);
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glVertex3f(-1.0, 1.0, -0.5);
-	glVertex3f(-1.0, -1.0, -0.5);
-	glVertex3f(1.0, -1.0, -0.5);
-	glVertex3f(1.0, 1.0, -0.5);
-	glEnd();*/
-	
-	/*############################################################*/
-/*	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_intensity_half_id);
-	glViewport(0, 0, r_width >> 1, r_height >> 1);
-	
-	renderer_SetShader(r_bloom1_shader);
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_intensity_color);
-	renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width >> 1);
-	renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height >> 1);
-	renderer_SetDefaultUniform1i(UNIFORM_r_bloom_radius, 2);
-	
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	
-	glBegin(GL_QUADS);
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glVertex3f(-1.0, 1.0, -0.5);
-	glVertex3f(-1.0, -1.0, -0.5);
-	glVertex3f(1.0, -1.0, -0.5);
-	glVertex3f(1.0, 1.0, -0.5);
-	glEnd();
-	
-	renderer_SetDefaultUniform1i(UNIFORM_r_width, 0);
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_intensity_half_horizontal_color);
-	glDrawBuffer(GL_COLOR_ATTACHMENT1);
-	
-	glBegin(GL_QUADS);
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glVertex3f(-1.0, 1.0, -0.5);
-	glVertex3f(-1.0, -1.0, -0.5);
-	glVertex3f(1.0, -1.0, -0.5);
-	glVertex3f(1.0, 1.0, -0.5);
-	glEnd();*/
-	
-	/*############################################################*/
-	
-/*	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_intensity_quarter_id);
-	glViewport(0, 0, r_width >> 2, r_height >> 2);
-	
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_intensity_half_vertical_color);
-	renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width >> 2);
-	renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height >> 2);
-	renderer_SetDefaultUniform1i(UNIFORM_r_bloom_radius, 2);
-	
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	
-	glBegin(GL_QUADS);
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glVertex3f(-1.0, 1.0, -0.5);
-	glVertex3f(-1.0, -1.0, -0.5);
-	glVertex3f(1.0, -1.0, -0.5);
-	glVertex3f(1.0, 1.0, -0.5);
-	glEnd();
-	
-	renderer_SetDefaultUniform1i(UNIFORM_r_width, 0);
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_intensity_quarter_horizontal_color);
-	glDrawBuffer(GL_COLOR_ATTACHMENT1);
-	
-	glBegin(GL_QUADS);
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glVertex3f(-1.0, 1.0, -0.5);
-	glVertex3f(-1.0, -1.0, -0.5);
-	glVertex3f(1.0, -1.0, -0.5);
-	glVertex3f(1.0, 1.0, -0.5);
-	glEnd();*/
-	
-	/*############################################################*/
-	
-/*	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_intensity_eight_id);
-	glViewport(0, 0, r_width >> 3, r_height >> 3);
-	glClear(GL_COLOR_BUFFER_BIT);
-	
-	renderer_SetShader(r_bloom1_shader);
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_intensity_quarter_vertical_color);
-	renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width >> 3);
-	renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height >> 3);
-	renderer_SetDefaultUniform1i(UNIFORM_r_bloom_radius, 8);
-	
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	
-	glBegin(GL_QUADS);
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glVertex3f(-1.0, 1.0, -0.5);
-	glVertex3f(-1.0, -1.0, -0.5);
-	glVertex3f(1.0, -1.0, -0.5);
-	glVertex3f(1.0, 1.0, -0.5);
-	glEnd();
-	
-	renderer_SetDefaultUniform1i(UNIFORM_r_width, 0);
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_intensity_eight_horizontal_color);
-	glDrawBuffer(GL_COLOR_ATTACHMENT1);
-	
-	glBegin(GL_QUADS);
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glVertex3f(-1.0, 1.0, -0.5);
-	glVertex3f(-1.0, -1.0, -0.5);
-	glVertex3f(1.0, -1.0, -0.5);
-	glVertex3f(1.0, 1.0, -0.5);
-	glEnd();*/
-	
-	/*############################################################*/
-	
-	
-	
-/*	
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_TEXTURE_2D);
-
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_intensity_eight_vertical_color);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_cbuffer_id);
-	glViewport(0, 0, r_width, r_height);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	
-	glEnable(GL_BLEND);
-
-	glBegin(GL_QUADS);
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glVertex3f(-1.0, 1.0, -0.5);
-	glVertex3f(-1.0, -1.0, -0.5);
-	glVertex3f(1.0, -1.0, -0.5);
-	glVertex3f(1.0, 1.0, -0.5);
-	glEnd();
-	
-	glDisable(GL_TEXTURE_2D);
-	glDisable(GL_BLEND);
-	glEnable(GL_DEPTH_TEST);
-		
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, 0);*/
-	
-	
-	
-	
-	
 }
 
 void renderer_DrawSkyBox()
@@ -3914,12 +3765,12 @@ void renderer_BlitColorbuffer()
 	//glBindFramebuffer(GL_READ_FRAMEBUFFER, r_cbuffer_id);
 	//glReadBuffer(GL_COLOR_ATTACHMENT0);
 	
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer_id);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer.framebuffer_id);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	glViewport(0, 0, r_width, r_height);
 	
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, r_cbuffer_id);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, r_cbuffer.framebuffer_id);
 	glReadBuffer(GL_COLOR_ATTACHMENT0);
 	
 	//while(glGetError() != GL_NO_ERROR);
@@ -3936,7 +3787,7 @@ void renderer_BlitBackbuffer()
 	glViewport(0, 0, r_window_width, r_window_height);
 	
 	renderer_SetShader(r_blit_texture_shader);
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_bbuffer_color);
+	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_bbuffer.color_attachments[0].handle);
 	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
 	glRectf(-1.0, -1.0, 1.0, 1.0);
 	
@@ -4099,50 +3950,7 @@ translucent...
 */
 
 
-void renderer_ExecuteDrawCommands()
-{
-	//camera_t *active_camera = camera_GetActiveCamera();
-	//mat4_t view_projection_matrix;
-	//mat4_t model_matrix;
-	int i;
-	int j;
-	int draw_cmd_count;
-	//unsigned int draw_mode;
-	//unsigned int vert_start;
-	//unsigned int vert_count;
-	//float s;
-	//float e;
-	
-	draw_command_t *draw_cmds;
 
-	renderer_SetClusterTexture();
-	renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
-	renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
-	renderer_SetDefaultUniform1i(UNIFORM_r_frame, r_frame);
-
-	for(i = 0; i < r_draw_command_group_count; i++)
-	{
-		renderer_SetMaterial(r_draw_command_groups[i].material_index);
-		draw_cmd_count = r_draw_command_groups[i].draw_cmds_count;
-		draw_cmds = r_draw_command_groups[i].draw_cmds;
-		
-		//printf("%d\n",draw_cmd_count);
-				
-		for(j = 0; j < draw_cmd_count; j++)
-		{	
-			renderer_SetModelMatrix(draw_cmds[j].transform);
-			renderer_UpdateMatrices();
-			if(draw_cmds[j].flags & DRAW_COMMAND_FLAG_INDEXED_DRAW)
-			{
-				renderer_DrawElements(draw_cmds[j].draw_mode, draw_cmds[j].count, GL_UNSIGNED_INT, (void *)(draw_cmds[j].start * sizeof(int)));
-			}
-			else
-			{
-				renderer_DrawArrays(draw_cmds[j].draw_mode, draw_cmds[j].start, draw_cmds[j].count);
-			}
-		}
-	}
-}
 
 
 
@@ -4566,12 +4374,12 @@ void renderer_Tonemap()
 	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	//glDrawBuffer(GL_BACK);
 	
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer_id);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer.framebuffer_id);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	
 	//renderer_BindBackbuffer(1, 0);
 	//renderer_BindColorbuffer(0, 1);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, r_cbuffer_id);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, r_cbuffer.framebuffer_id);
 	glReadBuffer(GL_COLOR_ATTACHMENT0);
 	
 	glViewport(0, 0, r_width, r_height);
@@ -4583,7 +4391,7 @@ void renderer_Tonemap()
 	//printf("renderer_Tonemap: %x\n", glGetError());
 	
 	renderer_SetShader(r_tonemap_shader);
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_cbuffer_color);
+	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_cbuffer.color_attachments[0].handle);
 	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
 	
 	glEnable(GL_TEXTURE_2D);

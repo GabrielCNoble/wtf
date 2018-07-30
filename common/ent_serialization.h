@@ -43,6 +43,13 @@ struct entity_section_tail_t
 *******************************************
 */
 
+enum ENTITY_RECORD_FLAGS
+{
+	ENTITY_RECORD_FLAG_DEF = 1,
+	ENTITY_RECORD_FLAG_DEF_REF = 1 << 1,
+	ENTITY_RECORD_FLAG_MODIFIED = 1 << 2,
+};
+
 
 static char entity_record_start_tag[] = "[entity record start]";
 
@@ -51,8 +58,7 @@ struct entity_record_start_t
 	char tag[(sizeof(entity_record_start_tag) + 3) & (~3)];
 	char name[ENTITY_NAME_MAX_LEN];
 	char def_name[ENTITY_NAME_MAX_LEN];
-	int def;
-	int first_nestled_transform;		/* used by components that reference a transform (or several)... */
+	int flags;
 };
 
 static char entity_record_end_tag[] = "[entity record end]";
@@ -133,7 +139,7 @@ struct component_record_t
 *******************************************
 */
 
-static char entity_prop_record_tag[] = "[entity prop]";
+static char entity_prop_record_tag[] = "[entity prop record]";
 
 struct entity_prop_record_t
 {
@@ -199,33 +205,26 @@ struct collider_record_end_t
 
 
 
-
-static char add_data_tag[] = "[add data]";
-
-struct add_data_t
-{
-	char tag[(sizeof(add_data_tag) + 3) & (~3)];
-	char name[ENTITY_NAME_MAX_LEN];
-	short prop;
-};
-
-static char remove_data_tag[] = "[remove data]";
-
-struct remove_data_t
-{
-	char tag[(sizeof(remove_data_tag) + 3) & (~3)];
-	char name[ENTITY_NAME_MAX_LEN];
-	short prop;
-};
-
-
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
+void entity_WriteComponent(void **buffer, struct component_t *component, int nestled);
+
+void entity_WriteProp(void **buffer, struct entity_prop_t *prop);
+
+void entity_WriteCollider(void **buffer, struct collider_def_t *collider_def);
 
 void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_defs);
+
+
+
+void entity_ReadComponent(void **buffer, struct entity_handle_t entity, struct entity_record_start_t *entity_record);
+
+void entity_ReadProp(void **buffer, struct entity_handle_t entity, struct entity_record_start_t *entity_record);
+
+void entity_ReadCollider(void **buffer);
 
 void entity_DeserializeEntities(void **buffer, int deserialize_defs);
 

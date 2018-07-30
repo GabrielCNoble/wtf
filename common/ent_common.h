@@ -18,6 +18,7 @@
 #define MAX_ENTITY_DEFS 1024
 
 #define INVALID_ENTITY_INDEX 0x7fffffff
+#define INVALID_COMPONENT_INDEX 0x7ffffff
 
 #ifdef __cplusplus
 extern "C"
@@ -38,13 +39,13 @@ enum ENTITY_DEF_FLAGS
 
 enum ENTITY_FLAGS
 {
-	ENTITY_INVALID = 1,
-	ENTITY_HAS_MOVED = 1 << 1,
-	ENTITY_INVISIBLE = 1 << 2,
-	ENTITY_MARKED_INVALID = 1 << 3,
-	ENTITY_ALREADY_SERIALIZED = 1 << 27,
-	//ENTITY_ANIMATED = 1 << 3,
-	//ENTITY_GHOST = 1 << 4,					/* don't collide... */
+	ENTITY_FLAG_INVALID = 1,
+	ENTITY_FLAG_HAS_MOVED = 1 << 1,
+	ENTITY_FLAG_INVISIBLE = 1 << 2,
+	ENTITY_FLAG_MARKED_INVALID = 1 << 3,
+	ENTITY_FLAG_NOT_INITIALIZED = 1 << 4,
+	ENTITY_FLAG_SERIALIZED = 1 << 27,
+	ENTITY_FLAG_MODIFIED = 1 << 28,					/* to allow serialization of entities that were modified after being spawned... */
 };
 
 
@@ -55,7 +56,8 @@ enum COMPONENT_FLAGS
 {
 	COMPONENT_FLAG_INVALID = 1,
 	COMPONENT_FLAG_DEACTIVATED = 1 << 1,
-	COMPONENT_FLAG_NESTLED = 1 << 27,
+	COMPONENT_FLAG_SERIALIZED = 1 << 2,
+	COMPONENT_FLAG_INITIALIZED = 1 << 3,
 };
 
 enum SCRIPT_CONTROLLER_COMPONENT_FLAGS
@@ -73,6 +75,7 @@ enum COMPONENT_TYPES
 	COMPONENT_TYPE_SCRIPT,
 	COMPONENT_TYPE_CAMERA,
 	COMPONENT_TYPE_PARTICLE_SYSTEM,
+	COMPONENT_TYPE_LIFE,
 	COMPONENT_TYPE_LAST,
 	COMPONENT_TYPE_NONE = COMPONENT_TYPE_LAST
 };
@@ -126,7 +129,7 @@ struct transform_component_t
 	vec3_t position;
 		
 	int top_list_index;
-	int depth_index;
+	//int depth_index;
 	
 	int flags;
 	
@@ -134,6 +137,8 @@ struct transform_component_t
 	int children_count;
 	int max_children;
 	struct component_handle_t *child_transforms;
+	
+	char *instance_name;
 };
 
 struct entity_aabb_t
@@ -159,7 +164,7 @@ struct physics_component_t
 	
 	union
 	{
-		collider_def_t *collider_def;
+		struct collider_def_t *collider_def;
 		struct collider_handle_t collider_handle;
 		//int collider_index;
 	}collider;
@@ -219,7 +224,7 @@ struct camera_component_t
 {
 	struct component_t base;
 	camera_t *camera;
-	struct component_handle_t transform;
+	//struct component_handle_t transform;
 };
 
 /*
@@ -241,6 +246,20 @@ struct particle_system_component_t
 ==============================================================
 */
 
+
+struct life_component_t
+{
+	struct component_t base;
+	float life;
+};
+
+
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
 struct entity_script_t
 {
 	struct script_t script;
@@ -249,7 +268,9 @@ struct entity_script_t
 	void *on_first_run_entry_point;
 	void *on_spawn_entry_point;
 	void *on_die_entry_point;
+	void *on_collision_entry_point;
 	
+	void *collided_array;
 };
 
 struct entity_prop_t
@@ -259,15 +280,36 @@ struct entity_prop_t
 	void *memory;
 };
 
+
+/* 
+
+Each entity's transform component keep references to children
+transform components. Those transform components reference back
+the entities they belong to, which also keep a reference to
+those transforms. This is how nestled entities work.
+
+For each case of a single entity def getting referenced several times
+a new transform component will be allocated, and will be made to point
+to the referenced entity def. This component is not directly reachable
+from the original def, but the original def is reachable from it.
+
+The handle for this allocated component will be stored in the children
+list of the transform component of the parent entity to the referenced
+def.
+
+*/
 struct entity_t
 {
 	struct component_handle_t components[COMPONENT_TYPE_LAST];
-	
 	struct entity_handle_t def;
 	
 	int max_props;
 	int prop_count;
 	struct entity_prop_t *props;
+	
+	
+	int ref_count;									/* how many times this entity (if a def) is being referenced from other entities... */
+	
 	
 	bsp_dleaf_t *leaf;
 	int flags;

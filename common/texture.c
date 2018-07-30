@@ -789,7 +789,7 @@ int texture_GetTexture(char *name)
 	
 	if(name)
 	{
-		for(i = -1; i < tex_texture_count; i++)
+		for(i = 0; i < tex_texture_count; i++)
 		{
 			if(!strcmp(name, tex_texture_info[i].name))
 			{

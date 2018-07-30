@@ -286,7 +286,7 @@ int brush_CheckBrushIntersection(brush_t *a, brush_t *b);
 
 void brush_AddIntersectionRecord(brush_t *add_to, brush_t *to_add);
 
-void brush_RemoveIntersectionRecord(brush_t *remove_from, brush_t *to_remove);
+void brush_RemoveIntersectionRecord(brush_t *remove_from, brush_t *to_remove, int free_record);
 
 intersection_record_t *brush_GetIntersectionRecord(brush_t *brush, brush_t *brush2);
 

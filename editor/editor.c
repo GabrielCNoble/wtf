@@ -24,6 +24,7 @@
 #include "player.h"
 #include "portal.h"
 #include "..\..\common\r_debug.h"
+#include "..\..\common\r_gl.h"
 
 #include "memory.h"
 
@@ -403,6 +404,10 @@ void editor_Init(int argc, char *argv[])
 	input_RegisterKey(SDL_SCANCODE_T);
 	input_RegisterKey(SDL_SCANCODE_V);
 	
+	input_RegisterKey(SDL_SCANCODE_X);
+	input_RegisterKey(SDL_SCANCODE_Y);
+	
+	
 	input_RegisterKey(SDL_SCANCODE_DELETE);
 	input_RegisterKey(SDL_SCANCODE_TAB);
 		
@@ -411,19 +416,24 @@ void editor_Init(int argc, char *argv[])
 	
 	//SDL_GetDisplayMode(0, 0, &display_mode);
 	
-	glGenFramebuffers(1, &ed_pick_framebuffer_id);
-	glGenTextures(1, &ed_pick_color_texture_id);
-	glGenTextures(1, &ed_pick_depth_texture_id);
+	//glGenFramebuffers(1, &ed_pick_framebuffer_id);
+	//glGenTextures(1, &ed_pick_color_texture_id);
+	//glGenTextures(1, &ed_pick_depth_texture_id);
+	
+	ed_pick_framebuffer = renderer_CreateFramebuffer(1920, 1080);
+	renderer_AddAttachment(&ed_pick_framebuffer, GL_COLOR_ATTACHMENT0, GL_RGBA32F);
+	renderer_AddAttachment(&ed_pick_framebuffer, GL_DEPTH_ATTACHMENT, 0);
+	
 	
 	//while(glGetError() != GL_NO_ERROR);
-	glBindTexture(GL_TEXTURE_2D, ed_pick_color_texture_id);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, r_window_width, r_window_height, 0, GL_RGB, GL_FLOAT, NULL);
+	//glBindTexture(GL_TEXTURE_2D, ed_pick_color_texture_id);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, r_window_width, r_window_height, 0, GL_RGB, GL_FLOAT, NULL);
 	/*status = glGetError();
 	if(status != GL_NO_ERROR)
 	{
@@ -431,19 +441,19 @@ void editor_Init(int argc, char *argv[])
 	}*/
 	
 	
-	glBindTexture(GL_TEXTURE_2D, ed_pick_depth_texture_id);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, r_window_width, r_window_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	///glBindTexture(GL_TEXTURE_2D, ed_pick_depth_texture_id);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, r_window_width, r_window_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	//glBindTexture(GL_TEXTURE_2D, 0);
 	
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, ed_pick_framebuffer_id);
-	glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ed_pick_color_texture_id, 0);
-	glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, ed_pick_depth_texture_id, 0);
+	//glBindFramebuffer(GL_READ_FRAMEBUFFER, ed_pick_framebuffer_id);
+	//glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ed_pick_color_texture_id, 0);
+	//glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, ed_pick_depth_texture_id, 0);
 	
 	
 	
@@ -568,9 +578,11 @@ void editor_Finish()
 	
 	editor_FinishUI();
 	
-	glDeleteFramebuffers(1, &ed_pick_framebuffer_id);
-	glDeleteTextures(1, &ed_pick_color_texture_id);
-	glDeleteTextures(1, &ed_pick_depth_texture_id);
+	//glDeleteFramebuffers(1, &ed_pick_framebuffer_id);
+	//glDeleteTextures(1, &ed_pick_color_texture_id);
+	//glDeleteTextures(1, &ed_pick_depth_texture_id);
+	
+	renderer_DestroyFramebuffer(&ed_pick_framebuffer);
 	
 	glDeleteFramebuffers(1, &ed_cursors_framebuffer_id);
 	glDeleteTextures(1, &ed_cursors_color_texture_id);
@@ -757,108 +769,6 @@ void editor_ToggleBrushEditing()
 	}
 }
 
-vec3_t editor_3dCursorPosition(float mouse_x, float mouse_y)
-{
-	int i;
-	int c;
-	int j;
-	int k;
-	int x;
-	int y;
-	
-	int pick_type;
-	int pick_index0;
-	int pick_index1;
-	int pick_index2;
-	
-	camera_t *active_camera = camera_GetActiveCamera();
-	triangle_group_t *triangle_group;
-	batch_t *batch;
-	material_t *material;
-	brush_t *brush;
-	
-	mat4_t camera_to_world_matrix;
-	
-	vec4_t pos;
-	
-	float q[4];
-	float z;
-	float qr;
-	float qt;
-	
-	gpu_BindGpuHeap();
-	
-	renderer_SetShader(ed_brush_dist_shader);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(compact_vertex_t), &((compact_vertex_t *)0)->position);
-	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
-	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
-	renderer_SetModelMatrix(NULL);
-	renderer_UpdateMatrices();
-	
-	//glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
-	glViewport(0, 0, r_window_width, r_window_height);
-	
-	editor_EnablePicking();
-	glClearColor(active_camera->frustum.zfar, active_camera->frustum.zfar, active_camera->frustum.zfar, active_camera->frustum.zfar);
-	glClear(GL_COLOR_BUFFER_BIT);
-	glClearColor(0.0, 0.0, 0.0, 1.0);
-	
-
-	brush = brushes;
-	while(brush)
-	{
-		
-		if(brush->type == BRUSH_INVALID)
-		{
-			brush = brush->next;
-			continue;
-		}
-			
-		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brush->element_buffer);
-		
-		k = brush->batch_count;
-		batch = brush->batches;
-		
-		for(j = 0; j < k; j++)
-		{					
-			glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, q);
-			glDrawElements(GL_TRIANGLES, batch[j].next, GL_UNSIGNED_INT, (void *)((batch[j].start + brush->index_start) * sizeof(int)));
-		}
-		
-		brush = brush->next;
-		
-	}
-	
-	gpu_UnbindGpuHeap();
-	
-	x = r_window_width * (mouse_x * 0.5 + 0.5);
-	y = r_window_height * (mouse_y * 0.5 + 0.5);
-	glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, q);
-
-	
-	editor_DisablePicking();
-	mat4_t_compose(&camera_to_world_matrix, &active_camera->world_orientation, active_camera->world_position);
-	qr = active_camera->frustum.znear / active_camera->frustum.right;
-	qt = active_camera->frustum.znear / active_camera->frustum.top;
-	
-	if(q[0] == active_camera->frustum.zfar)
-	{
-		z = -10.0;
-	}
-	else
-	{
-		z = -q[0];
-	}
-	
-	pos.x = (normalized_mouse_x / qr) * (-z);
-	pos.y = (normalized_mouse_y / qt) * (-z);
-	pos.z = z;
-	pos.w = 1.0;
-		
-	mat4_t_vec4_t_mult(&camera_to_world_matrix, &pos);
-	
-	return pos.vec3;
-}
 
 
 /*void editor_StartPIE()
@@ -916,7 +826,6 @@ void editor_RegisterEditor(char *name, void (*init_callback)(), void (*finish_ca
 	ed_editors = editor;
 	
 	editor_EnumerateEditors();
-	
 }
 
 void editor_UnregisterEditor(char *name)

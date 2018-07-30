@@ -91,7 +91,9 @@ void input_Finish();
 
 void input_GetInput(double delta_time);
 
-void input_GetMouseDelta(float *dx, float *dy);
+vec2_t input_GetMouseDelta();
+
+vec2_t input_GetMousePosition();
 
 void input_SetCursor(int cursor);
 
@@ -110,6 +112,8 @@ int input_GetKeyPressed(int key);
 int input_GetKeyStatus(int key);
 
 int input_GetMouseButton(int button);
+
+int input_GetMouseStatus();
 
 int input_RegisterKey(int key);
 

@@ -56,14 +56,14 @@ void resource_LoadResource(char *file_name)
 				switch(res_type)
 				{
 					case RESOURCE_TYPE_TEXTURE:
-						if(texture_LoadTexture(file_name, path_GetFileNameFromPath(file_name), 0) != -1)
+						if(texture_LoadTexture(file_name, path_GetNameNoExt(path_GetFileNameFromPath(file_name)), 0) != -1)
 						{
 							success = 1;
 						}
 					break;
 					
 					case RESOURCE_TYPE_MODEL:
-						if(model_LoadModel(file_name, path_GetFileNameFromPath(file_name)) != -1)
+						if(model_LoadModel(file_name, path_GetNameNoExt(path_GetFileNameFromPath(file_name))) != -1)
 						{
 							success = 1;
 						}

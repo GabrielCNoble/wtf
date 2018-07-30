@@ -1,0 +1,2 @@
+C:\PROGRA~2\Dev-Cpp\MinGW64\bin\ar.exe cq libozz_animation_tools.a  CMakeFiles/ozz_animation_tools.dir/import2ozz.cc.obj CMakeFiles/ozz_animation_tools.dir/import2ozz_anim.cc.obj CMakeFiles/ozz_animation_tools.dir/import2ozz_config.cc.obj CMakeFiles/ozz_animation_tools.dir/import2ozz_skel.cc.obj
+C:\PROGRA~2\Dev-Cpp\MinGW64\bin\ranlib.exe libozz_animation_tools.a

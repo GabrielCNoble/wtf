@@ -4,14 +4,14 @@ Name=wtf_editor
 Type=1
 Ver=2
 ObjFiles=
-Includes=..\common\SDL\include;..\common\GLEW\include;..\common\soil;..\common\gmath;..\common\OPENAL\include;..\common;..\common\bullet\include;..\common\bullet\include\BulletCollision;..\common\angel;..\common\imgui;..\common\containers;..\common\script;..\common\script\script_types;"level editor";"entity editor";"material editor"
-Libs=..\common\SDL\lib\mingw;..\common\OPENAL\Win32;..\common\GLEW\lib;..\common\bullet\lib;..\common\angel;..\common\imgui
+Includes=..\common\SDL\include;..\common\GLEW\include;..\common\soil;..\common\gmath;..\common\OPENAL\include;..\common;..\common\bullet\include;..\common\bullet\include\BulletCollision;..\common\angel;..\common\imgui;..\common\containers;..\common\script;..\common\script\script_types;"level editor";"entity editor";"material editor";..\common\ozz
+Libs=..\common\SDL\lib\mingw;..\common\OPENAL\Win32;..\common\GLEW\lib;..\common\bullet\lib;..\common\angel;..\common\imgui;..\common\ozz\base;..\common\ozz\geometry\runtime;..\common\ozz\options;..\common\ozz\animation\runtime;..\common\ozz\animation\offline
 PrivateResource=
 ResourceIncludes=
 MakeIncludes=
-Compiler=-masm=intel_@@__@@_
-CppCompiler=-masm=intel_@@_-std=c++11_@@_-Wno-write-strings_@@_
-Linker=_@@_-lmingw32_@@_-lopengl32_@@_-lSDL2main_@@_-lSDL2_@@_-lSDL2_ttf_@@_-lglew32_@@_-lOpenAL32_@@_-limagehlp_@@_-langelscript_@@__@@_-lBulletDynamics_@@_-lBulletCollision_@@_-lLinearMath_@@__@@__@@__@@_-Wl,-Map=r.map_@@__@@__@@__@@__@@__@@__@@__@@__@@_
+Compiler=-masm=intel_@@_-m32_@@__@@_
+CppCompiler=-masm=intel_@@_-std=c++11_@@_-Wno-write-strings_@@_-m32_@@_
+Linker=_@@_-lmingw32_@@_-lopengl32_@@_-lSDL2main_@@_-lSDL2_@@_-lSDL2_ttf_@@_-lglew32_@@_-lOpenAL32_@@_-limagehlp_@@_-langelscript_@@__@@_-lBulletDynamics_@@_-lBulletCollision_@@_-lLinearMath_@@__@@_-lozz_animation_@@_-lozz_animation_offline_@@_-lozz_base_@@_-lozz_geometry_@@_-lozz_options_@@__@@__@@_-Wl,-Map=r.map_@@__@@__@@__@@__@@__@@__@@__@@__@@_
 IsCpp=1
 Icon=
 ExeOutput=
@@ -29,7 +29,7 @@ IncludeVersionInfo=0
 SupportXPThemes=0
 CompilerSet=3
 CompilerSettings=00000d0100000000001000000
-UnitCount=234
+UnitCount=243
 
 [VersionInfo]
 Major=1
@@ -2057,8 +2057,8 @@ Folder=editor/level editor/ui
 Compile=1
 Link=1
 Priority=1000
-OverrideBuildCmd=0
-BuildCmd=$(CC) -c ed_level_ui.c -o ed_level_ui.o $(CFLAGS)
+OverrideBuildCmd=1
+BuildCmd=$(CC) -c -masm=att ed_level_ui.c -o ed_level_ui.o $(CFLAGS)
 
 [Unit213]
 FileName=ed_level_ui.h
@@ -2389,4 +2389,94 @@ Link=1
 Priority=1000
 OverrideBuildCmd=0
 BuildCmd=$(CC) -c resource_loader.c -o resource_loader.o $(CFLAGS)
+
+[Unit235]
+FileName=..\common\animation.h
+CompileCpp=1
+Folder=common
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit236]
+FileName=..\common\animation.c
+CompileCpp=1
+Folder=common
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit237]
+FileName=ed_level_ui_light.h
+CompileCpp=1
+Folder=editor/level editor/ui
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit238]
+FileName=ed_level_ui_light.c
+CompileCpp=1
+Folder=editor/level editor/ui
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit239]
+FileName=..\common\physics.inl
+CompileCpp=1
+Folder=common/physics
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit240]
+FileName=..\common\scr_typeof.h
+CompileCpp=1
+Folder=common/script/script_types
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit241]
+FileName=..\common\scr_typeof.c
+CompileCpp=1
+Folder=common/script/script_types
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit242]
+FileName=..\common\scriptarray.cpp
+CompileCpp=1
+Folder=common/script/script_types
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit243]
+FileName=..\common\scriptarray.h
+CompileCpp=1
+Folder=common/script/script_types
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
 

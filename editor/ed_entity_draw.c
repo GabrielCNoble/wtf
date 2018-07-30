@@ -159,7 +159,7 @@ void editor_EntityEditorDrawColliderDef(int pick)
 	camera_t *active_camera;
 	int i;
 	
-	collider_def_t *collider_def;
+	struct collider_def_t *collider_def;
 	collision_shape_t *collision_shape;
 	mat4_t shape_transform;
 	

@@ -61,7 +61,7 @@ typedef struct player_def_t
 	
 	char *name;
 	
-	collider_def_t *collider_def;
+	struct collider_def_t *collider_def;
 }player_def_t;
 
 
@@ -130,7 +130,7 @@ void player_Finish();
 ========================================================================================
 */
 
-player_def_t *player_CreatePlayerDef(char *name, collider_def_t *collider_def);
+player_def_t *player_CreatePlayerDef(char *name, struct collider_def_t *collider_def);
 
 void player_DestroyPlayerDef(char *name);
 

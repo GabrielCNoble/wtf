@@ -336,10 +336,14 @@ void input_GetInput(double delta_time)
 	return;
 }
 
-void input_GetMouseDelta(float *dx, float *dy)
+vec2_t input_GetMouseDelta()
 {
-	*dx = mouse_dx;
-	*dy = mouse_dy;
+	return (vec2_t){mouse_dx, mouse_dy};
+}
+
+vec2_t input_GetMousePosition()
+{
+	return (vec2_t){(float)mouse_x, (float)mouse_y};
 }
 
 void input_SetCursor(int cursor)
@@ -629,6 +633,11 @@ int input_GetMouseButton(int button)
 	}
 	
 	return i;
+}
+
+int input_GetMouseStatus()
+{
+	return bm_mouse;
 }
 
 int input_RegisterKey(int key)

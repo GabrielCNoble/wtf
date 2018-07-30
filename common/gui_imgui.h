@@ -74,6 +74,8 @@ float gui_ImGuiGetWindowHeight();
 
 vec2_t gui_ImGuiGetContentRegionMax();
 
+vec2_t gui_ImGuiGetContentRegionAvail();
+
 /*
 ===========================================================
 ===========================================================
@@ -130,6 +132,12 @@ void gui_ImGuiSpacing();
 void gui_ImGuiIndent(float indent_w);
 
 void gui_ImGuiUnindent(float indent_w);
+
+vec2_t gui_ImGuiGetCursorPos();
+
+void gui_ImGuiSetCursorPos(vec2_t local_pos);
+
+vec2_t gui_ImGuiGetCursorScreenPos();
 
 /*
 ===========================================================
@@ -200,6 +208,16 @@ int gui_ImGuiRadioButton(const char *label, char active);
 void gui_ImGuiProgressBar(float fraction, vec2_t size_arg, const char *overlay);
 
 void gui_ImGuiBullet();
+
+/*
+===========================================================
+===========================================================
+===========================================================
+*/
+
+int gui_ImGuiBeginCombo(const char *label, const char *preview_value, int flags);
+
+void gui_ImGuiEndCombo();
 
 /*
 ===========================================================
@@ -337,9 +355,13 @@ int gui_ImGuiIsItemDeactivated();
 ===========================================================
 */
 
+int gui_ImGuiIsMouseDown(int button);
+
 int gui_ImGuiIsMouseClicked(int button, int repeat);
 
 int gui_ImGuiIsMouseDoubleClicked(int button);
+
+vec2_t gui_ImGuiGetMouseDragDelta(int button);
 
 /*
 ===========================================================

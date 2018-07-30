@@ -20,6 +20,7 @@
 #include "..\..\common\l_main.h"
 #include "..\..\common\player.h"
 #include "..\..\common\entity.h"
+#include "..\..\common\ent_serialization.h"
 #include "..\..\common\world.h"
 #include "..\..\common\entity.h"
 #include "..\..\common\ent_common.h"
@@ -105,6 +106,11 @@ extern struct waypoint_t *nav_waypoints;
 extern int ptl_portals_list_cursor;
 extern portal_t *ptl_portals;
 
+/* from brush.c */
+extern brush_t *brushes;
+extern brush_t *last_brush;
+extern int brush_count;
+
 /************************************************************************************************************/
 /************************************************************************************************************/
 /************************************************************************************************************/
@@ -127,6 +133,7 @@ int level_editor_last_selection_type = PICK_NONE;*/
 
 pick_list_t level_editor_pick_list;
 pick_list_t level_editor_brush_face_pick_list;
+pick_list_t level_editor_brush_face_uv_pick_list;
 
 
 int level_editor_3d_handle_transform_mode = ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION;
@@ -166,6 +173,10 @@ that exists in the world... */
 int level_editor_has_copied_data = 0;
 int level_editor_need_to_copy_data = 1;
 
+brush_t *level_editor_brushes = NULL;
+brush_t *level_editor_last_brush = NULL;
+int level_editor_brush_count = 0;
+
 int level_editor_world_vertices_count = 0;
 vertex_t *level_editor_world_vertices = NULL;
 
@@ -178,12 +189,15 @@ bsp_dleaf_t *level_editor_world_leaves = NULL;
 int level_editor_world_batch_count = 0;
 batch_t *level_editor_world_batches = NULL;
 
-int level_editor_entity_list_cursor = 0;
-int level_editor_entity_list_size = 0;
-int level_editor_entity_free_stack_top = -1;
-int *level_editor_entity_free_stack = NULL;
-struct entity_t *level_editor_entities = NULL;
-struct entity_aabb_t *level_editor_entity_aabbs = NULL;
+int level_editor_entity_buffer_size = 0;
+void *level_editor_entity_buffer = NULL;
+
+//int level_editor_entity_list_cursor = 0;
+//int level_editor_entity_list_size = 0;
+//int level_editor_entity_free_stack_top = -1;
+//int *level_editor_entity_free_stack = NULL;
+//struct entity_t *level_editor_entities = NULL;
+//struct entity_aabb_t *level_editor_entity_aabbs = NULL;
 
 //int level_editor_collider_list_cursor = 0;
 //int level_editor_collider_list_size = 0;
@@ -240,6 +254,10 @@ void editor_LevelEditorInit()
 	level_editor_brush_face_pick_list.record_count = 0;
 	level_editor_brush_face_pick_list.records = memory_Malloc(sizeof(pick_record_t) * level_editor_brush_face_pick_list.max_records, "editor_LevelEditorInit");
 	
+	
+	level_editor_brush_face_uv_pick_list.max_records = 128;
+	level_editor_brush_face_uv_pick_list.record_count = 0;
+	level_editor_brush_face_uv_pick_list.records = memory_Malloc(sizeof(pick_record_t) * level_editor_brush_face_uv_pick_list.max_records, "editor_LevelEditorInit");
 		
 	camera_PitchYawCamera(level_editor_camera, level_editor_camera_yaw, level_editor_camera_pitch);
 	camera_ComputeWorldToCameraMatrix(level_editor_camera);
@@ -250,24 +268,28 @@ void editor_LevelEditorInit()
 	
 	//camera_t *camera = camera_CreateCamera("entity_camera", vec3(0.0, 0.0, 0.0), &r, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
 	
-	struct particle_system_script_t *script = particle_LoadParticleSystemScript("scripts/particle_system.as", "particle_system_test_script");
+	//struct particle_system_script_t *script = particle_LoadParticleSystemScript("scripts/particle_system.as", "particle_system_test_script");
 	//script_t *particle_system_script = script_LoadScript("scripts/particle_system.as", "particle_system_test_script");
 	
-	int ps_def = particle_CreateParticleSystemDef("particle system", 500, 120, 1, 0, 0, script);
+	//int ps_def = particle_CreateParticleSystemDef("particle system", 500, 120, 1, 0, 0, script);
 	
 	//particle_SpawnParticleSystem(vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, ps_def);
 
-	struct entity_script_t *ai_script = entity_LoadScript("scripts/ai_script.as", "ai_script");	
-	collider_def_t *def = physics_CreateCharacterColliderDef("test collider", 1.0, 0.5, 0.3, 0.15, 0.7);
+	struct entity_script_t *player_script = entity_LoadScript("scripts/player.as", "player");	
+	struct entity_script_t *enemy_script = entity_LoadScript("scripts/enemy.as", "enemy");
+	struct entity_script_t *bullet_script = entity_LoadScript("scripts/bullet.as", "bullet");
+	
+	struct collider_def_t *def = physics_CreateCharacterColliderDef("test collider", 1.0, 0.5, 0.3, 0.15, 0.7);
 	//int model_index2 = model_LoadModel("cube.mpk", "cube");
 	//int portal_gun_model = model_LoadModel("portal_gun.mpk", "portal gun");
 	//int model_index = model_LoadModel("toilet2.mpk", "toilet");
 	
 	resource_LoadResource("toilet2.mpk");
+	resource_LoadResource("toilet.mpk");
 	resource_LoadResource("cube.mpk");
 	
-	int model_index = model_GetModel("toilet2.mpk");
-	int model_index2 = model_GetModel("cube.mpk");
+	int model_index = model_GetModel("toilet2");
+	int model_index2 = model_GetModel("cube");
 	
 	struct entity_handle_t body_entity = entity_CreateEntityDef("body entity");
 	entity_AddComponent(body_entity, COMPONENT_TYPE_SCRIPT);
@@ -275,30 +297,33 @@ void editor_LevelEditorInit()
 	entity_AddComponent(body_entity, COMPONENT_TYPE_MODEL);
 	entity_SetModel(body_entity, model_index);
 	entity_SetCollider(body_entity, def);
-	entity_SetScript(body_entity, (struct script_t *)ai_script);
-	
+	entity_SetScript(body_entity, (struct script_t *)player_script);
 	
 	struct entity_handle_t camera_entity = entity_CreateEntityDef("camera entity");
 	entity_AddComponent(camera_entity, COMPONENT_TYPE_CAMERA);
-	
 	mat3_t_rotate(&r, vec3_t_c(0.0, 1.0, 0.0), -0.5, 1);
-	
-	entity_SetCameraTransform(camera_entity, &r, vec3_t_c(0.0, 0.25, 0.0));
-	entity_SetTransform(camera_entity, NULL, vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), 1);
-	
-	entity_ParentEntity(body_entity, camera_entity);
-	
+	entity_SetTransform(camera_entity, NULL, vec3_t_c(0.0, 0.25, 0.0), vec3_t_c(1.0, 1.0, 1.0), 1);
 	
 	struct entity_handle_t weapon_entity = entity_CreateEntityDef("weapon entity");
 	entity_AddComponent(weapon_entity, COMPONENT_TYPE_MODEL);
-	//entity_AddProp(weapon_entity, "weapon offset", sizeof(vec3_t));
 	entity_SetModel(weapon_entity, model_index2);
-	entity_SetTransform(weapon_entity, NULL, vec3_t_c(0.3, 0.0, 0.15), vec3_t_c(0.3, 0.1, 0.1), 1);
+	entity_SetTransform(weapon_entity, NULL, vec3_t_c(0.3, -0.15, -0.15), vec3_t_c(0.1, 0.1, 0.3), 1);
 	
+	
+	struct entity_handle_t spawn_entity = entity_CreateEntityDef("spawn entity");
+	entity_SetTransform(spawn_entity, NULL, vec3_t_c(0.0, 0.0, -1.1), vec3_t_c(1.0, 1.0, 1.0), 0);
+
+
+	entity_ParentEntity(body_entity, camera_entity);
 	entity_ParentEntity(camera_entity, weapon_entity);
+	entity_ParentEntity(weapon_entity, spawn_entity);
 	
 	
 	
+	struct entity_handle_t entity = entity_SpawnEntity(NULL, vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), body_entity, "test");
+	
+	
+	//entity = entity_GetNestledEntityHandle(entity, "weapon entity");
 	
 	
 	
@@ -306,22 +331,50 @@ void editor_LevelEditorInit()
 	
 	//entity_SpawnEntity(&r, vec3_t_c(0.0, 2.0, -10.0), vec3_t_c(1.0, 1.0, 1.0), body_entity, "test player");	 
 	
-	
-	ai_script = entity_LoadScript("scripts/cube.as", "cube");
 	def = physics_CreateRigidBodyColliderDef("box collider");
 	physics_AddCollisionShape(def, vec3_t_c(1.0, 1.0, 1.0), vec3_t_c(0.0, 0.0, 0.0), NULL, COLLISION_SHAPE_BOX);
-//	model_index = model_GetModel("cube");
 	
-	struct entity_handle_t entity_def = entity_CreateEntityDef("cube");
+	struct entity_handle_t enemy_def = entity_CreateEntityDef("enemy");
 	
-	entity_AddComponent(entity_def, COMPONENT_TYPE_PHYSICS);
-	entity_AddComponent(entity_def, COMPONENT_TYPE_MODEL);
-	entity_AddComponent(entity_def, COMPONENT_TYPE_SCRIPT);
+	entity_AddComponent(enemy_def, COMPONENT_TYPE_PHYSICS);
+	entity_AddComponent(enemy_def, COMPONENT_TYPE_MODEL);
+	entity_AddComponent(enemy_def, COMPONENT_TYPE_SCRIPT);
 	
-	entity_SetModel(entity_def, model_index2);
-	entity_SetCollider(entity_def, def);
-	entity_SetScript(entity_def, (struct script_t *)ai_script);
+	entity_SetModel(enemy_def, model_index2);
+	entity_SetCollider(enemy_def, def);
+	entity_SetScript(enemy_def, (struct script_t *)enemy_script);
 	
+	
+	
+	
+	def = physics_CreateRigidBodyColliderDef("bullet collider");
+	physics_AddCollisionShape(def, vec3_t_c(1.0, 1.0, 1.0), vec3_t_c(0.0, 0.0, 0.0), NULL, COLLISION_SHAPE_SPHERE);
+	
+	struct entity_handle_t bullet_def = entity_CreateEntityDef("bullet");
+	
+	entity_AddComponent(bullet_def, COMPONENT_TYPE_PHYSICS);
+	entity_AddComponent(bullet_def, COMPONENT_TYPE_MODEL);
+	entity_AddComponent(bullet_def, COMPONENT_TYPE_SCRIPT);
+	
+	entity_SetCollider(bullet_def, def);
+	entity_SetModel(bullet_def, model_index2);
+	entity_SetScript(bullet_def, (struct script_t *)bullet_script);
+	
+	
+	
+	int diffuse_texture = texture_LoadTexture("textures/world/concrete_01_diffuse.png", "concrete_diffuse", 0);
+	int normal_texture = texture_LoadTexture("textures/world/concrete_01_normal.png", "concrete_normal", 0);
+	material_CreateMaterial("concrete", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, shader_GetShaderIndex("forward pass"), diffuse_texture, normal_texture);
+	
+	
+	diffuse_texture = texture_LoadTexture("textures/world/oakfloor_basecolor.png", "oakfloor_diffuse", 0);
+	normal_texture = texture_LoadTexture("textures/world/oakfloor_normal.png", "oakfloor_normal", 0);
+	material_CreateMaterial("oakfloor", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, shader_GetShaderIndex("forward pass"), diffuse_texture, normal_texture);
+	
+	
+	diffuse_texture = texture_LoadTexture("textures/world/tile_d.png", "tile_diffuse", 0);
+	normal_texture = texture_LoadTexture("textures/world/tile_n.png", "tile_normal", 0);
+	material_CreateMaterial("tile", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, shader_GetShaderIndex("forward pass"), diffuse_texture, normal_texture);
 	
 	//collider_def_t *projectile_def = physics_CreateProjectileColliderDef("projectile", 2.0, 1.0);
 	
@@ -330,7 +383,7 @@ void editor_LevelEditorInit()
 	
 	//entity_SpawnEntity(&r, vec3(0.0, 3.0, 0.0), vec3(1.0, 1.0, 1.0), entity_def, "cube");	
 	
-	/*void *buffer;
+/*	void *buffer;
 	void *read_buffer;
 	int buffer_size;
 	
@@ -351,9 +404,6 @@ void editor_LevelEditorInit()
 	entity_DeserializeEntities(&read_buffer, 0);
 	
 	memory_Free(buffer);*/
-	
-	
-	
 }
  
 void editor_LevelEditorFinish()
@@ -363,6 +413,7 @@ void editor_LevelEditorFinish()
 	
 	memory_Free(level_editor_pick_list.records);
 	memory_Free(level_editor_brush_face_pick_list.records);
+	memory_Free(level_editor_brush_face_uv_pick_list.records);
 		
 	if(level_editor_has_copied_data)
 	{
@@ -403,7 +454,7 @@ void editor_LevelEditorShutdown()
 	renderer_ClearRegisteredCallbacks();
 	editor_LevelEditorUIShutdown();
 	editor_LevelEditorCopyLevelData();
-	editor_LevelEditorClearLevel();
+	editor_LevelEditorClearLevelData();
 	
 	camera_Deactivate(level_editor_camera);
 }
@@ -437,7 +488,7 @@ void editor_LevelEditorMain(float delta_time)
 	
 	
 	
-	if(bm_mouse & MOUSE_MIDDLE_BUTTON_CLICKED)
+	if(bm_mouse & MOUSE_MIDDLE_BUTTON_CLICKED && (!(bm_mouse & MOUSE_OVER_WIDGET)))
 	{
 		editor_LevelEditorFly(delta_time);
 	}
@@ -454,82 +505,88 @@ void editor_LevelEditorMain(float delta_time)
 pick_record_t editor_LevelEditorPickObject(float mouse_x, float mouse_y)
 {
 	pick_record_t record;
+	pick_list_t *pick_list;
 	int lshift;
 	
 	
 	if(level_editor_editing_mode == EDITING_MODE_OBJECT)
 	{
+		pick_list = &level_editor_pick_list;
 		record = editor_PickObject(mouse_x, mouse_y);
-		lshift = input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED;
-		
-		if(record.type == level_editor_pick_list.records[level_editor_pick_list.record_count - 1].type)
-		{
-			if(record.type == PICK_BRUSH)
-			{
-				if(record.pointer == level_editor_pick_list.records[level_editor_pick_list.record_count - 1].pointer)
-				{
-					goto _same_selection;
-				}
-				
-				goto _add_new_selection;
-			}
-			
-			/* if the just picked thing is the same as the last picked thing... */	
-			if(record.index0 == level_editor_pick_list.records[level_editor_pick_list.record_count - 1].index0)
-			{
-				_same_selection:
-				/* this record already exists in the list, so drop it... */
-				editor_DropSelection(&record, &level_editor_pick_list);
-				//editor_LevelEditorDropSelection(&record);
-				
-				if(!lshift)
-				{
-					if(level_editor_pick_list.record_count)
-					{
-						goto _add_new_selection;
-					}
-				}
-				
-				goto _set_handle_3d_position;				
-			}
-			else
-			{
-				/* if this record  is not equal to the last in the list,
-				append it to the list or set it as the only active object... */
-				goto _add_new_selection;
-			}
-						
-		}
-		else
-		{
-			_add_new_selection:
-			/* holding shift enables selecting multiple objects... */			
-			if(!lshift)
-			{
-				editor_ClearSelection(&level_editor_pick_list);
-				//editor_LevelEditorClearSelections();
-			}
-											
-			editor_AddSelection(&record, &level_editor_pick_list);
-			//editor_LevelEditorAddSelection(&record);
-								
-			_set_handle_3d_position:
-			
-			editor_LevelEditorUpdate3dHandlePosition();			
-		}
 	}
 	else
 	{
+		pick_list = &level_editor_brush_face_pick_list;
 		record = editor_GetLastSelection(&level_editor_pick_list);
 		
 		if(record.type == PICK_BRUSH)
 		{
-			record = editor_PickBrushFace((brush_t *)record.pointer, mouse_x, mouse_y);
-			
-			editor_ClearSelection(&level_editor_brush_face_pick_list);
-			editor_AddSelection(&record, &level_editor_brush_face_pick_list);
+			record = editor_PickBrushFace((brush_t *)record.pointer, mouse_x, mouse_y);	
+			//editor_ClearSelection(&level_editor_brush_face_pick_list);
+			//editor_AddSelection(&record, &level_editor_brush_face_pick_list);
+		}
+		else
+		{
+			return record;
 		}
 	}
+	
+	
+	lshift = input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED;
+		
+	if(record.type == pick_list->records[pick_list->record_count - 1].type)
+	{
+		if(record.type == PICK_BRUSH)
+		{
+			if(record.pointer == pick_list->records[pick_list->record_count - 1].pointer)
+			{
+				goto _same_selection;
+			}
+				
+			goto _add_new_selection;
+		}
+			
+		/* if the just picked thing is the same as the last picked thing... */	
+		if(record.index0 == pick_list->records[pick_list->record_count - 1].index0)
+		{
+			_same_selection:
+			/* this record already exists in the list, so drop it... */
+			editor_DropSelection(&record, pick_list);
+				
+			if(!lshift)
+			{
+				if(pick_list->record_count)
+				{
+					goto _add_new_selection;
+				}
+			}
+				
+			goto _set_handle_3d_position;				
+		}
+		else
+		{
+			/* if this record  is not equal to the last in the list,
+			append it to the list or set it as the only active object... */
+			goto _add_new_selection;
+		}
+						
+	}
+	else
+	{
+		_add_new_selection:
+		/* holding shift enables selecting multiple objects... */			
+		if(!lshift)
+		{
+			editor_ClearSelection(pick_list);
+		}
+											
+		editor_AddSelection(&record, pick_list);
+											
+		_set_handle_3d_position:
+			
+		editor_LevelEditorUpdate3dHandlePosition();			
+	}
+	
 	
 	
 	
@@ -872,24 +929,7 @@ void editor_LevelEditorEdit(float delta_time)
 				
 		if(bm_mouse & MOUSE_RIGHT_BUTTON_JUST_CLICKED)
 		{
-			
-			
-			//if(level_editor_editing_mode == EDITING_MODE_OBJECT)
-			{
-				//editor_PickObject();	
-				editor_LevelEditorPickObject(normalized_mouse_x, normalized_mouse_y);
-			}
-			/*else
-			{
-				if(level_editor_editing_mode == EDITING_MODE_UV)
-				{
-					editor_CloseBrushFaceUVWindow();
-				}
-				i = level_editor_selections[level_editor_selection_count - 1].index0;
-					
-				editor_PickOnBrush(&brushes[i]);
-			}*/
-				
+			editor_LevelEditorPickObject(normalized_mouse_x, normalized_mouse_y);				
 		}
 		
 		
@@ -1192,11 +1232,7 @@ void editor_LevelEditorScaleSelections(vec3_t axis, float amount)
 
 void editor_LevelEditorStartPIE()
 {
-	if(level_editor_need_to_copy_data)
-	{
-		editor_LevelEditorCopyLevelData();
-	}
-	
+	editor_LevelEditorCopyLevelData();
 	engine_SetEngineState(ENGINE_PLAYING);
 	level_editor_state = EDITOR_PIE;
 }
@@ -1204,6 +1240,7 @@ void editor_LevelEditorStartPIE()
 void editor_LevelEditorStopPIE()
 {
 	engine_SetEngineState(ENGINE_PAUSED);
+	editor_LevelEditorClearLevelData();
 	editor_LevelEditorRestoreLevelData();
 	level_editor_state = EDITOR_EDITING;
 	camera_SetCamera(level_editor_camera);
@@ -1219,108 +1256,128 @@ void editor_LevelEditorCopyLevelData()
 {
 	int i;
 	
-	level_editor_world_vertices_count = w_world_vertices_count;
-	level_editor_world_vertices = w_world_vertices;
-	
-	level_editor_world_nodes_count = w_world_nodes_count;
-	level_editor_world_nodes = w_world_nodes;
-	
-	level_editor_world_leaves_count = w_world_leaves_count;
-	level_editor_world_leaves = w_world_leaves;
-	
-	level_editor_world_batch_count = w_world_batch_count;
-	level_editor_world_batches = w_world_batches;
-	
-	/************************************************************************************************/
-	
-/*	if(ent_entity_list_size >= level_editor_entity_list_size)
+	if(level_editor_need_to_copy_data)
 	{
-		if(level_editor_entities)
+		level_editor_brushes = brushes;
+		level_editor_last_brush = last_brush;
+		level_editor_brush_count = brush_count;
+		
+		level_editor_world_vertices_count = w_world_vertices_count;
+		level_editor_world_vertices = w_world_vertices;
+		
+		level_editor_world_nodes_count = w_world_nodes_count;
+		level_editor_world_nodes = w_world_nodes;
+		
+		level_editor_world_leaves_count = w_world_leaves_count;
+		level_editor_world_leaves = w_world_leaves;
+		
+		level_editor_world_batch_count = w_world_batch_count;
+		level_editor_world_batches = w_world_batches;
+		
+		if(level_editor_entity_buffer)
 		{
-			memory_Free(level_editor_entities);
-			memory_Free(level_editor_entity_aabbs);
-			memory_Free(level_editor_entity_free_stack);
-		}
-		level_editor_entities = memory_Malloc(sizeof(struct entity_t ) * ent_entity_list_size, "editor_LevelEditorCopyLevelData");
-		level_editor_entity_aabbs = memory_Malloc(sizeof(struct entity_aabb_t) * ent_entity_list_size, "editor_LevelEditorCopyLevelData");
-		level_editor_entity_free_stack = memory_Malloc(sizeof(int) * ent_entity_list_size, "editor_LevelEditorCopyLevelData");
-		level_editor_entity_list_size = ent_entity_list_size;
-	}*/
-	
-	//for(i = 0; i < ent_entity_list_cursor; i++)
-	//{
-	//	level_editor_entities[i] = ent_entities[i];
-//		level_editor_entity_aabbs[i] = ent_aabbs[i];
-	//	level_editor_entity_free_stack[i] = ent_free_stack[i];
-	//}
-	
-	//level_editor_entity_list_cursor = ent_entity_list_cursor;
-	//level_editor_entity_free_stack_top = ent_free_stack_top;
-	
-	/************************************************************************************************/
-	
-	/*if(max_colliders >= level_editor_collider_list_size)
-	{
-		if(level_editor_colliders)
-		{
-			memory_Free(level_editor_colliders);
-			memory_Free(level_editor_collider_free_stack);
+			memory_Free(level_editor_entity_buffer);
 		}
 		
-		level_editor_colliders = memory_Malloc(sizeof(collider_t) * max_colliders, "editor_LevelEditorCopyLevelData");
-		level_editor_collider_free_stack = memory_Malloc(sizeof(int) * max_colliders, "editor_LevelEditorCopyLevelData");
-	}
-	
-	for(i = 0; i < collider_list_cursor; i++)
-	{
-		level_editor_colliders[i] = colliders[i];
-		level_editor_collider_free_stack[i] = colliders_free_positions_stack[i];
-	}
-	
-	level_editor_collider_list_size = max_colliders;
-	level_editor_collider_list_cursor = collider_list_cursor;
-	level_editor_collider_free_stack_top = colliders_free_positions_stack_top;*/
-	
-	
-	
-	/************************************************************************************************/
-	
-	if(l_light_list_size >= level_editor_light_list_size)
-	{
-		if(level_editor_light_params)
+		entity_SerializeEntities(&level_editor_entity_buffer, &level_editor_entity_buffer_size, 0);
+		
+		/************************************************************************************************/
+		
+	/*	if(ent_entity_list_size >= level_editor_entity_list_size)
 		{
-			memory_Free(level_editor_light_params);
-			memory_Free(level_editor_light_positions);
-			memory_Free(level_editor_light_free_stack);
+			if(level_editor_entities)
+			{
+				memory_Free(level_editor_entities);
+				memory_Free(level_editor_entity_aabbs);
+				memory_Free(level_editor_entity_free_stack);
+			}
+			level_editor_entities = memory_Malloc(sizeof(struct entity_t ) * ent_entity_list_size, "editor_LevelEditorCopyLevelData");
+			level_editor_entity_aabbs = memory_Malloc(sizeof(struct entity_aabb_t) * ent_entity_list_size, "editor_LevelEditorCopyLevelData");
+			level_editor_entity_free_stack = memory_Malloc(sizeof(int) * ent_entity_list_size, "editor_LevelEditorCopyLevelData");
+			level_editor_entity_list_size = ent_entity_list_size;
+		}*/
+		
+		//for(i = 0; i < ent_entity_list_cursor; i++)
+		//{
+		//	level_editor_entities[i] = ent_entities[i];
+	//		level_editor_entity_aabbs[i] = ent_aabbs[i];
+		//	level_editor_entity_free_stack[i] = ent_free_stack[i];
+		//}
+		
+		//level_editor_entity_list_cursor = ent_entity_list_cursor;
+		//level_editor_entity_free_stack_top = ent_free_stack_top;
+		
+		/************************************************************************************************/
+		
+		/*if(max_colliders >= level_editor_collider_list_size)
+		{
+			if(level_editor_colliders)
+			{
+				memory_Free(level_editor_colliders);
+				memory_Free(level_editor_collider_free_stack);
+			}
+			
+			level_editor_colliders = memory_Malloc(sizeof(collider_t) * max_colliders, "editor_LevelEditorCopyLevelData");
+			level_editor_collider_free_stack = memory_Malloc(sizeof(int) * max_colliders, "editor_LevelEditorCopyLevelData");
 		}
 		
-		level_editor_light_params = memory_Malloc(sizeof(light_params_t) * l_light_list_size, "editor_LevelEditorCopyLevelData");
-		level_editor_light_positions = memory_Malloc(sizeof(light_position_t) * l_light_list_size, "editor_LevelEditorCopyLevelData");
-		level_editor_light_free_stack = memory_Malloc(sizeof(int) * l_light_list_size, "editor_LevelEditorCopyLevelData");
+		for(i = 0; i < collider_list_cursor; i++)
+		{
+			level_editor_colliders[i] = colliders[i];
+			level_editor_collider_free_stack[i] = colliders_free_positions_stack[i];
+		}
 		
-		level_editor_light_list_size = l_light_list_size;
+		level_editor_collider_list_size = max_colliders;
+		level_editor_collider_list_cursor = collider_list_cursor;
+		level_editor_collider_free_stack_top = colliders_free_positions_stack_top;*/
+		
+		
+		
+		/************************************************************************************************/
+		
+		if(l_light_list_size >= level_editor_light_list_size)
+		{
+			if(level_editor_light_params)
+			{
+				memory_Free(level_editor_light_params);
+				memory_Free(level_editor_light_positions);
+				memory_Free(level_editor_light_free_stack);
+			}
+			
+			level_editor_light_params = memory_Malloc(sizeof(light_params_t) * l_light_list_size, "editor_LevelEditorCopyLevelData");
+			level_editor_light_positions = memory_Malloc(sizeof(light_position_t) * l_light_list_size, "editor_LevelEditorCopyLevelData");
+			level_editor_light_free_stack = memory_Malloc(sizeof(int) * l_light_list_size, "editor_LevelEditorCopyLevelData");
+			
+			level_editor_light_list_size = l_light_list_size;
+		}
+		
+		for(i = 0; i < l_light_list_cursor; i++)
+		{
+			level_editor_light_positions[i] = l_light_positions[i];
+			level_editor_light_params[i] = l_light_params[i];
+			level_editor_light_free_stack[i] = l_free_position_stack[i];
+		}
+		
+		level_editor_light_list_cursor = l_light_list_cursor;
+		level_editor_light_free_stack_top = l_free_position_stack_top;
+		
+		/************************************************************************************************/
+		
+		level_editor_has_copied_data = 1;
+		level_editor_need_to_copy_data = 0;
 	}
 	
-	for(i = 0; i < l_light_list_cursor; i++)
-	{
-		level_editor_light_positions[i] = l_light_positions[i];
-		level_editor_light_params[i] = l_light_params[i];
-		level_editor_light_free_stack[i] = l_free_position_stack[i];
-	}
 	
-	level_editor_light_list_cursor = l_light_list_cursor;
-	level_editor_light_free_stack_top = l_free_position_stack_top;
-	
-	/************************************************************************************************/
-	
-	level_editor_has_copied_data = 1;
-	level_editor_need_to_copy_data = 0;
 }
 
-void editor_LevelEditorClearLevel()
+void editor_LevelEditorClearLevelData()
 {
 	if(level_editor_has_copied_data)
 	{
+		brushes = NULL;
+		last_brush = NULL;
+		brush_count = 0;
+		
 		w_world_vertices_count = 0;
 		w_world_vertices = NULL;
 		
@@ -1333,17 +1390,7 @@ void editor_LevelEditorClearLevel()
 		w_world_batch_count = 0;
 		w_world_batches = NULL;
 		
-		/************************************************************************************************/
-		
-//		ent_entity_list_cursor = 0;
-//		ent_free_stack_top = -1;
-		
-		/************************************************************************************************/
-		
-	//	collider_list_cursor = 0;
-	//	colliders_free_positions_stack_top = -1;
-		
-		/************************************************************************************************/
+		entity_RemoveAllEntities();
 		
 		l_light_list_cursor = 0;
 		l_free_position_stack_top = -1;
@@ -1357,11 +1404,18 @@ void editor_LevelEditorRestoreLevelData()
 	
 	struct entity_def_t *entity_def;
 	struct entity_t *entity;
-	collider_def_t *collider_def;
+	struct collider_def_t *collider_def;
 	struct collider_t *collider;
+	
+	void *read_buffer;
 	
 	if(level_editor_has_copied_data)
 	{
+		
+		brushes = level_editor_brushes;
+		last_brush = level_editor_last_brush;
+		brush_count = level_editor_brush_count;
+		
 		w_world_vertices_count = level_editor_world_vertices_count;
 		w_world_vertices = level_editor_world_vertices;
 		
@@ -1374,61 +1428,13 @@ void editor_LevelEditorRestoreLevelData()
 		w_world_batch_count = level_editor_world_batch_count;
 		w_world_batches = level_editor_world_batches;
 		
-		/************************************************************************************************/
-	/*	
-		for(i = 0; i < level_editor_collider_list_cursor; i++)
-		{
-			colliders[i] = level_editor_colliders[i];
-			colliders_free_positions_stack[i] = level_editor_collider_free_stack[i];
-		}
+		read_buffer = level_editor_entity_buffer;
 		
-		collider_list_cursor = level_editor_collider_list_cursor;
-		colliders_free_positions_stack_top = level_editor_collider_free_stack_top;*/
+		entity_DeserializeEntities(&read_buffer, 0);
+
 		
 		/************************************************************************************************/
 		
-		for(i = 0; i < level_editor_entity_list_cursor; i++)
-		{
-	//		ent_entities[i] = level_editor_entities[i];
-//			ent_aabbs[i] = level_editor_entity_aabbs[i];
-	//		ent_free_stack[i] = level_editor_entity_free_stack[i];
-			
-			#if 0
-			
-			if(!(ent_entities[i].flags & ENTITY_INVALID))
-			{
-				entity = &ent_entities[i];
-				entity_def = entity_GetEntityDefPointerIndex(entity->def_index);
-				
-				/* make sure entities spawned without a collider get one created
-				once their def got a collider def... */
-				if(entity->collider_index == -1 && entity_def->collider_def)
-				{
-					entity->collider_index = physics_CreateCollider(&entity->orientation, entity->position, entity->scale, entity_def->collider_def, 0);
-					level_editor_need_to_copy_data = 1;
-				}
-				else
-				{
-					//collider = physics_GetColliderPointerIndex(entity->collider_index);
-					if(entity_def->collider_def)
-					{
-						physics_SetColliderPosition(entity->collider_index, entity->position);
-						physics_SetColliderOrientation(entity->collider_index, &entity->orientation);
-						physics_SetColliderScale(entity->collider_index, entity->scale);
-					}
-					else
-					{
-						physics_DestroyColliderIndex(entity->collider_index);
-						entity->collider_index = -1;
-					}	
-				}
-			}
-			
-			#endif
-		}
-	 	
-//		ent_entity_list_cursor = level_editor_entity_list_cursor;
-	//	ent_free_stack_top = level_editor_entity_free_stack_top;
 		
 		for(i = 0; i < level_editor_light_list_cursor; i++)
 		{

@@ -207,6 +207,7 @@ void gui_OpenGuiFrame()
 	
 	io.MouseDown[0] = false;
 	io.MouseDown[1] = false;
+	io.MouseDown[2] = false;
 	
 	bm_mouse &= ~MOUSE_OVER_WIDGET;
 	
@@ -232,6 +233,11 @@ void gui_OpenGuiFrame()
 		{
 			io.MouseDown[1] = true;
 		}
+		
+		if(input_GetMouseButton(MOUSE_BUTTON_MIDDLE) & MOUSE_MIDDLE_BUTTON_CLICKED)
+		{
+			io.MouseDown[2] = true;
+		}
 	}
 		
 	if(io.WantTextInput)
@@ -241,7 +247,7 @@ void gui_OpenGuiFrame()
 		
 		text_buffer = input_GetTextBuffer();
 		
-		io.ClearInputCharacters();
+	//	io.ClearInputCharacters();
 		
 		while(text_buffer[i])
 		{
@@ -2332,7 +2338,6 @@ void gui_DrawGUI()
 		for(j = 0; j < draw_cmds_count; j++)
 		{
 			draw_cmd = &draw_list->CmdBuffer[j];
-			
 			renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, (int)draw_cmd->TextureId);
 			renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
 		

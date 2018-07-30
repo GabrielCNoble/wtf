@@ -15,6 +15,23 @@ extern "C"
 {
 #endif
 
+struct component_record_t *entity_SerializeComponent(void **buffer)
+{
+	struct component_record_t *component_record;
+	char *in;
+	in = *buffer;
+	
+	
+	component_record = (struct component_record_t *)in;
+	in += sizeof(struct component_record_t );
+	
+	*buffer = in;
+	
+	memset(component_record, 0, sizeof(struct component_record_t));
+	
+	return component_record;
+}
+
 void entity_WriteComponent(void **buffer, struct component_t *component, int nestled)
 {
 	struct component_record_t *component_record;
@@ -29,6 +46,7 @@ void entity_WriteComponent(void **buffer, struct component_t *component, int nes
 	struct collider_t *collider;
 	struct model_t *model;
 	
+	struct entity_t *entity;
 	
 	int i;
 	
@@ -41,12 +59,25 @@ void entity_WriteComponent(void **buffer, struct component_t *component, int nes
 	
 	if(component->type != COMPONENT_TYPE_NONE)
 	{
-		component_record = (struct component_record_t *)in;
-		in += sizeof(struct component_record_t);
-		*buffer = in;
 		
-		memset(component_record, 0, sizeof(struct component_record_t));
+		if(component->flags & COMPONENT_FLAG_SERIALIZED)
+		{
+			return;
+		}
+		
+		component->flags |= COMPONENT_FLAG_SERIALIZED;
+		
+		//component_record = (struct component_record_t *)in;
+		//in += sizeof(struct component_record_t);
+		//*buffer = in;
+		
+		//memset(component_record, 0, sizeof(struct component_record_t));
+		
+		component_record = entity_SerializeComponent(buffer);
+		
 		strcpy(component_record->tag, component_record_tag);
+		
+		nestled = nestled && 1;
 		
 		component_record->type = component->type;
 		component_record->nestled = nestled;
@@ -59,33 +90,17 @@ void entity_WriteComponent(void **buffer, struct component_t *component, int nes
 				component_record->component.transform_component.orientation = transform_component->orientation;
 				component_record->component.transform_component.position = transform_component->position;
 				component_record->component.transform_component.scale = transform_component->scale;
-				
-				/* this is here to allow fast allocation upon loading... */
-				//component_record->component.transform_component.max_children = transform_component->max_children;
-				
 			break;
 			
 			case COMPONENT_TYPE_CAMERA:
 				camera_component = (struct camera_component_t *)component;
 				
 				//strcpy(component_record->component.camera_component.camera_name, camera_component->camera->name);
-				
-				transform_component = entity_GetComponentPointer(camera_component->transform);
-				parent_transform_component = entity_GetComponentPointer(transform_component->parent);
-				
-				for(i = 0; i < parent_transform_component->children_count; i++)
-				{
-					if(parent_transform_component->child_transforms[i].index == camera_component->transform.index)
-					{
-						break;
-					}
-				}
-				
-				/* save the index of the transform component this camera component
-				references, so it can be later read and used to properly set its
-				transform... */
-				component_record->component.camera_component.transform_index = i;
-				
+				entity = entity_GetEntityPointerHandle(camera_component->base.entity);
+				transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+				/* write the transform linked to this camera component, flagging it as nestled so it
+				won't get added to an entity when being read back... */
+				entity_WriteComponent(buffer, (struct component_t *)transform_component, 1);		
 			break;
 			
 			case COMPONENT_TYPE_PHYSICS:
@@ -98,6 +113,7 @@ void entity_WriteComponent(void **buffer, struct component_t *component, int nes
 				else
 				{
 					strcpy(component_record->component.physics_component.collider_def_name, physics_component->collider.collider_def->name);
+					entity_WriteCollider(buffer, physics_component->collider.collider_def);
 				}
 			break;
 			
@@ -116,6 +132,29 @@ void entity_WriteComponent(void **buffer, struct component_t *component, int nes
 	}
 }
 
+struct component_record_t *entity_DeserializeComponent(void **buffer)
+{
+	struct component_record_t *component_record;
+	char *in;
+	
+	in = (char *)*buffer;
+	
+	
+	while(1)
+	{
+		if(!strcmp(in, component_record_tag))
+		{
+			component_record = (struct component_record_t *)in;
+			in += sizeof(struct component_record_t);
+			break;
+		}
+		in++;
+	}
+	
+	*buffer = in;
+	
+	return component_record;
+}
 
 void entity_ReadComponent(void **buffer, struct entity_handle_t entity, struct entity_record_start_t *entity_record)
 {
@@ -132,30 +171,39 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t entity, struct e
 	struct model_component_t *model_component;
 	struct script_component_t *script_component;
 	
-	collider_def_t *collider_def;
+	struct collider_def_t *collider_def;
 	
 	struct entity_t *entity_ptr;
+	struct entity_t *parent_entity_ptr;
 	
 	in = *buffer;
 	
-	component_record = (struct component_record_t *)in;
-		
-	in += sizeof(struct component_record_t );
-	*buffer = in;
+	component_record = entity_DeserializeComponent(buffer);
+	
 	
 	entity_ptr = entity_GetEntityPointerHandle(entity);
 	
 	if(component_record->nestled)
 	{
-		/* this component record belongs to a child transform component
-		of an entity's transform component. Parent it to the entity's transform
-		component instead of adding to the entity itself... */
+		/* this component record belongs to a child transform component of an entity's transform component. 
+		Parent it to the entity's transform component instead of adding to the entity itself... */
 		handle = entity_AllocComponent(component_record->type, entity.def);
 		entity_ParentTransformComponent(entity_ptr->components[COMPONENT_TYPE_TRANSFORM], handle);
 	}
 	else
 	{
-		handle = entity_AddComponent(entity, component_record->type);
+		if((entity_record->flags & ENTITY_RECORD_FLAG_DEF) || (entity_record->flags & ENTITY_RECORD_FLAG_MODIFIED))
+		{
+			/* if this is an entity definition or if this entity got modified after being spawned... */
+			handle = entity_AddComponent(entity, component_record->type);
+		}
+		else
+		{
+			/* this is an unmodified entity, which means that it's components were already allocated, and
+			we'll just be setting their values... */
+			handle = entity_ptr->components[component_record->type];
+		}
+		
 	}
 	
 	component = entity_GetComponentPointer(handle);
@@ -164,30 +212,30 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t entity, struct e
 	{
 		case COMPONENT_TYPE_TRANSFORM:
 			transform_component = (struct transform_component_t *)component;
-			
+						
 			transform_component->orientation = component_record->component.transform_component.orientation;
 			transform_component->position = component_record->component.transform_component.position;
 			transform_component->scale = component_record->component.transform_component.scale;
+			
+			if(entity_record->flags & ENTITY_RECORD_FLAG_DEF_REF)
+			{
+				/* if this is a reference to a def we need to make sure this
+				newly allocated transform component points to the original
+				def... */
+				parent_entity_ptr = entity_GetEntityPointerHandle(entity);	/* if we got here, entity will point to the parent entity of this ref... */
+				transform_component = entity_GetComponentPointer(parent_entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+				component = entity_GetComponentPointer(transform_component->child_transforms[transform_component->children_count - 1]);
+				component->entity = entity_GetEntityHandle(entity_record->name, entity_record->flags & ENTITY_RECORD_FLAG_DEF);
+			}
+			
 		break;
 		
 		case COMPONENT_TYPE_CAMERA:
-			camera_component = (struct camera_component_t *)component;
 			
 			if(!entity.def)
 			{
-				camera_transform_component_record = (struct component_record_t *)((char *)entity_record + entity_record->first_nestled_transform);
-				camera_transform_component_record += component_record->component.camera_component.transform_index;
-				
-				transform_component = entity_GetComponentPointer(camera_component->transform);
-				transform_component->orientation = camera_transform_component_record->component.transform_component.orientation;
-				transform_component->position = camera_transform_component_record->component.transform_component.position;
-				transform_component->scale = camera_transform_component_record->component.transform_component.scale;
-				
 				camera_component->camera = camera_CreateCamera("camera", vec3_t_c(0.0, 0.0, 0.0), NULL, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
 			}
-			
-			
-			
 		break;
 		
 		case COMPONENT_TYPE_PHYSICS:
@@ -243,11 +291,11 @@ void entity_WriteProp(void **buffer, struct entity_prop_t *prop)
 		in += prop_record->size;
 		*buffer = in;
 	}
-	
+	 
 }
 
 
-void entity_ReadProp(void **buffer, struct entity_handle_t entity)
+void entity_ReadProp(void **buffer, struct entity_handle_t entity, struct entity_record_start_t *entity_record)
 {
 	char *in;
 	struct entity_prop_record_t *prop_record;
@@ -262,12 +310,18 @@ void entity_ReadProp(void **buffer, struct entity_handle_t entity)
 	
 	value = (char *)prop_record + sizeof(struct entity_prop_record_t);
 	
-	entity_AddProp(entity, prop_record->name, prop_record->size);
+	if((entity_record->flags & ENTITY_RECORD_FLAG_DEF) || (entity_record->flags & ENTITY_RECORD_FLAG_MODIFIED))
+	{
+		/* if this is an entity def or this is an post-spawn modified entity, we need to add this prop to it... */
+		entity_AddProp(entity, prop_record->name, prop_record->size);
+	}
+	
+	/* spawned entities always get their props updated... */
 	entity_SetProp(entity, prop_record->name, value);
 }
 
 
-void entity_WriteCollider(void **buffer, collider_def_t *collider_def)
+void entity_WriteCollider(void **buffer, struct collider_def_t *collider_def)
 {
 	struct physics_component_t *physics_component;
 	struct entity_t *entity_ptr;
@@ -332,7 +386,7 @@ void entity_WriteCollider(void **buffer, collider_def_t *collider_def)
 
 void entity_ReadCollider(void **buffer)
 {
-	collider_def_t *def;
+	struct collider_def_t *def;
 	
 	struct collider_record_start_t *collider_record_start;
 	struct collider_record_end_t *collider_record_end;
@@ -367,10 +421,7 @@ void entity_ReadCollider(void **buffer)
 					collision_shape_record = (struct collision_shape_record_t *)in;
 					in += sizeof(struct collision_shape_record_t);
 					
-					physics_AddCollisionShape(def, collision_shape_record->scale, 
-												   collision_shape_record->position, 
-												   &collision_shape_record->orientation, 
-												   collision_shape_record->type);
+					physics_AddCollisionShape(def, collision_shape_record->scale, collision_shape_record->position, &collision_shape_record->orientation, collision_shape_record->type);
 					
 				}
 				else if(!strcmp(in, collider_record_end_tag))
@@ -395,7 +446,7 @@ void entity_ReadCollider(void **buffer)
 
 
 
-void entity_WriteEntity(void **buffer, struct entity_handle_t entity)
+void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct component_t *referencing_transform)
 {	
 	struct entity_record_start_t *ent_record_start;
 	struct entity_record_end_t *ent_record_end;
@@ -416,17 +467,44 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity)
 	out = *buffer;	
 
 	entity_ptr = entity_GetEntityPointerHandle(entity);
+	
+	static int depth_level = -1;
+	
+	depth_level++;
+	
+	int write_entity_data = 1;
 							
 	if(entity_ptr)
 	{	
 		
-		if(entity_ptr->flags & ENTITY_ALREADY_SERIALIZED)
+		if(entity_ptr->flags & ENTITY_FLAG_SERIALIZED)
 		{
-			return;
+			if(entity.def)
+			{
+				/* this is a reference to an entity def... */
+				if(depth_level < 1)
+				{
+					/* if this ref isn't inside a hierarchy, don't serialize anything (an entity def has to be referenced FROM another entity...) */
+					depth_level--;
+					return;
+				}
+				
+				/* Otherwise, we just need to serialize its 
+				transform without worrying about any children at all... */
+				write_entity_data = 0;
+			}
+			else
+			{
+				/* this is an entity instance, and it was already
+				serialized, so don't do it again... */
+				depth_level--;
+				return;
+			}
+			
 		}
 		
-		entity_ptr->flags |= ENTITY_ALREADY_SERIALIZED;
-		
+		entity_ptr->flags |= ENTITY_FLAG_SERIALIZED;
+				
 		/* write record start... */				
 		ent_record_start = (struct entity_record_start_t *)out;
 		out += sizeof(struct entity_record_start_t);
@@ -442,52 +520,80 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity)
 			entity_def_ptr = entity_GetEntityPointerHandle(entity_ptr->def);
 			strcpy(ent_record_start->def_name, entity_def_ptr->name);
 		}
-		
- 		ent_record_start->def = entity.def;
-		
-		/* write components... */
-		for(i = 0; i < COMPONENT_TYPE_LAST; i++)
+		else
 		{
-			if(entity_ptr->components[i].type != COMPONENT_TYPE_NONE)
-			{
-				component = entity_GetComponentPointer(entity_ptr->components[i]);
-				entity_WriteComponent((void **)&out, component, 0);	
-			}
+			ent_record_start->flags |= ENTITY_RECORD_FLAG_DEF;
 		}
+		
+		if(!write_entity_data)
+		{
+			ent_record_start->flags |= ENTITY_RECORD_FLAG_DEF_REF;
+		}
+		
+		if(entity_ptr->flags & ENTITY_FLAG_MODIFIED)
+		{
+			ent_record_start->flags |= ENTITY_RECORD_FLAG_MODIFIED;
+		}
+				
+		if(write_entity_data)
+		{
+			/* Always write props, regardless of the entity having been modified... */
+			for(i = 0; i < entity_ptr->prop_count; i++)
+			{
+				entity_WriteProp((void **)&out, entity_ptr->props + i);
+			}
+			
+			if(entity.def || (entity_ptr->flags & ENTITY_FLAG_MODIFIED))
+			{
+				/* If this is a def or it is a post-spawn modified entity,
+				write it stuff down... */
+				
+				/* write components... */
+				for(i = 0; i < COMPONENT_TYPE_LAST; i++)
+				{
+					if(entity_ptr->components[i].type != COMPONENT_TYPE_NONE)
+					{
+						component = entity_GetComponentPointer(entity_ptr->components[i]);
+						entity_WriteComponent((void **)&out, component, 0);	
+					}
+				}
+			}
+			
+			/* write nestled transforms... */					
+			transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+				
+			for(i = 0; i < transform_component->children_count; i++)
+			{
+				component = entity_GetComponentPointer(transform_component->child_transforms[i]);
+						
+				if(component->entity.entity_index != INVALID_ENTITY_INDEX)
+				{
+					/* this child transform component points to an entity,
+					so write it to the buffer before continuing with the 
+					current entity... */
+					entity_WriteEntity((void **)&out, component->entity, component);
+				}
+				else if(write_entity_data && (entity_ptr->flags & ENTITY_FLAG_MODIFIED))
+				{
+					/* This nestled transform belongs to some component
+					that needs to keep spacial information (light, camera,
+					particle system, etc).
 					
-		/* write props... */
-		for(i = 0; i < entity_ptr->prop_count; i++)
-		{
-			entity_WriteProp((void **)&out, entity_ptr->props + i);
-		}
-		
-		/* byte offset to the first nestled transform of this entity's transform
-		component (used by components that depends on a transform component to retrieve
-		its value)... */
-		ent_record_start->first_nestled_transform = out - (char *)ent_record_start;
-		
-		/* write nestled transforms... */					
-		transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
-
-		for(i = 0; i < transform_component->children_count; i++)
-		{
-			component = entity_GetComponentPointer(transform_component->child_transforms[i]);
-			
-			if(component->entity.entity_index != INVALID_ENTITY_INDEX)
-			{
-				/* this child transform component points to an entity,
-				so write it to the buffer before continuing with the 
-				current entity... */
-				entity_WriteEntity((void **)&out, component->entity);
+					This just gets written if this isn't a reference to
+					an entity def or it is a post-spawn modified entity... */
+					entity_WriteComponent((void **)&out, component, 1);
+				}	
 			}
-			else
-			{
-				entity_WriteComponent((void **)&out, component, 1);
-			}	
+			
+		}
+		else
+		{
+			/* This def was already serialized, which means this is just a reference to it, and as so 
+			we'll just need to serialize this reference's transform component. We flag it as nestled here
+			so it can be added to the parent entity's transform component child list upon deserialization... */
+			entity_WriteComponent((void **)out, (struct component_t *)referencing_transform, 1);
 		}
 		
-		
-			
 		/* write record end... */
 		ent_record_end = (struct entity_record_end_t *)out;
 		out += sizeof(struct entity_record_end_t );
@@ -497,17 +603,24 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity)
 		
 		*buffer = out;							
 	}
+	
+	depth_level--;
 
 }
 
 void entity_ReadEntity(void **buffer, struct entity_handle_t parent)
 {
 	struct entity_record_start_t *ent_record_start;
+	struct entity_record_start_t *nestled_ent_record_start;
 	struct entity_record_end_t *ent_record_end;
 	
 	struct entity_handle_t handle;
+	struct entity_handle_t entity_def;
 	struct entity_t *entity;
 	struct entity_t *parent_entity;
+	
+	struct component_t *component;
+	struct transform_component_t *parent_transform_component;
 	
 	char *in;
 	int i;
@@ -520,7 +633,49 @@ void entity_ReadEntity(void **buffer, struct entity_handle_t parent)
 	
 	i = 0;
 	
-	handle = entity_CreateEntity(ent_record_start->name, ent_record_start->def);
+	static int depth_level = -1;
+	
+	depth_level++;
+	
+	
+	if(ent_record_start->flags & ENTITY_RECORD_FLAG_DEF_REF)
+	{
+		assert(ent_record_start->flags & ENTITY_RECORD_FLAG_DEF);
+		
+		/* This record belongs to a reference to an entity def, which means that we'll be reading only a transform component
+		that will point to the orignal entity def. This transform won't be added to the original def, but instead will be to the
+		child list of the parent entity of this reference. In order to do that, we need the handle to the parent entity, so we 
+		can access it's transform component... */
+		handle = parent;
+	}
+	else
+	{
+		if((ent_record_start->flags & ENTITY_RECORD_FLAG_DEF) || (ent_record_start->flags & ENTITY_RECORD_FLAG_MODIFIED))
+		{
+			/* This record belongs to an entity def or to post-spawned modified entity, so we create a new entity here... */
+			handle = entity_CreateEntity(ent_record_start->name, ent_record_start->flags & ENTITY_RECORD_FLAG_DEF);
+		}
+		else
+		{
+			/* this record belong to an unmodified entity... */
+			if(!depth_level)
+			{
+				/* ...if we're at the top of the hierarchy,
+				we use it's def to spawn it... */
+				entity_def = entity_GetEntityHandle(ent_record_start->def_name, 1);
+				handle = entity_SpawnEntity(NULL, vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), entity_def, ent_record_start->name);
+			}
+			else
+			{
+				/* if we're deeper in the hierarchy, this entity was already spawned, so we just get a handle to it... */
+				//handle = entity_GetEntityHandle(ent_record_start->name, ent_record_start->flags & ENTITY_RECORD_FLAG_DEF);
+				handle = entity_GetNestledEntityHandle(parent, ent_record_start->name);
+			}
+			
+		}
+		
+	}
+	
 	
 	
 	while(loop)
@@ -545,7 +700,7 @@ void entity_ReadEntity(void **buffer, struct entity_handle_t parent)
 			}
 			else if(!strcmp(in, entity_prop_record_tag))
 			{
-				entity_ReadProp((void **)&in, handle);
+				entity_ReadProp((void **)&in, handle, ent_record_start);
 			}
 			else
 			{
@@ -567,11 +722,23 @@ void entity_ReadEntity(void **buffer, struct entity_handle_t parent)
 	
 	if(parent.entity_index != INVALID_ENTITY_INDEX)
 	{
-		parent.def = handle.def;		
-		entity_ParentEntity(parent, handle);
+		/* In case this is a def, only parent
+		it if it isn't a reference. 
+		
+		If this is a reference, it already got
+		parented when it's transform component
+		got read and added to the child list
+		of its parent transform component... */
+		if(!ent_record_start->flags & ENTITY_RECORD_FLAG_DEF_REF)
+		{
+			entity_ParentEntity(parent, handle);
+		}
+		
 	}
 
 	*buffer = in;
+	
+	depth_level--;
 }
 
 
@@ -597,11 +764,11 @@ void entity_WriteEntityDef(void **buffer, int *buffer_size, struct entity_handle
 
 void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_defs)
 {
-	#if 0
 	struct entity_section_header_t *header;
 	struct entity_section_tail_t *tail;
 	struct entity_t *entity;
 	struct entity_handle_t handle;
+	struct component_t *component;
 	
 	struct transform_component_t *transform_component;
 
@@ -615,10 +782,29 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 	int i;	
 	int j;
 	int k;
+	int l;
 	char *out;
 	int out_size = 0;
 	
 	out_size = sizeof(struct entity_section_header_t) + sizeof(struct entity_section_tail_t);
+	
+	
+	/* clear the COMPONENT_FLAG_SERIALIZED from every component... */
+	for(i = 0; i < 2; i++)
+	{
+		for(j = 0; j < COMPONENT_TYPE_LAST; j++)
+		{
+			l = ent_components[i][j].element_count;
+			
+			for(k = 0; k < l; k++)
+			{
+				component = (struct component_t *)((char *)ent_components[i][j].elements + ent_components[i][j].element_size * k);
+				component->flags &= ~COMPONENT_FLAG_SERIALIZED;
+			}
+		}
+	}
+	
+	
 	
 	serialize_defs = serialize_defs && 1;
 	
@@ -635,7 +821,12 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 				
 			entity = entity_GetEntityPointerHandle(handle);
 			
-			entity->flags &= ~ENTITY_ALREADY_SERIALIZED;
+			if(!entity)
+			{
+				continue;
+			}
+			
+			entity->flags &= ~ENTITY_FLAG_SERIALIZED;
 							
 			if(entity)
 			{
@@ -683,12 +874,12 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 	header->reserved5 = 0;
 	header->reserved6 = 0;
 	header->reserved7 = 0;
-		
-	if(serialize_defs)
+	
+	for(k = serialize_defs; k >= 0; k--)
 	{
-		list = &ent_entities[1];
+		list = &ent_entities[k];
 		j = list->element_count;
-		handle.def = 1;
+		handle.def = k;
 				
 		for(i = 0; i < j; i++)
 		{		
@@ -700,61 +891,33 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 			{
 				transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
 				
-				/* write this entity only if it is at the top of a hierarchy. If not, it
-				has to be written through another entity to guarantee that the correct
-				hierarchy gets serialized... */
-				if(transform_component->parent.type == COMPONENT_TYPE_NONE)
+				if(transform_component)
 				{
-					entity_WriteEntity((void **)&out, handle);
+					if(transform_component->parent.type == COMPONENT_TYPE_NONE)
+					{
+						entity_WriteEntity((void **)&out, handle, NULL);
+					}
 				}
 			}
 		}
 	}
-	 
-	list = &ent_entities[0];
-	j = list->element_count;
-	handle.def = 0;
-				
-	for(i = 0; i < j; i++)
-	{		
-		handle.entity_index = i;
-					
-		entity = entity_GetEntityPointerHandle(handle);
-								
-		if(entity)
-		{
-			transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
-			
-			/* write this entity only if it is at the top of a hierarchy. If not, it
-			has to be written through another entity to guarantee that the correct
-			hierarchy gets serialized... */
-			if(transform_component->parent.type == COMPONENT_TYPE_NONE)
-			{
-				entity_WriteEntity((void **)&out, handle);
-			}
-		}
-	}
-	
+	 	
 	tail = (struct entity_section_tail_t *)out;
 	out += sizeof(struct entity_section_tail_t );
 	
 	memset(tail, 0, sizeof(struct entity_section_tail_t));
 	strcpy(tail->tag, entity_section_tail_tag);
-	
-	#endif
 }
 
 void entity_DeserializeEntities(void **buffer, int deserialize_defs)
 {
-	
-	#if 0
 	char *in;
 	struct entity_section_header_t *header;
 	struct entity_section_tail_t *tail;
 	struct entity_handle_t handle;
 	
 	int i;
-	
+	 
 	in = *buffer;
 	
 	header = (struct entity_section_header_t *)in;
@@ -784,8 +947,6 @@ void entity_DeserializeEntities(void **buffer, int deserialize_defs)
 	in += sizeof(struct entity_section_tail_t);
 	
 	*buffer = in;	
-	
-	#endif
 }
 
 #ifdef __cplusplus

@@ -627,12 +627,13 @@ void *particle_SetupScriptDataCallback(struct script_t *script, void *particle_s
 				
 	if(ps->flags & PARTICLE_SYSTEM_FLAG_JUST_SPAWNED)
 	{
-		entry_point = ps_script->init;
+		//entry_point = ps_script->init;
+		script_QueueEntryPoint(ps_script->on_spawn_entry_point);
 	}
-	else
-	{
-		entry_point = ps_script->script.main_entry_point;
-	}
+	
+	script_QueueEntryPoint(ps_script->script.main_entry_point);
+		//entry_point = ps_script->script.main_entry_point;
+	
 	
 	return entry_point;
 }
@@ -648,9 +649,10 @@ int particle_GetScriptDataCallback(struct script_t *script)
 	ps_script->particle_frame_array = script_GetGlobalVarAddress("ps_particle_frames", script);
 	ps_script->particle_position_array = script_GetGlobalVarAddress("ps_particle_positions", script);
 	ps_script->particle_system = script_GetGlobalVarAddress("ps_particle_system", script);
-	ps_script->init = script_GetFunctionAddress("ps_init", script);
+	ps_script->on_spawn_entry_point = script_GetFunctionAddress("OnSpawn", script);
+	
 				
-	if(!ps_script->particle_array)
+/*	if(!ps_script->particle_array)
 	{
 		printf("particle_GetScriptDataCallback: script [%s] is missing global var [array<particle_t> ps_particles]\n", script->name);
 		success = 0;
@@ -672,13 +674,13 @@ int particle_GetScriptDataCallback(struct script_t *script)
 	{
 		printf("script_CompileScriptSource: script [%s] is missing global var [particle_system_t@ ps_particle_system]\n", script->name);
 		success = 0;
-	}
+	}*/
 				
-	if(!ps_script->init)
+	/*if(!ps_script->init)
 	{
 		printf("script_CompileScriptSource: script [%s] is missing function [void ps_init()]\n", script->name);
 		success = 0;
-	}
+	}*/
 	
 	return success;
 }

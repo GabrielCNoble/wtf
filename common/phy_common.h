@@ -5,6 +5,9 @@
 #include "matrix.h"
 #include "model.h"
 
+
+//#include "ent_common.h"
+
 #include <limits.h>
 #include <stdint.h>
 //#include "player.h"
@@ -96,9 +99,10 @@ enum COLLIDER_TYPE
 
 enum COLLIDER_FLAGS
 {
-	COLLIDER_INVALID = 1,
-	COLLIDER_UPDATE_RIGID_BODY = 1 << 1,
-	COLLIDER_NO_SCALE_HINT = 1 << 2,
+	COLLIDER_FLAG_INVALID = 1,
+	COLLIDER_FLAG_UPDATE_RIGID_BODY = 1 << 1,
+	COLLIDER_FLAG_NO_SCALE_HINT = 1 << 2,
+	COLLIDER_FLAG_NEW_COLLISIONS = 1 << 3,
 };
 
 enum CHARACTER_COLLIDER_FLAGS
@@ -127,7 +131,7 @@ typedef struct
 	int type;
 }collision_shape_t;
 
-typedef struct collider_def_t
+struct collider_def_t
 {
 	struct collider_def_t *next;
 	struct collider_def_t *prev;
@@ -161,7 +165,7 @@ typedef struct collider_def_t
 	int type;								
 	float mass;
 	char *name;
-}collider_def_t;
+};
 
 
 #define INVALID_COLLIDER_INDEX 0x1fffffff
@@ -189,6 +193,7 @@ struct collider_t
 	mat3_t orientation;
 	vec3_t position;
 	vec3_t scale;
+	vec3_t linear_velocity;
 	
 	float radius;
 	float height;
@@ -197,12 +202,24 @@ struct collider_t
 	int character_collider_flags;
 	
 	void *rigid_body;						/* opaque reference to a btRigidBody... */
-	collider_def_t *def;					
-	unsigned short entity_index;
-	unsigned short align0;
+	struct collider_def_t *def;					
 	unsigned short flags;
 	unsigned short type;
 	
+	int entity_index;
+	
+	short collision_record_count;
+	unsigned short max_collision_records;
+	unsigned int first_collision_record;
+	
+};
+
+struct collision_record_t
+{
+	struct collider_handle_t collider;
+	int life;
+	int material_index;
+	//vec3_t world_position;
 };
 
 

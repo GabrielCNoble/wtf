@@ -49,6 +49,10 @@ struct script_t *script_GetScript(char *script_name);
 
 void script_ReloadScripts();
 
+void script_QueueEntryPoint(void *entry_point);
+
+void script_PushArg(void *arg, int arg_type);
+
 void script_ExecuteScript(struct script_t *script, void *data);
 
 void script_ExecuteScriptImediate(struct script_t *script, void *data);

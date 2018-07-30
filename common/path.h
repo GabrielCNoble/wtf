@@ -78,6 +78,8 @@ char *path_GetFileNameFromPath(char *path);
 
 char *path_GetFileExtension(char *file_name);
 
+char *path_GetNameNoExt(char *file_name);
+
 char *path_FormatPath(char *path);
 
 

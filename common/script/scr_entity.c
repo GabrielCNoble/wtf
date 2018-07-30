@@ -46,6 +46,29 @@ void entity_ScriptMove(vec3_t *direction)
 	}
 }
 
+void entity_ScriptSetEntityVelocity(struct entity_handle_t entity, vec3_t *velocity)
+{
+	struct physics_component_t *physics_component;
+	struct entity_t *entity_ptr;
+	
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+	
+	if(entity.def)
+	{
+		return;
+	}
+	
+	if(entity_ptr)
+	{
+		physics_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
+		
+		if(physics_component)
+		{
+			physics_SetColliderVelocity(physics_component->collider.collider_handle, *velocity);
+		}
+	}
+}
+
 void entity_ScriptJump(float jump_force)
 {
 	struct script_component_t *script_component;
@@ -75,7 +98,7 @@ void entity_ScriptJump(float jump_force)
 
 void entity_ScriptDie()
 {
-	entity_RemoveEntity(ent_current_entity);
+	entity_MarkForRemoval(ent_current_entity);
 }
 
 void entity_ScriptDIEYOUMOTHERFUCKER()
@@ -89,42 +112,79 @@ void entity_ScriptDIEYOUMOTHERFUCKER()
 =====================================
 */
 
-void entity_ScriptGetPosition(vec3_t *position, int local)
+void *entity_ScriptGetPosition(int local)
+{
+	return entity_ScriptGetEntityPosition(ent_current_entity, local);
+}
+
+void *entity_ScriptGetEntityPosition(struct entity_handle_t entity, int local)
+{
+	struct entity_t *entity_ptr;
+	struct transform_component_t *local_transform;
+	struct entity_transform_t *world_transform;
+	
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+	
+	if(entity_ptr)
+	{
+		if(local)
+		{
+			local_transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+			vec3_ret = local_transform->position;
+		}
+		else
+		{
+			world_transform = entity_GetWorldTransformPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+			
+			vec3_ret.x = world_transform->transform.floats[3][0];
+			vec3_ret.y = world_transform->transform.floats[3][1];
+			vec3_ret.z = world_transform->transform.floats[3][2];
+		}
+	}
+	else
+	{
+		printf("entity_ScriptGetEntityPosition: bad entity handle\n");
+		vec3_ret.x = 0.0;
+		vec3_ret.y = 0.0;
+		vec3_ret.z = 0.0;
+	}
+	
+	
+	
+	return &vec3_ret;
+}
+
+void *entity_ScriptGetOrientation(int local)
 {
 	struct entity_t *entity;
-	struct transform_component_t *local_transform;
+	struct transform_component_t *transform;
 	struct entity_transform_t *world_transform;
 	
 	entity = entity_GetEntityPointerHandle(ent_current_entity);
 	
+	
 	if(local)
 	{
-		local_transform = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
-		*position = local_transform->position;
-		//return local_transform->position;
+		transform = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+		mat3_ret = transform->orientation;
 	}
 	else
 	{
 		world_transform = entity_GetWorldTransformPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
 		
-		position->x = world_transform->transform.floats[3][0];
-		position->y = world_transform->transform.floats[3][1];
-		position->z = world_transform->transform.floats[3][2];
+		mat3_ret.floats[0][0] = world_transform->transform.floats[0][0];
+		mat3_ret.floats[0][1] = world_transform->transform.floats[0][1];
+		mat3_ret.floats[0][2] = world_transform->transform.floats[0][2];
 		
-		//return vec3(world_transform->transform.floats[3][0], world_transform->transform.floats[3][1], world_transform->transform.floats[3][2]);
+		mat3_ret.floats[1][0] = world_transform->transform.floats[1][0];
+		mat3_ret.floats[1][1] = world_transform->transform.floats[1][1];
+		mat3_ret.floats[1][2] = world_transform->transform.floats[1][2];
+		
+		mat3_ret.floats[2][0] = world_transform->transform.floats[2][0];
+		mat3_ret.floats[2][1] = world_transform->transform.floats[2][1];
+		mat3_ret.floats[2][2] = world_transform->transform.floats[2][2];
 	}
 	
-}
-
-void *entity_ScriptGetOrientation()
-{
-	struct entity_t *entity;
-	struct transform_component_t *transform;
-	
-	entity = entity_GetEntityPointerHandle(ent_current_entity);
-	transform = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
-	
-	mat3_ret = transform->orientation;
 	
 	return &mat3_ret;
 }
@@ -162,6 +222,11 @@ int entity_ScriptGetLife()
 	return r_frame - entity->spawn_time;
 }
 
+struct entity_handle_t entity_ScriptGetCurrentEntity()
+{
+	return ent_current_entity;
+}
+
 /*
 =====================================
 =====================================
@@ -176,8 +241,15 @@ struct component_handle_t entity_ScriptGetComponent(int component_index)
 struct component_handle_t entity_ScriptGetEntityComponent(struct entity_handle_t entity, int component_index)
 {
 	struct entity_t *entity_ptr;
+	struct component_handle_t component = (struct component_handle_t){COMPONENT_TYPE_NONE, 0, INVALID_COMPONENT_INDEX};
 	entity_ptr = entity_GetEntityPointerHandle(entity);
-	return entity_ptr->components[component_index];
+	
+	if(entity_ptr)
+	{
+		component = entity_ptr->components[component_index];
+	}
+	
+	return component;
 }
 
 struct entity_handle_t entity_ScriptGetEntity(struct script_string_t *name, int get_def)
@@ -189,6 +261,20 @@ struct entity_handle_t entity_ScriptGetEntity(struct script_string_t *name, int 
 	get_def = get_def && 1;
 	
 	return entity_GetEntityHandle(entity_name, get_def);
+}
+
+struct entity_handle_t entity_ScriptGetChildEntity(struct script_string_t *entity)
+{
+	return entity_ScriptGetEntityChildEntity(ent_current_entity, entity);	
+}
+
+struct entity_handle_t entity_ScriptGetEntityChildEntity(struct entity_handle_t parent_entity, struct script_string_t *entity)
+{
+	char *entity_name;
+	
+	entity_name = script_string_GetRawString(entity);
+	
+	return entity_GetNestledEntityHandle(parent_entity, entity_name);
 }
 
 struct entity_handle_t entity_ScriptGetEntityDef(struct script_string_t *def_name)
@@ -206,54 +292,66 @@ struct entity_handle_t entity_ScriptSpawnEntity(mat3_t *orientation, vec3_t *pos
 
 
 
-void entity_ScriptSetComponentValue(struct component_handle_t component, char *field_name, void *value, int value_type)
+void entity_ScriptComponentValue(struct component_handle_t component, char *field_name, void *value, int value_type, int set)
 {
 	struct camera_component_t *camera_component;
 	struct transform_component_t *transform_component;
-	char *component_ptr;
+	struct component_t *component_ptr;
 	int i;
 	
 	int offset;
 	int type_size;
 	
-	component_ptr = (char *)entity_GetComponentPointer(component);
+	component_ptr = entity_GetComponentPointer(component);
 	
-	for(i = 0; COMPONENT_FIELDS[component.type].fields[i].field_name; i++)
+	if(component_ptr)
 	{
-		if(!strcmp(COMPONENT_FIELDS[component.type].fields[i].field_name, field_name))
+		for(i = 0; COMPONENT_FIELDS[component.type].fields[i].field_name; i++)
 		{
-			
-			if(COMPONENT_FIELDS[component.type].fields[i].script_type == SCRIPT_VAR_TYPE_COMPONENT)
-			{
-				component = *(struct component_handle_t *)(component_ptr + COMPONENT_FIELDS[component.type].fields[i].offset);
-				entity_ScriptSetComponentValue(component, field_name, value, value_type);
-				return;
-			}
-			else
+			if(!strcmp(COMPONENT_FIELDS[component.type].fields[i].field_name, field_name))
 			{
 				if(COMPONENT_FIELDS[component.type].fields[i].script_type == value_type)
 				{
 					offset = COMPONENT_FIELDS[component.type].fields[i].offset;
 					type_size = script_GetScriptTypeSize(COMPONENT_FIELDS[component.type].fields[i].script_type);
-					memcpy((char *)component_ptr + offset, value, type_size);
+					
+					if(set)
+					{
+						memcpy((char *)component_ptr + offset, value, type_size);
+					}
+					else
+					{
+						memcpy(value, (char *)component_ptr + offset, type_size);
+					}
+					
 					return;
 				}
 			}
 		}
 	}
+	
+	
 }
 
 
 void entity_ScriptSetComponentValue33f(struct component_handle_t component, struct script_string_t *field_name, mat3_t *value)
 {
 	char *field = script_string_GetRawString(field_name);
-	entity_ScriptSetComponentValue(component, field, value, SCRIPT_VAR_TYPE_MAT3T);
+	entity_ScriptComponentValue(component, field, value, SCRIPT_VAR_TYPE_MAT3T, 1);
 }
+
+
 
 void entity_ScriptSetComponentValue3f(struct component_handle_t component, struct script_string_t *field_name, vec3_t *value)
 {
 	char *field = script_string_GetRawString(field_name);
-	entity_ScriptSetComponentValue(component, field, value, SCRIPT_VAR_TYPE_VEC3T);
+	entity_ScriptComponentValue(component, field, value, SCRIPT_VAR_TYPE_VEC3T, 1);
+}
+
+void entity_ScriptGetComponentValue3f(struct component_handle_t component, struct script_string_t *field_name, vec3_t *value)
+{
+	char *field = script_string_GetRawString(field_name);
+	entity_ScriptComponentValue(component, field, value, SCRIPT_VAR_TYPE_VEC3T, 0);
 }
 
 
@@ -267,8 +365,20 @@ void entity_ScriptAddEntityProp(struct entity_handle_t entity, struct script_str
 {
 	char *prop_name = script_string_GetRawString(name);
 	int size;
-	
 	size = script_GetTypeSize(type_info);
+	entity_AddProp(entity, prop_name, size);
+}
+
+void entity_ScriptAddEntityProp1i(struct entity_handle_t entity, struct script_string_t *name)
+{
+	char *prop_name = script_string_GetRawString(name);
+	entity_AddProp(entity, prop_name, sizeof(int));
+}
+
+void entity_ScriptAddEntityProp1f(struct entity_handle_t entity, struct script_string_t *name)
+{
+	char *prop_name = script_string_GetRawString(name);
+	entity_AddProp(entity, prop_name, sizeof(float));
 }
 
 void entity_ScriptAddEntityProp3f(struct entity_handle_t entity, struct script_string_t *name)
@@ -277,23 +387,128 @@ void entity_ScriptAddEntityProp3f(struct entity_handle_t entity, struct script_s
 	entity_AddProp(entity, prop_name, sizeof(vec3_t));
 }
 
+
+
+void entity_ScriptRemoveEntityProp(struct entity_handle_t entity, struct script_string_t *name)
+{
+	char *prop_name = script_string_GetRawString(name);
+	entity_RemoveProp(entity, prop_name);
+	
+}
+
+/*
+
 void entity_ScriptRemoveEntityProp3f(struct entity_handle_t entity, struct script_string_t *name)
 {
 	char *prop_name = script_string_GetRawString(name);
 	entity_RemoveProp(entity, prop_name);
 }
+*/
 
-void entity_ScriptGetEntityPropValue3f(struct entity_handle_t entity, struct script_string_t *name, vec3_t *value)
+
+
+void entity_ScriptSetEntityPropValue1i(struct entity_handle_t entity, struct script_string_t *name, int value)
+{
+	char *prop_name = script_string_GetRawString(name);
+	entity_SetProp(entity, prop_name, &value);
+}
+
+void entity_ScriptSetEntityPropValue1iv(struct entity_handle_t entity, struct script_string_t *name, void *value)
+{
+	char *prop_name = script_string_GetRawString(name);
+	entity_SetProp(entity, prop_name, value);
+}
+
+int entity_ScriptGetEntityPropValue1i(struct entity_handle_t entity, struct script_string_t *name)
+{
+	char *prop_name = script_string_GetRawString(name);
+	int value = 0;
+	
+	entity_GetProp(entity, prop_name, &value);
+	
+	return value;
+}
+
+void entity_ScriptGetEntityPropValue1iv(struct entity_handle_t entity, struct script_string_t *name, void *value)
 {
 	char *prop_name = script_string_GetRawString(name);
 	entity_GetProp(entity, prop_name, value);
 }
+
+int entity_ScriptIncEntityPropValue1i(struct entity_handle_t entity, struct script_string_t *name)
+{
+	char *prop_name = script_string_GetRawString(name);
+	struct entity_prop_t *prop = entity_GetPropPointer(entity, prop_name);
+	
+	if(prop)
+	{
+		(*(int *)prop->memory)++;
+		return *(int *)prop->memory;
+	}
+	
+	return 0;
+}
+
+int entity_ScriptDecEntityPropValue1i(struct entity_handle_t entity, struct script_string_t *name)
+{
+	char *prop_name = script_string_GetRawString(name);
+	struct entity_prop_t *prop = entity_GetPropPointer(entity, prop_name);
+	
+	if(prop)
+	{
+		(*(int *)prop->memory)--;
+		return *(int *)prop->memory;
+	}
+	
+	return 0;
+}
+
+
 
 
 void entity_ScriptSetEntityPropValue3f(struct entity_handle_t entity, struct script_string_t *name, vec3_t *value)
 {
 	char *prop_name = script_string_GetRawString(name);
 	entity_SetProp(entity, prop_name, value);
+}
+
+
+void *entity_ScriptGetEntityPropValue3f(struct entity_handle_t entity, struct script_string_t *name)
+{
+	char *prop_name = script_string_GetRawString(name);
+	entity_GetProp(entity, prop_name, &vec3_ret);
+	return &vec3_ret;
+}
+
+void entity_ScriptGetEntityPropValue3fv(struct entity_handle_t entity, struct script_string_t *name, vec3_t *value)
+{
+	char *prop_name = script_string_GetRawString(name);
+	entity_GetProp(entity, prop_name, value);
+}
+
+
+
+
+
+void entity_ScriptSetEntityPropValue(struct entity_handle_t entity, struct script_string_t *name, void *value)
+{
+	char *prop_name = script_string_GetRawString(name);
+	entity_SetProp(entity, prop_name, value);
+}
+
+void entity_ScriptGetEntityPropValue(struct entity_handle_t entity, struct script_string_t *name, void *value)
+{
+	char *prop_name = script_string_GetRawString(name);
+	entity_GetProp(entity, prop_name, value);
+}
+
+
+
+
+int entity_ScriptEntityHasProp(struct entity_handle_t entity, struct script_string_t *name)
+{
+	char *prop_name = script_string_GetRawString(name);
+	return entity_GetPropPointer(entity, prop_name) != NULL;
 }
 
 
@@ -317,7 +532,7 @@ void entity_ScriptSetCameraPosition(vec3_t *position)
 	
 	if(camera_component)
 	{
-		transform_component = entity_GetComponentPointer(camera_component->transform);
+		transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
 		transform_component->position = *position;
 	}	
 }
@@ -338,20 +553,6 @@ void entity_ScriptSetCamera(struct component_handle_t camera)
 	}
 }
 
-/*void entity_ScriptSetCamera(struct component_handle_t camera)
-{
-	struct entity_t *entity;
-	struct camera_component_t *camera_component;
-	
-	//entity = entity_GetEntityPointerHandle(ent_current_entity);
-	
-	camera_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_CAMERA]);
-	
-	if(camera_component)
-	{
-		camera_SetCamera(camera_component->camera);
-	}	
-}*/
 
 /*
 =====================================
