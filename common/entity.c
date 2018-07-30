@@ -545,6 +545,58 @@ void entity_ParentEntityToEntityTransform(struct component_handle_t parent_trans
 	entity_ParentTransformComponent(parent_transform, child_transform);
 }
 
+void entity_UnparentEntityFromEntityTransform(struct component_handle_t parent_transform, struct entity_handle_t child)
+{
+	struct entity_t *parent_entity;
+	struct entity_t *child_entity;
+	
+	int i;
+	
+	struct transform_component_t *parent_transform_ptr;
+	struct transform_component_t *other_transform;
+	
+	struct component_handle_t child_transform;
+	
+	if(parent_transform.def != child.def)
+	{
+		printf("entity_UnparentEntity: can't unparent entity def to non def\n");
+		return;
+	}
+	
+	child_entity = entity_GetEntityPointerHandle(child);
+	
+	if(parent_transform.def)
+	{
+		parent_transform_ptr = entity_GetComponentPointer(parent_transform);
+		
+		for(i = 0; i < parent_transform_ptr->children_count; i++)
+		{
+			other_transform = entity_GetComponentPointer(parent_transform_ptr->child_transforms[i]);
+			
+			if(other_transform->base.entity.entity_index == child.entity_index)
+			{
+				child_transform = parent_transform_ptr->child_transforms[i];
+				child_entity->ref_count--;
+				break;
+			}
+		}
+		
+		if(i == parent_transform_ptr->children_count)
+		{
+			return;
+		}
+	}
+	else
+	{
+		child_transform = child_entity->components[COMPONENT_TYPE_TRANSFORM];
+	}
+	
+	entity_UnparentTransformComponent(parent_transform, child_transform);
+}
+
+
+
+
 void entity_ParentEntity(struct entity_handle_t parent, struct entity_handle_t child)
 {
 	struct entity_t *parent_entity;
@@ -564,37 +616,7 @@ void entity_ParentEntity(struct entity_handle_t parent, struct entity_handle_t c
 	parent_entity = entity_GetEntityPointerHandle(parent);
 	child_entity = entity_GetEntityPointerHandle(child);
 	
-	if(parent.def)
-	{
-		/* if this is a ref, we alloc a new transform component and make it point
-		to this def, thus configuring a entity def reference... */
-		child_transform = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, parent.def);
-		transform_component = entity_GetComponentPointer(child_transform);
-		transform_component->base.entity = child;
-		child_entity->ref_count++;
-		
-		
-		if(!transform_component->instance_name)
-		{
-			transform_component->instance_name = memory_Malloc(ENTITY_NAME_MAX_LEN, "entity_ParentEntity");
-		}
-		
-		strcpy(transform_component->instance_name, child_entity->name);
-		
-		child_transform_component = entity_GetComponentPointer(child_entity->components[COMPONENT_TYPE_TRANSFORM]);
-		
-		transform_component->orientation = child_transform_component->orientation;
-		transform_component->position = child_transform_component->position;
-		transform_component->scale = child_transform_component->scale;
-
-		
-	}
-	else
-	{
-		child_transform = child_entity->components[COMPONENT_TYPE_TRANSFORM];
-	}
-	
-	entity_ParentTransformComponent(parent_entity->components[COMPONENT_TYPE_TRANSFORM], child_transform);
+	entity_ParentEntityToEntityTransform(parent_entity->components[COMPONENT_TYPE_TRANSFORM], child);
 }
 
 
@@ -619,33 +641,7 @@ void entity_UnparentEntity(struct entity_handle_t parent, struct entity_handle_t
 	parent_entity = entity_GetEntityPointerHandle(parent);
 	child_entity = entity_GetEntityPointerHandle(child);
 	
-	if(parent.def)
-	{
-		parent_transform = entity_GetComponentPointer(parent_entity->components[COMPONENT_TYPE_TRANSFORM]);
-		
-		for(i = 0; i < parent_transform->children_count; i++)
-		{
-			other_transform = entity_GetComponentPointer(parent_transform->child_transforms[i]);
-			
-			if(other_transform->base.entity.entity_index == child.entity_index)
-			{
-				child_transform = parent_transform->child_transforms[i];
-				child_entity->ref_count--;
-				break;
-			}
-		}
-		
-		if(i == parent_transform->children_count)
-		{
-			return;
-		}
-	}
-	else
-	{
-		child_transform = child_entity->components[COMPONENT_TYPE_TRANSFORM];
-	}
-	
-	entity_UnparentTransformComponent(parent_entity->components[COMPONENT_TYPE_TRANSFORM], child_transform);
+	entity_UnparentEntityFromEntityTransform(parent_entity->components[COMPONENT_TYPE_TRANSFORM], child);
 }
 
 /*
@@ -936,6 +932,14 @@ void entity_PropValue(struct entity_handle_t entity, char *name, void *value, in
 				
 			return;
 		}
+		else
+		{
+			printf("entity_PropValue: prop [%s] does not exist\n", name);
+		}
+	}
+	else
+	{
+		printf("entity_PropValue: bad entity handle\n");
 	}
 }
 
@@ -1440,7 +1444,7 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 		if(child_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
 		{
 			rec_entity_def_ptr = entity_GetEntityPointerHandle(child_transform->base.entity);
-			child_handle = entity_RecursiveSpawnEntity(&child_transform->orientation, child_transform->position, child_transform->scale, child_transform->base.entity, transform_component->child_transforms[i], rec_entity_def_ptr->name);			
+			child_handle = entity_RecursiveSpawnEntity(&child_transform->orientation, child_transform->position, child_transform->scale, child_transform->base.entity, transform_component->child_transforms[i], child_transform->instance_name);			
 			entity_ParentEntity(handle, child_handle);
 		}
 	}

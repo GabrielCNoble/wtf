@@ -248,6 +248,10 @@ struct component_handle_t entity_ScriptGetEntityComponent(struct entity_handle_t
 	{
 		component = entity_ptr->components[component_index];
 	}
+	else
+	{
+		printf("entity_ScriptGetEntityComponent: bad entity handle\n");
+	}
 	
 	return component;
 }

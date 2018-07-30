@@ -77,6 +77,8 @@ void entity_UnparentTransformComponent(struct component_handle_t parent_transfor
 
 void entity_ParentEntityToEntityTransform(struct component_handle_t parent_transform, struct entity_handle_t child);
 
+void entity_UnparentEntityFromEntityTransform(struct component_handle_t parent_transform, struct entity_handle_t child);
+
 
 void entity_ParentEntity(struct entity_handle_t parent, struct entity_handle_t child);
 

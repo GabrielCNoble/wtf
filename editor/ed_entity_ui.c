@@ -161,6 +161,8 @@ void editor_EntityEditorAddComponentMenu()
 	struct entity_t *entity_defs;
 	struct entity_t *entity_def;
 	
+	struct transform_component_t *transform_component;
+	
 	struct entity_handle_t handle;	
 	
 	if(ed_entity_editor_add_component_menu_open)
@@ -259,8 +261,15 @@ void editor_EntityEditorAddComponentMenu()
 					}
 				}
 				
-				
 				gui_ImGuiEndMenu();
+			}
+			
+			if(gui_ImGuiMenuItem("Remove", NULL, NULL, 1))
+			{
+				transform_component = entity_GetComponentPointer(ed_entity_editor_selected_def_transform);
+				entity_UnparentEntityFromEntityTransform(transform_component->parent, ed_entity_editor_selected_def);
+				ed_entity_editor_add_component_menu_open = 0;
+				ed_entity_editor_update_preview_entity = 1;
 			}
 			
 			
@@ -442,14 +451,28 @@ void editor_EntityEditorDefsMenu()
 ====================================================
 */
 
-void editor_EntityEditorTransformComponent(struct transform_component_t *transform_component)
+void editor_EntityEditorTransformComponent(struct transform_component_t *transform_component, struct entity_handle_t entity, int ref_on_ref)
 {
 	vec3_t euler;	
 	mat3_t_euler(&transform_component->orientation, &euler);
 	
+//	struct entity_t *entity;
+//	struct transform_component_t *transform;
+	
+	
 	euler.x /= 3.14159265;
 	euler.y /= 3.14159265;
 	euler.z /= 3.14159265;
+	
+	
+/*	entity = entity_GetEntityPointerHandle(transform_component->base.entity);
+	transform = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);*/
+	
+/*	if(!ref_on_ref)
+	{
+		gui_ImGuiPushStyleColor(ImGuiCol_Text, vec4(1.0, 0.2, 0.2, 1.0));
+	}*/
+	
 	
 	if(gui_ImGuiDragFloat3("Orientation", &euler.x, 0.001, -1.0, 1.0, "%f", 1.0))
 	{
@@ -470,11 +493,16 @@ void editor_EntityEditorTransformComponent(struct transform_component_t *transfo
 	if(gui_ImGuiDragFloat3("Scale", &transform_component->scale.x, 0.001, 0.0, 0.0, "%0.3f", 1.0))
 	{
 		ed_entity_editor_update_preview_entity = 1;
-	}					
+	}	
+	
+/*	if(!ref_on_ref)
+	{
+		gui_ImGuiPopStyleColor();
+	}	*/
 }
 
 
-void editor_EntityEditorModelComponent(struct model_component_t *model_component, struct entity_handle_t entity)
+void editor_EntityEditorModelComponent(struct model_component_t *model_component, struct entity_handle_t entity, int extra)
 {	
 	struct model_t *model;	
 							
@@ -482,13 +510,13 @@ void editor_EntityEditorModelComponent(struct model_component_t *model_component
 	gui_ImGuiText("Model: %s", model->name);
 }
 
-void editor_EntityEditorCameraComponent(struct camera_component_t *camera_component, struct entity_handle_t entity)
+void editor_EntityEditorCameraComponent(struct camera_component_t *camera_component, struct entity_handle_t entity, int extra)
 {
 	struct transform_component_t *transform_component;
 	struct entity_t *entity_ptr;
 }
 
-void editor_EntityEditorScriptComponent(struct script_component_t *script_component, struct entity_handle_t entity)
+void editor_EntityEditorScriptComponent(struct script_component_t *script_component, struct entity_handle_t entity, int extra)
 {
 	char *script_name;
 	
@@ -503,7 +531,7 @@ void editor_EntityEditorScriptComponent(struct script_component_t *script_compon
 	gui_ImGuiText("Script: %s", script_name);
 }
 
-void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct component_handle_t transform)
+void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct component_handle_t transform, int ref_on_ref)
 {
 	struct entity_t *entity_ptr;
 	struct component_t *component_ptr;
@@ -532,7 +560,7 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 	static int depth_level = -1;
 	static unsigned int id = 0;
 	
-	void (*component_function)(void *component, struct entity_handle_t entity);
+	void (*component_function)(void *component, struct entity_handle_t entity, int ref_on_ref);
 	
 	depth_level++;
 	
@@ -580,7 +608,7 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 					{
 						case COMPONENT_TYPE_TRANSFORM:
 							component_name = "Transform component";
-							component_function = (void (*)(void *, struct entity_handle_t))editor_EntityEditorTransformComponent;
+							component_function = (void (*)(void *, struct entity_handle_t, int ))editor_EntityEditorTransformComponent;
 							
 							if(transform.type != COMPONENT_TYPE_NONE)
 							{
@@ -591,7 +619,7 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 						
 						case COMPONENT_TYPE_MODEL:
 							component_name = "Model component";
-							component_function = (void (*)(void *, struct entity_handle_t))editor_EntityEditorModelComponent;
+							component_function = (void (*)(void *, struct entity_handle_t, int ))editor_EntityEditorModelComponent;
 						break;
 						
 						case COMPONENT_TYPE_PHYSICS:
@@ -600,12 +628,12 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 						
 						case COMPONENT_TYPE_CAMERA:
 							component_name = "Camera component";
-							component_function = (void (*)(void *, struct entity_handle_t))editor_EntityEditorCameraComponent;
+							component_function = (void (*)(void *, struct entity_handle_t, int ))editor_EntityEditorCameraComponent;
 						break;
 						
 						case COMPONENT_TYPE_SCRIPT:
 							component_name = "Script component";
-							component_function = (void (*)(void *, struct entity_handle_t))editor_EntityEditorScriptComponent;
+							component_function = (void (*)(void *, struct entity_handle_t, int ))editor_EntityEditorScriptComponent;
 						break;
 						
 						default:
@@ -625,7 +653,7 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 					
 					if(component_node_open)
 					{	
-						component_function(component_ptr, entity);					
+						component_function(component_ptr, entity, ref_on_ref);					
 						gui_ImGuiTreePop();
 					}
 					
@@ -649,7 +677,7 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 					
 					if(child_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
 					{
-						editor_EntityEditorRecursiveDefTree(child_transform->base.entity, transform_component->child_transforms[i]);
+						editor_EntityEditorRecursiveDefTree(child_transform->base.entity, transform_component->child_transforms[i], 1);
 					}
 				}
 			}
@@ -664,7 +692,7 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 				
 				if(child_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
 				{
-					editor_EntityEditorRecursiveDefTree(child_transform->base.entity, transform_component->child_transforms[i]);
+					editor_EntityEditorRecursiveDefTree(child_transform->base.entity, transform_component->child_transforms[i], 0);
 				}
 			}
 			
@@ -688,7 +716,7 @@ void editor_EntityEditorDefTree()
 		
 	if(gui_ImGuiBegin("Entity def tree", NULL, ImGuiWindowFlags_AlwaysHorizontalScrollbar))
 	{
-		editor_EntityEditorRecursiveDefTree(ed_entity_editor_entity_def, (struct component_handle_t){COMPONENT_TYPE_NONE, 1, INVALID_COMPONENT_INDEX});
+		editor_EntityEditorRecursiveDefTree(ed_entity_editor_entity_def, (struct component_handle_t){COMPONENT_TYPE_NONE, 1, INVALID_COMPONENT_INDEX}, 0);
 	}
 	
 	gui_ImGuiEnd();

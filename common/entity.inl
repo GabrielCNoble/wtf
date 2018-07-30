@@ -192,38 +192,48 @@ __forceinline struct entity_handle_t entity_GetNestledEntityHandle(struct entity
 	
 	entity_GetNestledEntityHandle_Stack[0] = parent_entity;
 	next_top++;
-
-	do
+	
+	entity_ptr = entity_GetEntityPointerHandle(parent_entity);
+	
+	if(entity_ptr)
 	{
-		cur_top = next_top;
-		
-		for(;stack_cursor <= cur_top; stack_cursor++)
+		do
 		{
-			entity_ptr = entity_GetEntityPointerHandle(entity_GetNestledEntityHandle_Stack[stack_cursor]);
+			cur_top = next_top;
 			
-			if(entity_ptr)
+			for(;stack_cursor <= cur_top; stack_cursor++)
 			{
-				if(!strcmp(entity_ptr->name, entity))
-				{
-					return entity_GetNestledEntityHandle_Stack[stack_cursor];
-				}
-				 
-				transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+				entity_ptr = entity_GetEntityPointerHandle(entity_GetNestledEntityHandle_Stack[stack_cursor]);
 				
-				for(i = 0; i < transform->children_count; i++)
+				if(entity_ptr)
 				{
-					child_transform = entity_GetComponentPointer(transform->child_transforms[i]);
-					
-					if(child_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
+					if(!strcmp(entity_ptr->name, entity))
 					{
-						next_top++;
-						entity_GetNestledEntityHandle_Stack[next_top] = child_transform->base.entity;
+						return entity_GetNestledEntityHandle_Stack[stack_cursor];
+					}
+					 
+					transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+					
+					for(i = 0; i < transform->children_count; i++)
+					{
+						child_transform = entity_GetComponentPointer(transform->child_transforms[i]);
+						
+						if(child_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
+						{
+							next_top++;
+							entity_GetNestledEntityHandle_Stack[next_top] = child_transform->base.entity;
+						}
 					}
 				}
 			}
-		}
-		
-	}while(cur_top != next_top);
+			
+		}while(cur_top != next_top);
+	}
+	else
+	{
+		printf("entity_GetNestledEntityHandle: bad parent entity handle\n");
+	}
+	
 	
 	return (struct entity_handle_t){parent_entity.def, INVALID_ENTITY_INDEX};
 }

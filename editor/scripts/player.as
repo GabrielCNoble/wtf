@@ -12,6 +12,9 @@ float yaw = 0.0;
 
 int spawn_timer = 0;
 
+int fire_timer = 10;
+int gun = 0;
+
 void main()
 {	
 	component_handle_t camera_transform;
@@ -83,26 +86,30 @@ void main()
 	entity_Move(direction);
 	
 	component_handle_t weapon_transform;
-	entity_handle_t right_gun = entity_GetChildEntity("right gun");
-	entity_handle_t left_gun = entity_GetChildEntity("left gun");
+	entity_handle_t right_gun = entity_GetEntityChildEntity(camera_entity, "right gun");
+	entity_handle_t left_gun = entity_GetEntityChildEntity(camera_entity, "left gun");
 	
 	weapon_transform = entity_GetEntityComponent(right_gun, COMPONENT_TYPE_TRANSFORM);
 	weapon_offset = entity_GetEntityProp3f(right_gun, "weapon offset");
 	weapon_position = entity_GetEntityProp3f(right_gun, "weapon pos");
 	weapon_offset.x *= 0.9;
 	weapon_offset.y *= 0.9;
-	weapon_offset.x -= mouse_delta.x * 0.2;
-	weapon_offset.y -= mouse_delta.y * 0.2;
+	weapon_offset.x -= mouse_delta.x * 0.3;
+	weapon_offset.y -= mouse_delta.y * 0.3;
+	weapon_position.x += weapon_offset.x;
+	weapon_position.y += weapon_offset.y;
 	entity_SetEntityProp3f(right_gun, "weapon offset", weapon_offset);
 	entity_SetComponentValue3f(weapon_transform, "position", weapon_position);
 	
 	weapon_transform = entity_GetEntityComponent(left_gun, COMPONENT_TYPE_TRANSFORM);
-	weapon_offset = entity_GetEntityProp3f(left_gun, "weapon offset");
-	weapon_position = entity_GetEntityProp3f(left_gun, "weapon pos");
-	weapon_offset.x *= 0.9;
-	weapon_offset.y *= 0.9;
-	weapon_offset.x -= mouse_delta.x * 0.2;
-	weapon_offset.y -= mouse_delta.y * 0.2;
+//	weapon_offset = entity_GetEntityProp3f(left_gun, "weapon offset");
+	weapon_position = entity_GetEntityProp3f(left_gun, "weapon pos");	
+//	weapon_offset.x *= 0.9;
+//	weapon_offset.y *= 0.9;
+//	weapon_offset.x -= mouse_delta.x * 0.3;
+//	weapon_offset.y -= mouse_delta.y * 0.3;
+	weapon_position.x += weapon_offset.x;
+	weapon_position.y += weapon_offset.y;
 	entity_SetEntityProp3f(left_gun, "weapon offset", weapon_offset);
 	entity_SetComponentValue3f(weapon_transform, "position", weapon_position);
 	
@@ -132,10 +139,33 @@ void main()
 		entity_Jump(10.0);
 	}
 	
-	if((input_GetMouseStatus() & MOUSE_LEFT_BUTTON_JUST_CLICKED) != 0)
+	
+	if(fire_timer < 10)
 	{
+		fire_timer++;
+	}
+	
+	if((input_GetMouseStatus() & MOUSE_LEFT_BUTTON_CLICKED) != 0 && fire_timer >= 1)
+	{
+		fire_timer = 0;
+		
 		entity_handle_t bullet_def = entity_GetEntityDef("bullet");
-		entity_handle_t spawn_entity = entity_GetEntityChildEntity(left_gun, "spawn entity");
+		entity_handle_t spawn_entity;
+		
+		switch(gun)
+		{
+			case 0:
+				gun = 1;
+				spawn_entity = entity_GetEntityChildEntity(right_gun, "spawn entity");
+			break;
+			
+			case 1:
+				gun = 0;
+				spawn_entity = entity_GetEntityChildEntity(left_gun, "spawn entity");
+			break;
+		}
+		
+		 
 		
 		vec3_t spawn_position = entity_GetEntityPosition(spawn_entity, 0);
 		
@@ -212,8 +242,8 @@ void OnSpawn()
 	entity_SetComponentValue33f(component, "orientation", camera_orientation);
 
 	vec3_t weapon_pos;
-	entity_handle_t right_gun = entity_GetChildEntity("right gun");
-	entity_handle_t left_gun = entity_GetChildEntity("left gun");
+	entity_handle_t right_gun = entity_GetEntityChildEntity(camera_entity, "right gun");
+	entity_handle_t left_gun = entity_GetEntityChildEntity(camera_entity, "left gun");
 	
 	entity_AddEntityProp3f(right_gun, "weapon offset");
 	entity_AddEntityProp3f(right_gun, "weapon pos");
@@ -261,9 +291,12 @@ void OnSpawn()
 	
 	orientation.identity();
 	
-	for(i = 0; i < 25; i++)
+	for(i = 0; i < 250; i++)
 	{
 		entity_handle_t enemy = entity_SpawnEntity(orientation, vec3_t(8.0, 2.0 + i * 2, 0.0), vec3_t(1.0, 1.0, 1.0), entity_def, "enemy");
+		entity_SetEntityVelocity(enemy, vec3_t(0.0, 0.0, 0.0));
+		
+		enemy = entity_SpawnEntity(orientation, vec3_t(-8.0, 2.0 + i * 2, 0.0), vec3_t(1.0, 1.0, 1.0), entity_def, "enemy");
 		entity_SetEntityVelocity(enemy, vec3_t(0.0, 0.0, 0.0));
 	}
 		

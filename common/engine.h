@@ -29,6 +29,8 @@
 
 
 
+//#define engine_PrintError(__VA_ARGS__) printf("%s:", __func__, __VA_ARGS__);
+
 
 
 

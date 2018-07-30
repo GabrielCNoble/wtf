@@ -3,7 +3,7 @@
 
 void main()
 {
-	if(entity_GetLife() > 150)
+	if(entity_GetLife() > 300)
 	{
 		entity_Die();
 	}
