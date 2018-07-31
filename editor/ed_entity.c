@@ -81,6 +81,8 @@ int entity_editor_orthographic_mode = 0;
 struct entity_handle_t ed_entity_editor_entity_def = {1, INVALID_ENTITY_INDEX};
 struct entity_handle_t ed_entity_editor_preview_entity = {1, INVALID_ENTITY_INDEX};
 int ed_entity_editor_update_preview_entity = 0;
+int ed_entity_editor_draw_collider_list_cursor = 0;
+struct entity_handle_t ed_entity_editor_draw_collider_list[1024];
 
 
 /*
@@ -228,7 +230,7 @@ void editor_EntityEditorUpdate3dHandlePosition()
 {
 	int i;
 	
-	collision_shape_t *collision_shapes;
+	struct collision_shape_t *collision_shapes;
 	
 	//if(entity_editor_current_entity_def)
 	{
@@ -659,7 +661,7 @@ void editor_EntityEditorCopySelections()
 void editor_EntityEditorDestroySelections()
 {
 	int i;
-	collision_shape_t *collision_shapes;
+	struct collision_shape_t *collision_shapes;
 	
 	//if(!entity_editor_current_entity_def)
 	{
@@ -693,7 +695,7 @@ void editor_EntityEditorDestroySelections()
 void editor_EntityEditorTranslateSelections(vec3_t direction, float amount)
 {
 	int i;
-	collision_shape_t *collision_shapes;
+	struct collision_shape_t *collision_shapes;
 	vec3_t translation;
 	
 	translation.x = direction.x * amount;
@@ -732,7 +734,7 @@ void editor_EntityEditorRotateSelections(vec3_t axis, float amount)
 void editor_EntityEditorScaleSelections(vec3_t axis, float amount)
 {
 	int i;
-	collision_shape_t *collision_shapes;
+	struct collision_shape_t *collision_shapes;
 	vec3_t scale;
 	
 	scale.x = axis.x * amount;

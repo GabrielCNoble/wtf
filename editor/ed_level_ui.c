@@ -74,6 +74,10 @@ extern material_t *mat_materials;
 extern char **mat_material_names;
 
 
+/* from entity.c */
+extern struct stack_list_t ent_entities[2];
+
+
 
 /*
 =====================================================
@@ -761,6 +765,13 @@ void editor_LevelEditorWorldMenu()
 
 void editor_LevelEditorAddToWorldMenu()
 {
+	int i;
+	int c;
+	struct entity_t *defs;
+	struct entity_t *def;
+	
+	struct entity_handle_t handle;
+	
 	int keep_open = 1;
 	pick_record_t record;
 	mat3_t orientation = mat3_t_id();
@@ -804,6 +815,37 @@ void editor_LevelEditorAddToWorldMenu()
 				editor_ClearSelection(&level_editor_pick_list);
 				editor_LevelEditorAddSelection(&record);
 				keep_open = 0;
+			}
+			if(gui_ImGuiBeginMenu("Entities"))
+			{
+				defs = (struct entity_t *)ent_entities[1].elements;
+				c = ent_entities[1].element_count;
+				
+				for(i = 0; i < c; i++)
+				{
+					def = defs + i;
+					
+					if(def->flags & ENTITY_FLAG_INVALID)
+					{
+						continue;
+					}
+					
+					if(gui_ImGuiMenuItem(def->name, NULL, NULL, 1))
+					{
+						handle.def = 1;
+						handle.entity_index = i;
+						
+						entity_SpawnEntity(NULL, level_editor_3d_cursor_position, vec3_t_c(1.0, 1.0, 1.0), handle, def->name);
+						
+						keep_open = 0;
+						
+						level_editor_need_to_copy_data = 1;
+					}
+					
+					
+				}
+				
+				gui_ImGuiEndMenu();
 			}
 			
 			ed_level_editor_add_to_world_menu_open = keep_open;

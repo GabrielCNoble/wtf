@@ -127,6 +127,19 @@ void renderer_Draw2dLine(vec2_t from, vec2_t to, vec3_t color, float width, int 
 ==============================================================
 */
 
+void renderer_DrawBox();
+
+void renderer_DrawCylinder(int base_verts, float radius, float height, int outline);
+
+void renderer_DrawSphere(float radius, int sub_divs);
+
+
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
 
 
 void renderer_DrawPortalsOulines();

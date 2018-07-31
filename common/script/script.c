@@ -884,8 +884,18 @@ void script_ExecuteScriptImediate(struct script_t *script, void *data)
 						}
 					}
 					
-					context->Execute();
-					context->Unprepare();
+					if(context->GetState() == asEXECUTION_PREPARED)
+					{
+						context->Execute();
+						context->Unprepare();
+					}
+					else
+					{
+						printf("script_ExecuteScriptImediate: context not prepared\n");
+					}
+					
+					
+					
 				}
 			}
 		}

@@ -177,7 +177,7 @@ void main()
 		
 		entity_handle_t bullet_instance = entity_SpawnEntity(orientation, spawn_position, vec3_t(0.2, 0.2, 0.2), bullet_def, "bullet");
 		
-		entity_SetEntityVelocity(bullet_instance, direction * 40.0);
+		entity_SetEntityVelocity(bullet_instance, direction * 80.0);
 		
 	}
 	
@@ -282,21 +282,15 @@ void OnSpawn()
 	pitch = 0.0;
 	
 	
-	
-	
-	
 	entity_handle_t entity_def = entity_GetEntityDef("enemy");
 		
 	mat3_t orientation;
 	
 	orientation.identity();
 	
-	for(i = 0; i < 250; i++)
+	for(i = 0; i < 150; i++)
 	{
 		entity_handle_t enemy = entity_SpawnEntity(orientation, vec3_t(8.0, 2.0 + i * 2, 0.0), vec3_t(1.0, 1.0, 1.0), entity_def, "enemy");
-		entity_SetEntityVelocity(enemy, vec3_t(0.0, 0.0, 0.0));
-		
-		enemy = entity_SpawnEntity(orientation, vec3_t(-8.0, 2.0 + i * 2, 0.0), vec3_t(1.0, 1.0, 1.0), entity_def, "enemy");
 		entity_SetEntityVelocity(enemy, vec3_t(0.0, 0.0, 0.0));
 	}
 		

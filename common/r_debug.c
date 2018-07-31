@@ -75,6 +75,8 @@ vec3_t r_collider_capsule_shape[3][CHARACTER_COLLIDER_CAPSULE_SEGMENTS];
 
 
 
+
+
 #define R_DBG_FUNCTION_NAME_STACK_DEPTH 512
 #define R_DBG_FUNCTION_NAME_MAX_NAME_LEN 64
 
@@ -330,6 +332,192 @@ void renderer_Draw2dLine(vec2_t from, vec2_t to, vec3_t color, float width, int 
 		data->width = width;
 		if(persistent) cmd->persistent = 1;
 	}
+}
+
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
+void renderer_DrawBox()
+{
+	renderer_Begin(GL_QUADS);
+	
+	/* top */
+	renderer_Vertex3f(-1.0, 1.0,-1.0);
+	renderer_Vertex3f(-1.0, 1.0, 1.0);
+	renderer_Vertex3f( 1.0, 1.0, 1.0);
+	renderer_Vertex3f( 1.0, 1.0,-1.0);
+	
+	/* bottom */
+	renderer_Vertex3f(-1.0,-1.0, 1.0);
+	renderer_Vertex3f(-1.0,-1.0,-1.0);
+	renderer_Vertex3f( 1.0,-1.0,-1.0);
+	renderer_Vertex3f( 1.0,-1.0, 1.0);
+	
+	/* left */
+	renderer_Vertex3f(-1.0,-1.0,-1.0);
+	renderer_Vertex3f(-1.0,-1.0, 1.0);
+	renderer_Vertex3f(-1.0, 1.0, 1.0);
+	renderer_Vertex3f(-1.0, 1.0,-1.0);
+	
+	/* right */
+	renderer_Vertex3f( 1.0, 1.0,-1.0);
+	renderer_Vertex3f( 1.0, 1.0, 1.0);
+	renderer_Vertex3f( 1.0,-1.0, 1.0);
+	renderer_Vertex3f( 1.0,-1.0,-1.0);
+	
+	/* front */
+	renderer_Vertex3f(-1.0, 1.0, 1.0);
+	renderer_Vertex3f(-1.0,-1.0, 1.0);
+	renderer_Vertex3f( 1.0,-1.0, 1.0);
+	renderer_Vertex3f( 1.0, 1.0, 1.0);
+	
+	/* back */
+	renderer_Vertex3f(-1.0,-1.0,-1.0);
+	renderer_Vertex3f(-1.0, 1.0,-1.0);
+	renderer_Vertex3f( 1.0, 1.0,-1.0);
+	renderer_Vertex3f( 1.0,-1.0,-1.0);
+	
+	renderer_End();
+}
+
+
+vec3_t verts[1024];
+
+void renderer_DrawCylinder(int base_verts, float radius, float height, int outline)
+{
+	int i;
+	int j;
+	vec3_t vert;
+	
+	float current_angle;
+	float angle_increment;
+	
+	int top_count = 0;
+	int middle_count = 0;
+	
+	int mode;
+	
+	
+	if(base_verts > 32)
+	{
+		base_verts = 32;
+	}
+	else if(base_verts < 0)
+	{
+		base_verts = 8;
+	}
+	
+	current_angle = 0.0;
+	angle_increment = (3.14159265 * 2.0) / (float)base_verts;
+	
+	
+	//if(outline)
+	//{
+	for(top_count = 0; top_count < base_verts; top_count++)
+	{			
+		verts[top_count].x = cos(current_angle) * radius;
+		verts[top_count].y = height * 0.5;
+		verts[top_count].z = -sin(current_angle) * radius;
+		current_angle += angle_increment;
+	}		
+	//}
+/*	else
+	{
+		for(top_count = 0; top_count < base_verts * 3;)
+		{
+			verts[top_count].x = cos(current_angle) * radius;
+			verts[top_count].y = height * 0.5;
+			verts[top_count].z = sin(current_angle) * radius;
+			top_count++;
+			
+			current_angle += angle_increment;
+			
+			verts[top_count].x = cos(current_angle) * radius;
+			verts[top_count].y = height * 0.5;
+			verts[top_count].z = sin(current_angle) * radius;
+			top_count++;
+			
+			verts[top_count].x = 0.0;
+			verts[top_count].y = height * 0.5;
+			verts[top_count].z = 0.0;
+			top_count++;
+		}
+	}*/
+	
+	base_verts <<= 2;
+	
+	for(middle_count = 0, j = 0; middle_count < base_verts;)
+	{
+		verts[top_count + middle_count].x = verts[j].x;
+		verts[top_count + middle_count].y = height * 0.5;
+		verts[top_count + middle_count].z = verts[j].z;
+		
+		middle_count++;
+		
+		verts[top_count + middle_count].x = verts[j].x;
+		verts[top_count + middle_count].y = -height * 0.5;
+		verts[top_count + middle_count].z = verts[j].z;
+		
+		middle_count++;
+		
+		j++;
+		
+		verts[top_count + middle_count].x = verts[j].x;
+		verts[top_count + middle_count].y = -height * 0.5;
+		verts[top_count + middle_count].z = verts[j].z;
+		
+		middle_count++;
+		
+		verts[top_count + middle_count].x = verts[j].x;
+		verts[top_count + middle_count].y = height * 0.5;
+		verts[top_count + middle_count].z = verts[j].z;
+		
+		middle_count++;
+	}
+	
+	
+	
+	
+	if(outline)
+	{		
+		mode = GL_LINE_LOOP;
+	}
+	else
+	{		
+		mode = GL_TRIANGLE_FAN;
+	}
+	
+	renderer_Begin(mode);
+	for(i = 0; i < top_count; i++)
+	{
+		renderer_Vertex3f(verts[i].x, verts[i].y, verts[i].z);
+	}
+	renderer_End();
+	
+	renderer_Begin(mode);
+	for(i = 0; i < top_count; i++)
+	{
+		renderer_Vertex3f(-verts[i].x, -verts[i].y, verts[i].z);
+	}
+	renderer_End();
+	
+	
+	
+	renderer_Begin(GL_QUADS);
+	for(i = 0; i < middle_count; i++)
+	{
+		renderer_Vertex3f(verts[top_count + i].x, verts[top_count + i].y, verts[top_count + i].z);
+	}
+	renderer_End();
+	
+}
+
+void renderer_DrawSphere(float radius, int sub_divs)
+{
+	
 }
 
 /*
@@ -866,7 +1054,7 @@ void renderer_DrawColliders()
 				break;
 				
 				case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
-				
+					
 				break;
 			}
 		}

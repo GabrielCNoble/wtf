@@ -35,6 +35,7 @@ struct particle_system_script_t
 	void *particle_system;
 	
 	void *on_spawn_entry_point;
+	void *on_update_entry_point;
 };
 
 
@@ -53,14 +54,13 @@ typedef struct
 }particle_system_def_t;
 
 
-
-typedef struct
+struct particle_t
 {
 	//short life;
 	//short frame;
 	vec3_t velocity;
 	int life;
-}particle_t;
+};
 
 /*
 typedef struct
@@ -84,7 +84,7 @@ struct particle_system_t
 	int spawn_frame;
 	int texture;
 	
-	particle_t *particles;
+	struct particle_t *particles;
 	//vec3_t *particle_velocities;
 	vec4_t *particle_positions;
 	int *particle_frames;
@@ -94,6 +94,8 @@ struct particle_system_t
 	mat3_t orientation;
 	vec3_t scale;
 	vec3_t position;
+	
+	vec3_t extents;
 	
 };
 

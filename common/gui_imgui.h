@@ -147,6 +147,8 @@ vec2_t gui_ImGuiGetCursorScreenPos();
 
 void gui_ImGuiPushID(const char *str_id);
 
+void gui_ImGuiPushIDi(int int_id);
+
 void gui_ImGuiPopID();
 
 /*

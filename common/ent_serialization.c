@@ -211,14 +211,20 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t entity, struct e
 	switch(component_record->type)
 	{
 		case COMPONENT_TYPE_TRANSFORM:
-			transform_component = (struct transform_component_t *)component;
-						
+			/*transform_component = (struct transform_component_t *)component;	
 			transform_component->orientation = component_record->component.transform_component.orientation;
 			transform_component->position = component_record->component.transform_component.position;
-			transform_component->scale = component_record->component.transform_component.scale;
+			transform_component->scale = component_record->component.transform_component.scale;*/
+			
+			
 			
 			if(entity_record->flags & ENTITY_RECORD_FLAG_DEF_REF)
 			{
+				transform_component->orientation = component_record->component.transform_component.orientation;
+				transform_component->position = component_record->component.transform_component.position;
+				transform_component->scale = component_record->component.transform_component.scale;
+				
+				
 				/* if this is a reference to a def we need to make sure this
 				newly allocated transform component points to the original
 				def... */
@@ -226,6 +232,12 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t entity, struct e
 				transform_component = entity_GetComponentPointer(parent_entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 				component = entity_GetComponentPointer(transform_component->child_transforms[transform_component->children_count - 1]);
 				component->entity = entity_GetEntityHandle(entity_record->name, entity_record->flags & ENTITY_RECORD_FLAG_DEF);
+			}
+			else
+			{
+				entity_SetTransform(entity, &component_record->component.transform_component.orientation, 
+											 component_record->component.transform_component.position,
+											 component_record->component.transform_component.scale, 0);
 			}
 			
 		break;
@@ -557,6 +569,13 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 						entity_WriteComponent((void **)&out, component, 0);	
 					}
 				}
+			}
+			else if(depth_level == 0)
+			{
+				/* if this is the root of the hierachy of an unmodified entity, write it's 
+				only it's transform... */
+				component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+				entity_WriteComponent((void **)&out, component, 0);
 			}
 			
 			/* write nestled transforms... */					
@@ -930,6 +949,7 @@ void entity_DeserializeEntities(void **buffer, int deserialize_defs)
 		if(!strcmp(in, entity_record_start_tag))
 		{
 			entity_ReadEntity((void **)&in, handle);
+			continue;
 		}
 		if(!strcmp(in, entity_section_tail_tag))
 		{

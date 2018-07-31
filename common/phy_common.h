@@ -86,6 +86,7 @@ enum COLLIDER_DEF_FLAGS
 {
 	COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR = 1,
 	COLLIDER_DEF_UPDATE_CACHED_COLLISION_SHAPE = 1 << 1,
+	COLLIDER_DEF_DRAW_DEBUG = 1 << 2,
 };
 
 enum COLLIDER_TYPE
@@ -114,22 +115,24 @@ enum CHARACTER_COLLIDER_FLAGS
 
 enum COLLISION_SHAPES
 {
-	COLLISION_SHAPE_EMPTY,
-	COLLISION_SHAPE_BOX,
+	//COLLISION_SHAPE_EMPTY,
+	COLLISION_SHAPE_BOX = 0,
 	COLLISION_SHAPE_CYLINDER,
 	COLLISION_SHAPE_SPHERE,
 	COLLISION_SHAPE_CAPSULE,
-	COLLISION_SHAPE_COMPOUND,
+	//COLLISION_SHAPE_COMPOUND,
+	COLLISION_SHAPE_LAST,
+	COLLISION_SHAPE_NONE = COLLISION_SHAPE_LAST
 };
 
 
-typedef struct
+struct collision_shape_t
 {
 	mat3_t orientation;
 	vec3_t position;
 	vec3_t scale;
 	int type;
-}collision_shape_t;
+};
 
 struct collider_def_t
 {
@@ -142,7 +145,7 @@ struct collider_def_t
 	//	{
 	int max_collision_shapes;
 	int collision_shape_count;
-	collision_shape_t *collision_shape;	
+	struct collision_shape_t *collision_shape;	
 	//	}generic_collider_data;
 		
 	//	struct

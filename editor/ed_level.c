@@ -268,10 +268,10 @@ void editor_LevelEditorInit()
 	
 	//camera_t *camera = camera_CreateCamera("entity_camera", vec3(0.0, 0.0, 0.0), &r, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
 	
-	//struct particle_system_script_t *script = particle_LoadParticleSystemScript("scripts/particle_system.as", "particle_system_test_script");
-	//script_t *particle_system_script = script_LoadScript("scripts/particle_system.as", "particle_system_test_script");
+	struct particle_system_script_t *script = particle_LoadParticleSystemScript("scripts/particle_system.as", "particle_system_test_script");
+	//struct script_t *particle_system_script = script_LoadScript("scripts/particle_system.as", "particle_system_test_script");
 	
-	//int ps_def = particle_CreateParticleSystemDef("particle system", 500, 120, 1, 0, 0, script);
+	int ps_def = particle_CreateParticleSystemDef("particle system", 500, 120, 1, 0, 0, script);
 	
 	//particle_SpawnParticleSystem(vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, ps_def);
 
@@ -1280,6 +1280,12 @@ void editor_LevelEditorCopyLevelData()
 		}
 		
 		entity_SerializeEntities(&level_editor_entity_buffer, &level_editor_entity_buffer_size, 0);
+		
+		FILE *file;
+		
+		file = fopen("test.dmp", "wb");
+		fwrite(level_editor_entity_buffer, level_editor_entity_buffer_size, 1, file);
+		fclose(file);
 		
 		/************************************************************************************************/
 		

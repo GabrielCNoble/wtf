@@ -1087,7 +1087,11 @@ void entity_SetCollider(struct entity_handle_t entity, void *collider)
 	{
 		physics_component->collider.collider_handle = *(struct collider_handle_t *)collider;
 		collider_ptr = physics_GetColliderPointerHandle(physics_component->collider.collider_handle);
-		collider_ptr->entity_index = entity.entity_index;
+		
+		if(collider_ptr)
+		{
+			collider_ptr->entity_index = entity.entity_index;
+		}
 	}
 		
 	physics_component->flags = 0;
@@ -1137,6 +1141,7 @@ void entity_SetScript(struct entity_handle_t entity, struct script_t *script)
 void entity_SetTransform(struct entity_handle_t entity, mat3_t *orientation, vec3_t position, vec3_t scale, int clear_aabb)
 {
 	struct transform_component_t *transform_component;
+	struct physics_component_t *physics_component;
 	struct entity_t *entity_ptr;
 	struct entity_aabb_t *aabb;
 	
@@ -1183,7 +1188,20 @@ void entity_SetTransform(struct entity_handle_t entity, mat3_t *orientation, vec
 			
 		transform_component->position = position;
 		transform_component->scale = scale;
+		
+		physics_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
+		
+		if(physics_component)
+		{
+			if(!entity.def)
+			{
+				physics_SetColliderOrientation(physics_component->collider.collider_handle, &transform_component->orientation);
+				physics_SetColliderPosition(physics_component->collider.collider_handle, transform_component->position);
+				physics_SetColliderScale(physics_component->collider.collider_handle, transform_component->scale);
+				physics_SetColliderVelocity(physics_component->collider.collider_handle, vec3_t_c(0.0, 0.0, 0.0));
+			}
 			
+		}	
 		
 		if(clear_aabb)
 		{
@@ -1378,8 +1396,12 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 				
 				case COMPONENT_TYPE_PHYSICS:
 					def_physics_component = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_TYPE_PHYSICS]);
-					collider_handle = physics_CreateCollider(orientation, position, scale, def_physics_component->collider.collider_def, 0);
-					entity_SetCollider(handle, &collider_handle);
+					
+					if(def_physics_component->collider.collider_def)
+					{
+						collider_handle = physics_CreateCollider(orientation, position, scale, def_physics_component->collider.collider_def, 0);
+						entity_SetCollider(handle, &collider_handle);
+					}
 				break;
 				
 				case COMPONENT_TYPE_SCRIPT:
@@ -2053,9 +2075,15 @@ void entity_UpdateTransformComponents()
 				physics_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_PHYSICS]);
 				collider = physics_GetColliderPointerHandle(physics_component->collider.collider_handle);
 				
-				mat3_t_mult(&rotation, &local_transform->orientation, &collider->orientation);
-				
-				mat4_t_compose2(&world_transform->transform, &rotation, collider->position, local_transform->scale);			
+				if(collider)
+				{
+					mat3_t_mult(&rotation, &local_transform->orientation, &collider->orientation);
+					mat4_t_compose2(&world_transform->transform, &rotation, collider->position, local_transform->scale);
+				}
+				else
+				{
+					mat4_t_compose2(&world_transform->transform, &local_transform->orientation, local_transform->position, local_transform->scale);
+				}
 			}
 			else
 			{

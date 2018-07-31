@@ -49,11 +49,20 @@ void physics_AddCollisionShape(struct collider_def_t *def, vec3_t scale, vec3_t 
 
 void physics_RemoveCollisionShape(struct collider_def_t *def, int shape_index);
 
+
+
 void physics_TranslateCollisionShape(struct collider_def_t *def, vec3_t translation, int shape_index);
+
+void physics_SetCollisionShapePosition(struct collider_def_t *def, vec3_t position, int shape_index);
 
 void physics_RotateCollisionShape(struct collider_def_t *def, vec3_t axis, float amount, int shape_index);
 
+void physics_SetCollisionShapeOrientation(struct collider_def_t *def, mat3_t *orientation, int shape_index);
+
 void physics_ScaleCollisionShape(struct collider_def_t *def, vec3_t scale, int shape_index);
+
+void physics_SetCollisionShapeScale(struct collider_def_t *def, vec3_t scale, int shape_index);
+
 
 void *physics_BuildCollisionShape(struct collider_def_t *def);
 

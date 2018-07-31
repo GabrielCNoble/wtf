@@ -1,5 +1,8 @@
 #include "ed_entity_ui.h"
 #include "..\..\common\gui.h"
+
+#include "..\..\common\GLEW\include\GL\glew.h"
+#include "..\..\common\camera.h"
 #include "..\ed_ui.h"
 #include "..\ed_common.h"
 
@@ -16,8 +19,12 @@
 
 //extern struct entity_def_t *entity_editor_current_entity_def;
 
+/* from r_main.c */
 extern int r_window_width;
 extern int r_window_height;
+
+/* from r_imediate.c */
+extern int r_imediate_color_shader;
 
 
 extern int mouse_x;
@@ -28,6 +35,9 @@ extern struct entity_handle_t ed_entity_editor_entity_def;
 struct entity_handle_t ed_entity_editor_entity_def_comp_to_set;
 extern struct entity_handle_t ed_entity_editor_preview_entity;
 extern int ed_entity_editor_update_preview_entity;
+extern int ed_entity_editor_draw_collider_list_cursor;
+extern struct entity_handle_t ed_entity_editor_draw_collider_list[1024];
+
 
 extern struct collider_def_t *entity_editor_current_collider_def;
 extern vec3_t entity_editor_3d_cursor_position;
@@ -36,8 +46,12 @@ extern vec3_t entity_editor_3d_handle_position;
 /* from entity.c */
 extern struct stack_list_t ent_entities[2];
 
+/* from physics.c */
+extern struct collider_def_t *phy_collider_defs;
+extern struct stack_list_t phy_colliders[COLLIDER_TYPE_LAST];
 
 
+/* from model.c */
 extern struct stack_list_t mdl_models;
 
 
@@ -317,6 +331,85 @@ int editor_EntityEditorSetModelComponentValue(struct entity_handle_t entity)
 	return keep_open;
 }
 
+editor_EntityEditorSetPhysicsComponentValue(struct entity_handle_t entity)
+{
+	int keep_open = 2;
+	
+	struct collider_def_t *collider_defs;
+	struct entity_t *entity_ptr;
+	struct physics_component_t *physics_component;
+	
+	int i;
+	int k;
+	int c;
+	
+	collider_defs = phy_collider_defs;
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+	physics_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
+	
+	while(collider_defs)
+	{
+		if(gui_ImGuiMenuItem(collider_defs->name, NULL, NULL, 1))
+		{
+			if(physics_component->collider.collider_def)
+			{
+				physics_DecColliderDefRefCount(physics_component->collider.collider_def);
+			}
+			
+			physics_IncColliderDefRefCount(collider_defs);
+			
+			physics_component->collider.collider_def = collider_defs;
+			ed_entity_editor_update_preview_entity = 1;
+			keep_open = 0;
+		}
+		
+		collider_defs = collider_defs->next;
+	}
+	
+	if(keep_open)
+	{
+		if(gui_ImGuiBeginMenu("Create new..."))
+		{
+			if(gui_ImGuiMenuItem("Character collider", NULL, NULL, 1))
+			{
+				collider_defs = physics_CreateCharacterColliderDef("New character collider", 0.5, 0.5, 0.25, 0.5, 0.5);
+				keep_open = 0;
+			}
+			
+			if(gui_ImGuiMenuItem("Rigid body collider", NULL, NULL, 1))
+			{
+				collider_defs = physics_CreateRigidBodyColliderDef("New character collider");
+				keep_open = 0;
+			}
+			
+			if(gui_ImGuiMenuItem("Projectile collider", NULL, NULL, 1))
+			{
+				keep_open = 0;
+			}
+			
+			if(!keep_open)
+			{
+				if(physics_component->collider.collider_def)
+				{
+					physics_DecColliderDefRefCount(physics_component->collider.collider_def);
+					
+					if(!physics_component->collider.collider_def->ref_count)
+					{
+						physics_DestroyColliderDefPointer(physics_component->collider.collider_def);
+					}
+				}
+				
+				physics_component->collider.collider_def = collider_defs;
+				ed_entity_editor_update_preview_entity = 1;
+			}
+		
+			gui_ImGuiEndMenu();
+		}
+	}
+	
+	return keep_open;
+}
+
 int editor_EntityEditorSetScriptComponentValue()
 {
 	int keep_open = 2;
@@ -361,6 +454,10 @@ void editor_EntityEditorSetComponentValueMenu()
 				{
 					case COMPONENT_TYPE_MODEL:
 						ed_entity_editor_set_component_value_menu_open = editor_EntityEditorSetModelComponentValue(ed_entity_editor_selected_def);
+					break;
+					
+					case COMPONENT_TYPE_PHYSICS:
+						ed_entity_editor_set_component_value_menu_open = editor_EntityEditorSetPhysicsComponentValue(ed_entity_editor_selected_def);
 					break;
 					
 					case COMPONENT_TYPE_SCRIPT:
@@ -510,6 +607,202 @@ void editor_EntityEditorModelComponent(struct model_component_t *model_component
 	gui_ImGuiText("Model: %s", model->name);
 }
 
+void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_component, struct entity_handle_t entity, int extra)
+{
+	struct entity_t *entity_ptr;
+	struct collider_def_t *collider_def;
+	struct collision_shape_t *collision_shape;
+	
+	mat4_t collision_shape_transform;
+	
+	camera_t *active_camera;
+	
+	char *collision_shape_type;
+	
+	int i;
+	int j;
+	
+	vec3_t euler;
+	
+	vec3_t position;
+	
+	active_camera = camera_GetActiveCamera();
+	
+	char checked = 0;
+
+	collider_def = (struct collider_def_t *)physics_component->collider.collider_def;
+	
+	if(collider_def)
+	{
+		gui_ImGuiInputText(" ", collider_def->name, COLLIDER_DEF_NAME_MAX_LEN, 0);
+		
+		switch(collider_def->type)
+		{
+			case COLLIDER_TYPE_CHARACTER_COLLIDER:
+				
+				gui_ImGuiText("Type: Character collider");
+				
+				if(gui_ImGuiDragFloat("height", &collider_def->height, 0.001, 0.001, 10.0, "%.03f", 1.0))
+				{
+					ed_entity_editor_update_preview_entity = 1;
+				}
+				
+				if(gui_ImGuiDragFloat("radius", &collider_def->radius, 0.001, 0.001, 10.0, "%.03f", 1.0))
+				{
+					ed_entity_editor_update_preview_entity = 1;
+				}
+				
+				if(gui_ImGuiDragFloat("max slope angle", &collider_def->slope_angle, 0.001, 0.0, 1.0, "%0.3f", 1.0))
+				{
+					ed_entity_editor_update_preview_entity = 1;
+				}
+				
+			break;
+			
+			case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
+				
+				/*********************************************************************************************/
+				/*********************************************************************************************/
+				/*********************************************************************************************/
+				
+				ed_entity_editor_draw_collider_list[ed_entity_editor_draw_collider_list_cursor] = entity;
+				ed_entity_editor_draw_collider_list_cursor++;
+				
+				if(gui_ImGuiIsItemClicked(1))
+				{
+					if(!gui_ImGuiIsPopupOpen("Add collision shape popup"))
+					{
+						gui_ImGuiOpenPopup("Add collision shape popup");
+						gui_ImGuiSetNextWindowPos(vec2(mouse_x, r_window_height - mouse_y), 0, vec2(0.0, 0.0));
+					}
+				}
+					
+				if(gui_ImGuiBeginPopup("Add collision shape popup", 0))
+				{
+					for(i = 0; i < COLLISION_SHAPE_LAST; i++)
+					{
+						switch(i)
+						{
+							case COLLISION_SHAPE_BOX:
+								collision_shape_type = "Box";
+							break;
+							
+							case COLLISION_SHAPE_SPHERE:
+							case COLLISION_SHAPE_CAPSULE:
+								continue;
+								//collision_shape_type = "Sphere";
+							break;
+							
+							case COLLISION_SHAPE_CYLINDER:
+								collision_shape_type = "Cylinder";
+							break;
+						}
+						
+						if(gui_ImGuiMenuItem(collision_shape_type, NULL, NULL, 1))
+						{
+							physics_AddCollisionShape(collider_def, vec3_t_c(1.0, 1.0, 1.0), vec3_t_c(0.0, 0.0, 0.0), NULL, i);
+						}
+					}	
+					gui_ImGuiEndPopup();
+				}
+			
+				/*********************************************************************************************/
+				/*********************************************************************************************/
+				/*********************************************************************************************/
+				
+				gui_ImGuiText("Type: Rigid body collider");
+		
+				for(i = 0; i < collider_def->collision_shape_count; i++)
+				{
+					collision_shape = collider_def->collision_shape + i;	
+					gui_ImGuiPushIDi(i);
+					
+					switch(collision_shape->type)
+					{
+						case COLLISION_SHAPE_BOX:
+							collision_shape_type = "Box";
+						break;
+						
+						case COLLISION_SHAPE_SPHERE:
+						case COLLISION_SHAPE_CAPSULE:
+							continue;
+							//collision_shape_type = "Sphere";
+						break;	
+						
+						case COLLISION_SHAPE_CYLINDER:
+							collision_shape_type = "Cylinder";
+						break;
+					}
+								
+					gui_ImGuiText("Collision shape type: %s", collision_shape_type);
+					
+					mat3_t_euler(&collision_shape->orientation, &euler);
+					
+					euler.x /= 3.14159265;
+					euler.y /= 3.14159265;
+					euler.z /= 3.14159265;
+					
+					if(gui_ImGuiDragFloat3("Orientation", &euler.x, 0.001, -1.0, 1.0, "%f", 1.0))
+					{
+						mat3_t_rotate(&collision_shape->orientation, vec3_t_c(1.0, 0.0, 0.0), euler.x, 1);
+						mat3_t_rotate(&collision_shape->orientation, vec3_t_c(0.0, 1.0, 0.0), euler.y, 0);
+						mat3_t_rotate(&collision_shape->orientation, vec3_t_c(0.0, 0.0, 1.0), euler.z, 0);
+				
+						ed_entity_editor_update_preview_entity = 1;
+					}																								
+					gui_ImGuiNewLine();	
+					
+					position = collision_shape->position;
+					if(gui_ImGuiDragFloat3("Position", &position.x, 0.001, 0.0, 0.0, "%0.3f", 1.0))
+					{
+						ed_entity_editor_update_preview_entity = 1;
+						physics_SetCollisionShapePosition(collider_def, position, i);
+					}
+					gui_ImGuiNewLine();	
+
+					switch(collision_shape->type)
+					{
+						case COLLISION_SHAPE_BOX:
+							if(gui_ImGuiDragFloat3("Scale", &collision_shape->scale.x, 0.001, 0.0, 0.0, "%0.3f", 1.0))
+							{
+								ed_entity_editor_update_preview_entity = 1;
+							}
+						break;
+						
+						case COLLISION_SHAPE_SPHERE:
+							continue;
+							//collision_shape_type = "Sphere";
+						break;	
+						
+						case COLLISION_SHAPE_CYLINDER:
+							
+							if(gui_ImGuiDragFloat("Height", &collision_shape->scale.y, 0.001, 0.0, 0.0, "%0.3f", 1.0))
+							{
+								ed_entity_editor_update_preview_entity = 1;
+							}
+							
+							if(gui_ImGuiDragFloat("Radius", &collision_shape->scale.x, 0.001, 0.0, 0.0, "%0.3f", 1.0))
+							{
+								collision_shape->scale.z = collision_shape->scale.x;
+								
+								ed_entity_editor_update_preview_entity = 1;
+							}
+						break;
+					}
+																	
+					gui_ImGuiNewLine();
+					gui_ImGuiNewLine();	
+					
+					gui_ImGuiPopID();
+					
+				}								
+			break;
+		}
+	}
+	
+	
+}
+
 void editor_EntityEditorCameraComponent(struct camera_component_t *camera_component, struct entity_handle_t entity, int extra)
 {
 	struct transform_component_t *transform_component;
@@ -624,6 +917,7 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 						
 						case COMPONENT_TYPE_PHYSICS:
 							component_name = "Physics component";
+							component_function = (void (*)(void *, struct entity_handle_t, int ))editor_EntityEditorPhysicsComponent;
 						break;
 						
 						case COMPONENT_TYPE_CAMERA:
@@ -711,6 +1005,8 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 
 void editor_EntityEditorDefTree()
 {	
+	ed_entity_editor_draw_collider_list_cursor = 0;
+	
 	gui_ImGuiSetNextWindowPos(vec2(r_window_width - ENTITY_DEF_TREE_WINDOW_WIDTH, 0.0), 0, vec2(0.0, 0.0));
 	gui_ImGuiSetNextWindowSize(vec2(ENTITY_DEF_TREE_WINDOW_WIDTH, 550.0), 0);
 		

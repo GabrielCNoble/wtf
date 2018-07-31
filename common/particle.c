@@ -318,7 +318,7 @@ int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientat
 	
 	if(!ps->particles)
 	{
-		ps->particles = memory_Malloc(sizeof(particle_t) * def->max_particles, "particle_SpawnParticleSystem");
+		ps->particles = memory_Malloc(sizeof(struct particle_t) * def->max_particles, "particle_SpawnParticleSystem");
 		ps->particle_positions = memory_Malloc(sizeof(vec4_t) * def->max_particles, "particle_SpawnParticleSystem");
 		ps->particle_frames = memory_Malloc(sizeof(int) * def->max_particles, "particle_SpawnParticleSystem");
 	}
@@ -330,7 +330,7 @@ int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientat
 			memory_Free(ps->particle_positions);
 			memory_Free(ps->particle_frames);
 			
-			ps->particles = memory_Malloc(sizeof(particle_t) * ps->max_particles, "particle_SpawnParticleSystem");
+			ps->particles = memory_Malloc(sizeof(struct particle_t) * ps->max_particles, "particle_SpawnParticleSystem");
 			ps->particle_positions = memory_Malloc(sizeof(vec4_t) * ps->max_particles, "particle_SpawnParticleSystem");
 			ps->particle_frames = memory_Malloc(sizeof(int) * ps->max_particles, "particle_SpawnParticleSystem");
 		}
@@ -608,6 +608,10 @@ void particle_UpdateParticleSystems(double delta_time)
 
 int ps_current_particle_system;
 
+struct script_array_t particle_array;
+struct script_array_t particle_frame_array;
+struct script_array_t particle_positions_array;
+
 void *particle_SetupScriptDataCallback(struct script_t *script, void *particle_system)
 {
 	struct particle_system_script_t *ps_script = (struct particle_system_script_t *)script;
@@ -618,20 +622,41 @@ void *particle_SetupScriptDataCallback(struct script_t *script, void *particle_s
 	ps = stack_list_get(&ps_particle_systems, (int)particle_system);
 	ps_current_particle_system = (int)particle_system;
 				
-	((struct script_array_t *)ps_script->particle_array)->buffer = ps->particles;
-	((struct script_array_t *)ps_script->particle_frame_array)->buffer = ps->particle_frames;
-	((struct script_array_t *)ps_script->particle_position_array)->buffer = ps->particle_positions;
-	*((struct particle_system_t **)ps_script->particle_system) = ps;
+//	((struct script_array_t *)ps_script->particle_array)->buffer = ps->particles;
+//	((struct script_array_t *)ps_script->particle_frame_array)->buffer = ps->particle_frames;
+//	((struct script_array_t *)ps_script->particle_position_array)->buffer = ps->particle_positions;
+//	*((struct particle_system_t **)ps_script->particle_system) = ps;
 	
 	
 				
-	if(ps->flags & PARTICLE_SYSTEM_FLAG_JUST_SPAWNED)
-	{
+	//if(ps->flags & PARTICLE_SYSTEM_FLAG_JUST_SPAWNED)
+	//{
 		//entry_point = ps_script->init;
-		script_QueueEntryPoint(ps_script->on_spawn_entry_point);
-	}
+	//	script_QueueEntryPoint(ps_script->on_spawn_entry_point);
+	//}
 	
-	script_QueueEntryPoint(ps_script->script.main_entry_point);
+	script_QueueEntryPoint(ps_script->on_update_entry_point);
+	
+	particle_array.buffer = ps->particles;
+	particle_array.element_size = sizeof(struct particle_t);
+	particle_array.element_count = ps->particle_count;
+	particle_array.type_info = NULL;
+	
+	particle_frame_array.buffer = ps->particle_frames;
+	particle_frame_array.element_size = sizeof(int);
+	particle_frame_array.element_count = ps->particle_count;
+	
+	particle_positions_array.buffer = ps->particle_positions;
+	particle_positions_array.element_size = sizeof(vec4_t);
+	particle_positions_array.element_count = ps->particle_count;
+	
+	script_PushArg(ps, SCRIPT_ARG_TYPE_ADDRESS);
+	script_PushArg(&particle_positions_array, SCRIPT_ARG_TYPE_ADDRESS);
+	script_PushArg(&particle_array, SCRIPT_ARG_TYPE_ADDRESS);
+	script_PushArg(&particle_frame_array, SCRIPT_ARG_TYPE_ADDRESS);
+	
+	
+	//script_QueueEntryPoint(ps_script->script.main_entry_point);
 		//entry_point = ps_script->script.main_entry_point;
 	
 	
@@ -645,11 +670,14 @@ int particle_GetScriptDataCallback(struct script_t *script)
 	
 	ps_script = (struct particle_system_script_t *)script;
 					
-	ps_script->particle_array = script_GetGlobalVarAddress("ps_particles", script);
-	ps_script->particle_frame_array = script_GetGlobalVarAddress("ps_particle_frames", script);
-	ps_script->particle_position_array = script_GetGlobalVarAddress("ps_particle_positions", script);
-	ps_script->particle_system = script_GetGlobalVarAddress("ps_particle_system", script);
+	//ps_script->particle_array = script_GetGlobalVarAddress("ps_particles", script);
+	//ps_script->particle_frame_array = script_GetGlobalVarAddress("ps_particle_frames", script);
+	//ps_script->particle_position_array = script_GetGlobalVarAddress("ps_particle_positions", script);
+	//ps_script->particle_system = script_GetGlobalVarAddress("ps_particle_system", script);
+	
+	
 	ps_script->on_spawn_entry_point = script_GetFunctionAddress("OnSpawn", script);
+	ps_script->on_update_entry_point = script_GetFunctionAddress("OnUpdate", script);
 	
 				
 /*	if(!ps_script->particle_array)

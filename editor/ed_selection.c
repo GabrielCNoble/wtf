@@ -864,7 +864,7 @@ void editor_TranslateSelections(pick_list_t *pick_list, vec3_t direction, float 
 	
 	vec3_t v;
 	pick_record_t *records = pick_list->records;
-	collision_shape_t *collision_shapes = NULL;
+	struct collision_shape_t *collision_shapes = NULL;
 	brush_t *brush;
 	bsp_polygon_t *polygon;
 	c = pick_list->record_count;

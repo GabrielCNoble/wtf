@@ -11,7 +11,7 @@ void main()
 	
 	if(entity_GetEntityProp1i(current_entity, "enemy") != -1)
 	{
-		if(entity_IncEntityProp1i(current_entity, "enemy") >= 120)
+		//if(entity_IncEntityProp1i(current_entity, "enemy") >= 120)
 		{
 			entity_DIEYOUMOTHERFUCKER();
 		}
@@ -27,10 +27,10 @@ void OnSpawn()
 
 void OnDie()
 {
-//	int particle_system_def = particle_GetParticleSystemDef("particle system");
-//	entity_handle_t current_entity = entity_GetCurrentEntity();
-//	vec3_t position = entity_GetEntityPosition(current_entity, 0);
-//	particle_SpawnParticleSystem(position, particle_system_def);
+	int particle_system_def = particle_GetParticleSystemDef("particle system");
+	entity_handle_t current_entity = entity_GetCurrentEntity();
+	vec3_t position = entity_GetEntityPosition(current_entity, 0);
+	particle_SpawnParticleSystem(position, particle_system_def);
 }
 
 

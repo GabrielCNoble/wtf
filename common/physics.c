@@ -29,8 +29,8 @@ extern vertex_t *w_world_vertices;
 
 
 int collision_def_count = 0;
-collider_def_t *collider_defs = NULL;
-collider_def_t *last_collider_def = NULL;
+collider_def_t *phy_collider_defs = NULL;
+collider_def_t *phy_last_collider_def = NULL;
 
 
 
@@ -116,17 +116,17 @@ void physics_Finish()
 		
 	
 	
-	while(collider_defs)
+	while(phy_collider_defs)
 	{
-		last_collider_def = collider_defs->next;
-		if(collider_defs->type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
+		phy_last_collider_def = phy_collider_defs->next;
+		if(phy_collider_defs->type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
 		{
-			memory_Free(collider_defs->collision_shape);
+			memory_Free(phy_collider_defs->collision_shape);
 		}
 		
-		memory_Free(collider_defs->name);
-		memory_Free(collider_defs);
-		collider_defs = last_collider_def;
+		memory_Free(phy_collider_defs->name);
+		memory_Free(phy_collider_defs);
+		phy_collider_defs = phy_last_collider_def;
 	}
 	
 	for(i = 0; i < COLLIDER_TYPE_LAST; i++)
@@ -200,17 +200,17 @@ collider_def_t *physics_CreateColliderDef(char *name)
 	def->flags = 0;
 	def->type = COLLIDER_TYPE_NONE;
 	
-	if(!collider_defs)
+	if(!phy_collider_defs)
 	{
-		collider_defs = def;
+		phy_collider_defs = def;
 	}
 	else
 	{
-		last_collider_def->next = def;
-		def->prev = last_collider_def;
+		phy_last_collider_def->next = def;
+		def->prev = phy_last_collider_def;
 	}
 	
-	last_collider_def = def;
+	phy_last_collider_def = def;
 	
 	return def;
 }
@@ -269,7 +269,7 @@ void physics_DestroyColliderDef(char *name)
 {
 	collider_def_t *r;
 	
-	r = collider_defs;
+	r = phy_collider_defs;
 	
 	while(r)
 	{
@@ -292,8 +292,8 @@ void physics_DestroyColliderDefPointer(collider_def_t *def)
 	{
 		if(def->ref_count)
 		{
-			//printf("physics_DestroyColliderDefPointer: def %s has %d references!\n", def->name, def->ref_count);
-			//return;
+			printf("physics_DestroyColliderDefPointer: def %s has %d references!\n", def->name, def->ref_count);
+			return;
 			
 			//for(i = 0; i < collider_list_cursor; i++)
 			//{
@@ -311,13 +311,13 @@ void physics_DestroyColliderDefPointer(collider_def_t *def)
 			
 		}
 		
-		if(def == collider_defs)
+		if(def == phy_collider_defs)
 		{
-			collider_defs = collider_defs->next;
+			phy_collider_defs = phy_collider_defs->next;
 			
-			if(collider_defs)
+			if(phy_collider_defs)
 			{
-				collider_defs->prev = NULL;
+				phy_collider_defs->prev = NULL;
 			}
 		}
 		else
@@ -330,11 +330,15 @@ void physics_DestroyColliderDefPointer(collider_def_t *def)
 			}
 			else
 			{
-				last_collider_def = last_collider_def->prev;
+				phy_last_collider_def = phy_last_collider_def->prev;
 			}				
 		}
-				
-		memory_Free(def->collision_shape);
+		
+		if(def->collision_shape)
+		{
+			memory_Free(def->collision_shape);
+		}		
+		
 		memory_Free(def);
 	}
 	
@@ -342,11 +346,11 @@ void physics_DestroyColliderDefPointer(collider_def_t *def)
 
 void physics_DestroyColliderDefs()
 {	
-	while(collider_defs)
+	while(phy_collider_defs)
 	{
-		last_collider_def = collider_defs->next;
-		physics_DestroyColliderDefPointer(collider_defs);
-		collider_defs = last_collider_def;
+		phy_last_collider_def = phy_collider_defs->next;
+		physics_DestroyColliderDefPointer(phy_collider_defs);
+		phy_collider_defs = phy_last_collider_def;
 	}
 }
 
@@ -354,7 +358,7 @@ collider_def_t *physics_GetColliderDefPointer(char *name)
 {
 	collider_def_t *r;
 	
-	r = collider_defs;
+	r = phy_collider_defs;
 	
 	while(r)
 	{
@@ -469,6 +473,23 @@ void physics_TranslateCollisionShape(collider_def_t *def, vec3_t translation, in
 	}
 }
 
+void physics_SetCollisionShapePosition(struct collider_def_t *def, vec3_t position, int shape_index)
+{
+	if(def)
+	{
+		
+		if(shape_index >= 0 && shape_index < def->collision_shape_count)
+		{
+			def->collision_shape[shape_index].position.x = position.x;
+			def->collision_shape[shape_index].position.y = position.y;
+			def->collision_shape[shape_index].position.z = position.z;
+			
+			def->flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+			physics_UpdateReferencingColliders(def);
+		}
+	}
+}
+
 void physics_RotateCollisionShape(collider_def_t *def, vec3_t axis, float amount, int shape_index)
 {
 	if(def)
@@ -569,6 +590,10 @@ void *physics_BuildCollisionShape(collider_def_t *def)
 						break;
 					}
 				}
+				else
+				{
+					return NULL;
+				}
 			break;
 			
 			case COLLIDER_TYPE_CHARACTER_COLLIDER:
@@ -625,14 +650,62 @@ void physics_DecColliderDefRefCount(collider_def_t *def)
 void physics_UpdateReferencingColliders(collider_def_t *def)
 {
 	int i;
+	int type;
+	
+	int count;
 	
 	btRigidBody *rigid_body;
 	btCollisionShape *collision_shape;
-		
+	
+	struct collider_t *colliders;
+	struct collider_t *collider;
+			
 	if(def)
 	{
 		if(!def->ref_count)
 			return;
+		
+	//	for(type = 0; type < COLLIDER_TYPE_LAST; type++)
+	//	{
+		colliders = (struct collider_t *)phy_colliders[type].elements;
+		count = phy_colliders[def->type].element_count;
+			
+		for(i = 0; i < count; i++)
+		{
+			collider = colliders + i;
+			
+			if(collider->flags & COLLIDER_FLAG_INVALID)
+			{
+				continue;
+			}
+			
+			if(collider->def != def)
+			{
+				continue;	
+			}
+			
+			
+			if(!(collider->flags & COLLIDER_FLAG_NO_SCALE_HINT))
+			{
+				/* make a copy of the collision shape, so this collider can be freely scaled... */
+				collision_shape = (btCollisionShape *) physics_BuildCollisionShape(def);
+				rigid_body = (btRigidBody *) collider->rigid_body;
+				
+				/* get rid of the outdated copy this collider has... */
+				physics_DestroyCollisionShape(rigid_body->getCollisionShape());
+				
+				rigid_body->setCollisionShape(collision_shape);
+				rigid_body->setMassProps(def->mass, btVector3(def->inertia_tensor.x, def->inertia_tensor.y, def->inertia_tensor.z));
+			}
+			
+			rigid_body->setAngularVelocity(btVector3(0.0, 0.0, 0.0));
+			rigid_body->setLinearVelocity(btVector3(0.0, 0.0, 0.0));
+			rigid_body->activate(true);
+			
+			collider->flags |= COLLIDER_FLAG_UPDATE_RIGID_BODY;
+		}
+			
+	//	}
 		
 		//for(i = 0; i < collider_list_cursor; i++)
 		//{
@@ -677,18 +750,26 @@ void physics_DestroyCollisionShape(void *collision_shape)
 	
 	coll_shape = (btCollisionShape *) collision_shape;
 	
-	if(coll_shape->getShapeType() == COMPOUND_SHAPE_PROXYTYPE)
+	if(coll_shape)
 	{
-		compound_shape = (btCompoundShape *) coll_shape;
-		c = compound_shape->getNumChildShapes();
-		
-		for(i = c - 1; i >= 0; i--)
+		if(coll_shape->getShapeType() == COMPOUND_SHAPE_PROXYTYPE)
 		{
-			delete compound_shape->getChildShape(i);
+			compound_shape = (btCompoundShape *) coll_shape;
+			c = compound_shape->getNumChildShapes();
+		
+		/*	for(i = 0; i < c; i++)
+			{
+				delete compound_shape->getChildShape(0);
+			}*/
+			
+		//	for(i = c - 1; i >= 0; i--)
+		//	{
+		//		delete compound_shape->getChildShape(i);
+		//	}
 		}
+		
+//		delete coll_shape;
 	}
-	
-	delete coll_shape;
 }
 
 
@@ -811,6 +892,25 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	//collider_index = physics_CreateEmptyCollider();
 	//collider = &colliders[collider_index];
 	
+	
+	
+	
+	if((flags & COLLIDER_FLAG_NO_SCALE_HINT) && def->cached_collision_shape)
+	{
+		collider_collision_shape = (btCollisionShape *)def->cached_collision_shape;
+	}
+	else
+	{
+		collider_collision_shape = (btCollisionShape *) physics_BuildCollisionShape(def);
+	}
+	
+	if(!collider_collision_shape)
+	{
+		printf("physics_CreateCollider: null collision shape\n");
+		return handle;
+	}
+	
+	
 	handle = physics_CreateEmptyCollider(def->type);
 	collider = physics_GetColliderPointerHandle(handle);
 	
@@ -834,16 +934,6 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 		collider->radius = def->radius;
 		collider->max_slope = def->slope_angle;
 		collider->step_height = def->step_height;
-	}
-	
-	
-	if((flags & COLLIDER_FLAG_NO_SCALE_HINT) && def->cached_collision_shape)
-	{
-		collider_collision_shape = (btCollisionShape *)def->cached_collision_shape;
-	}
-	else
-	{
-		collider_collision_shape = (btCollisionShape *) physics_BuildCollisionShape(def);
 	}
 	
 	
@@ -943,9 +1033,10 @@ void physics_DestroyColliderHandle(struct collider_handle_t collider)
 				 
 				physics_world->removeRigidBody(collider_rigid_body);
 				collider_collision_shape = collider_rigid_body->getCollisionShape();
+				physics_DestroyCollisionShape(collider_collision_shape);
+				
 				delete collider_rigid_body;
 				
-				physics_DestroyCollisionShape(collider_collision_shape);
 				
 				physics_DecColliderDefRefCount(collider_ptr->def);
 				
@@ -1542,7 +1633,7 @@ void physics_BuildWorldCollisionMesh()
 	world_triangles = new btTriangleMesh();
 	for(i = 0; i < w_world_vertices_count; i += 3)
 	{
-		world_triangles->addTriangle(btVector3(w_world_vertices[i	 ].position.x, w_world_vertices[i	   ].position.y, w_world_vertices[i	 ].position.z),
+		world_triangles->addTriangle(btVector3(w_world_vertices[i	 ].position.x, w_world_vertices[i	 ].position.y, w_world_vertices[i	 ].position.z),
 		  						     btVector3(w_world_vertices[i + 1].position.x, w_world_vertices[i + 1].position.y, w_world_vertices[i + 1].position.z),
 								     btVector3(w_world_vertices[i + 2].position.x, w_world_vertices[i + 2].position.y, w_world_vertices[i + 2].position.z));
 	}

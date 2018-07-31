@@ -29,6 +29,9 @@ extern vec3_t entity_editor_3d_handle_position;
 extern vec3_t entity_editor_3d_cursor_position;
 extern int entity_editor_3d_handle_transform_mode;
 
+extern int ed_entity_editor_draw_collider_list_cursor;
+extern struct entity_handle_t ed_entity_editor_draw_collider_list[1024];
+
 /* from editor.c */
 extern unsigned int ed_cursors_framebuffer_id;
 extern unsigned int ed_cursors_color_texture_id;
@@ -158,17 +161,118 @@ void editor_EntityEditorDrawColliderDef(int pick)
 {
 	camera_t *active_camera;
 	int i;
+	int j;
 	
 	struct collider_def_t *collider_def;
-	collision_shape_t *collision_shape;
-	mat4_t shape_transform;
+	struct collision_shape_t *collision_shape;
+	struct entity_t *entity;
+	struct transform_component_t *transform_component;
+	struct physics_component_t *physics_component;
+	
+	mat4_t entity_transform;
+	mat4_t shape_local_transform;
+	mat4_t shape_world_transform;
 	
 	float color[4];
 	
 	
+	active_camera = camera_GetActiveCamera();
+	renderer_EnableImediateDrawing();
+	renderer_SetShader(r_imediate_color_shader);
 	
-	if(ed_entity_editor_current_entity_def)
+	glEnable(GL_BLEND);
+	//glDisable(GL_DEPTH_TEST);
+	//glDisable(GL_CULL_FACE);
+	
+	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
+	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+	
+	
+	
+	
+	
+	for(i = 0; i < ed_entity_editor_draw_collider_list_cursor; i++)
 	{
+		entity = entity_GetEntityPointerHandle(ed_entity_editor_draw_collider_list[i]);
+		
+		if(entity)
+		{
+			transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+			physics_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_PHYSICS]);
+				
+			collider_def = physics_component->collider.collider_def;
+			
+			if(collider_def)
+			{
+				mat4_t_compose2(&entity_transform, &transform_component->orientation, transform_component->position, transform_component->scale);
+				
+				for(j = 0; j < collider_def->collision_shape_count; j++)
+				{
+					collision_shape = collider_def->collision_shape + j;
+					
+					mat4_t_compose2(&shape_local_transform, &collision_shape->orientation, collision_shape->position, collision_shape->scale);
+					mat4_t_mult_fast(&shape_world_transform, &shape_local_transform, &entity_transform);
+					
+					renderer_SetModelMatrix(&shape_world_transform);
+					
+					switch(collision_shape->type)
+					{
+						case COLLISION_SHAPE_BOX:	
+							renderer_Color4f(0.0, 1.0, 0.0, 0.2);
+							glCullFace(GL_FRONT);
+							renderer_DrawBox();
+							glCullFace(GL_BACK);
+							renderer_DrawBox();
+							
+							
+							glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+							glDisable(GL_CULL_FACE);
+							glDisable(GL_DEPTH_TEST);
+							renderer_Color4f(1.0, 1.0, 1.0, 1.0);
+							renderer_DrawBox();
+							glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+							glEnable(GL_DEPTH_TEST);
+							glEnable(GL_CULL_FACE);
+						break;
+						
+						case COLLISION_SHAPE_CYLINDER:
+							renderer_Color4f(0.0, 1.0, 0.0, 0.2);
+							glCullFace(GL_FRONT);
+							renderer_DrawCylinder(16, 1.0, 1.0, 0);
+							glCullFace(GL_BACK);
+							renderer_DrawCylinder(16, 1.0, 1.0, 0);
+							
+							
+							
+							glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+							glDisable(GL_CULL_FACE);
+							glDisable(GL_DEPTH_TEST);
+							renderer_Color4f(1.0, 1.0, 1.0, 1.0);
+							renderer_DrawCylinder(16, 1.0, 1.0, 1);
+							glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+							glEnable(GL_DEPTH_TEST);
+							glEnable(GL_CULL_FACE);
+						break;
+					}
+					
+					
+				}
+				
+				
+			}
+			
+		}
+	}
+	
+	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+	
+	renderer_DisableImediateDrawing();
+	
+	
+//	if(ed_entity_editor_current_entity_def)
+//	{
 		/*if(entity_editor_current_entity_def->collider_def)
 		{
 			
@@ -257,7 +361,7 @@ void editor_EntityEditorDrawColliderDef(int pick)
 			}
 
 		}*/
-	}
+//	}
 }
 
 void editor_EntityEditorDrawGrid()
