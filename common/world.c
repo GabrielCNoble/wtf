@@ -2398,24 +2398,34 @@ void world_VisibleEntities()
 	int j;
 	
 	struct entity_t *entity;
+	
 	struct entity_transform_t *world_transforms;
 	struct entity_transform_t *world_transform;
+	
+	struct entity_aabb_t *aabbs;
+	struct entity_aabb_t *aabb;
+	
 	struct model_component_t *model_component;
 	struct model_t *model;
 	batch_t *batch;
+	
+	camera_t *active_camera = camera_GetActiveCamera();
+	
+	vec3_t box[8];
 	
 	struct entity_handle_t *visible_entities;
 	int visible_entity_count;
 	
 	world_transforms = (struct entity_transform_t *)ent_world_transforms.elements;
+	aabbs = (struct entity_aabb_t *)ent_entity_aabbs.elements;
 	
 	
 	//w_visible_entities.element_count = 0;
 	visible_entities = (struct entity_handle_t *)w_visible_entities.elements;
 	visible_entity_count = 0;
-	
 	c = ent_entities[0].element_count;
 	
+	//if(!w_world_)
 	for(i = 0; i < c; i++)
 	{		
 		entity = entity_GetEntityPointerIndex(i);
@@ -2431,21 +2441,25 @@ void world_VisibleEntities()
 			continue;
 		}
 		
-	//	model_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_MODEL]);
-	//	world_transform = world_transforms + entity->components[COMPONENT_TYPE_TRANSFORM].index;
-	//	model = model_GetModelPointerIndex(model_component->model_index);
+		world_transform = world_transforms + entity->components[COMPONENT_TYPE_TRANSFORM].index;
+		aabb = aabbs + entity->components[COMPONENT_TYPE_TRANSFORM].index;
 		
-		if(visible_entity_count >= w_visible_entities.max_elements)
+		if(camera_BoxScreenArea(active_camera, vec3_t_c(world_transform->transform.floats[3][0], world_transform->transform.floats[3][1], world_transform->transform.floats[3][2]), aabb->current_extents))
 		{
-			list_resize(&w_visible_entities, w_visible_entities.max_elements + 128);
-			visible_entities = (struct entity_handle_t *)w_visible_entities.elements;
-		}
-	
-		visible_entities[visible_entity_count].def = 0;
-		visible_entities[visible_entity_count].entity_index = i; 
+			if(visible_entity_count >= w_visible_entities.max_elements)
+			{
+				list_resize(&w_visible_entities, w_visible_entities.max_elements + 128);
+				visible_entities = (struct entity_handle_t *)w_visible_entities.elements;
+			}
 		
-		visible_entity_count++;
+			visible_entities[visible_entity_count].def = 0;
+			visible_entities[visible_entity_count].entity_index = i; 
+			
+			visible_entity_count++;
+		}
 	}
+	
+	//printf("%d\n", visible_entity_count);
 	
 	for(i = 0; i < visible_entity_count; i++)
 	{

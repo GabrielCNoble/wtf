@@ -288,7 +288,7 @@ void OnSpawn()
 	
 	orientation.identity();
 	
-	for(i = 0; i < 150; i++)
+	for(i = 0; i < 350; i++)
 	{
 		entity_handle_t enemy = entity_SpawnEntity(orientation, vec3_t(8.0, 2.0 + i * 2, 0.0), vec3_t(1.0, 1.0, 1.0), entity_def, "enemy");
 		entity_SetEntityVelocity(enemy, vec3_t(0.0, 0.0, 0.0));

@@ -6,6 +6,7 @@
 #include "matrix.h"
 #include "camera.h"
 #include "r_main.h"
+#include "r_debug.h"
 #include "w_common.h"
 #include "material.h"
 #include "memory.h"
@@ -558,6 +559,131 @@ camera_t *camera_GetCamera(char *name)
 	}
 	
 	return NULL;
+}
+
+
+
+float camera_BoxScreenArea(camera_t *camera, vec3_t center, vec3_t extents)
+{
+	int i;
+	
+	float x_max;
+	float x_min;
+	
+	float y_max;
+	float y_min;
+	
+	float qt;
+	float qr;
+	float nznear;
+	
+	vec4_t corners[8];
+	
+	int positive_z;
+	
+	float screen_area;
+	
+	mat4_t view_projection_matrix;
+	
+	nznear = -camera->frustum.znear;
+	
+	qr = nznear / camera->frustum.right;
+	qt = nznear / camera->frustum.top;
+	
+	
+	for(i = 0; i < 8; i++)
+	{
+		corners[i].vec3 = center;
+		corners[i].w = 1.0;
+	}
+	
+	corners[0].x -= extents.x;
+	corners[0].y += extents.y;
+	corners[0].z -= extents.z;
+	
+	corners[1].x -= extents.x;
+	corners[1].y += extents.y;
+	corners[1].z += extents.z;
+	
+	corners[2].x += extents.x;
+	corners[2].y += extents.y;
+	corners[2].z += extents.z;
+	
+	corners[3].x += extents.x;
+	corners[3].y += extents.y;
+	corners[3].z -= extents.z;
+	
+	
+	
+	corners[4].x -= extents.x;
+	corners[4].y -= extents.y;
+	corners[4].z -= extents.z;
+	
+	corners[5].x -= extents.x;
+	corners[5].y -= extents.y;
+	corners[5].z += extents.z;
+	
+	corners[6].x += extents.x;
+	corners[6].y -= extents.y;
+	corners[6].z += extents.z;
+	
+	corners[7].x += extents.x;
+	corners[7].y -= extents.y;
+	corners[7].z -= extents.z;
+	
+	x_max = -10.0;
+	y_max = -10.0;
+	
+	x_min = 10.0;
+	y_min = 10.0;
+	
+	positive_z = 0;
+	
+	for(i = 0; i < 8; i++)
+	{
+		mat4_t_vec4_t_mult(&camera->view_data.view_matrix, &corners[i]);
+		
+		if(corners[i].z > nznear)
+		{
+			corners[i].z = nznear;
+			positive_z++;
+		}
+		
+		corners[i].x = (corners[i].x * qr) / corners[i].z;
+		corners[i].y = (corners[i].y * qt) / corners[i].z;
+		
+		if(corners[i].x > x_max) x_max = corners[i].x;
+		if(corners[i].x < x_min) x_min = corners[i].x;
+		
+		if(corners[i].y > y_max) y_max = corners[i].y;
+		if(corners[i].y < y_min) y_min = corners[i].y;
+	}
+	
+	if(x_max > 1.0) x_max = 1.0;
+	else if(x_max < -1.0) x_max = -1.0;
+	
+	if(x_min < -1.0) x_min = -1.0;
+	else if(x_min > 1.0) x_min = 1.0;
+	
+	if(y_max > 1.0) y_max = 1.0;
+	else if(y_max < -1.0) y_max = -1.0;
+	
+	if(y_min < -1.0) y_min = -1.0;
+	else if(y_min > 1.0) y_min = 1.0;
+	
+/*	renderer_Draw2dLine(vec2(x_min, y_max), vec2(x_min, y_min), vec3_t_c(0.0, 1.0, 0.0), 1.0, 0);
+	renderer_Draw2dLine(vec2(x_min, y_min), vec2(x_max, y_min), vec3_t_c(0.0, 1.0, 0.0), 1.0, 0);
+	renderer_Draw2dLine(vec2(x_max, y_min), vec2(x_max, y_max), vec3_t_c(0.0, 1.0, 0.0), 1.0, 0);
+	renderer_Draw2dLine(vec2(x_max, y_max), vec2(x_min, y_max), vec3_t_c(0.0, 1.0, 0.0), 1.0, 0);*/
+	
+	screen_area = (x_max - x_min) * (y_max - y_min);
+	
+	if(positive_z < 8 && screen_area > 0.0)
+	{
+		return screen_area;
+	}
+	
+	return 0.0;
 }
 
 /*camera_t *camera_GetCameraByIndex(int camera_index)

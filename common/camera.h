@@ -57,6 +57,12 @@ camera_t *camera_GetCamera(char *name);
 
 camera_t *camera_GetCameraByIndex(int camera_index);
 
+
+
+float camera_BoxScreenArea(camera_t *camera, vec3_t center, vec3_t extents);
+
+
+
 void camera_UpdateCamerasCallback();
 
 #ifdef __cplusplus
