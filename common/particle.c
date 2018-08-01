@@ -376,6 +376,12 @@ int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientat
 
 void particle_RemoveParticleSystem(int particle_system)
 {
+	
+	
+}
+
+void particle_MarkForRemoval(int particle_system)
+{
 	struct particle_system_t *ps;
 	
 	ps = particle_GetParticleSystemPointer(particle_system);
@@ -384,20 +390,9 @@ void particle_RemoveParticleSystem(int particle_system)
 	{
 		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_INVALID))
 		{
-			ps->flags |= PARTICLE_SYSTEM_FLAG_MARKED_INVALID;
+			ps->flags |= PARTICLE_SYSTEM_FLAG_MARKED_INVALID | PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID;
 		}
 	}
-	
-	/*if(particle_system >= 0 && particle_system < ps_particle_systems.element_count)
-	{
-		ps = (particle_system_t *)ps_particle_systems.elements + particle_system_index;
-		
-		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_INVALID))
-		{
-			ps->flags |= PARTICLE_SYSTEM_FLAG_MARKED_INVALID;
-		}
-	}*/
-	
 }
 
 void particle_DeallocParticleSystem(int particle_system)
@@ -479,6 +474,7 @@ void particle_UpdateParticleSystems(double delta_time)
 	
 	particle_systems = (struct particle_system_t *)ps_particle_systems.elements;
 	c = ps_particle_systems.element_count;
+	
 	for(i = 0; i < c; i++)
 	{
 		if(particle_systems[i].flags & PARTICLE_SYSTEM_FLAG_INVALID)
@@ -537,28 +533,23 @@ void particle_UpdateParticleSystems(double delta_time)
 					}
 					
 					ps->particles[ps->particle_count].life = particle_life;
+					ps->particles[ps->particle_count].velocity.x = 0.0;
+					ps->particles[ps->particle_count].velocity.y = 0.0;
+					ps->particles[ps->particle_count].velocity.z = 0.0;
 							
 					ps->particle_positions[ps->particle_count].x = ps->position.x;
 					ps->particle_positions[ps->particle_count].y = ps->position.y;
 					ps->particle_positions[ps->particle_count].z = ps->position.z;
+					
+					
+					
 					ps->particle_positions[ps->particle_count].w = 1.0;
 					ps->particle_frames[ps->particle_count] = 0;		
 					ps->particle_count++;
 				}
 			}
 		}
-		else
-		{
-			if(!particle_systems[i].particle_count)
-			{
-				particle_DeallocParticleSystem(i);
-				continue;
-			}
-		}
 		
-
-			 
-		//ps->respawn_countdown++;			
 		for(j = 0; j < ps->particle_count; j++)
 		{	
 			if(ps->particles[j].life >= ps->max_life)
@@ -591,8 +582,13 @@ void particle_UpdateParticleSystems(double delta_time)
 			}
 		}
 		
-		ps->flags &= ~PARTICLE_SYSTEM_FLAG_JUST_SPAWNED;
-			
+		if(!ps->particle_count)
+		{
+			particle_DeallocParticleSystem(i);
+			continue;
+		}
+		
+	//	ps->flags &= ~PARTICLE_SYSTEM_FLAG_JUST_SPAWNED;		
 	}
 	//}
 	
@@ -630,12 +626,7 @@ void *particle_SetupScriptDataCallback(struct script_t *script, void *particle_s
 	
 				
 	//if(ps->flags & PARTICLE_SYSTEM_FLAG_JUST_SPAWNED)
-	//{
-		//entry_point = ps_script->init;
-	//	script_QueueEntryPoint(ps_script->on_spawn_entry_point);
-	//}
 	
-	script_QueueEntryPoint(ps_script->on_update_entry_point);
 	
 	particle_array.buffer = ps->particles;
 	particle_array.element_size = sizeof(struct particle_t);
@@ -650,15 +641,27 @@ void *particle_SetupScriptDataCallback(struct script_t *script, void *particle_s
 	particle_positions_array.element_size = sizeof(vec4_t);
 	particle_positions_array.element_count = ps->particle_count;
 	
+	if(ps->flags & PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID)
+	{
+		ps->flags &= ~PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID;
+		
+		script_QueueEntryPoint(ps_script->on_die_entry_point);
+		script_PushArg(ps, SCRIPT_ARG_TYPE_ADDRESS);
+	}
+	else if(ps_frame - ps->spawn_frame <= 1)
+	{
+		script_QueueEntryPoint(ps_script->on_spawn_entry_point);
+		script_PushArg(ps, SCRIPT_ARG_TYPE_ADDRESS);
+		script_PushArg(&particle_positions_array, SCRIPT_ARG_TYPE_ADDRESS);
+		script_PushArg(&particle_array, SCRIPT_ARG_TYPE_ADDRESS);
+		script_PushArg(&particle_frame_array, SCRIPT_ARG_TYPE_ADDRESS);
+	}
+		
+	script_QueueEntryPoint(ps_script->on_update_entry_point);
 	script_PushArg(ps, SCRIPT_ARG_TYPE_ADDRESS);
 	script_PushArg(&particle_positions_array, SCRIPT_ARG_TYPE_ADDRESS);
 	script_PushArg(&particle_array, SCRIPT_ARG_TYPE_ADDRESS);
 	script_PushArg(&particle_frame_array, SCRIPT_ARG_TYPE_ADDRESS);
-	
-	
-	//script_QueueEntryPoint(ps_script->script.main_entry_point);
-		//entry_point = ps_script->script.main_entry_point;
-	
 	
 	return entry_point;
 }
@@ -678,37 +681,7 @@ int particle_GetScriptDataCallback(struct script_t *script)
 	
 	ps_script->on_spawn_entry_point = script_GetFunctionAddress("OnSpawn", script);
 	ps_script->on_update_entry_point = script_GetFunctionAddress("OnUpdate", script);
-	
-				
-/*	if(!ps_script->particle_array)
-	{
-		printf("particle_GetScriptDataCallback: script [%s] is missing global var [array<particle_t> ps_particles]\n", script->name);
-		success = 0;
-	}
-				
-	if(!ps_script->particle_frame_array)
-	{
-		printf("script_CompileScriptSource: script [%s] is missing global var [array<int> ps_particle_frames]\n", script->name);
-		success = 0;
-	}
-				
-	if(!ps_script->particle_position_array)
-	{
-		printf("script_CompileScriptSource: script [%s] is missing global var [array<vec4_t> ps_particle_positions]\n", script->name);
-		success = 0;
-	}
-				
-	if(!ps_script->particle_system)
-	{
-		printf("script_CompileScriptSource: script [%s] is missing global var [particle_system_t@ ps_particle_system]\n", script->name);
-		success = 0;
-	}*/
-				
-	/*if(!ps_script->init)
-	{
-		printf("script_CompileScriptSource: script [%s] is missing function [void ps_init()]\n", script->name);
-		success = 0;
-	}*/
+	ps_script->on_die_entry_point = script_GetFunctionAddress("OnDie", script);
 	
 	return success;
 }

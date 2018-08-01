@@ -92,17 +92,17 @@ void list_resize(struct list_t *list, int new_size)
 	
 	int new_count;
 	
-	if(new_size >= 0)
+	if(new_size <= 0)
 	{
 		return;
 	}
 
-	new_size = (new_size + 3) & (~3);
+	//new_size = (new_size + 3) & (~3);
 	
 	if(new_size > list->max_elements)
 	{
 		elems = memory_Calloc(new_size, list->element_size, "list_resize");
-		memcpy(elems, list->elements, list->max_elements);
+		memcpy(elems, list->elements, list->element_size * list->max_elements);
 		memory_Free(list->elements);
 		list->elements = elems;
 	}

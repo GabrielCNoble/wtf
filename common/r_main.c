@@ -251,7 +251,7 @@ mat4_t r_model_view_projection_matrix;
 camera_t *r_active_view = NULL;
 camera_t *r_main_view = NULL;
 
-gpu_lamp_t *r_light_buffer = NULL;
+struct gpu_light_t *r_light_buffer = NULL;
 
 extern camera_t *active_camera;
 extern camera_t *main_view;
@@ -370,7 +370,7 @@ int renderer_Init(int width, int height, int init_mode)
 	r_unsorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * r_max_draw_cmds_count, "renderer_Init");
 	r_sorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * r_max_draw_cmds_count, "renderer_Init");
 	
-	r_light_buffer = memory_Malloc(sizeof(gpu_lamp_t) * MAX_VISIBLE_LIGHTS, "renderer_Init");
+	r_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS, "renderer_Init");
 	
 	//assert(r_draw_command_groups);
 	//assert(r_draw_cmds);
@@ -1780,7 +1780,7 @@ void renderer_SetViewLightData(view_data_t *view_data)
 	light_params_t *parms;
 	view_light_t *view_lights;
 
-	gpu_lamp_t *lights;
+	struct gpu_light_t *lights;
 	
 	if(!l_light_cache_uniform_buffer)
 		return;
@@ -1822,7 +1822,7 @@ void renderer_SetViewLightData(view_data_t *view_data)
 		lights[i].bm_flags = parms->bm_flags & (~LIGHT_GENERATE_SHADOWS);
 	}
 
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(gpu_lamp_t) * MAX_VISIBLE_LIGHTS, lights);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS, lights);
 	//glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	
 	

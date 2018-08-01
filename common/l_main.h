@@ -32,6 +32,17 @@ typedef struct
 }view_clusters_t;
 
 
+struct light_cluster_t
+{
+	unsigned x0 : 6;
+	unsigned y0 : 5;
+	unsigned z0 : 5;
+	
+	unsigned x1 : 6;
+	unsigned y1 : 5;
+	unsigned z1 : 5;
+};
+
 typedef struct
 {
 	mat4_t world_to_light_matrix;
@@ -77,8 +88,11 @@ typedef struct
 	//unsigned int *view_clusters;
 	//view_cluster_t *view_clusters;
 	
-	unsigned int first_cluster;
-	unsigned int last_cluster;
+//	unsigned int first_cluster;
+//	unsigned int last_cluster;
+	
+	struct light_cluster_t cluster;
+	
 }light_params_t;
 
 
@@ -88,7 +102,7 @@ typedef struct
 	light_position_t *position;
 }light_ptr_t;
 
-typedef struct
+struct gpu_light_t
 {
 	
 	vec4_t forward_axis;
@@ -98,7 +112,7 @@ typedef struct
 	int x_y;
 	int align0;
 	int align1;
-}gpu_lamp_t;
+};
 
 
 typedef struct

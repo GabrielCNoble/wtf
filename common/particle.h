@@ -20,8 +20,9 @@ enum PARTICLE_SYSTEM_FLAGS
 	PARTICLE_SYSTEM_FLAG_SELF_DESTRUCT = 1,
 	PARTICLE_SYSTEM_FLAG_INVALID = 1 << 1,
 	PARTICLE_SYSTEM_FLAG_MARKED_INVALID = 1 << 2,
-	PARTICLE_SYSTEM_FLAG_APPLY_ROTATION_TO_PARTICLES = 1 << 3,
-	PARTICLE_SYSTEM_FLAG_JUST_SPAWNED = 1 << 4,
+	PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID = 1 << 3,
+	PARTICLE_SYSTEM_FLAG_APPLY_ROTATION_TO_PARTICLES = 1 << 4,
+	PARTICLE_SYSTEM_FLAG_JUST_SPAWNED = 1 << 5,
 };
 
 
@@ -36,6 +37,7 @@ struct particle_system_script_t
 	
 	void *on_spawn_entry_point;
 	void *on_update_entry_point;
+	void *on_die_entry_point;
 };
 
 
@@ -133,7 +135,7 @@ int particle_GetParticleSystemDef(char *def_name);
 
 int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientation, int particle_system_def);
 
-void particle_RemoveParticleSystem(int particle_system);
+void particle_MarkForRemoval(int particle_system);
 
 struct particle_system_t *particle_GetParticleSystemPointer(int particle_system);
 

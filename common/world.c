@@ -69,7 +69,12 @@ bsp_dleaf_t **w_visible_leaves = NULL;
 
 int w_visible_lights_count = 0;
 unsigned short w_visible_lights[MAX_WORLD_LIGHTS];
-gpu_lamp_t *w_light_buffer = NULL;
+
+
+struct list_t w_visible_entities;
+
+
+struct gpu_light_t *w_light_buffer = NULL;
 
 int w_world_handle = -1;
 int w_world_start = -1;
@@ -134,7 +139,8 @@ extern "C"
  
 int world_Init()
 {
-	w_light_buffer = memory_Malloc(sizeof(gpu_lamp_t) * MAX_VISIBLE_LIGHTS, "world_Init");	
+	w_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS, "world_Init");	
+	w_visible_entities = list_create(sizeof(struct entity_handle_t), 128, NULL);
 	
 	return 1;	
 }
@@ -144,6 +150,7 @@ void world_Finish()
 	world_Clear();
 	
 	memory_Free(w_light_buffer);
+	list_destroy(&w_visible_entities);
 }
 
 
@@ -1131,7 +1138,16 @@ void world_LightBounds()
 			if(cluster_z_end > CLUSTER_LAYERS)
 				cluster_z_end = CLUSTER_LAYERS - 1;
 			
-			params->first_cluster = PACK_CLUSTER_INDEXES2(cluster_x_start, cluster_y_start, cluster_z_start, cluster_x_end, cluster_y_end, cluster_z_end);
+			params->cluster.x0 = cluster_x_start;
+			params->cluster.y0 = cluster_y_start;
+			params->cluster.z0 = cluster_z_start;
+			
+			params->cluster.x1 = cluster_x_end;
+			params->cluster.y1 = cluster_y_end;
+			params->cluster.z1 = cluster_z_end;
+			
+			
+			//params->first_cluster = PACK_CLUSTER_INDEXES2(cluster_x_start, cluster_y_start, cluster_z_start, cluster_x_end, cluster_y_end, cluster_z_end);
 			//view_data->view_lights[i].light_index = light_index;
 			//view_data->view_lights[i].view_clusters = PACK_CLUSTER_INDEXES2(cluster_x_start, cluster_y_start, cluster_z_start, cluster_x_end, cluster_y_end, cluster_z_end);
 			//view_clusters->clusters = params->first_cluster;
@@ -2388,17 +2404,20 @@ void world_VisibleEntities()
 	struct model_t *model;
 	batch_t *batch;
 	
+	struct entity_handle_t *visible_entities;
+	int visible_entity_count;
+	
 	world_transforms = (struct entity_transform_t *)ent_world_transforms.elements;
+	
+	
+	//w_visible_entities.element_count = 0;
+	visible_entities = (struct entity_handle_t *)w_visible_entities.elements;
+	visible_entity_count = 0;
 	
 	c = ent_entities[0].element_count;
 	
 	for(i = 0; i < c; i++)
-	{
-		/*if(ent_entities[i].flags & ENTITY_INVALID)
-		{
-			continue;
-		}*/
-		
+	{		
 		entity = entity_GetEntityPointerIndex(i);
 		
 		if(!entity)
@@ -2406,21 +2425,35 @@ void world_VisibleEntities()
 			continue;
 		}
 		
-		//entity = ent_entities + i;
-		
 		if(entity->components[COMPONENT_TYPE_MODEL].type == COMPONENT_TYPE_NONE)
 		{
 			/* entities without models won't get rendered... */
 			continue;
 		}
 		
-		//model_component = (struct model_component_t *)ent_components[0][COMPONENT_TYPE_MODEL].components + entity->components[COMPONENT_INDEX_MODEL].index;
+	//	model_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_MODEL]);
+	//	world_transform = world_transforms + entity->components[COMPONENT_TYPE_TRANSFORM].index;
+	//	model = model_GetModelPointerIndex(model_component->model_index);
+		
+		if(visible_entity_count >= w_visible_entities.max_elements)
+		{
+			list_resize(&w_visible_entities, w_visible_entities.max_elements + 128);
+			visible_entities = (struct entity_handle_t *)w_visible_entities.elements;
+		}
+	
+		visible_entities[visible_entity_count].def = 0;
+		visible_entities[visible_entity_count].entity_index = i; 
+		
+		visible_entity_count++;
+	}
+	
+	for(i = 0; i < visible_entity_count; i++)
+	{
+		entity = entity_GetEntityPointerHandle(visible_entities[i]);
+		
 		model_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_MODEL]);
 		world_transform = world_transforms + entity->components[COMPONENT_TYPE_TRANSFORM].index;
-		
-		
 		model = model_GetModelPointerIndex(model_component->model_index);
-		
 		
 		for(j = 0; j < model->batch_count; j++)
 		{
@@ -2428,6 +2461,7 @@ void world_VisibleEntities()
 			renderer_SubmitDrawCommand(&world_transform->transform, model->draw_mode, model->vert_start + batch->start, batch->next, batch->material_index, 0);
 		}
 	}
+	
 	
 	
 	/*int leaf_index;
@@ -2513,7 +2547,7 @@ void world_UploadVisibleLights()
 	camera_t *active_camera;
 	//view_light_t *view_lights;
 
-	gpu_lamp_t *lights;
+	struct gpu_light_t *lights;
 	
 	if(!l_light_cache_uniform_buffer)
 		return;
@@ -2558,7 +2592,7 @@ void world_UploadVisibleLights()
 		w_light_buffer[i].bm_flags = parms->bm_flags & (~LIGHT_GENERATE_SHADOWS);
 	}
 
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(gpu_lamp_t) * MAX_VISIBLE_LIGHTS, w_light_buffer);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS, w_light_buffer);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	
 	
@@ -2592,7 +2626,15 @@ void world_UploadVisibleLights()
 		parms = &l_light_params[light_index];
 		
 		//UNPACK_CLUSTER_INDEXES2(cluster_x_start, cluster_y_start, cluster_z_start, cluster_x_end, cluster_y_end, cluster_z_end, view_lights[i].view_clusters);
-		UNPACK_CLUSTER_INDEXES2(cluster_x_start, cluster_y_start, cluster_z_start, cluster_x_end, cluster_y_end, cluster_z_end, parms->first_cluster);
+		//UNPACK_CLUSTER_INDEXES2(cluster_x_start, cluster_y_start, cluster_z_start, cluster_x_end, cluster_y_end, cluster_z_end, parms->first_cluster);
+		
+		cluster_x_start = parms->cluster.x0;
+		cluster_y_start = parms->cluster.y0;
+		cluster_z_start = parms->cluster.z0;
+		
+		cluster_x_end = parms->cluster.x1;
+		cluster_y_end = parms->cluster.y1;
+		cluster_z_end = parms->cluster.z1;
 		
 		for(z = cluster_z_start; z <= cluster_z_end && z < CLUSTER_LAYERS; z++)
 		{
@@ -2644,6 +2686,11 @@ void world_VisibleLights()
 	
 	w_visible_lights_count = 0;
 	
+	float d;
+	float radius;
+	float s;
+	float e;
+	
 	if(!w_world_leaves)
 	{
 		for(i = 0; i < l_light_list_cursor; i++)
@@ -2653,52 +2700,37 @@ void world_VisibleLights()
 				w_visible_lights[w_visible_lights_count++] = i;
 			}
 		}
-		
-		goto _clusterize;
 	}
-	
-	float d;
-	float radius;
-	float s;
-	float e;
-	
-	//s = engine_GetDeltaTime();
-	
-	//light_EvictOld();
-	
-	//e = engine_GetDeltaTime();
-	
-	//printf("%f\n", e - s);
-	
-	s = engine_GetDeltaTime();
-	
-	for(i = 0; i < MAX_WORLD_LIGHTS >> 5; i++)
+	else
 	{
-		lights.lights[i] = 0;
-	}
-	
-	for(i = 0; i < c; i++)
-	{
-		leaf = w_visible_leaves[i];
+		s = engine_GetDeltaTime();
 		
-		leaf_index = leaf - w_world_leaves;
-		
-		for(j = 0; j < MAX_WORLD_LIGHTS >> 5; j++)
+		for(i = 0; i < MAX_WORLD_LIGHTS >> 5; i++)
 		{
-			lights.lights[j] |= w_leaf_lights[leaf_index].lights[j];
+			lights.lights[i] = 0;
+		}
+		
+		for(i = 0; i < c; i++)
+		{
+			leaf = w_visible_leaves[i];
+			
+			leaf_index = leaf - w_world_leaves;
+			
+			for(j = 0; j < MAX_WORLD_LIGHTS >> 5; j++)
+			{
+				lights.lights[j] |= w_leaf_lights[leaf_index].lights[j];
+			}
+		}
+		
+		for(i = 0; i < MAX_WORLD_LIGHTS; i++)
+		{
+			if(lights.lights[i >> 5] & (1 << (i % 32)))
+			{
+				w_visible_lights[w_visible_lights_count++] = i;
+			}
 		}
 	}
-	
-	for(i = 0; i < MAX_WORLD_LIGHTS; i++)
-	{
-		if(lights.lights[i >> 5] & (1 << (i % 32)))
-		{
-			w_visible_lights[w_visible_lights_count++] = i;
-		}
-	}
-	
-	_clusterize:
-	//light_LightBounds();
+
 	world_LightBounds();
 	 
 	
@@ -2739,6 +2771,9 @@ void world_VisibleLights()
 		}
 	}
 	
+	
+	
+	
 	world_UploadVisibleLights();
 		
 /*	for(i = 0; i < visible_light_count; i++)
@@ -2749,6 +2784,101 @@ void world_VisibleLights()
 	light_UpdateClusters();
 	light_UploadCache();*/
 
+}
+
+void world_VisibleLightTriangles()
+{
+	#if 0
+	int slot_index;
+	int i;
+	int c;
+	int j;
+	int r;
+	int first_vertex_index;
+	float radius;
+	float sqrd_radius;
+	float dist;
+	light_params_t *parms;
+	light_position_t *pos;
+	bsp_striangle_t *visible_triangles;
+	int *visible_tris;
+	vertex_t *first_vertex;
+	vec3_t v;
+	vec3_t p;
+	
+	vec3_t box_max = {-9999999999.9, -9999999999.9, -9999999999.9};
+	vec3_t box_min = {9999999999.9, 9999999999.9, 9999999999.9};
+	
+	vec3_t close_max = {-9999999999.9, -9999999999.9, -9999999999.9};
+	vec3_t close_min = {9999999999.9, 9999999999.9, 9999999999.9};
+	
+	
+	bsp_dleaf_t *leaf;
+	
+	if(!world_leaves)
+		return;
+		
+	
+	
+	if(light_index >= 0 && light_index <= l_light_list_cursor)
+	{
+		if(!(l_light_params[light_index].bm_flags & LIGHT_INVALID))
+		{
+			parms = &l_light_params[light_index];
+			pos = &l_light_positions[light_index];
+			leaf = (bsp_dleaf_t *)parms->leaf;
+		
+			if(leaf)
+			{	
+				radius = LIGHT_RADIUS(parms->radius);
+				sqrd_radius = radius * radius;
+				
+				//printf("update visible triangles\n");
+				
+				parms->visible_triangle_count = 0;
+				parms->bm_flags |= LIGHT_NEEDS_REUPLOAD;
+				slot_index = light_index * MAX_TRIANGLES_PER_LIGHT;
+				visible_triangles = &l_light_visible_triangles[slot_index];
+				
+				for(r = 0; r < world_leaves_count; r++)
+				{
+					if(leaf_lights[r].lights[light_index >> 5] & (1 << (light_index % 32)))
+					{
+						leaf = &world_leaves[r];
+						
+						c = leaf->tris_count;
+				
+						for(i = 0; i < c && i < MAX_TRIANGLES_PER_LIGHT; i++)
+						{
+							first_vertex = &world_vertices[leaf->tris[i].first_vertex];
+							//first_vertex = &world_vertices[TRIS_FIRST_VERTEX(leaf->tris[i])];
+							
+							for(j = 0; j < 3; j++)
+							{
+								v.x = first_vertex[j].position.x - pos->position.x;
+								v.y = first_vertex[j].position.y - pos->position.y;
+								v.z = first_vertex[j].position.z - pos->position.z;
+								
+								dist = dot3(v, v);
+								
+								if(dist < sqrd_radius)
+								{
+									*visible_triangles = leaf->tris[i];
+									visible_triangles++;
+									parms->visible_triangle_count++;	
+									break;
+								}
+							
+							}
+						}
+					}
+				}
+
+			}
+		}
+	}
+	
+	#endif
 }
 
 

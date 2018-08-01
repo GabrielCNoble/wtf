@@ -183,7 +183,9 @@ struct entity_handle_t *entity_GetTouchedEntities(struct entity_handle_t entity,
 ==============================================================
 */
 
-void entity_UpdateEntityAabbIndex(struct entity_handle_t entity);
+void entity_UpdateAabb(struct entity_handle_t entity);
+
+void entity_AabbWorldExtents(struct entity_handle_t entity, vec3_t *extent_max, vec3_t *extent_min);
 
 void entity_UpdateScriptComponents();
 

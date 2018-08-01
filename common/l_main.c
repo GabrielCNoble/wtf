@@ -77,6 +77,9 @@ extern bsp_dleaf_t **w_visible_leaves;
 extern int w_world_vertices_count;
 extern vertex_t *w_world_vertices;
 
+
+struct gpu_light_t *l_gpu_light_buffer;
+
 /* from l_cache.c */
 //extern int light_cache_cursor;
 //extern int light_cache_stack_top;
@@ -92,6 +95,7 @@ extern vertex_t *w_world_vertices;
 //mat4_t l_shadow_map_projection_matrix;
 
 #define MAX_VISIBLE_LIGHTS 32
+#define MAX_SHADOW_MAP_RES 1024
 
 //int visible_light_count;
 //int visible_lights[MAX_WORLD_LIGHTS];
@@ -225,7 +229,7 @@ int light_Init()
 	glBindTexture(GL_TEXTURE_3D, 0);
 	//printf("cluster texture: %x\n", glGetError());
 	
-	//while(glGetError() != GL_NO_ERROR);
+	while(glGetError() != GL_NO_ERROR);
 	glGenTextures(1, &l_shadow_maps_array);
 	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, l_shadow_maps_array);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -235,8 +239,23 @@ int light_Init()
 	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAX_LEVEL, 4);
-	glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_DEPTH_COMPONENT16, 512, 512, MAX_VISIBLE_LIGHTS * 6, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_DEPTH_COMPONENT16, MAX_SHADOW_MAP_RES, MAX_SHADOW_MAP_RES, 8 * 6, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
+	
+	if(glGetError() == GL_OUT_OF_MEMORY)
+	{
+		log_LogMessage(LOG_MESSAGE_ERROR, "light_Init: out of graphics memory!");
+		return 0;	
+	}
+	
+	
+	glGenBuffers(1, &l_light_cache_uniform_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, l_light_cache_uniform_buffer);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_light_t) * LIGHT_CACHE_SIZE, NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+		
+	l_gpu_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * LIGHT_CACHE_SIZE, "light_InitCache");
+	
 	
 	//printf("wow:: %x\n", glGetError());
 	
@@ -315,26 +334,26 @@ int light_Init()
 	//alloc_chunk_size = 1024;
 	//alloc_chunks = memory_Malloc(sizeof(ks_chunk_t) * alloc_chunk_size, "light_Init");	
 	
-	c = SHARED_SHADOW_MAP_WIDTH / (SHADOW_MAP_RESOLUTION * 3);
-	k = SHARED_SHADOW_MAP_HEIGHT / (SHADOW_MAP_RESOLUTION * 2);
+//	c = SHARED_SHADOW_MAP_WIDTH / (SHADOW_MAP_RESOLUTION * 3);
+//	k = SHARED_SHADOW_MAP_HEIGHT / (SHADOW_MAP_RESOLUTION * 2);
 	
-	max_shadow_maps = c * k;
+//	max_shadow_maps = c * k;
 	
-	l_shadow_maps = memory_Malloc(sizeof(shadow_map_t) * max_shadow_maps, "light_Init");
+//	l_shadow_maps = memory_Malloc(sizeof(shadow_map_t) * max_shadow_maps, "light_Init");
 	
-	r = 0;
-	for(i = 0; i < c; i++)
-	{
-		for(j = 0; j < k; j++)
-		{
-			l_shadow_maps[r].x = i * SHADOW_MAP_RESOLUTION * 3;
-			l_shadow_maps[r].y = j * SHADOW_MAP_RESOLUTION * 2;
-			r++;
-		}
-	}
+//	r = 0;
+//	for(i = 0; i < c; i++)
+//	{
+//		for(j = 0; j < k; j++)
+//		{
+//			l_shadow_maps[r].x = i * SHADOW_MAP_RESOLUTION * 3;
+//			l_shadow_maps[r].y = j * SHADOW_MAP_RESOLUTION * 2;
+//			r++;
+//		}
+//	}
 	
-	free_shadow_map_x = l_shadow_maps[r - 1].x;
-	free_shadow_map_y = l_shadow_maps[r - 1].y;
+//	free_shadow_map_x = l_shadow_maps[r - 1].x;
+//	free_shadow_map_y = l_shadow_maps[r - 1].y;
 	
 	/*free_shadow_map_x = 0;
 	free_shadow_map_y = 0;*/
@@ -385,7 +404,7 @@ void light_Finish()
 	//free(free_chunks);
 	//free(alloc_chunks);
 	
-	memory_Free(l_shadow_maps);
+//	memory_Free(l_shadow_maps);
 	memory_Free(l_clusters);	
 	//free(visible_light_positions);
 	//free(visible_light_params);

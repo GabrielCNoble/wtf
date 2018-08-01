@@ -84,6 +84,8 @@ void world_VisibleEntities();
 
 void world_VisibleLights();
 
+void world_VisibleLightTriangles();
+
 void world_VisibleLeaves();
 
 void world_VisibleWorld();

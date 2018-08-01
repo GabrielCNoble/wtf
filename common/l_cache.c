@@ -50,7 +50,7 @@ int *l_light_cache_frustum_counts;
 int *l_light_cache_index_buffers[LIGHT_CACHE_SIZE];
 light_cache_slot_t l_light_cache[LIGHT_CACHE_SIZE];*/
 
-gpu_lamp_t *lamp_buffer;
+//gpu_lamp_t *lamp_buffer;
 
 unsigned int test_uniform_buffer;
 
@@ -75,14 +75,14 @@ void light_InitCache()
 	
 	
 	//while(glGetError() != GL_NO_ERROR);
-	glGenBuffers(1, &l_light_cache_uniform_buffer);
-	glBindBuffer(GL_UNIFORM_BUFFER, l_light_cache_uniform_buffer);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(gpu_lamp_t) * LIGHT_CACHE_SIZE, NULL, GL_DYNAMIC_DRAW);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+//	glGenBuffers(1, &l_light_cache_uniform_buffer);
+//	glBindBuffer(GL_UNIFORM_BUFFER, l_light_cache_uniform_buffer);
+//	glBufferData(GL_UNIFORM_BUFFER, sizeof(gpu_lamp_t) * LIGHT_CACHE_SIZE, NULL, GL_DYNAMIC_DRAW);
+//	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	
 	//printf("%d\n", glGetError());
 	
-	lamp_buffer = memory_Malloc(sizeof(gpu_lamp_t) * LIGHT_CACHE_SIZE, "light_InitCache");
+//	lamp_buffer = memory_Malloc(sizeof(gpu_lamp_t) * LIGHT_CACHE_SIZE, "light_InitCache");
 	
 /*	glGenBuffers(1, &test_uniform_buffer);
 	glBindBuffer(GL_UNIFORM_BUFFER, test_uniform_buffer);
@@ -121,10 +121,10 @@ void light_InitCache()
 			
 	}*/
 		
-	for(i = 0; i < LIGHT_CACHE_SIZE; i++)
+	/*for(i = 0; i < LIGHT_CACHE_SIZE; i++)
 	{
 		l_light_cache[i].offset = i;
-	}
+	}*/
 	
 	
 	R_DBG_POP_FUNCTION_NAME();
@@ -135,9 +135,9 @@ void light_InitCache()
 void light_FinishCache()
 {
 	//memory_Free(light_cache_frustum_counts);
-	memory_Free(lamp_buffer);
-	glDeleteBuffers(1, &l_light_cache_uniform_buffer);
-	glDeleteBuffers(1, &l_light_cache_shadow_element_buffer);
+//	memory_Free(lamp_buffer);
+//	glDeleteBuffers(1, &l_light_cache_uniform_buffer);
+//	glDeleteBuffers(1, &l_light_cache_shadow_element_buffer);
 }
 
 
@@ -338,6 +338,7 @@ void light_EvictOld()
 
 void light_UploadCache()
 {
+	#if 0
 	int i;
 	int light_index;
 	int uniform_index = 0;
@@ -352,7 +353,7 @@ void light_UploadCache()
 	light_params_t *parms;
 	camera_t *active_camera = camera_GetActiveCamera();
 	mat4_t view_projection_matrix;
-	gpu_lamp_t *lamp;
+	struct gpu_light_t *lamp;
 	
 	if(!l_light_cache_uniform_buffer)
 		return;
@@ -370,7 +371,7 @@ void light_UploadCache()
 	
 	/* BOTTLENECK: this call is taking between 3 and 6 ms... */
 	//lamp = (gpu_lamp_t *) glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-	lamp = lamp_buffer;
+	lamp = l_gpu_light_buffer;
 	
 	for(i = 0; i < l_light_cache_cursor; i++)
 	{
@@ -446,6 +447,8 @@ void light_UploadCache()
 	
 	R_DBG_POP_FUNCTION_NAME();
 	//e = engine_GetDeltaTime();
+	
+	#endif
 	
 	//printf("%f\n", e - s);
 	

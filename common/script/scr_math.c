@@ -19,9 +19,9 @@ float randfloat()
 {
 	short x;
 	
-	x = rand() % (RAND_MAX - 1);
+	x = rand() % RAND_MAX;
 	
-	return (float)x / (float)(RAND_MAX - 1);
+	return (float)x / (float)RAND_MAX;
 } 
 
 /*

@@ -1842,7 +1842,7 @@ self explanatory...
 
 =========================
 */
-void entity_UpdateEntityAabbIndex(struct entity_handle_t entity)
+void entity_UpdateAabb(struct entity_handle_t entity)
 {
 	struct entity_t *entity_ptr;
 	struct transform_component_t *transform_component; 
@@ -1916,7 +1916,7 @@ void entity_UpdateEntityAabbIndex(struct entity_handle_t entity)
 			mat4_t_vec4_t_mult(&world_transform->transform, &transformed_aabb[i]);
 			
 			if(transformed_aabb[i].x > max.x) max.x = transformed_aabb[i].x;
-			if(transformed_aabb[i].y > max.y) max.y = transformed_aabb[i].y;
+			if(transformed_aabb[i].y > max.y) max.y = transformed_aabb[i].y; 
 			if(transformed_aabb[i].z > max.z) max.z = transformed_aabb[i].z;
 				
 			if(-transformed_aabb[i].x > max.x) max.x = -transformed_aabb[i].x;
@@ -1927,6 +1927,105 @@ void entity_UpdateEntityAabbIndex(struct entity_handle_t entity)
 		aabb->current_extents = max;
 	}
 	//}
+}
+
+
+void entity_AabbWorldExtents(struct entity_handle_t entity, vec3_t *extent_max, vec3_t *extent_min)
+{
+	struct entity_t *entity_ptr;
+	struct transform_component_t *transform_component; 
+	struct entity_transform_t *world_transform;
+	struct entity_aabb_t *aabb;
+	vec4_t transformed_aabb[8];
+	int i;
+	
+	vec3_t max;
+	vec3_t min;
+	vec3_t center;
+	
+	if(entity.def)
+	{
+		printf("entity_UpdateEntityAabbIndex: can't update aabb from entity def\n");
+		return;
+	}
+		
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+			
+	if(entity_ptr)
+	{
+		//transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+		
+		world_transform = entity_GetWorldTransformPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+		aabb = entity_GetAabbPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+		
+		if(entity_ptr->components[COMPONENT_TYPE_MODEL].type == COMPONENT_TYPE_NONE)
+		{
+			/* this entity doesn't have a model component, so no aabb extent can be calculated... */
+			
+			extent_max->x = world_transform->transform.floats[3][0];
+			extent_max->y = world_transform->transform.floats[3][1];
+			extent_max->z = world_transform->transform.floats[3][2];
+			
+			extent_min->x = world_transform->transform.floats[3][0];
+			extent_min->y = world_transform->transform.floats[3][1];
+			extent_min->z = world_transform->transform.floats[3][2];
+			
+			return;
+		}
+		
+		
+			
+		transformed_aabb[0].x = aabb->original_extents.x;
+		transformed_aabb[0].y = aabb->original_extents.y;
+		transformed_aabb[0].z = aabb->original_extents.z;
+		transformed_aabb[0].w = 0.0;
+			
+		transformed_aabb[1].x = -aabb->original_extents.x;
+		transformed_aabb[1].y = aabb->original_extents.y;
+		transformed_aabb[1].z = aabb->original_extents.z;
+		transformed_aabb[1].w = 0.0;
+			
+		transformed_aabb[2].x = -aabb->original_extents.x;
+		transformed_aabb[2].y = aabb->original_extents.y;
+		transformed_aabb[2].z = -aabb->original_extents.z;
+		transformed_aabb[2].w = 0.0;
+			
+		transformed_aabb[3].x = aabb->original_extents.x;
+		transformed_aabb[3].y = aabb->original_extents.y;
+		transformed_aabb[3].z = -aabb->original_extents.z;
+		transformed_aabb[3].w = 0.0;
+					
+		max.x = FLT_MIN;
+		max.y = FLT_MIN;
+		max.z = FLT_MIN;
+			
+		min.x = FLT_MAX;
+		min.y = FLT_MAX; 
+		min.z = FLT_MAX;
+			
+		for(i = 0; i < 4; i++)
+		{				
+			mat4_t_vec4_t_mult(&world_transform->transform, &transformed_aabb[i]);
+			
+			if(transformed_aabb[i].x > max.x) max.x = transformed_aabb[i].x;
+			if(transformed_aabb[i].y > max.y) max.y = transformed_aabb[i].y;
+			if(transformed_aabb[i].z > max.z) max.z = transformed_aabb[i].z;
+				
+			if(-transformed_aabb[i].x > max.x) max.x = -transformed_aabb[i].x;
+			if(-transformed_aabb[i].y > max.y) max.y = -transformed_aabb[i].y;
+			if(-transformed_aabb[i].z > max.z) max.z = -transformed_aabb[i].z;
+		}
+		
+		//*extent_max = max;
+		
+		extent_max->x = world_transform->transform.floats[3][0] + max.x;
+		extent_max->y = world_transform->transform.floats[3][1] + max.y;
+		extent_max->z = world_transform->transform.floats[3][2] + max.z;
+		
+		extent_min->x = world_transform->transform.floats[3][0] - max.x;
+		extent_min->y = world_transform->transform.floats[3][1] - max.y;
+		extent_min->z = world_transform->transform.floats[3][2] - max.z;
+	}
 }
 
 void entity_UpdateScriptComponents()
@@ -1989,32 +2088,99 @@ void entity_UpdateScriptComponents()
 	
 }
 
-void entity_RecursiveUpdateTransform(struct entity_transform_t *parent_transform, struct component_handle_t child_transform)
+void entity_RecursiveUpdateTransform(struct entity_transform_t *parent_transform, struct component_handle_t child_transform, vec3_t *aabb_max, vec3_t *aabb_min)
 {
 	//struct entity_transform_t current_transform;
-	struct entity_transform_t *global_transform;
+	struct entity_t *entity;
+	struct entity_transform_t *world_transform;
 	struct transform_component_t *transform_component;
+	struct entity_aabb_t *aabb;
 	mat4_t transform;
 	int i;
 	
+	vec3_t aabb_extent_max;
+	vec3_t aabb_extent_min;
+	
+	vec3_t max;
+	vec3_t min;
+	
+	vec3_t aabb_center;
+	
 	transform_component = entity_GetComponentPointer(child_transform);
-	global_transform = entity_GetWorldTransformPointer(child_transform);
+	world_transform = entity_GetWorldTransformPointer(child_transform);
 	
 	if(parent_transform)
 	{
 		mat4_t_compose2(&transform, &transform_component->orientation, transform_component->position, transform_component->scale);
-		mat4_t_mult(&global_transform->transform, &transform, &parent_transform->transform);
+		mat4_t_mult(&world_transform->transform, &transform, &parent_transform->transform);
 	}
 	else
 	{
-		mat4_t_compose2(&global_transform->transform, &transform_component->orientation, transform_component->position, transform_component->scale);
+		mat4_t_compose2(&world_transform->transform, &transform_component->orientation, transform_component->position, transform_component->scale);
 	}
+	
+	aabb_extent_max.x = world_transform->transform.floats[3][0];
+	aabb_extent_max.y = world_transform->transform.floats[3][1];
+	aabb_extent_max.z = world_transform->transform.floats[3][2];
+	
+	aabb_extent_min.x = world_transform->transform.floats[3][0];
+	aabb_extent_min.y = world_transform->transform.floats[3][1];
+	aabb_extent_min.z = world_transform->transform.floats[3][2];
+	
+	//entity_AabbWorldExtents(transform_component->base.entity, &aabb_extent_max, &aabb_extent_min);
 	
 	for(i = 0; i < transform_component->children_count; i++)
 	{
-		entity_RecursiveUpdateTransform(global_transform, transform_component->child_transforms[i]);
+		entity_RecursiveUpdateTransform(world_transform, transform_component->child_transforms[i], &aabb_extent_max, &aabb_extent_min);
 	}
 	
+	entity = entity_GetEntityPointerHandle(transform_component->base.entity);
+	
+	if(entity)
+	{
+		entity_UpdateAabb(transform_component->base.entity);
+		aabb = entity_GetAabbPointer(child_transform);
+		
+	/*	max.x = aabb->current_extents.x + world_transform->transform.floats[3][0];
+		max.y = aabb->current_extents.y + world_transform->transform.floats[3][1];
+		max.z = aabb->current_extents.z + world_transform->transform.floats[3][2];
+		
+		min.x = world_transform->transform.floats[3][0] - aabb->current_extents.x;
+		min.y = world_transform->transform.floats[3][1] - aabb->current_extents.y;
+		min.z = world_transform->transform.floats[3][2] - aabb->current_extents.z;*/
+		
+		
+	//	if(aabb_extent_max.x > max.x) = aabb->current_extents.x += aabb_extent_max
+		
+		
+	/*	entity_AabbWorldExtents(transform_component->base.entity, &max, &min);
+		
+		if(max.x > aabb_extent_max.x) aabb_extent_max.x = max.x;
+		if(max.y > aabb_extent_max.y) aabb_extent_max.y = max.y;
+		if(max.z > aabb_extent_max.z) aabb_extent_max.z = max.z;
+		
+		if(min.x < aabb_extent_min.x) aabb_extent_min.x = min.x;
+		if(min.y < aabb_extent_min.y) aabb_extent_min.y = min.y;
+		if(min.z < aabb_extent_min.z) aabb_extent_min.z = min.z;*/
+		
+	/*	aabb = entity_GetAabbPointer(child_transform);
+		
+		aabb_center.x = (aabb_extent_max.x + aabb_extent_min.x) / 2.0;
+		aabb_center.y = (aabb_extent_max.y + aabb_extent_min.y) / 2.0;
+		aabb_center.z = (aabb_extent_max.z + aabb_extent_min.z) / 2.0;
+		
+		aabb->current_extents.x = aabb_extent_max.x - aabb_center.x;
+		aabb->current_extents.y = aabb_extent_max.y - aabb_center.y;
+		aabb->current_extents.z = aabb_extent_max.z - aabb_center.z;
+		
+		if(aabb_extent_max.x > aabb_max->x) aabb_max->x = aabb_extent_max.x;
+		if(aabb_extent_max.y > aabb_max->y) aabb_max->y = aabb_extent_max.y;
+		if(aabb_extent_max.z > aabb_max->z) aabb_max->z = aabb_extent_max.z;
+		
+		if(aabb_extent_min.x < aabb_min->x) aabb_min->x = aabb_extent_min.x;
+		if(aabb_extent_min.y < aabb_min->y) aabb_min->y = aabb_extent_min.y;
+		if(aabb_extent_min.z < aabb_min->z) aabb_min->z = aabb_extent_min.z;	*/
+	}
 }
 
 void entity_UpdateTransformComponents()
@@ -2033,10 +2199,22 @@ void entity_UpdateTransformComponents()
 	struct component_handle_t *top_transforms;
 	mat3_t rotation;
 	
+	vec3_t aabb_max;
+	vec3_t aabb_min;
+	
+	vec3_t root_aabb_max;
+	vec3_t root_aabb_min;
+	
+	vec3_t aabb_center;
+	
+	struct entity_aabb_t *root_aabb;
+	
 	struct transform_component_t *transform_components;
 	struct transform_component_t *local_transform;
 	struct entity_transform_t *world_transform;
 	struct entity_transform_t *world_transforms;
+	
+	struct entity_aabb_t *aabbs;
 	//collider_t *collider;
 	struct entity_aabb_t *aabb;
 	//struct physics_controller_component_t *physics_controller_components;
@@ -2051,6 +2229,7 @@ void entity_UpdateTransformComponents()
 	transform_components = (struct transform_component_t *)ent_components[0][COMPONENT_TYPE_TRANSFORM].elements;
 	world_transforms = (struct entity_transform_t *)ent_world_transforms.elements;
 	top_transforms = (struct component_handle_t *)ent_top_transforms.elements;
+	aabbs = (struct entity_aabb_t *)ent_entity_aabbs.elements;
 
 	c = ent_top_transforms.element_count;
 	
@@ -2089,19 +2268,50 @@ void entity_UpdateTransformComponents()
 			{
 				mat4_t_compose2(&world_transform->transform, &local_transform->orientation, local_transform->position, local_transform->scale);
 			}
-			
+				
 			if(local_transform->child_transforms)
 			{
+				//aabb_max = vec3_t_c(world_transform->transform.floats[3][0], world_transform->transform.floats[3][1], world_transform->transform.floats[3][2]);
+				//aabb_min = aabb_max;
+				
+				//entity_AabbWorldExtents(local_transform->base.entity, &aabb_max, &aabb_min);
+				
 				for(j = 0; j < local_transform->children_count; j++)
 				{
-					entity_RecursiveUpdateTransform(world_transform, local_transform->child_transforms[j]);
+					entity_RecursiveUpdateTransform(world_transform, local_transform->child_transforms[j], &aabb_max, &aabb_min);
 				}
+				
+				//entity_UpdateAabb(local_transform->base.entity);
+				
+			//	entity_AabbWorldExtents(local_transform->base.entity, &root_aabb_max, &root_aabb_min);
+					
+				/*if(root_aabb_max.x > aabb_max.x) aabb_max.x = root_aabb_max.x;
+				if(root_aabb_max.y > aabb_max.y) aabb_max.y = root_aabb_max.y;
+				if(root_aabb_max.z > aabb_max.z) aabb_max.z = root_aabb_max.z;
+				
+				if(root_aabb_min.x < aabb_min.x) aabb_min.x = root_aabb_min.x;
+				if(root_aabb_min.y < aabb_min.y) aabb_min.y = root_aabb_min.y;
+				if(root_aabb_min.z < aabb_min.z) aabb_min.z = root_aabb_min.z;*/
+				
+			/*	root_aabb = aabbs + top_transforms[i].index;
+						
+				aabb_center.x = (aabb_max.x + aabb_min.x) / 2.0;
+				aabb_center.y = (aabb_max.y + aabb_min.y) / 2.0;
+				aabb_center.z = (aabb_max.z + aabb_min.z) / 2.0;
+				
+				root_aabb->current_extents.x = aabb_max.x - aabb_center.x * 0.5;
+				root_aabb->current_extents.y = aabb_max.y - aabb_center.y * 0.5;
+				root_aabb->current_extents.z = aabb_max.z - aabb_center.z * 0.5;*/
 			}
+			//else
+			//{
+			entity_UpdateAabb(local_transform->base.entity);
+			//}
 			
-			if(entity->components[COMPONENT_TYPE_MODEL].type != COMPONENT_TYPE_NONE)
+		/*	if(entity->components[COMPONENT_TYPE_MODEL].type != COMPONENT_TYPE_NONE)
 			{
 				entity_UpdateEntityAabbIndex(local_transform->base.entity);
-			}
+			}*/
 		}
 		
 	}

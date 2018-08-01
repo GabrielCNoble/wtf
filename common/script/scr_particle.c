@@ -11,7 +11,7 @@ extern "C"
 
 void particle_ScriptDie()
 {
-	particle_RemoveParticleSystem(ps_current_particle_system);
+	particle_MarkForRemoval(ps_current_particle_system);
 }
 
 int particle_ScriptGetLife()
