@@ -9,7 +9,7 @@ void editor_EntityEditorInit();
 void editor_EntityEditorFinish();
 
 void editor_EntityEditorSetup();
- 
+
 void editor_EntityEditorShutdown();
 
 void editor_EntityEditorRestart();
@@ -78,7 +78,16 @@ void editor_EntityEditorRotateSelections(vec3_t axis, float amount);
 void editor_EntityEditorScaleSelections(vec3_t axis, float amount);
 
 
+/*
+===============================================================
+===============================================================
+===============================================================
+*/
 
+
+int editor_EntityEditorLoadEntityFileCallback(char *path, char *file_name);
+
+int editor_EntityEditorSaveEntityFileCallback(char *path, char *file_name, void **out_buffer, int *out_buffer_size);
 
 
 #endif

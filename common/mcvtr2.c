@@ -13,6 +13,8 @@ int main(int argc, char *argv[])
 	char input_file[PATH_MAX] = "";
 	int i = 0;
 	
+	struct output_params_t parms;
+	
 	if(argc > 1)
 	{
 		for(i = 1; i < argc; i++)
@@ -34,6 +36,8 @@ int main(int argc, char *argv[])
 			}
 		}
 		mpk_convert(output_name, input_file);
+		
+		mpk_read(output_name, &parms);
 	}
 	
 	return 0;

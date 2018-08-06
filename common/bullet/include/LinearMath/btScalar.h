@@ -27,6 +27,7 @@ subject to the following restrictions:
 #include <stdlib.h>//size_t for MSVC 6.0
 #include <float.h>
 
+
 /* SVN $Revision$ on $Date$ from http://bullet.googlecode.com*/
 #define BT_BULLET_VERSION 284
 

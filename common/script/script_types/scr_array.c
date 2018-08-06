@@ -1,5 +1,5 @@
 #include "scr_array.h"
-#include "memory.h"
+#include "c_memory.h"
 #include "script.h"
 
 #include "angelscript.h"

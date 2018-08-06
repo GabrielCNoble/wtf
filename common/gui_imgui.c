@@ -5,13 +5,20 @@
 #include "SDL2/SDL_syswm.h"
 #include "texture.h"
 
-  
 
+#ifdef __cplusplus
 extern "C++"
 {
-ImGuiContext *gui_context;
+#endif // __cplusplus
+
+static ImGuiContext *gui_context;
+
+#ifdef __cplusplus
 }
- 
+#endif // __cplusplus
+
+
+
 
 
 #ifdef __cplusplus
@@ -30,29 +37,29 @@ void gui_ImGuiInit()
 	int width;
 	int height;
 	unsigned int font_texture;
-	
+
 	gui_context = gui_CreateContext();
 	ImGui::SetCurrentContext(gui_context);
-	
+
 	ImGuiIO &io = ImGui::GetIO();
 
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-	
+
 	font_texture = texture_GenEmptyGLTexture(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
 
 	glBindTexture(GL_TEXTURE_2D, font_texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	
+
 	io.Fonts->TexID = (void *)font_texture;
-	
+
 	ImGui::StyleColorsDark();
-	
+
 	SDL_SysWMinfo wmInfo;
     SDL_VERSION(&wmInfo.version);
     SDL_GetWindowWMInfo(window, &wmInfo);
     io.ImeWindowHandle = wmInfo.info.win.window;
-	
+
 	io.MousePos.x = 0.0;
 	io.MousePos.y = 0.0;
 }
@@ -331,7 +338,7 @@ void gui_ImGuiTextColored(vec4_t color, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	
+
 	ImGui::TextColoredV(ImVec4(color.r, color.g, color.b, color.a), fmt, args);
 }
 

@@ -12,7 +12,7 @@
 #include "texture.h"
 #include "..\..\common\script\script.h"
 #include "..\..\common\gui.h"
-#include "..\..\common\memory.h"
+#include "..\..\common\c_memory.h"
 
 #include "GL\glew.h"
 

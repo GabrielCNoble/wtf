@@ -26,7 +26,7 @@ enum INIT_MODE
 
 enum WINDOW_FLAGS
 {
-	WINDOW_FULLSCREEN = 1,	
+	WINDOW_FULLSCREEN = 1,
 };
 
 enum RENDERER_CALLBACK_TYPE
@@ -82,6 +82,7 @@ enum VERTEX_FORMAT
 {
 	VERTEX_FORMAT_V3F_N3F_T3F_TC2F,
 	VERTEX_FORMAT_V3F_N4IREV_T4IREV_TC2F,
+	VERTEX_FORMAT_V3F_N4IREV_T4IREV_TC2S,
 	VERTEX_FORMAT_V3F_N3F,
 	VERTEX_FORMAT_V3F,
 	VERTEX_FORMAT_CUSTOM,
@@ -113,12 +114,12 @@ typedef struct
 }draw_command_group_t;
 
 
-typedef struct
+struct batch_t
 {
 	int start;
 	int next;
 	int material_index;
-}batch_t;
+};
 
 #define FRAMEBUFFER_MAX_COLOR_ATTACHMENTS 3
 
@@ -136,22 +137,22 @@ struct framebuffer_t
 {
 	unsigned int framebuffer_id;
 	//unsigned int color_attachments[FRAMEBUFFER_MAX_COLOR_ATTACHMENTS];
-	
+
 	struct
 	{
 		int handle;
 		int format;
 		int internal_format;
 		int type;
-		
+
 	}color_attachments[FRAMEBUFFER_MAX_COLOR_ATTACHMENTS];
-	
+
 	unsigned int depth_attachment;
 	unsigned int stencil_attachment;
-	
+
 	unsigned short width;
 	unsigned short height;
-	
+
 	//unsigned int format;
 	//unsigned int internal_format;
 	//unsigned int type;
@@ -159,7 +160,7 @@ struct framebuffer_t
 
 typedef struct
 {
-	
+
 }tex_unit_t;
 
 #endif

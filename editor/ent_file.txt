@@ -1,12 +1,4 @@
 [entity record start]
-[collider record start]
-[collision shape record]
-[collision shape record]
-[collision shape record]
-.
-.
-.
-[collider record end]
 [prop record]
 [prop record]
 [prop record]
@@ -25,6 +17,29 @@
 .
 .
 [entity record end]
+
+
+
+For physics components belonging to an entity def, it's collider def will be serialized right after it:
+
+
+.
+.
+.
+[component record (physics component)]
+[collider record start]
+[collision shape record]
+[collision shape record]
+[collision shape record]
+.
+.
+.
+[collider record end]
+.
+.
+.
+
+
 
 Nestled entity records (if any) will show up amidst the nestled transform records. In this case
 the file will look like this:

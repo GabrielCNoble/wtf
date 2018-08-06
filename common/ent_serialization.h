@@ -12,12 +12,12 @@ struct entity_section_header_t
 {
 	/* this field has to be the first... */
 	char tag[(sizeof(entity_section_header_tag) + 3) & (~3)];
-	
-	
+
+
 	unsigned int entity_count;
 	unsigned int entity_def_count;
-	
-	
+
+
 	unsigned int reserved0;
 	unsigned int reserved1;
 	unsigned int reserved2;
@@ -59,6 +59,7 @@ struct entity_record_start_t
 	char name[ENTITY_NAME_MAX_LEN];
 	char def_name[ENTITY_NAME_MAX_LEN];
 	int flags;
+	unsigned int def_ref_skip_offset;
 };
 
 static char entity_record_end_tag[] = "[entity record end]";
@@ -75,6 +76,14 @@ struct entity_record_end_t
 *******************************************
 */
 
+enum COMPONENT_RECORD_FLAGS
+{
+    COMPONENT_RECORD_FLAG_NESTLED = 1,              /* this flag signals that a transform component should be nestled to another transform component
+                                                    instead of being added to an entity... */
+
+    COMPONENT_RECORD_FLAG_REF = 1 << 1,             /* this flag signals that this transform belongs to an entity def, and should be added to its
+                                                    parent transform component... */
+};
 
 
 static char component_record_tag[] = "[component record]";
@@ -83,8 +92,9 @@ struct component_record_t
 {
 	char tag[(sizeof(component_record_tag) + 3) & (~3)];
 	short type;
-	short nestled;
-	
+	short flags;
+	//short nestled;
+
 	union
 	{
 		struct
@@ -92,43 +102,47 @@ struct component_record_t
 			mat3_t orientation;
 			vec3_t position;
 			vec3_t scale;
-			
+
 			//int max_children;
-			
+
 			int flags;
+
+			char instance_name[ENTITY_NAME_MAX_LEN];
 		}transform_component;
-		
+
 		struct
 		{
 			char model_name[MODEL_NAME_MAX_LEN];
+			char model_file_name[MODEL_NAME_MAX_LEN];
 		}model_component;
-		
+
 		struct
 		{
 			char collider_def_name[COLLIDER_DEF_NAME_MAX_LEN];
 		}physics_component;
-		
+
 		struct
 		{
 			int light_count;
 		}light_component;
-		
+
 		struct
 		{
 			char script_name[SCRIPT_NAME_MAX_LEN];
+			char script_file_name[SCRIPT_NAME_MAX_LEN];
 		}script_component;
-		
+
 		struct
 		{
 			char camera_name[CAMERA_NAME_MAX_LEN];
 			int transform_index;
 		}camera_component;
-		
+
 		struct
 		{
 			unsigned char max_data[256];
 		}max_component_data;
-		
+
 	}component;
 };
 
@@ -161,7 +175,7 @@ struct collider_record_start_t
 	char tag[(sizeof(collider_record_start_tag) + 3) & (~3)];
 	int type;
 	char name[COLLIDER_DEF_NAME_MAX_LEN];
-	
+
 	union
 	{
 		struct
@@ -172,15 +186,15 @@ struct collider_record_start_t
 			float max_slope_angle;
 			float max_step_height;
 			float jump_height;
-			
+
 		}collider_data;
-		
+
 		struct
 		{
 			char data[128];
 		}max_data;
 	}collider;
-	
+
 };
 
 
@@ -210,23 +224,31 @@ extern "C"
 {
 #endif
 
-void entity_WriteComponent(void **buffer, struct component_t *component, int nestled);
+void entity_WriteComponent(void **buffer, struct component_t *component, int nestled, int ref);
 
 void entity_WriteProp(void **buffer, struct entity_prop_t *prop);
 
 void entity_WriteCollider(void **buffer, struct collider_def_t *collider_def);
 
+void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct component_handle_t referencing_transform);
+
 void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_defs);
 
+void entity_SerializeEntityDef(void **buffer, int *buffer_size, struct entity_handle_t entity_def);
 
 
-void entity_ReadComponent(void **buffer, struct entity_handle_t entity, struct entity_record_start_t *entity_record);
+
+void entity_ReadComponent(void **buffer, struct entity_handle_t parent_entity, struct entity_handle_t entity, struct entity_record_start_t *entity_record);
 
 void entity_ReadProp(void **buffer, struct entity_handle_t entity, struct entity_record_start_t *entity_record);
 
-void entity_ReadCollider(void **buffer);
+void entity_ReadCollider(void **buffer, struct entity_handle_t entity);
+
+struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t parent);
 
 void entity_DeserializeEntities(void **buffer, int deserialize_defs);
+
+void entity_DeserializeEntityDef(void **buffer);
 
 
 #ifdef __cplusplus

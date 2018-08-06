@@ -1,3 +1,0 @@
-"C:\Program Files (x86)\CMake\bin\cmake.exe" -E remove -f CMakeFiles\dump2ozz.dir/objects.a
-C:\PROGRA~2\Dev-Cpp\MinGW64\bin\ar.exe cr CMakeFiles\dump2ozz.dir/objects.a @CMakeFiles\dump2ozz.dir\objects1.rsp
-C:\PROGRA~2\Dev-Cpp\MinGW64\bin\G__~1.EXE     -Wl,--whole-archive CMakeFiles\dump2ozz.dir/objects.a -Wl,--no-whole-archive  -o dump2ozz.exe -Wl,--out-implib,libdump2ozz.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\dump2ozz.dir\linklibs.rsp

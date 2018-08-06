@@ -11,15 +11,17 @@
 
 #define MPK_VERSION 0
 
-typedef struct
+static char mpk_header_tag[] = "MPK";
+
+struct mpk_header_t
 {
-	int mpk0;
-	int mpk1;
-	int version;
+	char tag[(sizeof(mpk_header_tag) + 3) & (~3)];
+
 	int vertice_count;
-	int vertex_record_count;
-	int material_count;
-	
+	int indice_count;
+	int batch_count;
+	int lod_count;
+
 	int reserved0;
 	int reserved1;
 	int reserved2;
@@ -28,57 +30,57 @@ typedef struct
 	int reserved5;
 	int reserved6;
 	int reserved7;
-}mpk_header_t;
+};
 
-typedef struct
+struct mpk_batch_t
 {
-	char material_name[PATH_MAX];
-	int vertice_count;
-	int offset;
-}mpk_vertex_record_t;
+	char material_name[(PATH_MAX + 3) & (~3)];
+	int indice_start;
+	int indice_count;
+};
+
+struct mpk_lod_t
+{
+	int indice_count;
+};
 
 
 
-/*********************************************************************
+struct mpk_triangle_t
+{
+	int verts[3];
+	char *material_name;
+};
 
-MPK file structure...
+struct input_params_t
+{
+    vertex_t *in_vertices;
+    int in_vertices_count;
 
+    int *in_indices;
+    int in_indices_count;
 
-===============
-header
-===============
-MPK_CONSTANT0
-MPK_CONSTANT1
-MPK_VERSION
-vertice count
+    struct mpk_batch_t *in_batches;
+    int in_batches_count;
 
+    struct mpk_triangle_t *in_triangles;
+    int in_triangles_count;
+};
 
-===============
-data
-===============
+struct output_params_t
+{
+	vertex_t *out_vertices;
+	int out_vertices_count;
+	int out_batches_count;
 
-material_name0
-vertice_count0
-offset0
+	int out_indice_count;
 
+    struct mpk_lod_t *out_lods;
+    int out_lods_count;
+    int **out_lods_indices;
+    struct mpk_batch_t **out_lods_batches;
+};
 
-material_name1
-vertice_count1
-offset1
-
-
-material_name2
-vertice_count2
-offset2
-
-.
-.
-.
-
-
-
-
-**********************************************************************/
 
 void read_mpk(char *file_name);
 

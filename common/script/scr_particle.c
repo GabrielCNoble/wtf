@@ -1,6 +1,8 @@
 #include "scr_particle.h"
 #include "particle.h"
 
+#include <stdlib.h>
+
 extern int ps_current_particle_system;
 extern int ps_frame;
 

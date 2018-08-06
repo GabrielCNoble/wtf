@@ -1,0 +1,581 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="wtf_editor" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="default">
+				<Option output="wtf_editor" prefix_auto="1" extension_auto="1" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="-masm=intel" />
+				</Compiler>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-m32" />
+			<Add option="-g" />
+			<Add option="-masm=intel" />
+			<Add option="-Wno-write-strings" />
+			<Add directory="../common/SDL/include" />
+			<Add directory="../common/GLEW/include" />
+			<Add directory="../common/soil" />
+			<Add directory="../common/gmath" />
+			<Add directory="../common/OPENAL/include" />
+			<Add directory="../common" />
+			<Add directory="../common/bullet/include" />
+			<Add directory="../common/bullet/include/BulletCollision" />
+			<Add directory="../common/angel" />
+			<Add directory="../common/imgui" />
+			<Add directory="../common/containers" />
+			<Add directory="../common/script" />
+			<Add directory="../common/script/script_types" />
+			<Add directory='&quot;level editor&quot;' />
+			<Add directory='&quot;entity editor&quot;' />
+			<Add directory='&quot;material editor&quot;' />
+		</Compiler>
+		<Linker>
+			<Add option="-m32" />
+			<Add option="-Wl,-Map=r.map" />
+			<Add library="mingw32" />
+			<Add library="opengl32" />
+			<Add library="SDL2main" />
+			<Add library="SDL2" />
+			<Add library="SDL2_ttf" />
+			<Add library="glew32" />
+			<Add library="OpenAL32" />
+			<Add library="imagehlp" />
+			<Add library="angelscript" />
+			<Add library="BulletDynamics" />
+			<Add library="BulletCollision" />
+			<Add library="LinearMath" />
+			<Add directory="../common/SDL/lib/mingw" />
+			<Add directory="../common/OPENAL/Win32" />
+			<Add directory="../common/GLEW/lib" />
+			<Add directory="../common/bullet/lib" />
+			<Add directory="../common/angel" />
+			<Add directory="../common/imgui" />
+			<Add directory="../common/ozz/base" />
+			<Add directory="../common/ozz/geometry/runtime" />
+			<Add directory="../common/ozz/options" />
+			<Add directory="../common/ozz/animation/runtime" />
+			<Add directory="../common/ozz/animation/offline" />
+		</Linker>
+		<Unit filename="../common/animation.c">
+			<Option compilerVar="CPP" />
+		</Unit>
+		<Unit filename="../common/animation.h" />
+		<Unit filename="../common/bsp.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/bsp.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/bsp_common.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/bsp_file.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/bsp_file.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/c_memory.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/c_memory.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/camera.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/camera.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/camera.inl">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/camera_types.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/containers/list.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/containers/list.h" />
+		<Unit filename="../common/containers/stack_list.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/containers/stack_list.h" />
+		<Unit filename="../common/containers/stack_list.inl">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/engine.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/engine.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/ent_common.h" />
+		<Unit filename="../common/ent_serialization.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/ent_serialization.h" />
+		<Unit filename="../common/entity.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/entity.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/entity.inl" />
+		<Unit filename="../common/event.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/event.h" />
+		<Unit filename="../common/file.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/file.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/font.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/font.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/fixed.c">
+			<Option compilerVar="CPP" />
+		</Unit>
+		<Unit filename="../common/gmath/fixed.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/frustum.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/frustum.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/frustum_types.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/half_float.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/half_float.h" />
+		<Unit filename="../common/gmath/line.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/line.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/line_types.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/matrix.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/matrix.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/matrix.inl">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/matrix_types.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/plane.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/plane.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/plane_types.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/triangle.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/triangle.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/triangle_types.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/vector.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/vector.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gmath/vector_types.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gpu.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gpu.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gpu.inl">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gui.c">
+			<Option compilerVar="CPP" />
+			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
+		</Unit>
+		<Unit filename="../common/gui.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gui_imgui.c">
+			<Option compilerVar="CPP" />
+			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
+		</Unit>
+		<Unit filename="../common/gui_imgui.h" />
+		<Unit filename="../common/imgui/imconfig.h" />
+		<Unit filename="../common/imgui/imgui.cpp" />
+		<Unit filename="../common/imgui/imgui.h" />
+		<Unit filename="../common/imgui/imgui_draw.cpp" />
+		<Unit filename="../common/imgui/imgui_impl_opengl3.cpp" />
+		<Unit filename="../common/imgui/imgui_impl_opengl3.h" />
+		<Unit filename="../common/imgui/imgui_internal.h" />
+		<Unit filename="../common/imgui/stb_rect_pack.h" />
+		<Unit filename="../common/imgui/stb_textedit.h" />
+		<Unit filename="../common/imgui/stb_truetype.h" />
+		<Unit filename="../common/input.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/input.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/l_cache.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/l_cache.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/l_common.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/l_globals.h" />
+		<Unit filename="../common/l_main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/l_main.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/log.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/log.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/material.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/material.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/model.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/model.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/mpk_file.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/mpk_read.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/mpk_read.h" />
+		<Unit filename="../common/mpk_write.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/mpk_write.h" />
+		<Unit filename="../common/nav_common.h" />
+		<Unit filename="../common/navigation.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/navigation.h" />
+		<Unit filename="../common/particle.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/particle.h" />
+		<Unit filename="../common/path.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/path.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/phy_character.c">
+			<Option compilerVar="CPP" />
+			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
+		</Unit>
+		<Unit filename="../common/phy_character.h" />
+		<Unit filename="../common/phy_common.h" />
+		<Unit filename="../common/phy_projectile.c">
+			<Option compilerVar="CPP" />
+			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
+		</Unit>
+		<Unit filename="../common/phy_projectile.h" />
+		<Unit filename="../common/physics.c">
+			<Option compilerVar="CPP" />
+			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
+		</Unit>
+		<Unit filename="../common/physics.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/physics.inl" />
+		<Unit filename="../common/player.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/player.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/portal.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/portal.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_common.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_debug.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_debug.h" />
+		<Unit filename="../common/r_gl.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_gl.h" />
+		<Unit filename="../common/r_imediate.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_imediate.h" />
+		<Unit filename="../common/r_main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_main.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_shader.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_shader.h" />
+		<Unit filename="../common/r_text.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_text.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/resource.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/resource.h" />
+		<Unit filename="../common/scr_typeof.h" />
+		<Unit filename="../common/script/scr_common.h" />
+		<Unit filename="../common/script/scr_entity.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/script/scr_entity.h" />
+		<Unit filename="../common/script/scr_math.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/script/scr_math.h" />
+		<Unit filename="../common/script/scr_particle.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/script/scr_particle.h" />
+		<Unit filename="../common/script/script.c">
+			<Option compilerVar="CPP" />
+			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
+		</Unit>
+		<Unit filename="../common/script/script.h" />
+		<Unit filename="../common/script/script_types/scr_array.c">
+			<Option compilerVar="CPP" />
+			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
+		</Unit>
+		<Unit filename="../common/script/script_types/scr_array.h" />
+		<Unit filename="../common/script/script_types/scr_string.c">
+			<Option compilerVar="CPP" />
+			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
+		</Unit>
+		<Unit filename="../common/script/script_types/scr_string.h" />
+		<Unit filename="../common/script/script_types/scr_typeof.c">
+			<Option compilerVar="CC" />
+			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
+		</Unit>
+		<Unit filename="../common/script/script_types/scr_typeof.h" />
+		<Unit filename="../common/script/script_types/scr_types.c">
+			<Option compilerVar="CPP" />
+			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
+		</Unit>
+		<Unit filename="../common/script/script_types/scr_types.h" />
+		<Unit filename="../common/script/script_types/scriptstdstring.cpp" />
+		<Unit filename="../common/script/script_types/scriptstdstring.h" />
+		<Unit filename="../common/scriptarray.cpp" />
+		<Unit filename="../common/scriptarray.h" />
+		<Unit filename="../common/shader.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/shader.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/shd_common.h" />
+		<Unit filename="../common/shd_pprc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/shd_pprc.h" />
+		<Unit filename="../common/soil/SOIL.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/soil/SOIL.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/soil/image_DXT.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/soil/image_DXT.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/soil/image_helper.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/soil/image_helper.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/soil/stb_image_aug.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/soil/stb_image_aug.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/soil/stbi_DDS_aug.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/soil/stbi_DDS_aug_c.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/sound.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/sound.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/texture.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/texture.h" />
+		<Unit filename="../common/w_common.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/world.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/world.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="brush.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="brush.h" />
+		<Unit filename="bsp_cmp.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="bsp_cmp.h" />
+		<Unit filename="ed_common.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_draw.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_draw.h" />
+		<Unit filename="ed_entity.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_entity.h" />
+		<Unit filename="ed_entity_draw.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_entity_draw.h" />
+		<Unit filename="ed_entity_ui.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_entity_ui.h" />
+		<Unit filename="ed_globals.h" />
+		<Unit filename="ed_level.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_level.h" />
+		<Unit filename="ed_level_draw.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_level_draw.h" />
+		<Unit filename="ed_level_ui.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_level_ui.h" />
+		<Unit filename="ed_name.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_name.h" />
+		<Unit filename="ed_selection.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_selection.h" />
+		<Unit filename="ed_ui.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_ui.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_ui_explorer.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_ui_explorer.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="editor.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="editor.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="exp_defs.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="indirect.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="indirect.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="main.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="pvs.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="pvs.h" />
+		<Unit filename="r_skybox.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="r_skybox.h">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

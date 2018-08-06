@@ -20,6 +20,13 @@
 #define INVALID_ENTITY_INDEX 0x7fffffff
 #define INVALID_COMPONENT_INDEX 0x7ffffff
 
+#define INVALID_COMPONENT_HANDLE (struct component_handle_t){COMPONENT_TYPE_NONE,0,INVALID_COMPONENT_INDEX}
+#define INVALID_ENTITY_HANDLE (struct entity_handle_t){0, INVALID_ENTITY_INDEX}
+
+
+#define ENTITY_SCRIPT_FILE_EXTENSION "eas"
+#define ENTITY_FILE_EXTENSION "ent"
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -28,7 +35,7 @@ extern "C"
 enum ENTITY_TYPE
 {
 	ENTITY_TYPE_INVALID,
-	ENTITY_TYPE_STATIC, 
+	ENTITY_TYPE_STATIC,
 	ENTITY_TYPE_MOVABLE,
 };
 
@@ -58,6 +65,7 @@ enum COMPONENT_FLAGS
 	COMPONENT_FLAG_DEACTIVATED = 1 << 1,
 	COMPONENT_FLAG_SERIALIZED = 1 << 2,
 	COMPONENT_FLAG_INITIALIZED = 1 << 3,
+	COMPONENT_FLAG_ENTITY_DEF_REF = 1 << 4,
 };
 
 enum SCRIPT_CONTROLLER_COMPONENT_FLAGS
@@ -70,7 +78,7 @@ enum COMPONENT_TYPES
 {
 	COMPONENT_TYPE_TRANSFORM = 0,
 	COMPONENT_TYPE_PHYSICS,
-	COMPONENT_TYPE_MODEL,	
+	COMPONENT_TYPE_MODEL,
 	COMPONENT_TYPE_LIGHT,
 	COMPONENT_TYPE_SCRIPT,
 	COMPONENT_TYPE_CAMERA,
@@ -103,7 +111,7 @@ struct component_field_t
 
 struct component_fields_t
 {
-	struct component_field_t fields[16];	
+	struct component_field_t fields[16];
 };
 
 /*
@@ -123,21 +131,21 @@ struct component_t
 struct transform_component_t
 {
 	struct component_t base;
-	
+
 	mat3_t orientation;
 	vec3_t scale;
 	vec3_t position;
-		
+
 	int top_list_index;
 	//int depth_index;
-	
+
 	int flags;
-	
+
 	struct component_handle_t parent;
 	int children_count;
 	int max_children;
 	struct component_handle_t *child_transforms;
-	
+
 	char *instance_name;
 };
 
@@ -161,14 +169,14 @@ struct entity_transform_t
 struct physics_component_t
 {
 	struct component_t base;
-	
+
 	union
 	{
 		struct collider_def_t *collider_def;
 		struct collider_handle_t collider_handle;
 		//int collider_index;
 	}collider;
-	
+
 	int flags;
 };
 
@@ -193,10 +201,10 @@ struct model_component_t
 struct light_component_t
 {
 	struct component_t base;
-	
+
 	struct list_t light_list;
 	struct list_t transform_list;
-	
+
 	//int light_index;
 	//struct component_handle_t transform;
 };
@@ -263,13 +271,13 @@ struct life_component_t
 struct entity_script_t
 {
 	struct script_t script;
-	
+
 	struct entity_handle_t *entity_handle;
 	void *on_first_run_entry_point;
 	void *on_spawn_entry_point;
 	void *on_die_entry_point;
 	void *on_collision_entry_point;
-	
+
 	void *collided_array;
 };
 
@@ -281,7 +289,7 @@ struct entity_prop_t
 };
 
 
-/* 
+/*
 
 Each entity's transform component keep references to children
 transform components. Those transform components reference back
@@ -302,15 +310,15 @@ struct entity_t
 {
 	struct component_handle_t components[COMPONENT_TYPE_LAST];
 	struct entity_handle_t def;
-	
+
 	int max_props;
 	int prop_count;
 	struct entity_prop_t *props;
-	
-	
+
+
 	int ref_count;									/* how many times this entity (if a def) is being referenced from other entities... */
-	
-	
+
+
 	bsp_dleaf_t *leaf;
 	int flags;
 	int spawn_time;

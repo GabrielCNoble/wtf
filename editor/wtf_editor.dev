@@ -1161,7 +1161,7 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit123]
-FileName=..\common\memory.h
+FileName=..\common\c_memory.h
 CompileCpp=0
 Folder=common
 Compile=1
@@ -1681,7 +1681,7 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit124]
-FileName=..\common\memory.c
+FileName=..\common\c_memory.c
 CompileCpp=0
 Folder=common
 Compile=1

@@ -1,6 +1,6 @@
 #include "scr_types.h"
 #include "angelscript.h"
-#include "memory.h"
+#include "c_memory.h"
 
 #include <stdio.h>
 

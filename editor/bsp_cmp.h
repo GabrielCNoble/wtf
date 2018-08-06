@@ -10,14 +10,14 @@
 #define FUZZY_ZERO 0.0005
 
 
-typedef struct bsp_triangle_t 
+typedef struct bsp_triangle_t
 {
 	struct bsp_triangle_t *next;
-		
+
 	vertex_t a;
 	vertex_t b;
 	vertex_t c;
-	
+
 	int material_index;
 	int brush_index;
 }bsp_triangle_t;
@@ -37,7 +37,7 @@ typedef struct bsp_edge_t
 	float dot;
 	bsp_polygon_t *polygon0;
 	bsp_polygon_t *polygon1;
-}bsp_edge_t; 
+}bsp_edge_t;
 
 #define MAX_PORTALS_PER_LEAF 512
 
@@ -49,29 +49,29 @@ typedef struct bsp_leaf_t
 	bsp_polygon_t *polygons;
 	int triangle_count;
 	bsp_triangle_t *triangles;
-	
-	
+
+
 	vec3_t center;
-	
+
 	int leaf_index;
-	
+
 	int portal_count;
 	struct bsp_portal_t *portals[MAX_PORTALS_PER_LEAF];
-	
+
 	int src_leaf_marker_count;
 	int *src_leaf_markers;
-	
+
 	//struct pvs_for_leaf_stack_t *stack;
-	
+
 	//int pvs_size;
 	unsigned char *pvs;
-	
-	
+
+
 }bsp_leaf_t;
 
 typedef struct bsp_node_t
 {
-	
+
 	short type;
 	short bm_flags;
 	struct bsp_node_t *front;
@@ -82,7 +82,7 @@ typedef struct bsp_node_t
 	vec3_t tangent;				/* used to derive the third vector necessary to create the portal polygon... */
 
 	bsp_polygon_t *splitter;
-		
+
 }bsp_node_t;
 
 enum CSG_SET_OPS
@@ -158,13 +158,13 @@ void bsp_TriangulateLeafPolygons(bsp_node_t *node);
 
 void bsp_CountNodesAndLeaves(bsp_node_t *bsp, int *leaves, int *nodes);
 
-void bsp_BuildTriangleGroups(bsp_node_t *root, batch_t **groups, int *count);
+void bsp_BuildTriangleGroups(bsp_node_t *root, struct batch_t **groups, int *count);
 
 void bsp_RemoveExterior(bsp_node_t *bsp);
 
 void bsp_AllocPvsForLeaves(bsp_node_t *bsp);
 
-void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, bsp_pnode_t **lnodes, int *lnode_count, bsp_dleaf_t **lleaves, int *lleaves_count, batch_t *groups, int tri_group_count, int create_leaves);
+void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, bsp_pnode_t **lnodes, int *lnode_count, bsp_dleaf_t **lleaves, int *lleaves_count, struct batch_t *groups, int tri_group_count, int create_leaves);
 
 bsp_edge_t *bsp_BuildBevelEdges(bsp_polygon_t *brush_polygons);
 

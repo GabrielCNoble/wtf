@@ -1,0 +1,44 @@
+[header]
+-vertice count
+-total indice count (across all lods)
+-batch count
+-lod count
+-vertices
+
+
+[lod0]
+-lod indice count (how many indices this lod has)
+-lod indice buffer
+
+[batch]
+-material name0
+-batch indice start (first indice inside the lod indice buffer)
+-batch indice count
+
+[batch]
+-material name1
+-batch indice start 
+-batch indice count
+
+
+.
+.
+.
+
+
+[lod1]
+-lod indice count
+-lod indice buffer
+
+[batch]
+-material name0
+-batch indice start 
+-batch indice count
+
+[batch]
+-material name1
+-batch indice start 
+-batch indice count
+.
+.
+.

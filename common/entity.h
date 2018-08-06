@@ -43,13 +43,13 @@ void entity_Finish();
 
 
 
-__forceinline void *entity_GetComponentPointer(struct component_handle_t component);
+__attribute__((always_inline)) inline void *entity_GetComponentPointer(struct component_handle_t component);
 
-__forceinline void *entity_GetComponentPointerIndex(int index, int type, int def);
+__attribute__((always_inline)) inline  void *entity_GetComponentPointerIndex(int index, int type, int def);
 
-__forceinline struct entity_transform_t *entity_GetWorldTransformPointer(struct component_handle_t component);
+__attribute__((always_inline)) inline  struct entity_transform_t *entity_GetWorldTransformPointer(struct component_handle_t component);
 
-__forceinline struct entity_aabb_t *entity_GetAabbPointer(struct component_handle_t component);
+__attribute__((always_inline)) inline  struct entity_aabb_t *entity_GetAabbPointer(struct component_handle_t component);
 
 /*
 ==============================================================
@@ -148,17 +148,17 @@ void entity_RemoveAllEntities();
 
 struct entity_t *entity_GetEntityPointer(char *name, int get_def);
 
-__forceinline struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity);
+__attribute__((always_inline)) inline struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity);
 
-__forceinline struct entity_t *entity_GetEntityParentPointerHandle(struct entity_handle_t entity);
+__attribute__((always_inline)) inline struct entity_t *entity_GetEntityParentPointerHandle(struct entity_handle_t entity);
 
-__forceinline struct entity_t *entity_GetEntityPointerIndex(int entity_index);
+__attribute__((always_inline)) inline struct entity_t *entity_GetEntityPointerIndex(int entity_index);
 
-__forceinline struct entity_t *entity_GetEntityDefPointerIndex(int entity_def_index);
+__attribute__((always_inline)) inline struct entity_t *entity_GetEntityDefPointerIndex(int entity_def_index);
 
-__forceinline struct entity_handle_t entity_GetEntityHandle(char *name, int get_def);
+__attribute__((always_inline)) inline struct entity_handle_t entity_GetEntityHandle(char *name, int get_def);
 
-__forceinline struct entity_handle_t entity_GetNestledEntityHandle(struct entity_handle_t parent_entity, char *entity);
+__attribute__((always_inline)) inline struct entity_handle_t entity_GetNestledEntityHandle(struct entity_handle_t parent_entity, char *entity);
 
 
 /*
@@ -224,8 +224,20 @@ void entity_EmitDrawCmdsForEntity(struct entity_handle_t entity, mat4_t *transfo
 */
 
 
+void entity_SaveEntityDef(char *file_name, struct entity_handle_t entity_def);
 
-#include "entity.inl"
+struct entity_handle_t entity_LoadEntityDef(char *file_name);
+
+
+
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
+
+//#include "entity.inl"
 
 
 #ifdef __cplusplus

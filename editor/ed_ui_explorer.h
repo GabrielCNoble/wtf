@@ -21,8 +21,8 @@ typedef struct cached_path_t
 {
 	struct cached_path_t *next;
 	struct cached_path_t *prev;
-	
-	
+
+
 	char *path;
 	int refs;
 }cached_path_t;
@@ -60,9 +60,14 @@ void editor_CloseExplorerWindow();
 
 void editor_SetExplorerFileMode(int mode);
 
+
+
 void editor_ExplorerReadFile(char *directory, char *file_name);
 
 void editor_ExplorerWriteFile(char *directory, char *file_name);
+
+
+
 
 void editor_OpenExplorerDialogBox(char *text);
 
@@ -106,9 +111,11 @@ void editor_ExplorerMultiFileSelection(int enable);
 */
 void editor_SetExplorerFileClickCallback(void (*file_click_callback)());
 
-void editor_SetExplorerReadFileCallback(void (*read_file_callback)(char *directory, char *file_name));
+void editor_SetExplorerReadFileCallback(int (*read_file_callback)(char *directory, char *file_name));
 
-void editor_SetExplorerWriteFileCallback(void (*write_file_callback)(char *directory, char *file_name));
+void editor_SetExplorerWriteFileCallback(int (*write_file_callback)(char *directory, char *file_name, void **file_buffer, int *file_buffer_size));
+
+void editor_ClearExplorerFileCallbacks();
 
 void editor_AddExplorerExtensionFilter(char *ext);
 

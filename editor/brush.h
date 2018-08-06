@@ -56,43 +56,43 @@ typedef struct intersection_record_t
 keep update operations down to a managable overhead. The indexes kept
 on this buffer are relative to the gpu heap, where vertices are stored
 for rendering. The final index value is calculated by taking the vertex
-index (which is relative to its brush), and adding the start field 
-(which is an offset from the beginning of the gpu heap to the first vertex 
+index (which is relative to its brush), and adding the start field
+(which is an offset from the beginning of the gpu heap to the first vertex
 position from the space allocated). */
 typedef struct brush_t
 {
-	
+
 	struct brush_t *next;
 	struct brush_t *prev;
-	
+
 	mat3_t orientation;
 	vec3_t position;
 	vec3_t scale;
-	
+
 	//int max_triangle_groups;
 	//int triangle_group_count;
 	//triangle_group_t *triangle_groups;				// keep a local list of triangle groups,
-												       //to avoid doing a potentially expensive 
-													   //update on a global group list when a brush 
+												       //to avoid doing a potentially expensive
+													   //update on a global group list when a brush
 													   //is added/removed to/from the world... */
-													   
-	
-	
+
+
+
 	int max_batches;
 	int batch_count;
-	batch_t *batches;
-	
-													   
+	struct batch_t *batches;
+
+
 	bsp_striangle_t *triangles;
 	struct bsp_edge_t *edges;						/* necessary to manipulate individual faces... */
 
-	
+
 	int base_polygons_count;
 	int base_polygons_vert_count;
 	struct bsp_polygon_t *base_polygons;
 	vertex_t *base_polygons_vertices;
 	struct bsp_node_t *brush_bsp;
-	
+
 
 	int clipped_polygon_count;
 	int clipped_polygons_vert_count;
@@ -100,28 +100,28 @@ typedef struct brush_t
 	vertex_t *clipped_polygons_vertices;
 	int *clipped_polygons_indexes;
 	int clipped_polygons_index_count;
-	
-	
+
+
 	int max_vertexes;								/* max number before a gpu realloc is needed... */
 	int start;
-	int handle;
-	
+	struct gpu_alloc_handle_t handle;
+
 	int index_start;
-	int index_handle;
-	
+	struct gpu_alloc_handle_t index_handle;
+
 	int type;
 	unsigned int element_buffer;
 	int bm_flags;
-	
+
 	intersection_record_t *intersection_records;
 	intersection_record_t *last_intersection_record;
 	intersection_record_t *freed_records;
-	
-	
+
+
 	int max_intersections;
 	int *intersections;
-	
-	
+
+
 }brush_t;
 
 
@@ -137,7 +137,7 @@ typedef struct brush_t
 typedef struct
 {
 	int brush_count;
-	
+
 	int reserved0;
 	int reserved1;
 	int reserved2;
@@ -146,7 +146,7 @@ typedef struct
 	int reserved5;
 	int reserved6;
 	int reserved7;
-	
+
 }brush_section_header_t;
 
 typedef struct
@@ -159,7 +159,7 @@ typedef struct
 	int polygon_count;
 	short type;
 	short bm_flags;
-	
+
 	int reserved0;
 	int reserved1;
 	int reserved2;
@@ -168,7 +168,7 @@ typedef struct
 	int reserved5;
 	int reserved6;
 	int reserved7;
-	
+
 }brush_record_t;
 
 typedef struct
@@ -176,7 +176,7 @@ typedef struct
 	vec3_t normal;
 	int vert_count;
 	int first_index_offset;
-	
+
 	int reserved0;
 	int reserved1;
 	int reserved2;
@@ -185,7 +185,7 @@ typedef struct
 	int reserved5;
 	int reserved6;
 	int reserved7;
-	
+
 	char material_name[PATH_MAX];
 }polygon_record_t;
 
@@ -298,7 +298,7 @@ void brush_DeserializeBrushes(void **buffer);
 
 
 
-#endif 
+#endif
 
 
 

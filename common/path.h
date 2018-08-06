@@ -80,6 +80,8 @@ char *path_GetFileExtension(char *file_name);
 
 char *path_GetNameNoExt(char *file_name);
 
+char *path_AddExtToName(char *file_name, char *ext);
+
 char *path_FormatPath(char *path);
 
 

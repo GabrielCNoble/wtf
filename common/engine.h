@@ -25,7 +25,7 @@
 #include "script.h"
 #include "navigation.h"
 #include "event.h"
-#include "resource_loader.h"
+#include "resource.h"
 
 
 
@@ -84,4 +84,4 @@ void engine_BreakPoint();
 #endif
 
 
-#endif 
+#endif
