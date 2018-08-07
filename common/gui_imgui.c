@@ -103,6 +103,11 @@ int gui_ImGuiBeginChild(const char *str_id, vec2_t size, int border, int flags)
 	return ImGui::BeginChild(str_id, ImVec2(size.x, size.y), border, flags);
 }
 
+int gui_ImGuiBeginChildIId(int id, vec2_t size, int border, int flags)
+{
+	return ImGui::BeginChild(id, ImVec2(size.x, size.y), border, flags);
+}
+
 void gui_ImGuiEndChild()
 {
 	ImGui::EndChild();
@@ -271,6 +276,16 @@ void gui_ImGuiIndent(float indent_w)
 void gui_ImGuiUnindent(float indent_w)
 {
 	ImGui::Unindent(indent_w);
+}
+
+void gui_ImGuiBeginGroup()
+{
+	ImGui::BeginGroup();
+}
+
+void gui_ImGuiEndGroup()
+{
+	ImGui::EndGroup();
 }
 
 vec2_t gui_ImGuiGetCursorPos()
@@ -715,6 +730,12 @@ int gui_ImGuiIsItemDeactivated()
 {
 	return ImGui::IsItemDeactivated();
 }
+
+int gui_ImGuiIsAnyItemActive()
+{
+	return ImGui::IsAnyItemActive();
+}
+
 /*
 ===========================================================
 ===========================================================

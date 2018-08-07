@@ -85,6 +85,7 @@ struct entity_handle_t ed_entity_editor_entity_def = {1, INVALID_ENTITY_INDEX};
 struct entity_handle_t ed_entity_editor_preview_entity = {1, INVALID_ENTITY_INDEX};
 int ed_entity_editor_update_preview_entity = 0;
 int ed_entity_editor_draw_collider_list_cursor = 0;
+struct collision_shape_t *ed_entity_editor_hovered_collision_shape = NULL;
 struct entity_handle_t ed_entity_editor_draw_collider_list[1024];
 
 

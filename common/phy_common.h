@@ -25,7 +25,7 @@
 
 #define MAX_HORIZONTAL_DELTA 8.25
 
-#define JUMP_DELTA 0.85 
+#define JUMP_DELTA 0.85
 
 #define PLAYER_CAPSULE_HEIGHT 4.0
 #define PLAYER_CAPSULE_RADIUS 1.5
@@ -58,20 +58,20 @@
 
 typedef struct bvh_node_t
 {
-	vec3_t position;						// if this node is not a leaf, it represents a volume within the hierarchy... 
+	vec3_t position;						// if this node is not a leaf, it represents a volume within the hierarchy...
 	vec3_t half_extents;
-	
-	int start;								// this is an offset within the array of vertices that compose the static world geometry... 
-	
+
+	int start;								// this is an offset within the array of vertices that compose the static world geometry...
+
 	struct bvh_node_t *left;
 	struct bvh_node_t *right;
-	
+
 	union
 	{
 		struct bvh_node_t *parent;
 		struct bvh_node_t *next;
 	};
-	
+
 }bvh_node_t;
 
 typedef struct
@@ -111,6 +111,7 @@ enum CHARACTER_COLLIDER_FLAGS
 	CHARACTER_COLLIDER_FLAG_CROUCHED = 1,
 	CHARACTER_COLLIDER_FLAG_ON_GROUND = 1 << 1,
 	CHARACTER_COLLIDER_FLAG_WALKING = 1 << 2,
+	CHARACTER_COLLIDER_FLAG_STEPPING_UP = 1 << 3,
 };
 
 enum COLLISION_SHAPES
@@ -138,16 +139,16 @@ struct collider_def_t
 {
 	struct collider_def_t *next;
 	struct collider_def_t *prev;
-	
+
 	//union
 	//{
 	//	struct
 	//	{
 	int max_collision_shapes;
 	int collision_shape_count;
-	struct collision_shape_t *collision_shape;	
+	struct collision_shape_t *collision_shape;
 	//	}generic_collider_data;
-		
+
 	//	struct
 	//	{
 	//void *collision_shape;
@@ -158,14 +159,14 @@ struct collider_def_t
 	float slope_angle;
 	//	}character_collider_data;
 	//}collider_data;
-	
-	
-	void *cached_collision_shape;	
+
+
+	void *cached_collision_shape;
 	vec3_t inertia_tensor;
-					   					
+
 	int ref_count;
 	int flags;
-	int type;								
+	int type;
 	float mass;
 	char *name;
 };
@@ -185,43 +186,45 @@ struct collider_t
 	//{
 	//	struct
 	//	{
-	
+
 	//	}generic_collider_data;
-		
+
 	//	struct
 	//	{
-	
+
 	//	}character_collider_data;
 	//}collider_data;
 	mat3_t orientation;
 	vec3_t position;
 	vec3_t scale;
 	vec3_t linear_velocity;
-	
+
 	float radius;
 	float height;
 	float step_height;
 	float max_slope;
 	int character_collider_flags;
-	
+
 	void *rigid_body;						/* opaque reference to a btRigidBody... */
-	struct collider_def_t *def;					
+	struct collider_def_t *def;
 	unsigned short flags;
 	unsigned short type;
-	
+
 	int entity_index;
-	
+
 	short collision_record_count;
 	unsigned short max_collision_records;
 	unsigned int first_collision_record;
-	
+
 };
 
 struct collision_record_t
 {
 	struct collider_handle_t collider;
 	int life;
-	int material_index;
+	short material_index;
+	short collided_with_world;
+	//int material_index;
 	//vec3_t world_position;
 };
 
@@ -237,7 +240,7 @@ struct collision_record_t
 typedef struct
 {
 	uint32_t collider_count;
-	
+
 	uint32_t reserved0;
 	uint32_t reserved1;
 	uint32_t reserved2;
@@ -246,7 +249,7 @@ typedef struct
 	uint32_t reserved5;
 	uint32_t reserved6;
 	uint32_t reserved7;
-	
+
 }collider_section_header_t;
 
 
@@ -254,10 +257,10 @@ typedef struct
 {
 	char collider_name[PATH_MAX];
 	uint16_t type;
-	
+
 	float mass;
 	float height;
-	
+
 }collder_record_t;
 
 /*

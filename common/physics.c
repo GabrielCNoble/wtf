@@ -603,6 +603,8 @@ void *physics_BuildCollisionShape(collider_def_t *def)
 
 			case COLLIDER_TYPE_CHARACTER_COLLIDER:
 				collision_shape = new btCapsuleShape(def->radius, def->height - 2.0 * def->radius);
+				//collision_shape->setMargin(0.8);
+				//collision_shape = new btBoxShape(btVector3(def->radius, def->height * 0.5, def->radius));
 			break;
 
 			case COLLIDER_TYPE_PROJECTILE_COLLIDER:
@@ -1334,6 +1336,7 @@ void physics_PostUpdateColliders()
 	btRigidBody *collider_rigid_body;
 	btTransform collider_rigid_body_transform;
 	btVector3 collider_rigid_body_position;
+	btVector3 collider_rigid_body_linear_velocity;
 	btMatrix3x3 collider_rigid_body_orientation;
 	btPersistentManifold **persistent_manifolds;
 	btPersistentManifold *persistent_manifold;
@@ -1349,6 +1352,8 @@ void physics_PostUpdateColliders()
 
 	int handle0;
 	int handle1;
+
+	float step_delta;
 
 	for(j = 0; j < COLLIDER_TYPE_LAST; j++)
 	{
@@ -1392,16 +1397,48 @@ void physics_PostUpdateColliders()
 				break;
 			}
 
+			//if(collider->flags & COLLIDER_FLAG_UPDATE_RIGID_BODY)
+			//{
+			//	continue;
+			//}
+
 			collider_rigid_body = (btRigidBody *)collider->rigid_body;
 
 			collider_rigid_body->getMotionState()->getWorldTransform(collider_rigid_body_transform);
 
 			collider_rigid_body_position = collider_rigid_body_transform.getOrigin();
 			collider_rigid_body_orientation = collider_rigid_body_transform.getBasis();
+			collider_rigid_body_linear_velocity = collider_rigid_body->getLinearVelocity();
+
+			if(collider->type == COLLIDER_TYPE_CHARACTER_COLLIDER)
+			{
+				if(collider->character_collider_flags & CHARACTER_COLLIDER_FLAG_STEPPING_UP)
+				{
+					step_delta = collider_rigid_body_position[1] - collider->position.y;
+
+					if(step_delta < 0.01)
+					{
+						collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_STEPPING_UP;
+					}
+
+					collider->position.y += step_delta * 0.1;
+				}
+				else
+				{
+					collider->position.y = collider_rigid_body_position[1];
+				}
+			}
+			else
+			{
+				collider->position.y = collider_rigid_body_position[1];
+			}
 
 			collider->position.x = collider_rigid_body_position[0];
-			collider->position.y = collider_rigid_body_position[1];
 			collider->position.z = collider_rigid_body_position[2];
+
+			collider->linear_velocity.x = collider_rigid_body_linear_velocity[0];
+			collider->linear_velocity.y = collider_rigid_body_linear_velocity[1];
+			collider->linear_velocity.z = collider_rigid_body_linear_velocity[2];
 
 			collider->orientation.floats[0][0] = collider_rigid_body_orientation[0][0];
 			collider->orientation.floats[0][1] = collider_rigid_body_orientation[1][0];
@@ -1456,8 +1493,19 @@ void physics_PostUpdateColliders()
 					if(collider0->collision_record_count < collider0->max_collision_records)
 					{
 						collision_record_index = collider0->first_collision_record + collider0->collision_record_count;
-						collision_records[collision_record_index].collider = *(struct collider_handle_t *)&handle1;
+
+						if(body1)
+						{
+							collision_records[collision_record_index].collider = *(struct collider_handle_t *)&handle1;
+							collision_records[collision_record_index].collided_with_world = 0;
+						}
+						else
+						{
+							collision_records[collision_record_index].collided_with_world = 1;
+						}
+
 						collision_records[collision_record_index].life = contact_point.m_lifeTime;
+
 					}
 					collider0->collision_record_count++;
 				}
@@ -1468,7 +1516,18 @@ void physics_PostUpdateColliders()
 					if(collider1->collision_record_count < collider1->max_collision_records)
 					{
 						collision_record_index = collider1->first_collision_record + collider1->collision_record_count;
-						collision_records[collision_record_index].collider = *(struct collider_handle_t *)&handle0;
+
+						if(body0)
+						{
+							collision_records[collision_record_index].collider = *(struct collider_handle_t *)&handle0;
+							collision_records[collision_record_index].collided_with_world = 0;
+						}
+						else
+						{
+							collision_records[collision_record_index].collided_with_world = 1;
+						}
+
+						//collision_records[collision_record_index].collider = *(struct collider_handle_t *)&handle0;
 						collision_records[collision_record_index].life = contact_point.m_lifeTime;
 					}
 					collider1->collision_record_count++;

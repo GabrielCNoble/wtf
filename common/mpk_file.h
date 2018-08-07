@@ -73,7 +73,8 @@ struct output_params_t
 	int out_vertices_count;
 	int out_batches_count;
 
-	int out_indice_count;
+	int *out_indices;
+	int out_indices_count;
 
     struct mpk_lod_t *out_lods;
     int out_lods_count;

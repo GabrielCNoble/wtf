@@ -1,0 +1,20 @@
+
+
+
+void main()
+{
+    vec3_t direction;
+
+    entity_GetWaypointDirection(direction);
+
+    direction.y = 0.0;
+
+    entity_Move(direction * 50.0);
+}
+
+void OnSpawn()
+{
+    entity_FindPath(vec3_t(0.0, 0.0, -18.0));
+}
+
+

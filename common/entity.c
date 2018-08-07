@@ -66,6 +66,8 @@ struct stack_list_t ent_entity_aabbs;
 struct stack_list_t ent_world_transforms;
 struct list_t ent_top_transforms;
 
+struct list_t ent_entity_contacts;
+
 
 void (*dispose_component_callback[COMPONENT_TYPE_LAST])() = {NULL};
 
@@ -128,12 +130,12 @@ int entity_Init()
 
 	for(i = 0; i < 2; i++)
 	{
-		ent_entities[i] = stack_list_create(sizeof(struct entity_t), 64, entity_EntityListDisposeCallback);
+		ent_entities[i] = stack_list_create(sizeof(struct entity_t), 512, entity_EntityListDisposeCallback);
 	}
 
-	ent_entity_aabbs = stack_list_create(sizeof(struct entity_aabb_t), 64, NULL);
-	ent_world_transforms = stack_list_create(sizeof(struct entity_transform_t), 64, NULL);
-	ent_top_transforms = list_create(sizeof(struct component_handle_t), 64, NULL);
+	ent_entity_aabbs = stack_list_create(sizeof(struct entity_aabb_t), 512, NULL);
+	ent_world_transforms = stack_list_create(sizeof(struct entity_transform_t), 512, NULL);
+	ent_top_transforms = list_create(sizeof(struct component_handle_t), 512, NULL);
 
 	/*
 	===============================================================
@@ -141,6 +143,7 @@ int entity_Init()
 	===============================================================
 	*/
 
+    ent_entity_contacts = list_create(sizeof(struct entity_contact_t), 65536, NULL);
 
 
 
@@ -152,6 +155,7 @@ int entity_Init()
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_CAMERA, sizeof(struct camera_component_t));
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_PARTICLE_SYSTEM, sizeof(struct particle_system_component_t));
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_LIFE, sizeof(struct life_component_t));
+    DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_NAVIGATION, sizeof(struct navigation_component_t));
 
 	DECLARE_COMPONENT_FIELDS(COMPONENT_TYPE_TRANSFORM, {
 															COMPONENT_FIELD("orientation", SCRIPT_VAR_TYPE_MAT3T, COMPONENT_FIELD_OFFSET(struct transform_component_t, orientation)),
@@ -172,7 +176,7 @@ int entity_Init()
 	{
 		for(component_type = COMPONENT_TYPE_TRANSFORM; component_type < COMPONENT_TYPE_LAST; component_type++)
 		{
-			ent_components[def_list][component_type] = stack_list_create(COMPONENT_SIZES[component_type], 64, dispose_component_callback[component_type]);
+			ent_components[def_list][component_type] = stack_list_create(COMPONENT_SIZES[component_type], 512, dispose_component_callback[component_type]);
 		}
 	}
 
@@ -194,6 +198,7 @@ void entity_Finish()
 	stack_list_destroy(&ent_entity_aabbs);
 	stack_list_destroy(&ent_world_transforms);
 	list_destroy(&ent_top_transforms);
+	list_destroy(&ent_entity_contacts);
 
 
 	for(j = 0; j < 2; j++)
@@ -230,6 +235,8 @@ struct component_handle_t entity_AllocComponent(int component_type, int alloc_fo
 	struct component_handle_t *transforms;
 	struct script_component_t *script;
 	struct component_handle_t handle;
+    struct physics_component_t *physics_component;
+    struct navigation_component_t *navigation_component;
 
 	handle.def = 0;
 	handle.type = COMPONENT_TYPE_NONE;
@@ -278,6 +285,21 @@ struct component_handle_t entity_AllocComponent(int component_type, int alloc_fo
 				script = (struct script_component_t *)component;
 				script->script = NULL;
 			break;
+
+			case COMPONENT_TYPE_PHYSICS:
+                physics_component = (struct physics_component_t *)component;
+                physics_component->max_entity_contact_count = 32;
+            break;
+
+            /*case COMPONENT_TYPE_NAVIGATION:
+                navigation_component = (struct navigation_component_t *)component;
+
+                if(!navigation_component->route.elements)
+                {
+                    navigation_component->route = list_create(sizeof(struct waypoint_t *), 128, NULL);
+                }
+
+            break;*/
 		}
 		//}
 	}
@@ -717,6 +739,7 @@ struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int
 	struct transform_component_t *transform_component;
 	struct entity_aabb_t *aabb;
 	struct component_t *component_ptr;
+	struct navigation_component_t *navigation_component;
 
 	component.type = COMPONENT_TYPE_NONE;
 
@@ -776,22 +799,18 @@ struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int
 			break;
 
 			case COMPONENT_TYPE_CAMERA:
-				/* a camera component needs a transform component so it can be
-				updated by other transforms above it in the hierarchy... */
-				//component_transform = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, entity.def);
-				//transform_component = entity_GetComponentPointer(component_transform);
-
-				//camera_component = (struct camera_component_t *)component_ptr;
-				//camera_component->transform = component_transform;
-
-				/* parent this camera's transform to the entity's transform that owns the camera component... */
-				//entity_ParentTransformComponent(entity_ptr->components[COMPONENT_TYPE_TRANSFORM], component_transform);
-
-	//			transform_component->orientation = mat3_t_id();
-	//			transform_component->position = vec3_t_c(0.0, 0.0, 0.0);
-	//			transform_component->scale = vec3_t_c(1.0, 1.0, 1.0);
 
 			break;
+
+			case COMPONENT_TYPE_NAVIGATION:
+                navigation_component = (struct navigation_component_t *)component_ptr;
+
+                if(!navigation_component->route.elements)
+                {
+                    navigation_component->route = list_create(sizeof(struct waypoint_t *), 128, NULL);
+                }
+
+            break;
 		}
 	}
 
@@ -2012,52 +2031,52 @@ void entity_ScaleEntity(int entity_index, vec3_t axis, float amount)
 
 void entity_FindPath(struct entity_handle_t entity, vec3_t to)
 {
-	#if 0
+
 	//struct transform_component_t *transform;
 	struct entity_transform_t *transform;
-	struct script_controller_component_t *controller;
+	struct navigation_component_t *navigation_component;
 	struct entity_t *entity_ptr;
-	struct waypoint_t **route;
 	struct waypoint_t *waypoint;
+	struct waypoint_t **route;
+	struct waypoint_t **component_route;
+	//struct waypoint_t *waypoint;
 	int route_length;
 	int i;
 
 	entity_ptr = entity_GetEntityPointerHandle(entity);
 
-	transform = entity_GetWorldTransformPointer(entity_ptr->components[COMPONENT_INDEX_TRANSFORM]);
-	controller = entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_SCRIPT_CONTROLLER]);
+	transform = entity_GetWorldTransformPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+	navigation_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_NAVIGATION]);
 
-	if(controller->controller.base.type == COMPONENT_TYPE_SCRIPT_CONTROLLER)
+	if(navigation_component)
 	{
-		route = navigation_FindPath(&route_length, vec3(transform->transform.floats[3][0], transform->transform.floats[3][1], transform->transform.floats[3][2]), to);
+		route = navigation_FindPath(&route_length, vec3_t_c(transform->transform.floats[3][0], transform->transform.floats[3][1], transform->transform.floats[3][2]), to);
 
-		controller->route_length = 0;
+        navigation_component->route.element_count = 0;
 
 		if(route)
 		{
-			controller->route_length = route_length;
+		    if(route_length > navigation_component->route.max_elements)
+            {
+                list_resize(&navigation_component->route, (route_length + 3) & (~3));
+		    }
 
-			if(route_length > controller->max_route_length)
-			{
-				if(controller->route)
-				{
-					memory_Free(controller->route);
-				}
-				route_length = (route_length + 3) & (~3);
-				controller->route = memory_Malloc(sizeof(struct waypoint_t *) * route_length, "entity_FindPath");
-				controller->max_route_length = route_length;
-			}
+            navigation_component->route.element_count = route_length;
 
-			for(i = 0; i < controller->route_length; i++)
-			{
-				controller->route[i] = route[i];
-			}
+            component_route = (struct waypoint_t **)navigation_component->route.elements;
 
-			controller->current_waypoint = 0;
+            for(i = 0; i < route_length; i++)
+            {
+                waypoint = route[i];
+                component_route[i] = waypoint;
+            }
+
+            //memcpy(navigation_component->route.elements, route, sizeof(struct waypoint_t *) * route_length);
+
+            navigation_component->current_waypoint = 0;
 		}
 	}
 
-	#endif
 }
 
 #define MAX_TOUCHED_ENTITIES 1024
@@ -2088,10 +2107,8 @@ struct entity_handle_t *entity_GetTouchedEntities(struct entity_handle_t entity,
 
 		collision_records = physics_GetColliderCollisionRecords(physics_component->collider.collider_handle);
 
-		for(i = 0; i < collider->collision_record_count; i++)
+		for(i = 0; i < collider->collision_record_count && i < MAX_TOUCHED_ENTITIES; i++)
 		{
-			//if(collision_records[start + i].collider.type != COLLIDER_TYPE_NONE)
-			//{
 			other = physics_GetColliderPointerHandle(collision_records[i].collider);
 
 			if(other)
@@ -2101,15 +2118,20 @@ struct entity_handle_t *entity_GetTouchedEntities(struct entity_handle_t entity,
 
 				touched++;
 			}
-
-			//}
 		}
 	}
 
-	assert(touched < MAX_TOUCHED_ENTITIES);
+	//assert(touched < MAX_TOUCHED_ENTITIES);
 
 	*count = touched;
 	return entity_touched_entities;
+}
+
+
+void entity_TouchedEntities(struct entity_handle_t entity)
+{
+    struct entity_t *entity_ptr;
+    struct physics_component_t *physics_component;
 }
 
 
@@ -2363,9 +2385,93 @@ void entity_UpdateScriptComponents()
 			}
 		}
 	}
-
-
 }
+
+void entity_UpdatePhysicsComponents()
+{
+    int i;
+    int j;
+    int count;
+    struct physics_component_t *physics_components;
+    struct physics_component_t *physics_component;
+    struct collider_t *collider;
+    struct collider_t *other;
+    struct collision_record_t *collision_records;
+    struct collision_record_t *collision_record;
+
+    struct entity_contact_t *entity_contacts;
+    struct entity_contact_t *first_entity_contact;
+    struct entity_contact_t *entity_contact;
+
+
+    int prev_start = 0;
+    int increment;
+
+    ent_entity_contacts.element_count = 0;
+    entity_contacts = (struct entity_contact_t *)ent_entity_contacts.elements;
+
+    physics_components = (struct physics_component_t *)ent_components[0][COMPONENT_TYPE_PHYSICS].elements;
+    count = ent_components[0][COMPONENT_TYPE_PHYSICS].element_count;
+
+    for(i = 0; i < count; i++)
+    {
+        physics_component = physics_components + i;
+
+        collider = physics_GetColliderPointerHandle(physics_component->collider.collider_handle);
+
+        if(collider)
+        {
+            if(physics_component->entity_contact_count > physics_component->max_entity_contact_count)
+            {
+                physics_component->max_entity_contact_count = (physics_component->entity_contact_count + 3) & (~3);
+            }
+
+            physics_component->first_entity_contact = prev_start;
+            physics_component->entity_contact_count = 0;
+
+            prev_start += physics_component->max_entity_contact_count;
+
+            collision_records = physics_GetColliderCollisionRecords(physics_component->collider.collider_handle);
+
+            increment = physics_component->max_entity_contact_count + ent_entity_contacts.element_count;
+
+            if(increment > ent_entity_contacts.max_elements)
+            {
+                increment = 32 + (increment + 3) & (~3);
+                list_resize(&ent_entity_contacts, increment);
+                entity_contacts = (struct entity_contact_t *)ent_entity_contacts.elements;
+            }
+
+            first_entity_contact = entity_contacts + physics_component->first_entity_contact;
+
+            for(j = 0; j < collider->collision_record_count; j++)
+            {
+                if(physics_component->entity_contact_count < physics_component->max_entity_contact_count)
+                {
+                    entity_contact = first_entity_contact + physics_component->entity_contact_count;
+
+                    collision_record = collision_records + j;
+
+                    other = physics_GetColliderPointerHandle(collision_record->collider);
+
+                    if(other)
+                    {
+                        entity_contact->entity = (struct entity_handle_t){0, other->entity_index};
+                    }
+                    else
+                    {
+                        entity_contact->entity = INVALID_ENTITY_HANDLE;
+                    }
+                }
+
+                physics_component->entity_contact_count++;
+            }
+
+            ent_entity_contacts.element_count = prev_start;
+        }
+    }
+}
+
 
 void entity_RecursiveUpdateTransform(struct entity_transform_t *parent_transform, struct component_handle_t child_transform, vec3_t *aabb_max, vec3_t *aabb_min)
 {
@@ -2537,6 +2643,9 @@ void entity_UpdateTransformComponents()
 				{
 					mat3_t_mult(&rotation, &local_transform->orientation, &collider->orientation);
 					mat4_t_compose2(&world_transform->transform, &rotation, collider->position, local_transform->scale);
+
+
+
 				}
 				else
 				{
@@ -2762,6 +2871,16 @@ void *entity_SetupScriptDataCallback(struct script_t *script, void *script_contr
 		{
 			if(entity_script->on_collision_entry_point)
 			{
+			    if(physics_component->entity_contact_count)
+                {
+                    script_array.buffer = (struct entity_contact_t *)ent_entity_contacts.elements + physics_component->first_entity_contact;
+                    script_array.element_count = physics_component->entity_contact_count;
+                    script_array.element_size = sizeof(struct entity_contact_t);
+
+                    script_QueueEntryPoint(entity_script->on_collision_entry_point);
+                    script_PushArg(&script_array, SCRIPT_ARG_TYPE_ADDRESS);
+                }
+			    #if 0
 				if(physics_HasNewCollisions(physics_component->collider.collider_handle))
 				{
 					touched = entity_GetTouchedEntities(ent_current_entity, &touched_count);
@@ -2791,6 +2910,8 @@ void *entity_SetupScriptDataCallback(struct script_t *script, void *script_contr
 						script_PushArg(&script_array, SCRIPT_ARG_TYPE_ADDRESS);
 					}
 				}
+
+				#endif
 			}
 
 		}
@@ -2867,7 +2988,10 @@ void entity_SaveEntityDef(char *file_name, struct entity_handle_t entity_def)
 	void *buffer;
 	int buffer_size;
 
+	struct entity_t *entity = entity_GetEntityPointerHandle(entity_def);
 	entity_SerializeEntityDef(&buffer, &buffer_size, entity_def);
+
+    entity->flags |= ENTITY_FLAG_ON_DISK;
 
 	fname = path_AddExtToName(file_name, ".ent");
 	file = fopen(fname, "wb");
@@ -2878,6 +3002,7 @@ void entity_SaveEntityDef(char *file_name, struct entity_handle_t entity_def)
 struct entity_handle_t entity_LoadEntityDef(char *file_name)
 {
 	FILE *file;
+	struct entity_t *entity;
 
 	file = path_TryOpenFile(file_name);
 	unsigned long int file_size = 0;
@@ -2908,6 +3033,8 @@ struct entity_handle_t entity_LoadEntityDef(char *file_name)
 
 	memory_Free(buffer);
 
+	entity = entity_GetEntityPointerHandle(entity_def);
+	entity->flags |= ENTITY_FLAG_ON_DISK;
 
 	return entity_def;
 }

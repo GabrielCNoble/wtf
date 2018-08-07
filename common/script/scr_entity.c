@@ -229,6 +229,13 @@ struct entity_handle_t entity_ScriptGetCurrentEntity()
 	return ent_current_entity;
 }
 
+int entity_ScriptIsEntityValid(struct entity_handle_t entity)
+{
+    struct entity_t *entity_ptr;
+    entity_ptr = entity_GetEntityPointerHandle(entity);
+    return entity_ptr != NULL;
+}
+
 /*
 =====================================
 =====================================
@@ -573,72 +580,71 @@ void entity_ScriptFindPath(vec3_t *to)
 
 void entity_ScriptGetWaypointDirection(vec3_t *direction)
 {
-	#if 0
 	struct entity_t *entity_ptr;
+	struct waypoint_t *waypoints;
 	struct waypoint_t *waypoint;
-	struct script_controller_component_t *controller;
-	struct transform_component_t *transform;
-	struct entity_transform_t *global_transform;
+	struct waypoint_t **route;
+	struct navigation_component_t *navigation_component;
+	struct transform_component_t *transform_component;
+	struct entity_transform_t *world_transform;
 	vec3_t d = {0.0, 0.0, 0.0};
 
 	float l;
 
 	entity_ptr = entity_GetEntityPointerHandle(ent_current_entity);
 
-	controller = entity_GetComponentPointer(entity_ptr->components[COMPONENT_INDEX_SCRIPT_CONTROLLER]);
-	global_transform = entity_GetWorldTransformPointer(entity_ptr->components[COMPONENT_INDEX_TRANSFORM]);
+	navigation_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_NAVIGATION]);
+	world_transform = entity_GetWorldTransformPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
-	if(controller)
+	if(navigation_component)
 	{
-		if(controller->controller.base.type == COMPONENT_TYPE_SCRIPT_CONTROLLER)
+		//if(controller->controller.base.type == COMPONENT_TYPE_SCRIPT_CONTROLLER)
+		//{
+		if(navigation_component->route.elements && navigation_component->route.element_count)
 		{
-			if(controller->route)
-			{
-				waypoint = controller->route[controller->current_waypoint];
-				d.x = waypoint->position.x - global_transform->transform.floats[3][0];
-				d.y = waypoint->position.y - global_transform->transform.floats[3][1];
-				d.z = waypoint->position.z - global_transform->transform.floats[3][2];
+			//waypoint = controller->route[controller->current_waypoint];
 
-				l = length3(d);
-				d.x /= l;
-				d.y /= l;
-				d.z /= l;
+            if(navigation_component->current_waypoint < navigation_component->route.element_count)
+            {
+                route = (struct waypoint_t **)navigation_component->route.elements;
+                waypoint = route[navigation_component->current_waypoint];
 
-				if(l < 1.5)
-				{
-					entity_ScriptAdvanceWaypoint();
-				}
-			}
+                d.x = waypoint->position.x - world_transform->transform.floats[3][0];
+                d.y = waypoint->position.y - world_transform->transform.floats[3][1];
+                d.z = waypoint->position.z - world_transform->transform.floats[3][2];
+
+                l = length3(d);
+                d.x /= l;
+                d.y /= l;
+                d.z /= l;
+
+                if(l < 1.5)
+                {
+                    entity_ScriptAdvanceWaypoint();
+                }
+            }
+
 		}
 	}
 
-
-	//printf("entity: %d --- [%f %f %f]\n", ent_current_entity.entity_index, d.x, d.y, d.z);
-
 	*direction = d;
-
-	#endif
 }
 
 void entity_ScriptAdvanceWaypoint()
 {
-	#if 0
 	struct entity_t *entity;
-	struct script_controller_component_t *controller;
+	struct navigation_component_t *navigation_component;
 
 	entity = entity_GetEntityPointerHandle(ent_current_entity);
-	controller = entity_GetComponentPointer(entity->components[COMPONENT_INDEX_SCRIPT_CONTROLLER]);
+	navigation_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_NAVIGATION]);
 
-	if(controller->route_length)
+	if(navigation_component->route.elements && navigation_component->route.element_count)
 	{
-		if(controller->current_waypoint < controller->route_length - 1)
+		if(navigation_component->current_waypoint < navigation_component->route.element_count)
 		{
-			controller->current_waypoint++;
+			navigation_component->current_waypoint++;
 		}
 	}
-
-	#endif
-
 }
 
 void entity_ScriptPrint(struct script_string_t *script_string)

@@ -1040,7 +1040,10 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 				{
 					if(transform_component->parent.type == COMPONENT_TYPE_NONE)
 					{
-						entity_WriteEntity((void **)&out, handle, INVALID_COMPONENT_HANDLE);
+						if(!(entity->flags & ENTITY_FLAG_ON_DISK))
+						{
+							entity_WriteEntity((void **)&out, handle, INVALID_COMPONENT_HANDLE);
+						}
 					}
 				}
 			}
@@ -1063,6 +1066,7 @@ void entity_CalculateBufferSize(int *buffer_size, struct entity_handle_t entity,
 	struct transform_component_t *transform_component;
 	struct transform_component_t *child_transform_component;
 	struct collider_def_t *collider_def;
+	struct component_t *component;
 	int size = 0;
 	int i;
 	int j;
@@ -1105,6 +1109,9 @@ void entity_CalculateBufferSize(int *buffer_size, struct entity_handle_t entity,
 			if(entity_ptr->components[i].type != COMPONENT_TYPE_NONE)
 			{
 				size += sizeof(struct component_record_t);
+				component = entity_GetComponentPointer(entity_ptr->components[i]);
+
+				component->flags &= ~COMPONENT_FLAG_SERIALIZED;
 			}
 		}
 

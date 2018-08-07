@@ -37,6 +37,7 @@ struct entity_handle_t ed_entity_editor_entity_def_comp_to_set;
 extern struct entity_handle_t ed_entity_editor_preview_entity;
 extern int ed_entity_editor_update_preview_entity;
 extern int ed_entity_editor_draw_collider_list_cursor;
+extern struct collision_shape_t *ed_entity_editor_hovered_collision_shape;
 extern struct entity_handle_t ed_entity_editor_draw_collider_list[1024];
 
 
@@ -233,6 +234,11 @@ void editor_EntityEditorAddComponentMenu()
 					component_type = COMPONENT_TYPE_LIGHT;
 					ed_entity_editor_add_component_menu_open = 0;
 				}
+				if(gui_ImGuiMenuItem("Add navigation component", NULL, NULL, 1))
+                {
+                    component_type = COMPONENT_TYPE_NAVIGATION;
+                    ed_entity_editor_add_component_menu_open = 0;
+                }
 
 				gui_ImGuiEndMenu();
 
@@ -658,10 +664,16 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 
 	char *collision_shape_type;
 
+	char id[512];
+
 	int i;
 	int j;
 
 	vec3_t euler;
+
+	vec2_t cursor_start;
+	vec2_t cursor_end;
+	vec2_t box_size;
 
 	vec3_t position;
 
@@ -670,6 +682,8 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 	char checked = 0;
 
 	collider_def = (struct collider_def_t *)physics_component->collider.collider_def;
+
+	ed_entity_editor_hovered_collision_shape = NULL;
 
 	if(collider_def)
 	{
@@ -754,7 +768,10 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 				for(i = 0; i < collider_def->collision_shape_count; i++)
 				{
 					collision_shape = collider_def->collision_shape + i;
+
 					gui_ImGuiPushIDi(i);
+
+					gui_ImGuiBeginGroup();
 
 					switch(collision_shape->type)
 					{
@@ -832,8 +849,13 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 					gui_ImGuiNewLine();
 					gui_ImGuiNewLine();
 
-					gui_ImGuiPopID();
+					gui_ImGuiEndGroup();
 
+					if(gui_ImGuiIsItemHovered(0) || gui_ImGuiIsItemActive())
+					{
+						ed_entity_editor_hovered_collision_shape = collision_shape;
+					}
+					gui_ImGuiPopID();
 				}
 			break;
 		}
@@ -969,6 +991,11 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 							component_function = (void (*)(void *, struct entity_handle_t, int ))editor_EntityEditorScriptComponent;
 						break;
 
+						case COMPONENT_TYPE_NAVIGATION:
+                            component_name = "Navigation component";
+                            component_function = NULL;
+                        break;
+
 						default:
 							component_name = "Nope";
 							continue;
@@ -986,7 +1013,10 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 
 					if(component_node_open)
 					{
-						component_function(component_ptr, entity, ref_on_ref);
+					    if(component_function)
+                        {
+                            component_function(component_ptr, entity, ref_on_ref);
+                        }
 						gui_ImGuiTreePop();
 					}
 

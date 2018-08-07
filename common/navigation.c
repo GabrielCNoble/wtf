@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <float.h>
 
 int nav_waypoint_count = 0;
 int nav_max_waypoints = 0;
@@ -361,7 +362,7 @@ void navigation_MoveWaypoint(int waypoint_index, vec3_t direction, float amount)
 
 struct waypoint_t *navigation_GetClosestWaypoint(vec3_t position)
 {
-	float lowest_d = 9999999999.9;
+	float lowest_d = FLT_MAX;
 	struct waypoint_t *closest = NULL;
 	float d;
 	vec3_t v;
@@ -409,6 +410,7 @@ struct waypoint_t **navigation_FindPath(int *waypoint_count, vec3_t from, vec3_t
 
 	int i;
 	int current_index;
+	int lowest_index;
 	int link_count;
 
 	/* find the path backwards, so the list can
@@ -445,7 +447,7 @@ struct waypoint_t **navigation_FindPath(int *waypoint_count, vec3_t from, vec3_t
 
 	while(nav_open_list_cursor)
 	{
-		lowest_f = 9999999999.9;
+		lowest_f = FLT_MAX;
 
 		/* find the best waypoint in the open list... */
 		for(i = 0; i < nav_open_list_cursor; i++)
@@ -533,6 +535,7 @@ struct waypoint_t **navigation_FindPath(int *waypoint_count, vec3_t from, vec3_t
 				if(neighbor->open_list_index < nav_open_list_cursor - 1)
 				{
 					nav_open_list[neighbor->open_list_index] = nav_open_list[nav_open_list_cursor - 1];
+					nav_open_list[neighbor->open_list_index]->open_list_index = neighbor->open_list_index;
 				}
 
 				nav_open_list_cursor--;

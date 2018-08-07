@@ -1001,7 +1001,7 @@ void editor_LevelEditorEdit(float delta_time)
 			}
 			else if(input_GetKeyStatus(SDL_SCANCODE_L) & KEY_JUST_PRESSED)
 			{
-				editor_LevelEditorOpenWaypointOptionMenu(r_window_width * normalized_mouse_x * 0.5, r_window_height * normalized_mouse_y * 0.5);
+				editor_LevelEditorOpenWaypointOptionMenu(mouse_x, r_window_height - mouse_y);
 			}
 
 			if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED)

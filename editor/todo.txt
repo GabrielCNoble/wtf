@@ -1,10 +1,16 @@
 - Engine 
 	- Serializers
-		- Entity serializer
-			- Entity file (.ent)
+//		- Entity serializer
+//			- Entity file (.ent)
 
 
 		- Light serializer
+
+		- Level serializer
+
+		- Material serializer
+
+		-
 	
 	- Animation system
 	- Navigation system
@@ -21,11 +27,15 @@
 //			- hierarchical transform update 
 			- hierarchical aabb update
 		
-//		- Controller component
-//			- Physics controller
-//			- Script controller
+//		- Physics component
 			
 //		- Script component
+
+//		- Model component
+
+		- Life component
+
+
 	
 	
 
@@ -39,13 +49,19 @@
 			- Allow adding / removing components
 //			- Allow adding / removing props
 //			- Allow querying of other entities 
+//			- Allow spawing entities
+//			- Allow spawning other objects
 
 		- Expose cameras
 		- Expose sound playback
+		- Expose particle systems
+		- Expose lights
+		
 	
 	- Physics system
 		- Character collider
-			- Step up steps
+//			- Step up steps
+			- Step down steps
 			- Stop still on slopes
 //				- Stop still
 				- Limit slope angle
@@ -57,10 +73,15 @@
 
 
 
-- GUI
-//	- Tree list
-
 
 - Editor
 	- Entity editor
+//		- Create entity defs
+//		- Add entity defs to other defs
+//		- Add / remove components
+//		- Set component values
+
+
 	- Level editor
+//		- Set brush face material
+//		- Brush face uv manipulation

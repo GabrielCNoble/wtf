@@ -46,7 +46,7 @@ void mpk_index(struct input_params_t *params);
 
 void mpk_lod(struct input_params_t *in_params, struct output_params_t *out_params, int max_lod);
 
-void mpk_optmize(struct output_params_t *params);
+void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_params);
 
 void mpk_convert(char *output_name, char *input_file);
 

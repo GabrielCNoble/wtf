@@ -37,7 +37,9 @@ void editor_LevelEditorAddToWorldMenu();
 
 void editor_LevelEditorDeleteSelectionsMenu();
 
- 
+void editor_LevelEditorWaypointOptionsMenu();
+
+
 
 void editor_LevelEditorOpenAddToWorldMenu(int x, int y);
 

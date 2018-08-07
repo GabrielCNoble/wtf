@@ -177,6 +177,10 @@ void entity_FindPath(struct entity_handle_t entity, vec3_t to);
 
 struct entity_handle_t *entity_GetTouchedEntities(struct entity_handle_t entity, int *count);
 
+void entity_TouchedEntities(struct entity_handle_t entity);
+
+struct entity_contact_t *entity_GetEntityContacts(struct entity_handle_t entity);
+
 /*
 ==============================================================
 ==============================================================
@@ -188,6 +192,8 @@ void entity_UpdateAabb(struct entity_handle_t entity);
 void entity_AabbWorldExtents(struct entity_handle_t entity, vec3_t *extent_max, vec3_t *extent_min);
 
 void entity_UpdateScriptComponents();
+
+void entity_UpdatePhysicsComponents();
 
 void entity_UpdateTransformComponents();
 

@@ -269,6 +269,8 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_LIGHT", COMPONENT_TYPE_LIGHT);
 	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_SCRIPT", COMPONENT_TYPE_SCRIPT);
 	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_CAMERA", COMPONENT_TYPE_CAMERA);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_LIFE", COMPONENT_TYPE_LIFE);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_NAVIGATION", COMPONENT_TYPE_NAVIGATION);
 
 
 	scr_virtual_machine->RegisterEnum("SDL_Scancode");
@@ -425,17 +427,25 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterObjectType("component_handle_t", sizeof(struct component_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
 	scr_virtual_machine->RegisterObjectType("collider_handle_t", sizeof(struct collider_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
 
+
+    scr_virtual_machine->RegisterObjectType("entity_contact_t", sizeof(struct entity_contact_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
+    scr_virtual_machine->RegisterObjectProperty("entity_contact_t", "entity_handle_t entity", asOFFSET(struct entity_contact_t, entity));
+    scr_virtual_machine->RegisterObjectProperty("entity_contact_t", "vec3_t position", asOFFSET(struct entity_contact_t, position));
+
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Jump(float jump_force)", asFUNCTION(entity_ScriptJump), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Move(vec3_t &in direction)", asFUNCTION(entity_ScriptMove), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void entity_SetEntityVelocity(entity_handle_t entity, vec3_t &in velocity)", asFUNCTION(entity_ScriptSetEntityVelocity), asCALL_CDECL);
-
-
 	scr_virtual_machine->RegisterGlobalFunction("void entity_FindPath(vec3_t &in to)", asFUNCTION(entity_ScriptFindPath), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_GetWaypointDirection(vec3_t &out direction)", asFUNCTION(entity_ScriptGetWaypointDirection), asCALL_CDECL);
 
+
+
+
+
+
+
 	scr_virtual_machine->RegisterGlobalFunction("vec3_t &entity_GetPosition(int local)", asFUNCTION(entity_ScriptGetPosition), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("vec3_t &entity_GetEntityPosition(entity_handle_t entity, int local)", asFUNCTION(entity_ScriptGetEntityPosition), asCALL_CDECL);
-
+    scr_virtual_machine->RegisterGlobalFunction("void entity_SetEntityVelocity(entity_handle_t entity, vec3_t &in velocity)", asFUNCTION(entity_ScriptSetEntityVelocity), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("mat3_t &entity_GetOrientation(int local)", asFUNCTION(entity_ScriptGetOrientation), asCALL_CDECL);
 
 
@@ -472,10 +482,8 @@ void script_RegisterTypesAndFunctions()
 
 
 	scr_virtual_machine->RegisterGlobalFunction("void entity_AddEntityProp(entity_handle_t entity, string &in name, ? &in type)", asFUNCTION(entity_ScriptAddEntityProp), asCALL_CDECL);
-
-
 	scr_virtual_machine->RegisterGlobalFunction("void entity_AddEntityProp1i(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptAddEntityProp1i), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void entity_AddEnttiyProp1f(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptAddEntityProp1f), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_AddEntityProp1f(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptAddEntityProp1f), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_AddEntityProp3f(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptAddEntityProp3f), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_RemoveEntityProp(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptRemoveEntityProp), asCALL_CDECL);
 
@@ -499,6 +507,8 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("void entity_GetEntityPropValue(entity_handle_t entity, string &in name, ? &out value)", asFUNCTION(entity_ScriptGetEntityPropValue), asCALL_CDECL);
 
 	scr_virtual_machine->RegisterGlobalFunction("int entity_EntityHasProp(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptEntityHasProp), asCALL_CDECL);
+
+	scr_virtual_machine->RegisterGlobalFunction("int entity_IsEntityValid(entity_handle_t entity)", asFUNCTION(entity_ScriptIsEntityValid), asCALL_CDECL);
 }
 
 void script_ExecuteScripts(double delta_time)

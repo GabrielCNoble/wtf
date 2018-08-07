@@ -53,6 +53,7 @@ enum ENTITY_FLAGS
 	ENTITY_FLAG_NOT_INITIALIZED = 1 << 4,
 	ENTITY_FLAG_SERIALIZED = 1 << 27,
 	ENTITY_FLAG_MODIFIED = 1 << 28,					/* to allow serialization of entities that were modified after being spawned... */
+	ENTITY_FLAG_ON_DISK = 1 << 29
 };
 
 
@@ -84,6 +85,7 @@ enum COMPONENT_TYPES
 	COMPONENT_TYPE_CAMERA,
 	COMPONENT_TYPE_PARTICLE_SYSTEM,
 	COMPONENT_TYPE_LIFE,
+	COMPONENT_TYPE_NAVIGATION,
 	COMPONENT_TYPE_LAST,
 	COMPONENT_TYPE_NONE = COMPONENT_TYPE_LAST
 };
@@ -174,8 +176,12 @@ struct physics_component_t
 	{
 		struct collider_def_t *collider_def;
 		struct collider_handle_t collider_handle;
-		//int collider_index;
+
 	}collider;
+
+	int first_entity_contact;
+    short entity_contact_count;
+    short max_entity_contact_count;
 
 	int flags;
 };
@@ -268,6 +274,19 @@ struct life_component_t
 ==============================================================
 */
 
+struct navigation_component_t
+{
+    struct component_t base;
+    struct list_t route;
+    int current_waypoint;
+};
+
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
 struct entity_script_t
 {
 	struct script_t script;
@@ -288,6 +307,12 @@ struct entity_prop_t
 	void *memory;
 };
 
+
+struct entity_contact_t
+{
+    struct entity_handle_t entity;
+    vec3_t position;
+};
 
 /*
 

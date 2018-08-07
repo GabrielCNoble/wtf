@@ -48,6 +48,12 @@ void gui_ImGuiEnd();
 
 int gui_ImGuiBeginChild(const char *str_id, vec2_t size, int border, int flags);
 
+int gui_ImGuiBeginChildIId(int id, vec2_t size, int border, int flags);
+
+//#define gui_ImGuiBeginChild(id, size, border, flags) _Generic(id , const char*: gui_ImGuiBeginChildStrId(id, size, border, flags), int: gui_ImGuiBeginChildIId(id, size, border, flags))
+
+//#define FUCK(X) _Generic(X, const char* : "STRING", int: "INT")
+
 void gui_ImGuiEndChild();
 
 /*
@@ -132,6 +138,10 @@ void gui_ImGuiSpacing();
 void gui_ImGuiIndent(float indent_w);
 
 void gui_ImGuiUnindent(float indent_w);
+
+void gui_ImGuiBeginGroup();
+
+void gui_ImGuiEndGroup();
 
 vec2_t gui_ImGuiGetCursorPos();
 
@@ -349,6 +359,8 @@ int gui_ImGuiIsItemClicked(int mouse_button);
 int gui_ImGuiIsItemVisible();
 
 int gui_ImGuiIsItemDeactivated();
+
+int gui_ImGuiIsAnyItemActive();
 
 
 /*

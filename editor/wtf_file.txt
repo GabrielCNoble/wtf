@@ -1,0 +1,9 @@
+[header]
+
+-light count
+-brush count
+-material count
+
+-on disk entity defs count
+-serialized entity def count
+-serialized entity count

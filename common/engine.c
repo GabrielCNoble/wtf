@@ -236,6 +236,7 @@ void engine_MainLoop()
 			physics_ProcessCollisions(delta_time);
 		}
 
+        entity_UpdatePhysicsComponents();
 		entity_UpdateTransformComponents();
 		entity_UpdateCameraComponents();
 

@@ -220,11 +220,14 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	int c;
 	int k;
 
-	int largest_hit_index = -1;
-	int smallest_hit_time_index;
-	float largest_hit_dist;
-	float smallest_hit_time = 0.0;
-	float smallest_hit_angle;
+	//int largest_hit_index = -1;
+	//int smallest_hit_time_index;
+	//float largest_hit_dist;
+	//float smallest_hit_time = 0.0;
+	//float smallest_hit_angle;
+
+	btTransform rigid_body_transform;
+	btVector3 rigid_body_position;
 
 	float dist;
 	float hit_time;
@@ -233,8 +236,8 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	btManifoldPoint contact_point;
 	btVector3 contact_position;
 	btVector3 contact_normal;
-	btVector3 smallest_angle_contact_point;
-	btVector3 smallest_hit_normal;
+	//btVector3 smallest_angle_contact_point;
+	//btVector3 smallest_hit_normal;
 	btVector3 e0;
 	btVector3 e1;
 	btVector3 *triangle;
@@ -253,6 +256,8 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 
 	float horizontal_delta;
 
+	float contact_slope;
+
 	float stop_force_weight;
 	float gravity_proj;
 	float angle_to_ground;
@@ -260,6 +265,15 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	int bottom_hit_index = -1;
 	float bottom_hit_dist;
 	float hit_point_y;
+
+
+	btVector3 smallest_vertical_contact_normal;
+	float smallest_vertical_contact_dist;
+
+	btVector3 smallest_horizontal_contact_normal;
+	float smallest_horizontal_contact_time;
+
+
 
 	int collision_with_world;
 
@@ -289,24 +303,24 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	collider = physics_GetColliderPointerHandle(character_collider);
 
 	rigid_body = (btRigidBody *)collider->rigid_body;
-	capsule = (btCapsuleShape *)rigid_body->getCollisionShape();
+	//capsule = (btCapsuleShape *)rigid_body->getCollisionShape();
 
-	to = btVector3(collider->position.x, collider->position.y - collider->step_height * 0.5, collider->position.z);
-	from = btVector3(collider->position.x, collider->position.y, collider->position.z);
+	//to = btVector3(collider->position.x, collider->position.y - collider->step_height * 0.5, collider->position.z);
+	//from = btVector3(collider->position.x, collider->position.y, collider->position.z);
 
-	AllConvexResultCallback result_callback(from, to, rigid_body);
+	//AllConvexResultCallback result_callback(from, to, rigid_body);
 //	ClosestNotMeConvexResultCallback closest_result_callback(from, to, rigid_body);
 	//btCollisionWorld::ClosestConvexResultCallback result_callback(from, to);
 
 
 
-	transform_from.setIdentity();
-	transform_from.setOrigin(from);
+	//transform_from.setIdentity();
+	//transform_from.setOrigin(from);
 
-	transform_to.setIdentity();
-	transform_to.setOrigin(to);
+	//transform_to.setIdentity();
+	//transform_to.setOrigin(to);
 
-	physics_world->convexSweepTest(capsule, transform_from, transform_to, result_callback);
+//	physics_world->convexSweepTest((const btConvexShape *)rigid_body->getCollisionShape(), transform_from, transform_to, result_callback);
 //	physics_world->convexSweepTest(capsule, transform_from, transform_to, closest_result_callback);
 
 
@@ -314,76 +328,20 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	//normals = result_callback.m_hitNormalWorld;
 
 
-	largest_hit_dist = 0.0;
-	bottom_hit_dist = 0.0;
-	smallest_hit_time = 1.0;
-	smallest_hit_angle = 0.0;
+	//largest_hit_dist = 0.0;
+	//bottom_hit_dist = 0.0;
+	//smallest_hit_time = 1.0;
+	//smallest_hit_angle = 0.0;
 
-	c = result_callback.m_hitFractions.size();
+	smallest_vertical_contact_dist = 2.0;
+	smallest_horizontal_contact_time = 2.0;
+
+//	c = result_callback.m_hitFractions.size();
 
 	bottom_hit_dist = collider->height * 0.5;
 	collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_ON_GROUND;
 
 	world_collision_mesh->getMeshInterface()->getLockedVertexIndexBase((unsigned char **)&triangles, vert_count, vert_type, vert_stride, (unsigned char **)&indexes, index_stride, index_count, index_type, 0);
-
-	#if 0
-
-	for(i = 0; i < c; i++)
-	{
-		point.x = result_callback.m_hitPointWorld[i][0];
-		point.y = result_callback.m_hitPointWorld[i][1];
-		point.z = result_callback.m_hitPointWorld[i][2];
-
-		//renderer_DrawPoint(point, vec3(0.0, 1.0, 0.0), 8.0, 1, 0, 1);
-
-		//renderer_DrawLine(point, vec3(point.x + result_callback.m_hitNormalWorld[i][0], point.y + result_callback.m_hitNormalWorld[i][1], point.z + result_callback.m_hitNormalWorld[i][2]), vec3(1.0, 1.0, 0.0), 1.0, 1);
-
-		hit_point_y = result_callback.m_hitPointWorld[i][1];
-
-		dist = collider->position.y - hit_point_y;
-		hit_time = (1.0 - (dist / bottom_hit_dist));
-
-		if(hit_time <= 1.0 && hit_time >= 0.0)
-		{
-			dist = bottom_hit_dist * hit_time;
-			//printf("%f %f\n", dist, result_callback.m_hitNormalWorld[i][1]);
-
-			if(result_callback.m_hitNormalWorld[i][1] < collider->max_slope && result_callback.m_hitNormalWorld[i][1] > -collider->max_slope)
-			{
-				if(dist > largest_hit_dist)
-				{
-					largest_hit_dist = dist;
-				}
-			}
-			else
-			{
-				if(hit_time <= smallest_hit_time)
-				{
-					if(hit_time >= smallest_hit_time - SIMD_EPSILON && hit_time <= smallest_hit_time + SIMD_EPSILON)
-					{
-						if(result_callback.m_hitNormalWorld[i][1] > smallest_hit_angle)
-						{
-							smallest_hit_time = hit_time;
-							smallest_hit_time_index = i;
-							smallest_hit_angle = result_callback.m_hitNormalWorld[i][1];
-						}
-					}
-					else
-					{
-						smallest_hit_time = hit_time;
-						smallest_hit_time_index = i;
-						smallest_hit_angle = result_callback.m_hitNormalWorld[i][1];
-						collider->character_collider_flags |= CHARACTER_COLLIDER_FLAG_ON_GROUND;
-					}
-
-
-				}
-
-			}
-		}
-	}
-
-	#endif
 
 	persistent_manifolds = narrow_phase->getInternalManifoldPointer();
 
@@ -393,10 +351,12 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 
 		for(i = 0; i < persistent_manifolds_count; i++)
 		{
+			/* go over all contacts... */
 			persistent_manifold = persistent_manifolds[i];
 
 			if(persistent_manifold->getBody0() == rigid_body || persistent_manifold->getBody1() == rigid_body)
 			{
+				/* if this collider is involved in this contact point... */
 				c = persistent_manifold->getNumContacts();
 
 				for(j = 0; j < c; j++)
@@ -406,7 +366,6 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 					point.x = contact_point.m_positionWorldOnA[0];
 					point.y = contact_point.m_positionWorldOnA[1];
 					point.z = contact_point.m_positionWorldOnA[2];
-
 
 					if(persistent_manifold->getBody0() == world_collision_object)
 					{
@@ -428,6 +387,8 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 
 					if(collision_with_world)
 					{
+						/* if the other collision object involved is the world,
+						get the contact normal directly from the collision mesh... */
 						e0 = triangles[triangle_index + 1] - triangles[triangle_index];
 						e1 = triangles[triangle_index + 2] - triangles[triangle_index + 1];
 
@@ -439,56 +400,64 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 						contact_normal = contact_point.m_normalWorldOnB;
 					}
 
+
+
+
 					hit_point_y = point.y;
 
+					/* distance from the contact point to
+					the middle of the collider... */
 					dist = collider->position.y - hit_point_y;
+
+					/* the smaller the hit time, the closer
+					it is to the middle of the box */
 					hit_time = (1.0 - (dist / bottom_hit_dist));
 
 					renderer_DrawPoint(point, vec3_t_c(0.0, 1.0, 0.0), 8.0, 1, 0, 1);
 					renderer_DrawLine(point, vec3_t_c(point.x + contact_point.m_normalWorldOnB[0], point.y + contact_point.m_normalWorldOnB[1], point.z + contact_point.m_normalWorldOnB[2]), vec3_t_c(1.0, 1.0, 0.0), 1.0, 1);
 
+					contact_slope = 1.0 - fabs(contact_normal[1]);
 
-					if(hit_time <= 1.0 && hit_time >= 0.0)
+                    if(hit_time >= 0.0 && hit_time <= 1.0)
 					{
-						dist = bottom_hit_dist * hit_time;
-
-						if(contact_normal[1] < collider->max_slope && contact_normal[1] > -collider->max_slope)
+						if(contact_slope > collider->max_slope)
 						{
-							if(dist > largest_hit_dist)
+							/* vertical-ish surface (step or wall)... */
+
+							if(dist < smallest_vertical_contact_dist)
 							{
-								largest_hit_dist = dist;
+								smallest_vertical_contact_dist = dist;
+								smallest_vertical_contact_normal = contact_normal;
 							}
 						}
 						else
 						{
-							if(hit_time <= smallest_hit_time)
+							/* walkable surface... */
+
+							if(hit_time >= smallest_horizontal_contact_time - SIMD_EPSILON && hit_time <= smallest_horizontal_contact_time + SIMD_EPSILON)
 							{
-								if(hit_time >= smallest_hit_time - SIMD_EPSILON && hit_time <= smallest_hit_time + SIMD_EPSILON)
+								/* if this contact has the same contact time as the smallest one so far... */
+
+								if(contact_normal[1] > smallest_horizontal_contact_normal[1])
 								{
-									if(contact_normal[1] > smallest_hit_angle)
-									{
-										smallest_hit_time = hit_time;
-										smallest_hit_time_index = j;
-										smallest_hit_angle = contact_normal[1];
-										smallest_hit_normal = contact_normal;
-										collider->character_collider_flags |= CHARACTER_COLLIDER_FLAG_ON_GROUND;
-									}
-								}
-								else
-								{
-									smallest_hit_time = hit_time;
-									smallest_hit_time_index = i;
-									smallest_hit_angle = contact_normal[1];
-									smallest_hit_normal = contact_normal;
+									/* if this contact is with a more horizontal surface, keep
+									it's normal... */
+
+									smallest_horizontal_contact_normal = contact_normal;
 									collider->character_collider_flags |= CHARACTER_COLLIDER_FLAG_ON_GROUND;
 								}
 							}
 
+							else if(hit_time < smallest_horizontal_contact_time)
+							{
+								/* this hit is closer to the bottom of the box... */
+								smallest_horizontal_contact_time = hit_time;
+								smallest_horizontal_contact_normal = contact_normal;
+								collider->character_collider_flags |= CHARACTER_COLLIDER_FLAG_ON_GROUND;
+							}
+
 						}
 					}
-
-
-
 				}
 
 			}
@@ -501,11 +470,15 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	{
 		gravity_on_plane = -rigid_body->getGravity();
 
-		gravity_proj = gravity_on_plane.dot(smallest_hit_normal);
+		gravity_proj = gravity_on_plane.dot(smallest_horizontal_contact_normal);
 
-		gravity_on_plane = gravity_on_plane - smallest_hit_normal * gravity_proj;
+		gravity_on_plane = gravity_on_plane - smallest_horizontal_contact_normal * gravity_proj;
 
 		rigid_body->applyCentralForce(gravity_on_plane);
+	}
+	else
+	{
+        //collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_STEPPING_UP;
 	}
 
 	if(collider->character_collider_flags & CHARACTER_COLLIDER_FLAG_WALKING)
@@ -537,6 +510,66 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 			//rigid_body->setLinearVelocity(linear_velocity);
 		}
 	}
+
+
+    #if 0
+
+	if(smallest_vertical_contact_dist < 2.0)
+	{
+		/* we hit a vertical surface... */
+
+		//if(smallest_vertical_contact_dist <= collider->step_height)
+
+		smallest_vertical_contact_dist = bottom_hit_dist - smallest_vertical_contact_dist;
+
+		if(smallest_vertical_contact_dist <= 0.5 && smallest_vertical_contact_dist > 0.09)
+		{
+            /* we hit something climbable, so adjust the collider position */
+
+            if(collider->character_collider_flags & CHARACTER_COLLIDER_FLAG_ON_GROUND)
+			{
+				/* to step up, we need to do it from somewhere. So, if we're touching a climbable
+				step but aren't touching the ground, it means we're probably stepping down instead... */
+				//rigid_body_position = rigid_body->getLinearVelocity();
+
+				//collider->position.x -= smallest_vertical_contact_normal[0] * collider->radius;
+				//collider->position.y += smallest_vertical_contact_dist;
+				//collider->position.z -= smallest_vertical_contact_normal[2] * collider->radius;
+
+
+				//rigid_body_position = rigid_body->getCenterOfMassPosition();
+
+				linear_velocity = rigid_body->getLinearVelocity();
+
+
+
+                //rigid_body_transform = rigid_body->getCenterOfMassTransform();
+                rigid_body->getMotionState()->getWorldTransform(rigid_body_transform);
+
+				rigid_body_position = rigid_body_transform.getOrigin();
+
+				rigid_body_position[0] -= smallest_vertical_contact_normal[0] * collider->radius;
+				rigid_body_position[1] += smallest_vertical_contact_dist;
+				rigid_body_position[2] -= smallest_vertical_contact_normal[2] * collider->radius;
+
+                rigid_body_transform.setOrigin(rigid_body_position);
+                rigid_body->getMotionState()->setWorldTransform(rigid_body_transform);
+
+				//rigid_body->setCe().setOrigin(rigid_body_position);
+
+				rigid_body->setLinearVelocity(btVector3(collider->linear_velocity.x, 0.0, collider->linear_velocity.z));
+				rigid_body->clearForces();
+
+				collider->character_collider_flags |= CHARACTER_COLLIDER_FLAG_STEPPING_UP;
+
+				//collider->flags |= COLLIDER_FLAG_UPDATE_RIGID_BODY;
+			}
+		}
+	}
+
+	#endif
+
+
 
 	collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_WALKING;
 

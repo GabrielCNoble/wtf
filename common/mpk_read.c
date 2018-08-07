@@ -66,7 +66,7 @@ int mpk_read(char *file_name, struct output_params_t *out_params)
 	out_params->out_vertices_count = header->vertice_count;
 	out_params->out_batches_count = header->batch_count;
 	out_params->out_lods_count = header->lod_count;
-	out_params->out_indice_count = header->indice_count;
+	out_params->out_indices_count = header->indice_count;
 
 	/* then we read all the vertices accessed from all batches/lods... */
 	out_params->out_vertices = memory_Malloc(sizeof(vertex_t) * header->vertice_count, "mpk_read");

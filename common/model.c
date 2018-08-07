@@ -113,179 +113,10 @@ void model_Finish()
 {
 	int i;
 	mesh_t *next;
-//	while(mdl_meshes)
-	//{
-		//free(meshes->name);
-		//free(meshes->vertices);
-	//	next = mdl_meshes->next;
-	//	memory_Free(mdl_meshes->name);
-	//	memory_Free(mdl_meshes->vertices);
-	//	mdl_meshes = next;
-	//}
-
-	//memory_Free(mdl_model_free_stack);
 
 	stack_list_destroy(&mdl_models);
-
-	//for(i = 0; i < mdl_model_list_cursor; i++)
-	//{
-	//	if(!mdl_models[i].vert_count)
-	//		continue;
-
-	//	memory_Free(mdl_models[i].name);
-	//	memory_Free(mdl_models[i].file_name);
-	//	memory_Free(mdl_models[i].batches);
-	//}
-	//memory_Free(mdl_models);
-
-
-
 }
 
-
-mesh_t *model_CreateMesh(char *name, vertex_t *vertices, unsigned int vert_count, unsigned short draw_mode)
-{
-	#if 0
-	int i;
-
-	mesh_t *mesh;
-
-	vec3_t max_extents;
-	vec3_t min_extents;
-	vec3_t center;
-	//compact_vertex_t *compact;
-
-	struct c_vertex_t *compact;
-
-	renderer_PushFunctionName("model_CreateMesh");
-
-	//mesh = malloc(sizeof(mesh_t ));
-	mesh = memory_Malloc(sizeof(mesh_t), "model_CreateMesh");
-	//mesh->name = strdup(name);
-	mesh->name = memory_Strdup(name, "model_CreateMesh");
-	mesh->vertices = vertices;
-	mesh->vert_count = vert_count;
-	mesh->draw_mode = draw_mode;
-
-
-	max_extents.x = FLT_MIN;
-	max_extents.y = FLT_MIN;
-	max_extents.z = FLT_MIN;
-
-	min_extents.x = FLT_MAX;
-	min_extents.y = FLT_MAX;
-	min_extents.z = FLT_MAX;
-
-	for(i = 0; i < mesh->vert_count; i++)
-	{
-		if(mesh->vertices[i].position.x > max_extents.x) max_extents.x = mesh->vertices[i].position.x;
-		if(mesh->vertices[i].position.y > max_extents.y) max_extents.y = mesh->vertices[i].position.y;
-		if(mesh->vertices[i].position.z > max_extents.z) max_extents.z = mesh->vertices[i].position.z;
-
-
-		if(mesh->vertices[i].position.x < min_extents.x) min_extents.x = mesh->vertices[i].position.x;
-		if(mesh->vertices[i].position.y < min_extents.y) min_extents.y = mesh->vertices[i].position.y;
-		if(mesh->vertices[i].position.z < min_extents.z) min_extents.z = mesh->vertices[i].position.z;
-	}
-
-	center.x = (max_extents.x + min_extents.x) / 2.0;
-	center.y = (max_extents.y + min_extents.y) / 2.0;
-	center.z = (max_extents.z + min_extents.z) / 2.0;
-
-
-	for(i = 0; i < mesh->vert_count; i++)
-	{
-		mesh->vertices[i].position.x -= center.x;
-		mesh->vertices[i].position.y -= center.y;
-		mesh->vertices[i].position.z -= center.z;
-	}
-
-
-	//compact = model_ConvertVertices(mesh->vertices, mesh->vert_count);
-
-	compact = model_ConvertVertices2(mesh->vertices, mesh->vert_count);
-
-	//mesh->gpu_handle = gpu_Alloc(sizeof(vertex_t) * mesh->vert_count);
-	//mesh->vert_start = gpu_GetAllocStart(mesh->gpu_handle) / sizeof(vertex_t);
-
-	//mesh->gpu_handle = gpu_Alloc(sizeof(compact_vertex_t) * mesh->vert_count);
-	mesh->gpu_handle = gpu_AllocAlign(sizeof(struct c_vertex_t) * mesh->vert_count, sizeof(struct c_vertex_t), 0);
-	mesh->vert_start = gpu_GetAllocStart(mesh->gpu_handle) / sizeof(struct c_vertex_t);
-
-	//gpu_Write(mesh->gpu_handle, 0, mesh->vertices, sizeof(vertex_t) * mesh->vert_count, 0);
-	gpu_Write(mesh->gpu_handle, 0, compact, sizeof(struct c_vertex_t) * mesh->vert_count);
-
-	max_extents.x -= center.x;
-	max_extents.y -= center.y;
-	max_extents.z -= center.z;
-
-	mesh->aabb_max = max_extents;
-
-	mesh->next = mdl_meshes;
-	mdl_meshes = mesh;
-
-	mdl_mesh_count++;
-
-	//free(compact);
-	memory_Free(compact);
-
-	renderer_PopFunctionName();
-
-	return mesh;
-
-	#endif
-}
-
-int model_DestroyMesh(char *name)
-{
-	#if 0
-	mesh_t *mesh;
-	mesh_t *prev = NULL;
-
-	mesh = mdl_meshes;
-
-	renderer_PushFunctionName("model_DestroyMesh");
-
-	while(mesh)
-	{
-		/* not necessarily a fast function, but
-		mesh creation / deletion should be done
-		only while loading levels... */
-		if(!strcmp(name, mesh->name))
-		{
-			//free(mesh->name);
-			//free(mesh->vertices);
-			memory_Free(mesh->name);
-			memory_Free(mesh->vertices);
-			gpu_Free(mesh->gpu_handle);
-
-			if(prev)
-			{
-				prev->next = mesh->next;
-			}
-			else
-			{
-				mdl_meshes = mesh->next;
-			}
-
-			//free(mesh);
-			memory_Free(mesh);
-
-			mdl_mesh_count--;
-
-			renderer_PopFunctionName();
-			return 1;
-		}
-
-		prev = mesh;
-		mesh = mesh->next;
-	}
-
-	renderer_PopFunctionName();
-	return 0;
-
-	#endif
-}
 
 int model_CreateEmptyModel(char *name)
 {
@@ -302,70 +133,6 @@ int model_CreateEmptyModel(char *name)
 	return model_index;
 }
 
-#if 0
-
-int model_CreateModel(char *file_name, char *name, mesh_t *mesh, struct batch_t *batches, int batch_count)
-{
-
-	int model_index;
-	struct model_t *model;
-
-	if(!mesh)
-	{
-		printf("model_CreateModel: null mesh pointer for model [%s]!\n", name);
-		return -1;
-	}
-
-	if(!batches)
-	{
-		printf("model_CreateModel: null batch pointer for model [%s]!\n", name);
-		return -1;
-	}
-
-	model_index = stack_list_add(&mdl_models, NULL);
-	model = (struct model_t *)stack_list_get(&mdl_models, model_index);
-
-	//model = &mdl_models[model_index];
-
-	//model = memory_Malloc(sizeof(struct model_t), "model_CreateModel");
-
-	//model->next = NULL;
-	//model->prev = NULL;
-
-	//model->name = strdup(name);
-	model->name = memory_Strdup(name, "model_CreateModel");
-	//model->file_name = strdup(file_name);
-	model->file_name = memory_Strdup(file_name, "model_CreateModel");
-	model->mesh = mesh;
-	//model->batches = batches;
-	model->batch_count = batch_count;
-	//model->draw_mode = mesh->draw_mode;
-	//model->vert_count = mesh->vert_count;
-	//model->vert_start = mesh->vert_start;
-	//model->aabb_max = mesh->aabb_max;
-	//model->flags = 0;
-
-
-	/*if(!mdl_models)
-	{
-		mdl_models = model;
-	}
-	else
-	{
-		mdl_last_model->next = model;
-		model->prev = mdl_last_model;
-	}
-
-	mdl_last_model = model;*/
-
-	//printf("created model [%s] with mesh [%s]\n", name, mesh->name);
-
-	return model_index;
-
-	//return model;
-}
-
-#endif
 
 int model_DestroyModel(char *name)
 {
@@ -384,9 +151,9 @@ int model_DestroyModel(char *name)
 
 int model_DestroyModelIndex(int model_index)
 {
-	//if(model_index >= 0 && model_index < mdl_model_list_cursor)
+	/*if(model_index >= 0 && model_index < mdl_model_list_cursor)
 	{
-		/*if(!(mdl_models[model_index].flags & MODEL_INVALID))
+		if(!(mdl_models[model_index].flags & MODEL_INVALID))
 		{
 			mdl_models[model_index].vert_count = 0;
 			mdl_models[model_index].vert_start = -1;
@@ -405,41 +172,25 @@ int model_DestroyModelIndex(int model_index)
 			mdl_model_free_stack[mdl_model_free_stack_top] = model_index;
 
 			return 1;
-		}*/
-	}
+		}
+	}*/
 
 	return 0;
 }
 
 int model_LoadModel(char *file_name, char *model_name)
 {
-	//struct mpk_vertex_record_t *vertex_records;
-
-	//struct mpk_header_t *header;
-
-	//int batch_count = 0;
-	//struct mpk_batch_t *batches;
-
-	//int lods_count = 0;
-    //struct mpk_lod_t *lods;
-
-
-
 	struct output_params_t out_params;
 
 	struct batch_t *batches;
 	int indice_buffer_start;
-	//int vertex_record_count;
 
 	struct c_vertex_t *compact_vertices;
-
-	//char mesh_name[512];
 
 	vec3_t max_extents;
 	vec3_t min_extents;
 	vec3_t center;
 
-	//mesh_t *mesh;
 	struct model_t *model;
 	int model_index = -1;
 	int i;
@@ -465,7 +216,7 @@ int model_LoadModel(char *file_name, char *model_name)
 		model->lod_count = out_params.out_lods_count;
 		model->batch_count = out_params.out_batches_count;
 		model->lods = memory_Malloc(sizeof(struct lod_t) * model->lod_count, "model_LoadModel");
-		model->indices = memory_Malloc(sizeof(int) * out_params.out_indice_count, "model_LoadModel");
+		model->indices = memory_Malloc(sizeof(int) * out_params.out_indices_count, "model_LoadModel");
 
 		/* the batch buffer gets shared with all the lods... */
 		batches = memory_Malloc(sizeof(struct batch_t) * model->lod_count * model->batch_count, "model_LoadModel");
@@ -473,7 +224,7 @@ int model_LoadModel(char *file_name, char *model_name)
 		model->vertice_buffer_handle = gpu_AllocAlign(sizeof(struct c_vertex_t) * model->vert_count, sizeof(struct c_vertex_t), 0);
 		model->vert_buffer_start = gpu_GetAllocStart(model->vertice_buffer_handle) / sizeof(struct c_vertex_t);
 
-		model->indice_buffer_handle = gpu_AllocAlign(sizeof(int) * out_params.out_indice_count, sizeof(int), 1);
+		model->indice_buffer_handle = gpu_AllocAlign(sizeof(int) * out_params.out_indices_count, sizeof(int), 1);
 		indice_buffer_start = gpu_GetAllocStart(model->indice_buffer_handle) / sizeof(int);
 
 		indices_count = 0;

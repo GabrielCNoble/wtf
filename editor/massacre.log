@@ -1,9 +1,13 @@
 NOTIFY: ENGINE START
 Window resolution: 1366 x 768
-GLSL version: 4.60 NVIDIA
-OpenGL version: 4.6.0 NVIDIA 391.35
-Vendor: NVIDIA Corporation
-Renderer: GeForce GT 630/PCIe/SSE2
+GLSL version: 4.50
+OpenGL version: 4.5.14523 Compatibility Profile Context 24.20.12019.1010
+Vendor: ATI Technologies Inc.
+Renderer: AMD Radeon(TM) R7 Graphics
 NOTIFY: Massacre engine started properly!
+NOTIFY: before world_Update...
+NOTIFY: after world_Update...
+NOTIFY: before world_Update...
+NOTIFY: after world_Update...
 NOTIFY: Massacre engine finished properly!
 NOTIFY: ENGINE FINISH

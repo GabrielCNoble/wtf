@@ -55,6 +55,8 @@ int entity_ScriptGetLife();
 
 struct entity_handle_t entity_ScriptGetCurrentEntity();
 
+int entity_ScriptIsEntityValid(struct entity_handle_t entity);
+
 /*
 =====================================
 =====================================

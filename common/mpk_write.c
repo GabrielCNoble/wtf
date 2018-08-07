@@ -991,8 +991,8 @@ void mpk_write(char *output_name, struct input_params_t *in_params)
 	{
 
 		mpk_index(in_params);
+		mpk_optmize(in_params, &out_params);
 		mpk_lod(in_params, &out_params, 1);
-		//mpk_optmize(out_params);
 
 		file_size = sizeof(struct mpk_header_t);
 		file_size += sizeof(vertex_t ) * in_params->in_vertices_count;
@@ -1016,10 +1016,10 @@ void mpk_write(char *output_name, struct input_params_t *in_params)
 
 		header->batch_count = out_params.out_batches_count;
 		header->vertice_count = out_params.out_vertices_count;
-		header->indice_count = out_params.out_indice_count;
+		header->indice_count = out_params.out_indices_count;
 		header->lod_count = out_params.out_lods_count;
 
-		memcpy(out, in_params->in_vertices, sizeof(vertex_t) * header->vertice_count);
+		memcpy(out, out_params.out_vertices, sizeof(vertex_t) * header->vertice_count);
 		out += sizeof(struct vertex_t) * header->vertice_count;
 
 		for(j = 0; j < header->lod_count; j++)
@@ -1046,6 +1046,13 @@ void mpk_write(char *output_name, struct input_params_t *in_params)
 		fwrite(file_buffer, file_size, 1, file);
 		fclose(file);
 		memory_Free(file_buffer);
+		
+		printf("statistics:\n---\n");
+		printf("batches: %d\n", in_params->in_batches_count);
+		printf("input vertice count: %d\n", in_params->in_vertices_count);
+		printf("output vertice count: %d\n", out_params.out_vertices_count);
+		
+		
 	}
 
 }
@@ -1085,7 +1092,7 @@ void mpk_index(struct input_params_t *params)
 
 	triangle_count = 0;
 
-	/*for(i = 0; i < batch_count; i++)
+	for(i = 0; i < batch_count; i++)
 	{
         batch = batches + i;
 
@@ -1095,42 +1102,27 @@ void mpk_index(struct input_params_t *params)
 			triangle->material_name = batch->material_name;
 
 			triangle->verts[0] = j + batch->indice_start;
-
-			printf("[%f %f %f]\n", params->in_vertices[j + batch->indice_start].position.x,
-								   params->in_vertices[j + batch->indice_start].position.y,
-								   params->in_vertices[j + batch->indice_start].position.z);
-
 			j++;
+			
 			triangle->verts[1] = j + batch->indice_start;
-
-			printf("[%f %f %f]\n", params->in_vertices[j + batch->indice_start].position.x,
-								   params->in_vertices[j + batch->indice_start].position.y,
-								   params->in_vertices[j + batch->indice_start].position.z);
-
 			j++;
+			
 			triangle->verts[2] = j + batch->indice_start;
-
-			printf("[%f %f %f]\n", params->in_vertices[j + batch->indice_start].position.x,
-								   params->in_vertices[j + batch->indice_start].position.y,
-								   params->in_vertices[j + batch->indice_start].position.z);
-
 			j++;
-
-
 
 			triangle_count++;
 		}
-	}*/
+	}
 
 	indices = memory_Malloc(sizeof(int) * vertice_count, "mpk_index");
 
-	for(i = 0; i < vertice_count; i++)
+/*	for(i = 0; i < vertice_count; i++)
 	{
 		indices[i] = i;
-	}
+	}*/
 
 
-	/*for(i = 0, j = 0; i < triangle_count; i++)
+	for(i = 0, j = 0; i < triangle_count; i++)
 	{
 		triangle = triangles + i;
 
@@ -1140,7 +1132,7 @@ void mpk_index(struct input_params_t *params)
 		j++;
 		indices[j] = triangle->verts[2];
 		j++;
-	}*/
+	}
 
 	params->in_triangles = triangles;
 	params->in_triangles_count = triangle_count;
@@ -1173,7 +1165,7 @@ void mpk_lod(struct input_params_t *in_params, struct output_params_t *out_param
 	//original_vert_count = params->out_vertices_count;
 
 	out_params->out_batches_count = in_params->in_batches_count;
-	out_params->out_vertices_count = in_params->in_vertices_count;
+	//out_params->out_vertices_count = in_params->in_vertices_count;
 
     out_params->out_lods_count = max_lod + 1;
     out_params->out_lods = memory_Malloc(sizeof(struct mpk_lod_t) * out_params->out_lods_count, "mpk_lod");
@@ -1181,15 +1173,15 @@ void mpk_lod(struct input_params_t *in_params, struct output_params_t *out_param
     out_params->out_lods_indices = memory_Malloc(sizeof(int *) * out_params->out_lods_count, "mpk_lod");
     out_params->out_lods_batches = memory_Malloc(sizeof(struct mpk_batch_t *) * out_params->out_lods_count, "mpk_lod");
 
-    out_params->out_lods[0].indice_count = in_params->in_indices_count;
+   
 
-
+	out_params->out_lods[0].indice_count = out_params->out_indices_count;
     out_params->out_lods_indices[0] = memory_Malloc(sizeof(int) * out_params->out_lods[0].indice_count, "mpk_lod");
-    memcpy(out_params->out_lods_indices[0], in_params->in_indices, sizeof(int) * out_params->out_lods[0].indice_count);
+    memcpy(out_params->out_lods_indices[0], out_params->out_indices, sizeof(int) * out_params->out_lods[0].indice_count);
 
     out_params->out_lods_batches[0] = memory_Malloc(sizeof(struct mpk_batch_t) * in_params->in_batches_count, "mpk_lod");
 
-	out_params->out_indice_count = 0;
+	//out_params->out_indices_count = 0;
 
     for(i = 0; i < in_params->in_batches_count; i++)
 	{
@@ -1198,20 +1190,27 @@ void mpk_lod(struct input_params_t *in_params, struct output_params_t *out_param
 		out_params->out_lods_batches[i]->indice_start = in_params->in_batches[i].indice_start;
 		out_params->out_lods_batches[i]->indice_count = in_params->in_batches[i].indice_count;
 
-		out_params->out_indice_count += in_params->in_batches[i].indice_count;
+		//out_params->out_indice_count += in_params->in_batches[i].indice_count;
 	}
 }
 
-void mpk_optmize(struct output_params_t *params)
+void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_params)
 {
-	#if 0
-    struct mpk_vertex_record_t *vertex_records;
-    struct mpk_vertex_record_t *vertex_record;
-    int vertex_records_count;
+    //struct mpk_vertex_record_t *vertex_records;
+    //struct mpk_vertex_record_t *vertex_record;
+    //int vertex_records_count;
+
+	struct mpk_batch_t *batches;
+	struct mpk_batch_t *batch;
+	int batch_count;
 
     vertex_t *vertices;
+    vertex_t *out_vertices;
     int vertice_count;
-
+    int out_vertice_count;
+    
+    int *indices;
+    
     struct mpk_triangle_t *triangles;
     struct mpk_triangle_t *triangle;
     int triangle_count = 0;
@@ -1222,65 +1221,83 @@ void mpk_optmize(struct output_params_t *params)
 
     int cur_vertex_index;
     int test_vertex_index;
+    int real_cur_vertex_index;
+    int real_test_vertex_index;
 
     int r;
     int m;
+    
+    float diff;
 
 
     vertex_t *cur_vertex;
     vertex_t *test_vertex;
+    
+    
+    
+    
 
-    vertex_records = *params->out_vertex_records;
-    vertex_records_count = *params->out_vertex_records_count;
+    //vertex_records = *params->out_vertex_records;
+    //vertex_records_count = *params->out_vertex_records_count;
+    
+    batches = in_params->in_batches;
+    batch_count = in_params->in_batches_count;
 
-    vertices = *params->out_vertices;
-    vertice_count = *params->out_vertices_count;
+    vertices = in_params->in_vertices;
+    vertice_count = in_params->in_vertices_count;
+    
+    triangles = in_params->in_triangles;
+    triangle_count = in_params->in_triangles_count;
+    
+    indices = in_params->in_indices;
 
 	/* Find duplicate verts, and make the triangles using those duplicate verts
 	point to the same vert... */
 
     if(vertices)
-	{
-		for(i = 0; i < vertex_records_count; i++)
-		{
-			vertex_record = vertex_records + i;
-
-			triangle_count = vertex_record->vertice_count / 3;
-			triangles = malloc(sizeof(struct mpk_triangle_t) * triangle_count);
-
-			triangle_count = 0;
-
-            for(j = 0; j < vertex_record->vertice_count;)
+	{	
+		vertices = memory_Malloc(sizeof(vertex_t) * vertice_count, "mpk_optmize");
+		memcpy(vertices, in_params->in_vertices, sizeof(vertex_t) * vertice_count);
+		
+		//out_vertice_count = vertice_count;
+		
+		#if 0
+		
+		for(i = 0; i < batch_count; i++)
+		{			
+			batch = batches + i;
+			
+			if(batch->indice_count > 3)
 			{
-                triangles[triangle_count].verts[0] = j + vertex_record->offset;
-                j++;
-                triangles[triangle_count].verts[1] = j + vertex_record->offset;
-                j++;
-                triangles[triangle_count].verts[2] = j + vertex_record->offset;
-                j++;
-
-                triangle_count++;
-			}
-
-			if(vertex_record->vertice_count > 3)
-			{
-				for(cur_vertex_index = 0; cur_vertex_index < vertex_record->vertice_count; cur_vertex_index++)
+				for(real_cur_vertex_index = 0, cur_vertex_index = 0; real_cur_vertex_index < batch->indice_count; real_cur_vertex_index++, cur_vertex_index++)
 				{
-					cur_vertex = vertices + cur_vertex_index + vertex_record->offset;
-
-					if(isnan(cur_vertex->position.x))
+					cur_vertex = vertices + indices[batch->indice_start + real_cur_vertex_index];
+					
+					if(*(int *)&cur_vertex->position.x == 0xffffffff)
 					{
+						cur_vertex_index--;
 						continue;
 					}
+					
 
-					for(test_vertex_index = cur_vertex_index + 1; test_vertex_index < vertex_record->vertice_count; test_vertex_index++)
+					for(real_test_vertex_index = real_cur_vertex_index + 1, test_vertex_index = cur_vertex_index + 1; real_test_vertex_index < batch->indice_count; real_test_vertex_index++, test_vertex_index++)
 					{
-						test_vertex = vertices + test_vertex_index + vertex_record->offset;
+						test_vertex = vertices + indices[batch->indice_start + real_test_vertex_index];
+						
+						//if(_isnan(test_vertex->position.x))
+						if(*(int *)&test_vertex->position.x == 0xffffffff)
+						{
+							continue;
+							test_vertex_index--;
+						}
+						
 
 						/* position... */
 						for(r = 0; r < 3; r++)
 						{
-                            if(cur_vertex->position.floats[r] - test_vertex->position.floats[r] > FLT_EPSILON * 2.0)
+							diff = cur_vertex->position.floats[r] - test_vertex->position.floats[r];
+							
+                            if(diff > FLT_EPSILON * 2.0 || diff < -FLT_EPSILON * 2.0)
 							{
 								break;
 							}
@@ -1293,25 +1310,9 @@ void mpk_optmize(struct output_params_t *params)
 							/* normal... */
 							for(r = 0; r < 3; r++)
 							{
-								if(cur_vertex->normal.floats[r] - test_vertex->normal.floats[r] > FLT_EPSILON * 2.0)
-								{
-									break;
-								}
-							}
-						}
-						else
-						{
-							continue;
-						}
-
-
-
-						if(r >= 3)
-						{
-							/* tangent... */
-							for(r = 0; r < 3; r++)
-							{
-								if(cur_vertex->tangent.floats[r] - test_vertex->tangent.floats[r] > FLT_EPSILON * 2.0)
+								diff = cur_vertex->normal.floats[r] - test_vertex->normal.floats[r];
+								
+								if(diff > FLT_EPSILON * 2.0 || diff < -FLT_EPSILON * 2.0)
 								{
 									break;
 								}
@@ -1329,7 +1330,9 @@ void mpk_optmize(struct output_params_t *params)
 							/* tex coords... */
 							for(r = 0; r < 2; r++)
 							{
-								if(cur_vertex->tex_coord.floats[r] - test_vertex->tex_coord.floats[r] > FLT_EPSILON * 2.0)
+								diff = cur_vertex->tex_coord.floats[r] - test_vertex->tex_coord.floats[r];
+								
+								if(diff > FLT_EPSILON * 2.0 || diff < -FLT_EPSILON * 2.0)
 								{
 									break;
 								}
@@ -1344,34 +1347,78 @@ void mpk_optmize(struct output_params_t *params)
 
 						if(r >= 2)
 						{
-                            /* duplicate vertex... */
+                            /* duplicate vertice... */
                             for(r = 0; r < triangle_count; r++)
 							{
 								triangle = triangles + r;
 
 								for(m = 0; m < 3; m++)
 								{
-                                    if(triangle->verts[m] == test_vertex_index)
+                                    if(triangle->verts[m] == real_test_vertex_index)
 									{
-										/* make this triangle use the current vertex... */
+										/* make this triangle use the current vertice... */
 										triangle->verts[m] = cur_vertex_index;
+										
+										*(int *)&vertices[real_test_vertex_index].position.x = 0xffffffff;
+										
+										vertice_count--;
+										
+										r = triangle_count;
+										
 										break;
 									}
 								}
-
-
 							}
-
-							/* mark this vertex as invalid... */
-							test_vertex->position.x = _nanf();
 						}
 					}
 				}
 			}
 		}
+		
+		#endif
+		
+		out_params->out_vertices = vertices;
+		out_params->out_vertices_count = vertice_count;
+		
+		#if 0
+		m = in_params->in_vertices_count;
+		
+		for(i = 0; i < vertice_count; i++)
+		{			
+			while(*(int *)&vertices[i].position.x != 0xffffffff) i++;
+			
+			for(j = i; j < m - 1; j++)
+			{
+				vertices[j] = vertices[j + 1];
+			}
+			i--;
+			m--;
+		}
+		
+		#endif
+		
+		
+		out_params->out_indices = memory_Malloc(sizeof(int) * in_params->in_indices_count, "mpk_optmize");
+		out_params->out_indices_count = 0;
+		
+		for(i = 0; i < triangle_count; i++)
+		{
+			triangle = triangles + i;
+			
+			for(j = 0; j < 3; j++)
+			{
+				out_params->out_indices[out_params->out_indices_count] = triangle->verts[j];
+				out_params->out_indices_count++;
+			}
+		}
+	/*	
+		for(i = 0; i < out_params->out_indices_count; i++)
+		{
+			printf("[%f %f %f]\n", vertices[out_params->out_indices[i]].position.x,
+								   vertices[out_params->out_indices[i]].position.y,
+								   vertices[out_params->out_indices[i]].position.z);
+		}	*/			
 	}
-
-	#endif
 }
 
 void mpk_convert(char *output_name, char *input_file)

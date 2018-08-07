@@ -3,12 +3,12 @@
 
 void main()
 {
-	
+
 	int particle_system_def;
 	vec3_t position;
-	
+
 	entity_handle_t current_entity = entity_GetCurrentEntity();
-	
+
 	if(entity_GetEntityProp1i(current_entity, "enemy") != -1)
 	{
 		//if(entity_IncEntityProp1i(current_entity, "enemy") >= 120)
@@ -34,27 +34,30 @@ void OnDie()
 }
 
 
-void OnCollision(array<entity_handle_t> @collided_entities)
+void OnCollision(array<entity_contact_t> @contacts)
 {
 	int i;
 	int value;
 	entity_handle_t entity;
 	entity_handle_t current_entity;
-	
-	for(i = 0; i < collided_entities.count; i++)
+
+	for(i = 0; i < contacts.count; i++)
 	{
-		entity = collided_entities[i];
-		
-		if(entity_EntityHasProp(entity, "bullet") != 0)
-		{
-			current_entity = entity_GetCurrentEntity();
-					
-			if(entity_GetEntityProp1i(current_entity, "enemy") < 0)
-			{
-				entity_SetEntityProp1i(current_entity, "enemy", 0);
-			}
-		}
-	}	
+		entity = contacts[i].entity;
+
+        if(entity_IsEntityValid(entity) != 0)
+        {
+            if(entity_EntityHasProp(entity, "bullet") != 0)
+            {
+                current_entity = entity_GetCurrentEntity();
+
+                if(entity_GetEntityProp1i(current_entity, "enemy") < 0)
+                {
+                    entity_SetEntityProp1i(current_entity, "enemy", 0);
+                }
+            }
+        }
+	}
 }
 
 
