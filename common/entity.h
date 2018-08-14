@@ -51,6 +51,7 @@ __attribute__((always_inline)) inline  struct entity_transform_t *entity_GetWorl
 
 __attribute__((always_inline)) inline  struct entity_aabb_t *entity_GetAabbPointer(struct component_handle_t component);
 
+
 /*
 ==============================================================
 ==============================================================
@@ -146,6 +147,8 @@ void entity_RemoveEntity(struct entity_handle_t entity);
 
 void entity_RemoveAllEntities();
 
+void entity_ResetEntitySpawnTimes();
+
 struct entity_t *entity_GetEntityPointer(char *name, int get_def);
 
 __attribute__((always_inline)) inline struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity);
@@ -159,6 +162,8 @@ __attribute__((always_inline)) inline struct entity_t *entity_GetEntityDefPointe
 __attribute__((always_inline)) inline struct entity_handle_t entity_GetEntityHandle(char *name, int get_def);
 
 __attribute__((always_inline)) inline struct entity_handle_t entity_GetNestledEntityHandle(struct entity_handle_t parent_entity, char *entity);
+
+struct entity_source_file_t *entity_GetSourceFile(struct entity_handle_t entity);
 
 
 /*

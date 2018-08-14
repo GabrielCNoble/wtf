@@ -113,7 +113,7 @@ void editor_SetExplorerFileClickCallback(void (*file_click_callback)());
 
 void editor_SetExplorerReadFileCallback(int (*read_file_callback)(char *directory, char *file_name));
 
-void editor_SetExplorerWriteFileCallback(int (*write_file_callback)(char *directory, char *file_name, void **file_buffer, int *file_buffer_size));
+void editor_SetExplorerWriteFileCallback(int (*write_file_callback)(char *file_path, char *file_name, void **file_buffer, int *file_buffer_size));
 
 void editor_ClearExplorerFileCallbacks();
 

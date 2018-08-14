@@ -68,35 +68,37 @@ void path_Init(char *path)
 
 
 	pth_max_search_paths = 128;
-	pth_search_paths = memory_Malloc(sizeof(search_path_t) * (pth_max_search_paths + DEFAULT_SEARCH_PATH_COUNT), "path_Init");
+	pth_search_paths = memory_Calloc(sizeof(search_path_t), pth_max_search_paths);
 
-	strcpy(pth_search_paths[0].path, "shaders");
-	strcpy(pth_search_paths[1].path, "shaders/engine");
-	strcpy(pth_search_paths[2].path, "sounds");
-	strcpy(pth_search_paths[3].path, "sprites");
-	strcpy(pth_search_paths[4].path, "fonts");
+	//strcpy(pth_search_paths[0].path, "shaders");
+	//strcpy(pth_search_paths[1].path, "shaders/engine");
+	//strcpy(pth_search_paths[2].path, "sounds");
+	//strcpy(pth_search_paths[3].path, "sprites");
+	//strcpy(pth_search_paths[4].path, "fonts");
 
 	//printf("%s\n", getenv("USERPROFILE"));
 
-	pth_search_paths[4].path[0] = '\0';
-	pth_search_paths[5].path[0] = '\0';
-	pth_search_paths[6].path[0] = '\0';
-	pth_search_paths[7].path[0] = '\0';
+	//pth_search_paths[4].path[0] = '\0';
+	//pth_search_paths[5].path[0] = '\0';
+	//pth_search_paths[6].path[0] = '\0';
+	//pth_search_paths[7].path[0] = '\0';
 
-	printf("path_Init: %s\n", _getdcwd(_getdrive(),NULL, 0));
+	//printf("path_Init: %s\n", _getdcwd(_getdrive(),NULL, 0));
 
 
 	pth_search_paths += DEFAULT_SEARCH_PATH_COUNT;
 	strcpy(pth_base_path, path_FormatPath(getcwd(NULL, 0)));
 	strcpy(pth_user_documents_directory, path_FormatPath(getenv("USERPROFILE")));
+	/* this seems to be windows only... */
 	strcat(pth_user_documents_directory, "/Documents");
 
 
 	pth_max_dir_elements = 1024;
-	pth_dir_elements = memory_Malloc(sizeof(dir_element_t) * pth_max_dir_elements, "path_Init");
+	pth_dir_elements = memory_Malloc(sizeof(dir_element_t) * pth_max_dir_elements);
 
 	path_SetDir(pth_base_path);
 
+	path_ReadCfg();
 }
 
 void path_Finish()
@@ -109,8 +111,78 @@ void path_Finish()
 	memory_Free(pth_dir_elements);
 }
 
+void path_ReadCfg()
+{
+	FILE *file;
+	char *file_buffer;
+	unsigned long file_size;
 
-void path_AddSearchPath(char *path, int type)
+	char path_buffer[PATH_MAX];
+
+	int path_start;
+	int path_end;
+
+
+
+	file = fopen("path.cfg", "r");
+
+	if(!file)
+	{
+		printf("path_ReadCfg: couldn't locate the file path.cfg\n");
+		return;
+	}
+
+	file_size = path_GetFileSize(file);
+
+    file_buffer = memory_Calloc(file_size, 1);
+    fread(file_buffer, file_size, 1, file);
+    fclose(file);
+
+	path_ClearSearchPaths();
+
+    path_start= 0;
+
+    while(file_buffer[path_start])
+	{
+		if(file_buffer[path_start] == '[')
+		{
+			path_start++;
+			path_end = path_start;
+
+            while(file_buffer[path_end] != ']')
+			{
+                if(file_buffer[path_end] == '[' || file_buffer[path_end] == '\0')
+				{
+					path_start = -1;
+                    break;
+				}
+
+				path_end++;
+			}
+
+			if(path_start >= 0)
+			{
+                //memcpy(path_buffer, file_buffer + path_start, path_end - 1);
+				//path_buffer[path_end - 1] = '\0';
+
+				file_buffer[path_end] = '\0';
+				path_AddSearchPath(file_buffer + path_start);
+				path_end++;
+			}
+
+			path_start = path_end;
+		}
+		else
+		{
+			path_start++;
+		}
+	}
+
+	memory_Free(file_buffer);
+}
+
+
+void path_AddSearchPath(char *path)
 {
 	int i;
 
@@ -130,7 +202,7 @@ void path_AddSearchPath(char *path, int type)
 
 	if(pth_search_path_count >= pth_max_search_paths)
 	{
-		paths = memory_Malloc(sizeof(search_path_t) * (pth_max_search_paths + 32), "path_AddSearchPath");
+		paths = memory_Malloc(sizeof(search_path_t) * (pth_max_search_paths + 32));
 		memcpy(paths, pth_search_paths, sizeof(search_path_t) * pth_max_search_paths);
 		memory_Free(pth_search_paths);
 		pth_search_paths = paths;
@@ -522,6 +594,22 @@ FILE *path_TryOpenFile(char *file_name)
 	}
 
 	return file;
+}
+
+unsigned long path_GetFileSize(FILE *file)
+{
+	unsigned long file_offset;
+    unsigned long file_size = 0;
+
+    if(file)
+	{
+		file_offset = ftell(file);
+        fseek(file, 0, SEEK_END);
+		file_size = ftell(file);
+		fseek(file, file_offset, SEEK_SET);
+	}
+
+	return file_size;
 }
 
 #ifdef __cplusplus

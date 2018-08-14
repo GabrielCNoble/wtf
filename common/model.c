@@ -128,7 +128,7 @@ int model_CreateEmptyModel(char *name)
 
     memset(model, 0, sizeof(struct model_t));
 
-	model->name = memory_Strdup(name, "model_CreateModel");
+	model->name = memory_Strdup(name);
 
 	return model_index;
 }
@@ -208,23 +208,23 @@ int model_LoadModel(char *file_name, char *model_name)
 		model = model_GetModelPointerIndex(model_index);
 
 
-        model->file_name = memory_Strdup(file_name, "model_LoadModel");
+        model->file_name = memory_Strdup(path_GetFileNameFromPath(file_name));
 
         model->vert_count = out_params.out_vertices_count;
         model->vertices = out_params.out_vertices;
 
 		model->lod_count = out_params.out_lods_count;
 		model->batch_count = out_params.out_batches_count;
-		model->lods = memory_Malloc(sizeof(struct lod_t) * model->lod_count, "model_LoadModel");
-		model->indices = memory_Malloc(sizeof(int) * out_params.out_indices_count, "model_LoadModel");
+		model->lods = memory_Malloc(sizeof(struct lod_t) * model->lod_count);
+		model->indices = memory_Malloc(sizeof(int) * out_params.out_indices_count);
 
 		/* the batch buffer gets shared with all the lods... */
-		batches = memory_Malloc(sizeof(struct batch_t) * model->lod_count * model->batch_count, "model_LoadModel");
+		batches = memory_Malloc(sizeof(struct batch_t) * model->lod_count * model->batch_count);
 
-		model->vertice_buffer_handle = gpu_AllocAlign(sizeof(struct c_vertex_t) * model->vert_count, sizeof(struct c_vertex_t), 0);
+		model->vertice_buffer_handle = gpu_AllocVerticesAlign(sizeof(struct c_vertex_t) * model->vert_count, sizeof(struct c_vertex_t));
 		model->vert_buffer_start = gpu_GetAllocStart(model->vertice_buffer_handle) / sizeof(struct c_vertex_t);
 
-		model->indice_buffer_handle = gpu_AllocAlign(sizeof(int) * out_params.out_indices_count, sizeof(int), 1);
+		model->indice_buffer_handle = gpu_AllocIndexesAlign(sizeof(int) * out_params.out_indices_count, sizeof(int));
 		indice_buffer_start = gpu_GetAllocStart(model->indice_buffer_handle) / sizeof(int);
 
 		indices_count = 0;
@@ -487,7 +487,7 @@ void model_GenerateIcoSphere(float radius, int sub_divs, float **verts, int *fac
 	int k;
 	mesh_t m;
 	//float *a = (float *)malloc(sizeof(float) * 3 * 3 * 20);
-	float *a = memory_Malloc(sizeof(float) * 3 * 3 * 20, "model_GenerateIcoSphere");
+	float *a = memory_Malloc(sizeof(float) * 3 * 3 * 20);
 	float *b;
 	float v_offset = cos((60.0 * 3.14159265) / 180.0) * radius;
 	float c;
@@ -611,7 +611,7 @@ void model_GenerateIcoSphere(float radius, int sub_divs, float **verts, int *fac
 				//src = 0;
 
 				//b = (float *)malloc(sizeof(float) * 3 * 3 * f_count * 4);
-				b = memory_Malloc(sizeof(float) * 3 * 3 * f_count * 4, "model_GenerateIcoSphere");
+				b = memory_Malloc(sizeof(float) * 3 * 3 * f_count * 4);
 
 				/* for each face, add a vertex in the middle
 				of each edge, and then triangulate. Each triangle
@@ -1033,7 +1033,7 @@ compact_vertex_t *model_ConvertVertices(vertex_t *in_vertices, int vert_count)
 	compact_vertex_t *out_vertices;
 
 	//out_vertices = malloc(sizeof(compact_vertex_t) * vert_count * 10);
-	out_vertices = memory_Malloc(sizeof(compact_vertex_t) * vert_count, "model_ConvertVertices");
+	out_vertices = memory_Malloc(sizeof(compact_vertex_t) * vert_count);
 
 
 	for(i = 0; i < vert_count; i++)
@@ -1075,7 +1075,7 @@ struct c_vertex_t *model_ConvertVertices2(vertex_t *vertices, int vert_count)
 {
     int i;
     struct c_vertex_t *out_verts;
-    out_verts = memory_Malloc(sizeof(struct c_vertex_t) * vert_count, "model_ConvertVertices2");
+    out_verts = memory_Malloc(sizeof(struct c_vertex_t) * vert_count);
 
     for(i = 0; i < vert_count; i++)
 	{

@@ -7,15 +7,23 @@
 		- Light serializer
 
 		- Level serializer
+//			- Serialize brushes
+//			- Serialize lights
+//			- Serialize waypoints
+			- Serialize Entity defs
+			- Serialize Entities
+			- Serialize Materials
 
 		- Material serializer
 
 		-
+
+		- Bsp serializer
 	
 	- Animation system
 	- Navigation system
 //		- Expose functions to scripts
-		- Fix weird bug that sometimes messes up routes
+//		- Fix weird bug that sometimes messes up routes
 		
 
 	- Sound system

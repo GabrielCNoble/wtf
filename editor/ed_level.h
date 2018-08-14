@@ -28,7 +28,7 @@ int editor_LevelEditorPickBrushFace(brush_t *brush, float mouse_x, float mouse_y
 ====================================================================
 ====================================================================
 */
-  
+
 void editor_LevelEditorCheck3dHandle(float mouse_x, float mouse_y);
 
 void editor_LevelEditorSet3dCursorPosition(float mouse_x, float mouse_y);
@@ -106,6 +106,16 @@ void editor_LevelEditorRestoreLevelData();
 ====================================================================
 ====================================================================
 */
+
+
+void editor_LevelEditorSerialize(void **buffer, int *buffer_size);
+
+void editor_LevelEditorDeserialize(void **buffer);
+
+int editor_LevelEditorSaveLevel(char *file_path, char *file_name, void **file_buffer, int *file_buffer_size);
+
+int editor_LevelEditorLoadLevel(char *path, char *file_name);
+
 
 
 

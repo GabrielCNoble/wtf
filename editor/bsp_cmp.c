@@ -429,7 +429,7 @@ int bsp_SplitPolygon(bsp_polygon_t *polygon, vec3_t point, vec3_t normal, bsp_po
 	#ifndef USE_MEMORY_MALLOC
 	f = malloc(sizeof(bsp_polygon_t ));
 	#else
-	f = memory_Malloc(sizeof(bsp_polygon_t ), "bsp_SplitPolygon: f");
+	f = memory_Malloc(sizeof(bsp_polygon_t ));
 	#endif
 	f->normal = polygon->normal;
 	f->vert_count = front_vertex_count;
@@ -437,7 +437,7 @@ int bsp_SplitPolygon(bsp_polygon_t *polygon, vec3_t point, vec3_t normal, bsp_po
 	#ifndef USE_MEMORY_MALLOC
 	f->vertices = malloc(sizeof(vertex_t) * (f->vert_count));
 	#else
-	f->vertices = memory_Malloc(sizeof(vertex_t) * f->vert_count, "bsp_SplitPolygon: f->vertices");
+	f->vertices = memory_Malloc(sizeof(vertex_t) * f->vert_count);
 	#endif
 
 	f->b_used = polygon->b_used;
@@ -454,7 +454,7 @@ int bsp_SplitPolygon(bsp_polygon_t *polygon, vec3_t point, vec3_t normal, bsp_po
 	#ifndef USE_MEMORY_MALLOC
 	b = malloc(sizeof(bsp_polygon_t ));
 	#else
-	b = memory_Malloc(sizeof(bsp_polygon_t ), "bsp_SplitPolygon: b");
+	b = memory_Malloc(sizeof(bsp_polygon_t ));
 	#endif
 	b->normal = polygon->normal;
 	b->vert_count = back_vertex_count;
@@ -463,7 +463,7 @@ int bsp_SplitPolygon(bsp_polygon_t *polygon, vec3_t point, vec3_t normal, bsp_po
 	#ifndef USE_MEMORY_MALLOC
 	b->vertices = malloc(sizeof(vertex_t) * (b->vert_count));
 	#else
-	b->vertices = memory_Malloc(sizeof(vertex_t) * b->vert_count, "bsp_SplitPolygon: b->vertices");
+	b->vertices = memory_Malloc(sizeof(vertex_t) * b->vert_count);
 	#endif
 
 	b->next = NULL;
@@ -623,7 +623,7 @@ int bsp_TrimPolygon(bsp_polygon_t *polygon, vec3_t point, vec3_t normal)
 		polygon->vertices = malloc(sizeof(vertex_t) * front_vertex_count);
 		#else
 		memory_Free(polygon->vertices);
-		polygon->vertices = memory_Malloc(sizeof(vertex_t) * front_vertex_count, "bsp_TrimPolygon: polygon->vertices");
+		polygon->vertices = memory_Malloc(sizeof(vertex_t) * front_vertex_count);
 		#endif
 		polygon->vert_count = front_vertex_count;
 	}
@@ -731,7 +731,7 @@ bsp_polygon_t *bsp_DeepCopyPolygon(bsp_polygon_t *src)
 		#ifndef USE_MEMORY_MALLOC
 		p = malloc(sizeof(bsp_polygon_t));
 		#else
-		p = memory_Malloc(sizeof(bsp_polygon_t), "bsp_DeepCopyPolygon: p");
+		p = memory_Malloc(sizeof(bsp_polygon_t));
 		#endif
 
 		p->normal = src->normal;
@@ -749,7 +749,7 @@ bsp_polygon_t *bsp_DeepCopyPolygon(bsp_polygon_t *src)
 		#ifndef USE_MEMORY_MALLOC
 		p->vertices = malloc(sizeof(vertex_t) * p->vert_count);
 		#else
-		p->vertices = memory_Malloc(sizeof(vertex_t) * p->vert_count, "bsp_DeepCopyPolygon: p->vertices");
+		p->vertices = memory_Malloc(sizeof(vertex_t) * p->vert_count);
 		#endif
 
 		p->material_index = src->material_index;
@@ -779,7 +779,7 @@ bsp_polygon_t *bsp_DeepCopyPolygons(bsp_polygon_t *src)
 		#ifndef USE_MEMORY_MALLOC
 		r = malloc(sizeof(bsp_polygon_t ));
 		#else
-		r = memory_Malloc(sizeof(bsp_polygon_t ), "bsp_DeepCopyPolygons: r");
+		r = memory_Malloc(sizeof(bsp_polygon_t ));
 		#endif
 
 		r->brush_index = src->brush_index;
@@ -790,7 +790,7 @@ bsp_polygon_t *bsp_DeepCopyPolygons(bsp_polygon_t *src)
 		#ifndef USE_MEMORY_MALLOC
 		r->vertices = malloc(sizeof(vertex_t) * r->vert_count);
 		#else
-		r->vertices = memory_Malloc(sizeof(vertex_t) * r->vert_count, "bsp_DeepCopyPolygons: r->vertices");
+		r->vertices = memory_Malloc(sizeof(vertex_t) * r->vert_count);
 		#endif
 
 		r->material_index = src->material_index;
@@ -834,8 +834,8 @@ bsp_polygon_t *bsp_DeepCopyPolygonsContiguous(bsp_polygon_t *src)
 	out = malloc(sizeof(bsp_polygon_t ) * polygon_count);
 	vertices = malloc(sizeof(vertex_t) * vert_count );
 	#else
-	out = memory_Malloc(sizeof(bsp_polygon_t ) * polygon_count, "bsp_DeepCopyPolygonsContiguous: out");
-	vertices = memory_Malloc(sizeof(vertex_t) * vert_count, "bsp_DeepCopyPolygonsContiguous: vertices" );
+	out = memory_Malloc(sizeof(bsp_polygon_t ) * polygon_count);
+	vertices = memory_Malloc(sizeof(vertex_t) * vert_count);
 	#endif
 
 	i = 0;
@@ -1033,7 +1033,7 @@ int bsp_RecursiveTriangulate(vertex_t *in_verts, int in_vert_count, vertex_t *ou
 	#ifndef USE_MEMORY_MALLOC
 	vin = malloc(sizeof(vertex_t) * in_vert_count);
 	#else
-	vin = memory_Malloc(sizeof(vertex_t) * in_vert_count, "bsp_RecursiveTriangulate: vin");
+	vin = memory_Malloc(sizeof(vertex_t) * in_vert_count);
 	#endif
 
 	if(out_indexes)
@@ -1041,7 +1041,7 @@ int bsp_RecursiveTriangulate(vertex_t *in_verts, int in_vert_count, vertex_t *ou
 		#ifndef USE_MEMORY_MALLOC
 		iin = malloc(sizeof(int) * in_vert_count);
 		#else
-		iin = memory_Malloc(sizeof(int) * in_vert_count, "bsp_RecursiveTriangulate: inn");
+		iin = memory_Malloc(sizeof(int) * in_vert_count);
 		#endif
 
 		for(i = 0; i < bi + 1; i++)
@@ -1101,7 +1101,7 @@ void bsp_TriangulatePolygon(bsp_polygon_t *polygon, vertex_t **vertices, int *ve
 		#ifndef USE_MEMORY_MALLOC
 		verts = malloc(sizeof(vertex_t ) * (polygon->vert_count - 2) * 3);
 		#else
-		verts = memory_Malloc(sizeof(vertex_t ) * (polygon->vert_count - 2) * 3, "bsp_TriangulatePolygon: verts");
+		verts = memory_Malloc(sizeof(vertex_t ) * (polygon->vert_count - 2) * 3);
 		#endif
 
 		if(polygon->vert_count == 3)
@@ -1141,7 +1141,7 @@ void bsp_TriangulatePolygonIndexes(bsp_polygon_t *polygon, int **indexes, int *i
 		#ifndef USE_MEMORY_MALLOC
 		out_indexes = malloc(sizeof(int ) * out_index_count);
 		#else
-		out_indexes = memory_Malloc(sizeof(int ) * out_index_count, "bsp_TriangulatePolygonIndexes: out_indexes");
+		out_indexes = memory_Malloc(sizeof(int ) * out_index_count);
 		#endif
 
 		/* avoid the whole thing if the polygon is a triangle... */
@@ -1164,8 +1164,8 @@ void bsp_TriangulatePolygonIndexes(bsp_polygon_t *polygon, int **indexes, int *i
 		verts = malloc(sizeof(vertex_t ) * (polygon->vert_count - 2) * 3);
 		in_indexes = malloc(sizeof(int) * polygon->vert_count);
 		#else
-		verts = memory_Malloc(sizeof(vertex_t ) * (polygon->vert_count - 2) * 3, "bsp_TriangulatePolygonIndexes: verts");
-		in_indexes = memory_Malloc(sizeof(int) * polygon->vert_count, "bsp_TriangulatePolygonIndexes: in_indexes");
+		verts = memory_Malloc(sizeof(vertex_t ) * (polygon->vert_count - 2) * 3);
+		in_indexes = memory_Malloc(sizeof(int) * polygon->vert_count);
 		#endif
 
 		c = polygon->vert_count;
@@ -1234,7 +1234,7 @@ void bsp_TriangulatePolygonsIndexes(bsp_polygon_t *polygons, int **indexes, int 
 		#ifndef USE_MEMORY_MALLOC
 		out_indexes = malloc(sizeof(int) * count * 2);
 		#else
-		out_indexes = memory_Malloc(sizeof(int) * count * 2, "bsp_TriangulatePolygonsIndexes: out_indexes");
+		out_indexes = memory_Malloc(sizeof(int) * count * 2);
 		#endif
 	}
 	else
@@ -1246,8 +1246,8 @@ void bsp_TriangulatePolygonsIndexes(bsp_polygon_t *polygons, int **indexes, int 
 	in_indexes = malloc(sizeof(int) * max_verts * 3);
 	verts = malloc(sizeof(vertex_t) * (max_verts - 2) * 3);
 	#else
-	in_indexes = memory_Malloc(sizeof(int) * max_verts * 3, "bsp_TriangulatePolygonsIndexes: in_indexes");
-	verts = memory_Malloc(sizeof(vertex_t) * (max_verts - 2) * 3, "bsp_TriangulatePolygonsIndexes: verts");
+	in_indexes = memory_Malloc(sizeof(int) * max_verts * 3);
+	verts = memory_Malloc(sizeof(vertex_t) * (max_verts - 2) * 3);
 	#endif
 	polygon = polygons;
 
@@ -1770,7 +1770,7 @@ void bsp_RecursiveQuickHull(vec2_t *in_verts, int in_vert_count, vec2_t *hull_ve
 	#ifndef USE_MEMORY_MALLOC
 	out = malloc(sizeof(vec2_t ) * in_vert_count);
 	#else
-	out = memory_Malloc(sizeof(vec2_t ) * in_vert_count, "bsp_RecursiveQuickHull: out");
+	out = memory_Malloc(sizeof(vec2_t ) * in_vert_count);
 	#endif
 
 
@@ -1906,7 +1906,7 @@ void bsp_QuickHull(vec2_t *in_verts, int in_vert_count, vec2_t **hull_verts, int
 		#ifndef USE_MEMORY_MALLOC
 		*hull_verts = malloc(sizeof(vec2_t) * 3);
 		#else
-		*hull_verts = memory_Malloc(sizeof(vec2_t) * 3, "bsp_QuickHull: hull_verts");
+		*hull_verts = memory_Malloc(sizeof(vec2_t) * 3);
 		#endif
 		(*hull_verts)[0] = in_verts[0];
 		(*hull_verts)[1] = in_verts[1];
@@ -1928,8 +1928,8 @@ void bsp_QuickHull(vec2_t *in_verts, int in_vert_count, vec2_t **hull_verts, int
 	out = malloc(sizeof(vec2_t ) * in_vert_count);
 	hull = malloc(sizeof(vec2_t ) * in_vert_count * 2);
 	#else
-	out = memory_Malloc(sizeof(vec2_t ) * in_vert_count, "bsp_QuickHull: out");
-	hull = memory_Malloc(sizeof(vec2_t ) * in_vert_count * 2, "bsp_QuickHull: hull");
+	out = memory_Malloc(sizeof(vec2_t ) * in_vert_count);
+	hull = memory_Malloc(sizeof(vec2_t ) * in_vert_count * 2);
 	#endif
 
 	for(i = 0; i < in_vert_count; i++)
@@ -2033,7 +2033,7 @@ void bsp_QuickHull(vec2_t *in_verts, int in_vert_count, vec2_t **hull_verts, int
 	#ifndef USE_MEMORY_MALLOC
 	*hull_verts = malloc(sizeof(vec2_t ) * hull_count);
 	#else
-	*hull_verts = memory_Malloc(sizeof(vec2_t ) * hull_count, "bsp_QuickHull");
+	*hull_verts = memory_Malloc(sizeof(vec2_t ) * hull_count);
 	#endif
 	*hull_vert_count = hull_count;
 
@@ -3402,7 +3402,7 @@ void bsp_TriangulateLeafPolygons(bsp_node_t *node)
 					#ifndef USE_MEMORY_MALLOC
 					triangle = malloc(sizeof(bsp_triangle_t));
 					#else
-					triangle = memory_Malloc(sizeof(bsp_triangle_t), "bsp_TriangulateLeafPolygons: triangle");
+					triangle = memory_Malloc(sizeof(bsp_triangle_t));
 					#endif
 
 					triangle->a = vertices[i];
@@ -3526,7 +3526,7 @@ void bsp_BuildTriangleGroups(bsp_node_t *root, struct batch_t **groups, int *cou
 					#ifndef USE_MEMORY_MALLOC
 					n = malloc(sizeof(batch_t) * (c + 1));
 					#else
-					n = memory_Malloc(sizeof(struct batch_t) * (c + 1), "bsp_BuildTriangleGroups: n");
+					n = memory_Malloc(sizeof(struct batch_t) * (c + 1));
 					#endif
 
 					/* copy everything before it... */
@@ -3674,14 +3674,14 @@ void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_
 			#ifndef USE_MEMORY_MALLOC
 			dleaf->tris = malloc(sizeof(bsp_striangle_t ) * dleaf->tris_count);
 			#else
-			dleaf->tris = memory_Malloc(sizeof(bsp_striangle_t ) * dleaf->tris_count, "bsp_RecursiveLinearizeBsp: dleaf->tris");
+			dleaf->tris = memory_Malloc(sizeof(bsp_striangle_t ) * dleaf->tris_count);
 			#endif
 			//dleaf->pvs = leaf->pvs;
 
 			#ifndef USE_MEMORY_MALLOC
 			dleaf->pvs = calloc(pvs_size, 1);
 			#else
-			dleaf->pvs = memory_Calloc(pvs_size, 1, "bsp_RecursiveLinearizeBsp: dleaf->pvs");
+			dleaf->pvs = memory_Calloc(pvs_size, 1);
 			#endif
 			leaf->pvs = dleaf->pvs;
 
@@ -3829,7 +3829,7 @@ void bsp_RecursiveAllocPvsForLeaves(bsp_node_t *bsp, int pvs_size)
 			#ifndef USE_MEMORY_MALLOC
 			leaf->pvs = calloc(pvs_size, 1);
 			#else
-			leaf->pvs = memory_Calloc(pvs_size, 1, "bsp_RecursiveAllocPvsForLeaves: leaf->pvs");
+			leaf->pvs = memory_Calloc(pvs_size, 1);
 			#endif
 		}
 	}
@@ -3885,7 +3885,7 @@ void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, b
 		#ifndef USE_MEMORY_MALLOC
 		v = malloc(sizeof(vertex_t) * (*vertex_count));
 		#else
-		v = memory_Malloc(sizeof(vertex_t) * (*vertex_count), "bsp_LinearizeBsp: v");
+		v = memory_Malloc(sizeof(vertex_t) * (*vertex_count));
 		#endif
 	}
 
@@ -3897,7 +3897,7 @@ void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, b
 	#ifndef USE_MEMORY_MALLOC
 	nodes = malloc(sizeof(bsp_pnode_t) * n);
 	#else
-	nodes = memory_Malloc(sizeof(bsp_pnode_t) * n, "bsp_LinearizeBsp: nodes");
+	nodes = memory_Malloc(sizeof(bsp_pnode_t) * n);
 	#endif
 
 	if(lleaves)
@@ -3905,7 +3905,7 @@ void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, b
 		#ifndef USE_MEMORY_MALLOC
 		leaves = malloc(sizeof(bsp_dleaf_t) * l);
 		#else
-		leaves = memory_Malloc(sizeof(bsp_dleaf_t) * l, "bsp_LinearizeBsp: leaves");
+		leaves = memory_Malloc(sizeof(bsp_dleaf_t) * l);
 		#endif
 		pvs_size = 4 + (l >> 3);
 	}
@@ -4051,7 +4051,7 @@ bsp_edge_t *bsp_BuildBevelEdges(bsp_polygon_t *brush_polygons)
 							#ifndef USE_MEMORY_MALLOC
 							edge = malloc(sizeof(bsp_edge_t) );
 							#else
-							edge = memory_Malloc(sizeof(bsp_edge_t), "bsp_BuildBevelEdges");
+							edge = memory_Malloc(sizeof(bsp_edge_t));
 							#endif
 							edge->v0 = p0;
 							edge->v1 = p1;
@@ -4438,7 +4438,7 @@ void bsp_BuildSolid(bsp_node_t **root, bsp_polygon_t *polygons, int ignore_used,
 	#ifndef USE_MEMORY_MALLOC
 	*root = malloc(sizeof(bsp_node_t));
 	#else
-	*root = memory_Malloc(sizeof(bsp_node_t), "bsp_BuildSolid: root");
+	*root = memory_Malloc(sizeof(bsp_node_t));
 	#endif
 
 	p = *root;
@@ -4508,7 +4508,7 @@ void bsp_BuildSolid(bsp_node_t **root, bsp_polygon_t *polygons, int ignore_used,
 		#ifndef USE_MEMORY_MALLOC
 		p->front = malloc(sizeof(bsp_leaf_t));
 		#else
-		p->front = memory_Malloc(sizeof(bsp_leaf_t), "bsp_BuildSolid: p->front");
+		p->front = memory_Malloc(sizeof(bsp_leaf_t));
 		#endif
 
 		leaf = (bsp_leaf_t *)p->front;
@@ -4531,7 +4531,7 @@ void bsp_BuildSolid(bsp_node_t **root, bsp_polygon_t *polygons, int ignore_used,
 		#ifndef USE_MEMORY_MALLOC
 		p->back = malloc(sizeof(bsp_leaf_t));
 		#else
-		p->back = memory_Malloc(sizeof(bsp_leaf_t), "bsp_BuildSolid: p->back");
+		p->back = memory_Malloc(sizeof(bsp_leaf_t));
 		#endif
 
 		leaf = (bsp_leaf_t *)p->back;
@@ -4613,7 +4613,7 @@ void bsp_BuildSolidLeaf(bsp_node_t **root, bsp_polygon_t *polygons)
 		#ifndef USE_MEMORY_MALLOC
 		*root = malloc(sizeof(bsp_node_t));
 		#else
-		*root = memory_Malloc(sizeof(bsp_node_t), "bsp_BuildSolidLeaf: root");
+		*root = memory_Malloc(sizeof(bsp_node_t));
 		#endif
 		node = *root;
 
@@ -4713,7 +4713,7 @@ void bsp_BuildSolidLeaf(bsp_node_t **root, bsp_polygon_t *polygons)
 		#ifndef USE_MEMORY_MALLOC
 		*root = malloc(sizeof(bsp_leaf_t));
 		#else
-		*root = memory_Malloc(sizeof(bsp_leaf_t), "bsp_BuildSolidLeaf: root");
+		*root = memory_Malloc(sizeof(bsp_leaf_t));
 		#endif
 		leaf = (bsp_leaf_t *)*root;
 

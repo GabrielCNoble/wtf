@@ -4,6 +4,8 @@
 #include "texture.h"
 #include "c_memory.h"
 
+#include "material.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -183,7 +185,7 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 	file_size = ftell(file);
 	rewind(file);
 
-	file_buffer = memory_Calloc(file_size, 1, "load_obj");
+	file_buffer = memory_Calloc(file_size, 1);
 	fread(file_buffer, 1, file_size, file);
 
 	fclose(file);
@@ -491,24 +493,24 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 
 
 		current_material = NULL;
-		positions = memory_Malloc(sizeof(vec3_t) * position_count, "load_obj");
-		normals = memory_Malloc(sizeof(vec3_t) * normal_count, "load_obj");
+		positions = memory_Malloc(sizeof(vec3_t) * position_count);
+		normals = memory_Malloc(sizeof(vec3_t) * normal_count);
 
 		if(tex_coord_count)
 		{
-			tex_coords = memory_Malloc(sizeof(vec3_t) * tex_coord_count, "load_obj");
+			tex_coords = memory_Malloc(sizeof(vec3_t) * tex_coord_count);
 		}
 
-		face_indexes = memory_Malloc(sizeof(struct face_index_t) * face_index_count, "load_obj");
+		face_indexes = memory_Malloc(sizeof(struct face_index_t) * face_index_count);
 
 		if(material_refs)
 		{
-			referenced_materials = memory_Malloc(sizeof(char *) * material_refs, "load_obj");
+			referenced_materials = memory_Malloc(sizeof(char *) * material_refs);
 		}
 
 		if(mtllib_count)
 		{
-			mtllibs = memory_Malloc(sizeof(char *) * mtllib_count, "load_obj");
+			mtllibs = memory_Malloc(sizeof(char *) * mtllib_count);
 		}
 	}
 
@@ -520,9 +522,9 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 
 	memory_Free(file_buffer);
 
-	vertices = memory_Malloc(sizeof(vertex_t) * vertice_count, "load_obj");
+	vertices = memory_Malloc(sizeof(vertex_t) * vertice_count);
 
-	material_records = memory_Malloc(referenced_material_cursor * sizeof(material_record_t), "load_obj");
+	material_records = memory_Malloc(referenced_material_cursor * sizeof(material_record_t));
 	material_records_cursor = -1;
 
 	file_buffer = NULL;
@@ -547,7 +549,7 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 			free(file_buffer);
 		}
 
-		file_buffer = memory_Malloc(file_size, "load_obj");
+		file_buffer = memory_Malloc(file_size);
 		fread(file_buffer, file_size, 1, mtl);
 		fclose(mtl);
 
@@ -825,7 +827,7 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 	/*================================================================================================*/
 	/*================================================================================================*/
 
-	batches = memory_Malloc(sizeof(struct mpk_batch_t) * (material_records_cursor + 1), "load_obj");
+	batches = memory_Malloc(sizeof(struct mpk_batch_t) * (material_records_cursor + 1));
 	batch_cursor = 0;
 
 	for(j = 0; j < material_records_cursor; j++)
@@ -1004,7 +1006,7 @@ void mpk_write(char *output_name, struct input_params_t *in_params)
 			file_size += sizeof(struct mpk_batch_t) * out_params.out_batches_count;
 		}
 
-		file_buffer = memory_Calloc(file_size, 1, "mpk_write");
+		file_buffer = memory_Calloc(file_size, 1);
 
 		out = file_buffer;
 
@@ -1046,13 +1048,13 @@ void mpk_write(char *output_name, struct input_params_t *in_params)
 		fwrite(file_buffer, file_size, 1, file);
 		fclose(file);
 		memory_Free(file_buffer);
-		
+
 		printf("statistics:\n---\n");
 		printf("batches: %d\n", in_params->in_batches_count);
 		printf("input vertice count: %d\n", in_params->in_vertices_count);
 		printf("output vertice count: %d\n", out_params.out_vertices_count);
-		
-		
+
+
 	}
 
 }
@@ -1088,9 +1090,11 @@ void mpk_index(struct input_params_t *params)
 	vertices = params->in_vertices;
 
 	triangle_count = vertice_count / 3;
-	triangles = memory_Malloc(sizeof(struct mpk_triangle_t) * triangle_count, "mpk_index");
+	triangles = memory_Malloc(sizeof(struct mpk_triangle_t) * triangle_count);
 
 	triangle_count = 0;
+	
+	indices = memory_Malloc(sizeof(int) * vertice_count);
 
 	for(i = 0; i < batch_count; i++)
 	{
@@ -1100,13 +1104,14 @@ void mpk_index(struct input_params_t *params)
 		{
 			triangle = triangles + triangle_count;
 			triangle->material_name = batch->material_name;
+			triangle->verts = indices + triangle_count * 3;
 
 			triangle->verts[0] = j + batch->indice_start;
 			j++;
-			
+
 			triangle->verts[1] = j + batch->indice_start;
 			j++;
-			
+
 			triangle->verts[2] = j + batch->indice_start;
 			j++;
 
@@ -1114,15 +1119,15 @@ void mpk_index(struct input_params_t *params)
 		}
 	}
 
-	indices = memory_Malloc(sizeof(int) * vertice_count, "mpk_index");
-
+	
+	
 /*	for(i = 0; i < vertice_count; i++)
 	{
 		indices[i] = i;
 	}*/
 
 
-	for(i = 0, j = 0; i < triangle_count; i++)
+	/*for(i = 0, j = 0; i < triangle_count; i++)
 	{
 		triangle = triangles + i;
 
@@ -1132,7 +1137,7 @@ void mpk_index(struct input_params_t *params)
 		j++;
 		indices[j] = triangle->verts[2];
 		j++;
-	}
+	}*/
 
 	params->in_triangles = triangles;
 	params->in_triangles_count = triangle_count;
@@ -1168,18 +1173,18 @@ void mpk_lod(struct input_params_t *in_params, struct output_params_t *out_param
 	//out_params->out_vertices_count = in_params->in_vertices_count;
 
     out_params->out_lods_count = max_lod + 1;
-    out_params->out_lods = memory_Malloc(sizeof(struct mpk_lod_t) * out_params->out_lods_count, "mpk_lod");
+    out_params->out_lods = memory_Malloc(sizeof(struct mpk_lod_t) * out_params->out_lods_count);
 
-    out_params->out_lods_indices = memory_Malloc(sizeof(int *) * out_params->out_lods_count, "mpk_lod");
-    out_params->out_lods_batches = memory_Malloc(sizeof(struct mpk_batch_t *) * out_params->out_lods_count, "mpk_lod");
+    out_params->out_lods_indices = memory_Malloc(sizeof(int *) * out_params->out_lods_count);
+    out_params->out_lods_batches = memory_Malloc(sizeof(struct mpk_batch_t *) * out_params->out_lods_count);
 
-   
+
 
 	out_params->out_lods[0].indice_count = out_params->out_indices_count;
-    out_params->out_lods_indices[0] = memory_Malloc(sizeof(int) * out_params->out_lods[0].indice_count, "mpk_lod");
+    out_params->out_lods_indices[0] = memory_Malloc(sizeof(int) * out_params->out_lods[0].indice_count);
     memcpy(out_params->out_lods_indices[0], out_params->out_indices, sizeof(int) * out_params->out_lods[0].indice_count);
 
-    out_params->out_lods_batches[0] = memory_Malloc(sizeof(struct mpk_batch_t) * in_params->in_batches_count, "mpk_lod");
+    out_params->out_lods_batches[0] = memory_Malloc(sizeof(struct mpk_batch_t) * in_params->in_batches_count);
 
 	//out_params->out_indices_count = 0;
 
@@ -1208,9 +1213,9 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
     vertex_t *out_vertices;
     int vertice_count;
     int out_vertice_count;
-    
+
     int *indices;
-    
+
     struct mpk_triangle_t *triangles;
     struct mpk_triangle_t *triangle;
     int triangle_count = 0;
@@ -1221,82 +1226,93 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 
     int cur_vertex_index;
     int test_vertex_index;
-    int real_cur_vertex_index;
-    int real_test_vertex_index;
+    int rejected_vertices;
+    //int real_cur_vertex_index;
+    //int real_test_vertex_index;
 
     int r;
     int m;
-    
+
     float diff;
 
 
     vertex_t *cur_vertex;
     vertex_t *test_vertex;
-    
-    
-    
-    
+
+
+
+
 
     //vertex_records = *params->out_vertex_records;
     //vertex_records_count = *params->out_vertex_records_count;
-    
+
     batches = in_params->in_batches;
     batch_count = in_params->in_batches_count;
 
     vertices = in_params->in_vertices;
     vertice_count = in_params->in_vertices_count;
-    
+
     triangles = in_params->in_triangles;
     triangle_count = in_params->in_triangles_count;
-    
+
     indices = in_params->in_indices;
 
 	/* Find duplicate verts, and make the triangles using those duplicate verts
 	point to the same vert... */
 
     if(vertices)
-	{	
-		vertices = memory_Malloc(sizeof(vertex_t) * vertice_count, "mpk_optmize");
+	{
+		vertices = memory_Malloc(sizeof(vertex_t) * vertice_count);
 		memcpy(vertices, in_params->in_vertices, sizeof(vertex_t) * vertice_count);
-		
+
 		//out_vertice_count = vertice_count;
-		
-		#if 0
-		
+
+		#if 1
+
 		for(i = 0; i < batch_count; i++)
-		{			
+		{
 			batch = batches + i;
-			
+
 			if(batch->indice_count > 3)
 			{
-				for(real_cur_vertex_index = 0, cur_vertex_index = 0; real_cur_vertex_index < batch->indice_count; real_cur_vertex_index++, cur_vertex_index++)
+				for(cur_vertex_index = 0, rejected_vertices = 0; cur_vertex_index < batch->indice_count; cur_vertex_index++)
 				{
-					cur_vertex = vertices + indices[batch->indice_start + real_cur_vertex_index];
-					
+					cur_vertex = vertices + indices[batch->indice_start + cur_vertex_index];
+
 					if(*(int *)&cur_vertex->position.x == 0xffffffff)
 					{
-						cur_vertex_index--;
+						/* this vertices was markead as invalid, but it can't
+						be removed from the list yet given that might be triangles
+						that points to vertices further ahead of this one, and moving
+						them around would mess the indices the triangles keep into 
+						this list... */
+						rejected_vertices++;
 						continue;
 					}
 					
+					/*printf("[%f %f %f] -- [%f %f %f] -- [%f %f]\n", cur_vertex->position.x, cur_vertex->position.y, cur_vertex->position.z,
+																	cur_vertex->normal.x, cur_vertex->normal.y, cur_vertex->normal.z,
+																	cur_vertex->tex_coord.x, cur_vertex->tex_coord.y);*/
+					
 
-					for(real_test_vertex_index = real_cur_vertex_index + 1, test_vertex_index = cur_vertex_index + 1; real_test_vertex_index < batch->indice_count; real_test_vertex_index++, test_vertex_index++)
+
+					for(test_vertex_index = cur_vertex_index + 1; test_vertex_index < batch->indice_count; test_vertex_index++)
 					{
-						test_vertex = vertices + indices[batch->indice_start + real_test_vertex_index];
-						
+						test_vertex = vertices + indices[batch->indice_start + test_vertex_index];
+
 						//if(_isnan(test_vertex->position.x))
 						if(*(int *)&test_vertex->position.x == 0xffffffff)
 						{
 							continue;
-							test_vertex_index--;
+							//test_vertex_index--;
 						}
-						
+
 
 						/* position... */
 						for(r = 0; r < 3; r++)
 						{
 							diff = cur_vertex->position.floats[r] - test_vertex->position.floats[r];
-							
+
                             if(diff > FLT_EPSILON * 2.0 || diff < -FLT_EPSILON * 2.0)
 							{
 								break;
@@ -1311,7 +1327,7 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 							for(r = 0; r < 3; r++)
 							{
 								diff = cur_vertex->normal.floats[r] - test_vertex->normal.floats[r];
-								
+
 								if(diff > FLT_EPSILON * 2.0 || diff < -FLT_EPSILON * 2.0)
 								{
 									break;
@@ -1331,7 +1347,7 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 							for(r = 0; r < 2; r++)
 							{
 								diff = cur_vertex->tex_coord.floats[r] - test_vertex->tex_coord.floats[r];
-								
+
 								if(diff > FLT_EPSILON * 2.0 || diff < -FLT_EPSILON * 2.0)
 								{
 									break;
@@ -1354,17 +1370,33 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 
 								for(m = 0; m < 3; m++)
 								{
-                                    if(triangle->verts[m] == real_test_vertex_index)
+                                    if(triangle->verts[m] == test_vertex_index)
 									{
 										/* make this triangle use the current vertice... */
-										triangle->verts[m] = cur_vertex_index;
 										
-										*(int *)&vertices[real_test_vertex_index].position.x = 0xffffffff;
+										/* once all the duplicate vertices get marked as so,
+										the list will be compacted, and the invalid vertices
+										will be removed.
 										
+										In order to have the triangles point only at valid vertices
+										we subtract from the current vertice we're testing how many
+										vertices were marked as invalid so far, so when the list
+										gets compacted, the triangles will be pointing at the 
+										correct vertices.
+							 			
+										In other words, cur_vertex_index points at the current
+										vertice we're testing, and cur_vertex_index - rejected_vertices
+										points at the last valid vertice so far... */
+										triangle->verts[m] = cur_vertex_index - rejected_vertices;
+										
+										//printf("change vertex %d for vertex %d\n", test_vertex_index, cur_vertex_index - rejected_vertices);
+
+										*(int *)&vertices[test_vertex_index].position.x = 0xffffffff;
+
 										vertice_count--;
-										
+
 										r = triangle_count;
-										
+
 										break;
 									}
 								}
@@ -1374,19 +1406,19 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 				}
 			}
 		}
-		
+
 		#endif
-		
+
 		out_params->out_vertices = vertices;
 		out_params->out_vertices_count = vertice_count;
-		
-		#if 0
+
+		#if 1
 		m = in_params->in_vertices_count;
-		
-		for(i = 0; i < vertice_count; i++)
-		{			
+
+		for(i = 0; i < in_params->in_vertices_count && m; i++)
+		{
 			while(*(int *)&vertices[i].position.x != 0xffffffff) i++;
-			
+
 			for(j = i; j < m - 1; j++)
 			{
 				vertices[j] = vertices[j + 1];
@@ -1394,30 +1426,30 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 			i--;
 			m--;
 		}
-		
+
 		#endif
-		
-		
-		out_params->out_indices = memory_Malloc(sizeof(int) * in_params->in_indices_count, "mpk_optmize");
+
+
+		out_params->out_indices = memory_Malloc(sizeof(int) * in_params->in_indices_count);
 		out_params->out_indices_count = 0;
-		
+
 		for(i = 0; i < triangle_count; i++)
 		{
 			triangle = triangles + i;
-			
+
 			for(j = 0; j < 3; j++)
 			{
 				out_params->out_indices[out_params->out_indices_count] = triangle->verts[j];
 				out_params->out_indices_count++;
 			}
 		}
-	/*	
+	
 		for(i = 0; i < out_params->out_indices_count; i++)
 		{
 			printf("[%f %f %f]\n", vertices[out_params->out_indices[i]].position.x,
 								   vertices[out_params->out_indices[i]].position.y,
 								   vertices[out_params->out_indices[i]].position.z);
-		}	*/			
+		}	
 	}
 }
 

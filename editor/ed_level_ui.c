@@ -789,7 +789,7 @@ void editor_LevelEditorAddToWorldMenu()
 
 		if(gui_ImGuiBeginPopup("Add to world menu", 0))
 		{
-			if(gui_ImGuiMenuItem("Add light", NULL, NULL, 1))
+			if(gui_ImGuiMenuItem("Light", NULL, NULL, 1))
 			{
 				record.index0 = light_CreateLight("light", &orientation, level_editor_3d_cursor_position, vec3_t_c(1.0, 1.0, 1.0), 25.0, 20.0, 0);
 				record.type = PICK_LIGHT;
@@ -881,6 +881,8 @@ void editor_LevelEditorDeleteSelectionsMenu()
 			{
 				ed_level_editor_delete_selections_menu_open = 0;
 				editor_LevelEditorDestroySelections();
+
+				level_editor_need_to_copy_data = 1;
 			}
 			gui_ImGuiEndPopup();
 		}
@@ -923,6 +925,7 @@ void editor_LevelEditorWaypointOptionsMenu()
 
             if(gui_ImGuiMenuItem("Link waypoints", NULL, 0, 1))
             {
+                level_editor_need_to_copy_data = 1;
                 for(i = 0; i < c; i++)
                 {
                     if(level_editor_pick_list.records[i].type == PICK_WAYPOINT)
@@ -946,6 +949,7 @@ void editor_LevelEditorWaypointOptionsMenu()
 
             if(gui_ImGuiMenuItem("Unlink waypoints", NULL, 0, 1))
             {
+                level_editor_need_to_copy_data = 1;
                 for(i = 0; i < c; i++)
                 {
                     if(level_editor_pick_list.records[i].type == PICK_WAYPOINT)

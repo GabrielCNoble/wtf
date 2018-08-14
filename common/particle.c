@@ -1,12 +1,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
+#include <float.h>
+#include <assert.h>
 
 #include "matrix.h"
 
 #include "gpu.h"
 #include "particle.h"
 #include "c_memory.h"
+#include "camera.h"
 
 #include "script.h"
 #include "stack_list.h"
@@ -68,8 +72,8 @@ int particle_Init()
 	vec4_t particle_quad[4];
 
 	ps_max_particle_system_defs = 32;
-	ps_particle_system_defs = memory_Malloc(sizeof(particle_system_def_t) * ps_max_particle_system_defs, "particle_Init");
-	ps_particle_system_defs_stack = memory_Malloc(sizeof(int) * ps_max_particle_system_defs, "particle_Init");
+	ps_particle_system_defs = memory_Malloc(sizeof(particle_system_def_t) * ps_max_particle_system_defs);
+	ps_particle_system_defs_stack = memory_Malloc(sizeof(int) * ps_max_particle_system_defs);
 
 	for(i = 0; i < ps_max_particle_system_defs; i++)
 	{
@@ -172,9 +176,9 @@ int particle_CreateParticleSystemDef(char *name, short max_particles, short max_
 		if(def_index >= ps_max_particle_system_defs)
 		{
 			memory_Free(ps_particle_system_defs_stack);
-			ps_particle_system_defs_stack = memory_Malloc(sizeof(int) * (ps_max_particle_system_defs + 8), "particle_CreateParticleSystemDef");
+			ps_particle_system_defs_stack = memory_Malloc(sizeof(int) * (ps_max_particle_system_defs + 8));
 
-			def = memory_Malloc(sizeof(particle_system_def_t) * (ps_max_particle_system_defs + 8), "particle_CreateParticleSystemDef");
+			def = memory_Malloc(sizeof(particle_system_def_t) * (ps_max_particle_system_defs + 8));
 			memcpy(def, ps_particle_system_defs, sizeof(particle_system_def_t) * ps_max_particle_system_defs);
 
 			memory_Free(ps_particle_system_defs);
@@ -197,7 +201,7 @@ int particle_CreateParticleSystemDef(char *name, short max_particles, short max_
 	def->texture = texture;
 	def->script = script;
 	def->flags = flags;
-	def->name = memory_Strdup(name, "particle_CreateParticleSystemDef");
+	def->name = memory_Strdup(name);
 
 	return def_index;
 }
@@ -318,9 +322,9 @@ int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientat
 
 	if(!ps->particles)
 	{
-		ps->particles = memory_Malloc(sizeof(struct particle_t) * def->max_particles, "particle_SpawnParticleSystem");
-		ps->particle_positions = memory_Malloc(sizeof(vec4_t) * def->max_particles, "particle_SpawnParticleSystem");
-		ps->particle_frames = memory_Malloc(sizeof(int) * def->max_particles, "particle_SpawnParticleSystem");
+		ps->particles = memory_Malloc(sizeof(struct particle_t) * def->max_particles);
+		ps->particle_positions = memory_Malloc(sizeof(vec4_t) * def->max_particles);
+		ps->particle_frames = memory_Malloc(sizeof(int) * def->max_particles);
 	}
 	else
 	{
@@ -330,9 +334,9 @@ int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientat
 			memory_Free(ps->particle_positions);
 			memory_Free(ps->particle_frames);
 
-			ps->particles = memory_Malloc(sizeof(struct particle_t) * ps->max_particles, "particle_SpawnParticleSystem");
-			ps->particle_positions = memory_Malloc(sizeof(vec4_t) * ps->max_particles, "particle_SpawnParticleSystem");
-			ps->particle_frames = memory_Malloc(sizeof(int) * ps->max_particles, "particle_SpawnParticleSystem");
+			ps->particles = memory_Malloc(sizeof(struct particle_t) * ps->max_particles);
+			ps->particle_positions = memory_Malloc(sizeof(vec4_t) * ps->max_particles);
+			ps->particle_frames = memory_Malloc(sizeof(int) * ps->max_particles);
 		}
 
 
@@ -588,9 +592,121 @@ void particle_UpdateParticleSystems(double delta_time)
 			continue;
 		}
 
+		particle_SortParticles(ps);
+
 	//	ps->flags &= ~PARTICLE_SYSTEM_FLAG_JUST_SPAWNED;
 	}
 	//}
+
+}
+
+
+//vec4_t temp_particle_positions[MAX_PARTICLE_SYSTEM_PARTICLES];
+
+
+void particle_RecursiveSortParticles(float *dists, int *indices, int left, int right)
+{
+    int i = 0;
+    int j = 0;
+
+	int middle = (right + left) / 2;
+
+	float temp_dist;
+	int temp_indice;
+
+	float middle_dist = dists[middle];
+
+	i = left;
+	j = right;
+
+	while(i < j)
+	{
+        for(; i < right && dists[i] > middle_dist; i++);
+		for(; j > left && dists[j] < middle_dist; j--);
+
+        if(i <= j)
+		{
+			temp_dist = dists[i];
+			dists[i] = dists[j];
+			dists[j] = temp_dist;
+
+			temp_indice = indices[i];
+			indices[i] = indices[j];
+			indices[j] = temp_indice;
+
+			i++;
+			j--;
+		}
+	}
+
+	if(i < right)
+	{
+        particle_RecursiveSortParticles(dists, indices, left, i);
+	}
+
+	if(j > left)
+	{
+		particle_RecursiveSortParticles(dists, indices, j, right);
+	}
+}
+
+
+float particle_dists[MAX_PARTICLE_SYSTEM_PARTICLES];
+int particle_indices[MAX_PARTICLE_SYSTEM_PARTICLES];
+
+vec4_t particle_positions[MAX_PARTICLE_SYSTEM_PARTICLES];
+struct particle_t particles[MAX_PARTICLE_SYSTEM_PARTICLES];
+int particle_frames[MAX_PARTICLE_SYSTEM_PARTICLES];
+
+void particle_SortParticles(struct particle_system_t *particle_system)
+{
+	int i;
+	camera_t *active_camera;
+	vec3_t particle_vec;
+	vec3_t camera_position;
+	vec3_t camera_forward_vec;
+	int indice;
+	float dist;
+
+	active_camera = camera_GetActiveCamera();
+	camera_position = active_camera->world_position;
+	camera_forward_vec = active_camera->world_orientation.r2;
+
+
+	//particle_positions = particle_system->particle_positions;
+
+	for(i = 0; i < particle_system->particle_count; i++)
+	{
+
+		particle_positions[i] = particle_system->particle_positions[i];
+		particles[i] = particle_system->particles[i];
+		particle_frames[i] = particle_system->particle_frames[i];
+
+        particle_vec.x = particle_positions[i].x - camera_position.x;
+		particle_vec.y = particle_positions[i].y - camera_position.y;
+		particle_vec.z = particle_positions[i].z - camera_position.z;
+
+		dist = -dot3(particle_vec, camera_forward_vec);
+
+        particle_dists[i] = dist;
+        particle_indices[i] = i;
+	}
+
+    particle_RecursiveSortParticles(particle_dists, particle_indices, 0, particle_system->particle_count - 1);
+
+
+    for(i = 0; i < particle_system->particle_count; i++)
+	{
+		indice = particle_indices[i];
+
+        particle_system->particles[i] = particles[indice];
+        particle_system->particle_positions[i] = particle_positions[indice];
+        particle_system->particle_frames[i] = particle_frames[indice];
+	}
+
+
+
+
 
 }
 

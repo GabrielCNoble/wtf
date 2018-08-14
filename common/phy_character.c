@@ -248,6 +248,8 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	int vert_stride;
 	btVector3 *triangles;
 
+	vec3_t *v3_triangles;
+
 
 	PHY_ScalarType index_type;
 	int index_count;
@@ -369,13 +371,15 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 
 					if(persistent_manifold->getBody0() == world_collision_object)
 					{
-						triangles = &world_triangles->m_4componentVertices[0];
+						//triangles = &world_triangles->m_3componentVertices[0];
+						v3_triangles = (vec3_t *)&world_triangles->m_3componentVertices[0];
 						triangle_index = contact_point.m_index0 * 3;
 						collision_with_world = 1;
 					}
 					else if(persistent_manifold->getBody1() == world_collision_object)
 					{
-						triangles = &world_triangles->m_4componentVertices[0];
+						//triangles = &world_triangles->m_3componentVertices[0];
+						v3_triangles = (vec3_t *)&world_triangles->m_3componentVertices[0];
 						triangle_index = contact_point.m_index1 * 3;
 						collision_with_world = 1;
 					}
@@ -389,8 +393,16 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 					{
 						/* if the other collision object involved is the world,
 						get the contact normal directly from the collision mesh... */
-						e0 = triangles[triangle_index + 1] - triangles[triangle_index];
-						e1 = triangles[triangle_index + 2] - triangles[triangle_index + 1];
+						//e0 = triangles[triangle_index + 1] - triangles[triangle_index];
+						//e1 = triangles[triangle_index + 2] - triangles[triangle_index + 1];
+
+						e0[0] = v3_triangles[triangle_index + 1].x - v3_triangles[triangle_index].x;
+						e0[1] = v3_triangles[triangle_index + 1].y - v3_triangles[triangle_index].y;
+						e0[2] = v3_triangles[triangle_index + 1].z - v3_triangles[triangle_index].z;
+
+						e1[0] = v3_triangles[triangle_index + 2].x - v3_triangles[triangle_index + 1].x;
+						e1[1] = v3_triangles[triangle_index + 2].y - v3_triangles[triangle_index + 1].y;
+						e1[2] = v3_triangles[triangle_index + 2].z - v3_triangles[triangle_index + 1].z;
 
 						contact_normal = e0.cross(e1);
 						contact_normal = contact_normal.normalize();

@@ -21,7 +21,7 @@
 #define INVALID_COMPONENT_INDEX 0x7ffffff
 
 #define INVALID_COMPONENT_HANDLE (struct component_handle_t){COMPONENT_TYPE_NONE,0,INVALID_COMPONENT_INDEX}
-#define INVALID_ENTITY_HANDLE (struct entity_handle_t){0, INVALID_ENTITY_INDEX}
+#define INVALID_ENTITY_HANDLE (struct entity_handle_t){1, INVALID_ENTITY_INDEX}
 
 
 #define ENTITY_SCRIPT_FILE_EXTENSION "eas"
@@ -312,6 +312,11 @@ struct entity_contact_t
 {
     struct entity_handle_t entity;
     vec3_t position;
+};
+
+struct entity_source_file_t
+{
+	char file_name[PATH_MAX];
 };
 
 /*

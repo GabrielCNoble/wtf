@@ -49,10 +49,10 @@ extern int r_current_vertex_format;
 void renderer_InitImediateDrawing()
 {
 	//r_glff_fixed_function_shader = shader_LoadShader("fixed_function");
-	r_imediate_verts = memory_Malloc(sizeof(vec4_t) * MAX_IMEDIATE_VERTS, "renderer_InitImediateDrawing");
-	r_imediate_norms = memory_Malloc(sizeof(vec4_t) * MAX_IMEDIATE_VERTS, "renderer_InitImediateDrawing");
-	r_imediate_tex_coords = memory_Malloc(sizeof(vec4_t) * MAX_IMEDIATE_VERTS, "renderer_InitImediateDrawing");
-	r_imediate_colors = memory_Malloc(sizeof(vec4_t) * MAX_IMEDIATE_VERTS, "renderer_InitImediateDrawing");
+	r_imediate_verts = memory_Malloc(sizeof(vec4_t) * MAX_IMEDIATE_VERTS);
+	r_imediate_norms = memory_Malloc(sizeof(vec4_t) * MAX_IMEDIATE_VERTS);
+	r_imediate_tex_coords = memory_Malloc(sizeof(vec4_t) * MAX_IMEDIATE_VERTS);
+	r_imediate_colors = memory_Malloc(sizeof(vec4_t) * MAX_IMEDIATE_VERTS);
 }
 
 void renderer_FinishImediateDrawing()

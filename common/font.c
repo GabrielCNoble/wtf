@@ -42,12 +42,12 @@ int font_Init()
 
 	max_fonts = 16;
 	font_count = 0;
-	fonts = memory_Malloc(sizeof(font_t ) * max_fonts, "font_Init");
+	fonts = memory_Malloc(sizeof(font_t ) * max_fonts);
 
 
 	ft_max_rendered_strings = 512;
-	ft_free_stack = memory_Malloc(sizeof(int) * ft_max_rendered_strings, "font_Init");
-	ft_rendered_strings = memory_Malloc(sizeof(rendered_string_t) * ft_max_rendered_strings, "font_Init");
+	ft_free_stack = memory_Malloc(sizeof(int) * ft_max_rendered_strings);
+	ft_rendered_strings = memory_Malloc(sizeof(rendered_string_t) * ft_max_rendered_strings);
 
 
 	full_path = path_GetPathToFile("consola.ttf");
@@ -96,7 +96,7 @@ void font_LoadFont(char *file_name, char *name, int size)
 
 	font->font = TTF_OpenFont(file_name, size);
 	font->size = size;
-	font->name = memory_Strdup(name, "font_LoadFont");
+	font->name = memory_Strdup(name);
 	font_count++;
 
 }
@@ -156,14 +156,14 @@ int font_RenderString(font_t *font, char *str, int line_length, vec4_t foregroun
 
 			if(index >= ft_max_rendered_strings)
 			{
-				string = memory_Malloc(sizeof(rendered_string_t) * (ft_max_rendered_strings + 128), "font_RenderString");
+				string = memory_Malloc(sizeof(rendered_string_t) * (ft_max_rendered_strings + 128));
 				memcpy(string, ft_rendered_strings, sizeof(rendered_string_t) * ft_max_rendered_strings);
 
 				memory_Free(ft_rendered_strings);
 				memory_Free(ft_free_stack);
 
 				ft_rendered_strings = string;
-				ft_free_stack = memory_Malloc(sizeof(int) * (ft_max_rendered_strings + 128), "font_RenderString");
+				ft_free_stack = memory_Malloc(sizeof(int) * (ft_max_rendered_strings + 128));
 
 				ft_max_rendered_strings += 128;
 			}
@@ -201,7 +201,7 @@ int font_RenderString(font_t *font, char *str, int line_length, vec4_t foregroun
 			memory_Free(string->str);
 		}
 
-		string->str = memory_Strdup(str, "font_RenderString");
+		string->str = memory_Strdup(str);
 		string->str_len = len;
 	}
 

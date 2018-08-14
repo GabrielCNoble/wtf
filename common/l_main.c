@@ -24,6 +24,11 @@
 #include "c_memory.h"
 #include "r_debug.h"
 
+#include "entity.h"
+#include "ent_common.h"
+
+#include "containers/stack_list.h"
+
 #include "engine.h"
 
 
@@ -79,6 +84,10 @@ extern vertex_t *w_world_vertices;
 
 
 struct gpu_light_t *l_gpu_light_buffer;
+
+
+
+extern struct stack_list_t ent_entities;
 
 /* from l_cache.c */
 //extern int light_cache_cursor;
@@ -144,16 +153,16 @@ int light_Init()
 
 	R_DBG_PUSH_FUNCTION_NAME();
 
-	l_light_positions = memory_Malloc(sizeof(light_position_t) * l_light_list_size, "light_Init");
-	l_light_params = memory_Malloc(sizeof(light_params_t) * l_light_list_size, "light_Init");
-	l_light_names = memory_Malloc(sizeof(char *) * l_light_list_size, "light_Init");
-	l_free_position_stack = memory_Malloc(sizeof(int ) * l_light_list_size, "light_Init");
-	l_light_visible_triangles = memory_Malloc(sizeof(bsp_striangle_t) * l_light_list_size * MAX_TRIANGLES_PER_LIGHT, "light_Init");
-	l_clusters = memory_Malloc(sizeof(cluster_t) * CLUSTERS_PER_ROW * CLUSTER_ROWS * CLUSTER_LAYERS, "light_Init");
+	l_light_positions = memory_Malloc(sizeof(light_position_t) * l_light_list_size);
+	l_light_params = memory_Malloc(sizeof(light_params_t) * l_light_list_size);
+	l_light_names = memory_Malloc(sizeof(char *) * l_light_list_size);
+	l_free_position_stack = memory_Malloc(sizeof(int ) * l_light_list_size);
+	l_light_visible_triangles = memory_Malloc(sizeof(bsp_striangle_t) * l_light_list_size * MAX_TRIANGLES_PER_LIGHT);
+	l_clusters = memory_Malloc(sizeof(cluster_t) * CLUSTERS_PER_ROW * CLUSTER_ROWS * CLUSTER_LAYERS);
 
 	for(i = 0; i < l_light_list_size; i++)
 	{
-		l_light_names[i] = memory_Malloc(LIGHT_MAX_NAME_LEN, "light_Init");
+		l_light_names[i] = memory_Malloc(LIGHT_MAX_NAME_LEN);
 		/*l_light_params[i].view_cluster_list_size = 16;
 		l_light_params[i].view_cluster_list_cursor = 0;
 		l_light_params[i].view_clusters = memory_Malloc(sizeof(unsigned int) * l_light_params[i].view_cluster_list_size, "light_Init");*/
@@ -254,7 +263,7 @@ int light_Init()
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_light_t) * LIGHT_CACHE_SIZE, NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-	l_gpu_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * LIGHT_CACHE_SIZE, "light_InitCache");
+	l_gpu_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * LIGHT_CACHE_SIZE);
 
 
 	//printf("wow:: %x\n", glGetError());
@@ -605,6 +614,20 @@ int light_DestroyLightIndex(int light_index)
 	return 0;
 }
 
+void light_DestroyAllLights()
+{
+	int i;
+
+	for(i = 0; i < l_light_list_cursor; i++)
+	{
+		light_DestroyLightIndex(i);
+	}
+
+	l_light_list_cursor = 0;
+	l_light_count = 0;
+	l_free_position_stack_top = -1;
+}
+
 
 int light_Getlight(char *name)
 {
@@ -632,22 +655,7 @@ light_ptr_t light_GetLightPointerIndex(int light_index)
 	return pointer;
 }
 
-void light_DestroyAllLights()
-{
-	int i;
 
-	for(i = 0; i < l_light_list_cursor; i++)
-	{
-		if(!(l_light_params[i].bm_flags & LIGHT_INVALID))
-		{
-			light_DropLight(i);
-		}
-	}
-
-	l_light_list_cursor = 0;
-	l_light_count = 0;
-	l_free_position_stack_top = -1;
-}
 
 
 void light_MarkLightsOnLeaves()
@@ -1566,6 +1574,35 @@ void light_ClearLightLeaves()
 	}
 }
 
+void light_EntitiesOnLights()
+{
+    int i;
+    int entity_count;
+    struct entity_t *entities;
+    struct entity_t *entity;
+
+
+
+
+    entities = (struct entity_t *)ent_entities.elements;
+    entity_count = ent_entities.element_count;
+
+
+    for(i = 0; i < entity_count; i++)
+	{
+        entity = entities + i;
+
+		if(entity->flags & ENTITY_FLAG_INVALID)
+		{
+            continue;
+		}
+
+
+
+	}
+
+
+}
 
 void light_TranslateLight(int light_index, vec3_t direction, float amount)
 {
@@ -1701,89 +1738,143 @@ void light_FreeShadowMap(int light_index)
 }
 
 
+/*
+===================================================================
+===================================================================
+===================================================================
+*/
+
+char light_section_start_tag[] = "[light section start]";
+
+struct light_section_start_t
+{
+	char tag[(sizeof(light_section_start_tag) + 3) & (~3)];
+	int light_count;
+
+	int reserved0;
+	int reserved1;
+	int reserved2;
+	int reserved3;
+	int reserved4;
+	int reserved5;
+	int reserved6;
+	int reserved7;
+};
+
+char light_section_end_tag[] = "[light section end]";
+
+struct light_section_end_t
+{
+	char tag[(sizeof(light_section_end_tag) + 3) & (~3)];
+};
+
+
+struct light_record_t
+{
+	mat3_t orientation;
+	vec3_t position;
+	vec3_t color;
+	float radius;
+	float energy;
+	int flags;
+
+	int reserved0;
+	int reserved1;
+	int reserved2;
+	int reserved3;
+	int reserved4;
+	int reserved5;
+	int reserved6;
+	int reserved7;
+
+	char name[LIGHT_MAX_NAME_LEN];
+
+};
 
 
 
 void light_SerializeLights(void **buffer, int *buffer_size)
 {
-	light_section_header_t *header;
-	light_record_t *record;
+	struct light_section_start_t *section_start;
+	struct light_section_end_t *section_end;
+	struct light_record_t *record;
 	char *out;
 	int size;
 	int i;
 
 
-	size = sizeof(light_section_header_t ) + sizeof(light_record_t) * l_light_count;
-	out = memory_Malloc(size, "light_SerializeLights");
+	size = sizeof(struct light_section_start_t ) + sizeof(struct light_section_end_t) + sizeof(struct light_record_t) * l_light_count;
+	out = memory_Calloc(size, 1);
 
 	*buffer = out;
 	*buffer_size = size;
 
-	header = (light_section_header_t *)out;
-	out += sizeof(light_section_header_t);
+	section_start = (struct light_section_start_t *)out;
+	out += sizeof(struct light_section_start_t);
 
-	header->light_count = l_light_count;
+	strcpy(section_start->tag, light_section_start_tag);
+	section_start->light_count = l_light_count;
 
-	header->reserved0 = 0;
-	header->reserved1 = 0;
-	header->reserved2 = 0;
-	header->reserved3 = 0;
-	header->reserved4 = 0;
-	header->reserved5 = 0;
-	header->reserved6 = 0;
-	header->reserved7 = 0;
-
-	for(i = 0; i < header->light_count; i++)
+	for(i = 0; i < l_light_list_cursor; i++)
 	{
 		if(l_light_params[i].bm_flags & LIGHT_INVALID)
 			continue;
 
-
-		record = (light_record_t *)out;
-		out += sizeof(light_record_t );
+		record = (struct light_record_t *)out;
+		out += sizeof(struct light_record_t );
 
 		record->orientation = l_light_positions[i].orientation;
 		record->position = l_light_positions[i].position;
 
-		record->color.r = (float)l_light_params[i].r;
-		record->color.g = (float)l_light_params[i].g;
-		record->color.b = (float)l_light_params[i].b;
+		record->color.r = (float)l_light_params[i].r / 255.0;
+		record->color.g = (float)l_light_params[i].g / 255.0;
+		record->color.b = (float)l_light_params[i].b / 255.0;
 
 		record->energy = LIGHT_ENERGY(l_light_params[i].energy);
 		record->radius = LIGHT_RADIUS(l_light_params[i].radius);
 
 		strcpy(record->name, l_light_names[i]);
-
-		record->reserved0 = 0;
-		record->reserved1 = 0;
-		record->reserved2 = 0;
-		record->reserved3 = 0;
-		record->reserved4 = 0;
-		record->reserved5 = 0;
-		record->reserved6 = 0;
-		record->reserved7 = 0;
-
 	}
+
+	section_end = (struct light_section_end_t *)out;
+	out += sizeof(struct light_section_end_t);
+
+    strcpy(section_end->tag, light_section_end_tag);
 }
 
 void light_DeserializeLights(void **buffer)
 {
-	light_section_header_t *header;
-	light_record_t *record;
+	struct light_section_start_t *section_start;
+	struct light_section_end_t *section_end;
+	struct light_record_t *record;
 	int i;
 	char *in;
 
-
 	in = *buffer;
 
-	header = (light_section_header_t *)in;
-	in += sizeof(light_section_header_t);
-
-	for(i = 0; i < header->light_count; i++)
+	while(1)
 	{
-		record = (light_record_t *)in;
-		in += sizeof(light_record_t);
-		light_CreateLight(record->name, &record->orientation, record->position, record->color, record->radius, record->energy, record->flags);
+        if(!strcmp(in, light_section_start_tag))
+		{
+			section_start = (struct light_section_start_t *)in;
+			in += sizeof(struct light_section_start_t);
+
+			for(i = 0; i < section_start->light_count; i++)
+			{
+				record = (struct light_record_t *)in;
+				in += sizeof(struct light_record_t);
+				light_CreateLight(record->name, &record->orientation, record->position, record->color, record->radius, record->energy, record->flags);
+			}
+		}
+		else if(!strcmp(in, light_section_end_tag))
+		{
+			in += sizeof(struct light_section_end_t);
+			break;
+		}
+		else
+		{
+			in++;
+		}
 	}
 
 	*buffer = in;

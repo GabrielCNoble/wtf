@@ -226,6 +226,9 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t parent_entity, s
 	{
 		/* this component record belongs to a child transform component of an entity's transform component.
 		Parent it to the entity's transform component instead of adding to the entity itself... */
+
+		/* transform components belonging to entity def refs will also be flagged as nestled, given that
+		they also have to be linked to their parent entity's transform component... */
 		handle = entity_AllocComponent(component_record->type, entity.def);
 		entity_ParentTransformComponent(parent_entity_ptr->components[COMPONENT_TYPE_TRANSFORM], handle);
 	}
@@ -266,7 +269,7 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t parent_entity, s
 
 				if(!transform_component->instance_name)
 				{
-					transform_component->instance_name = memory_Malloc(ENTITY_NAME_MAX_LEN, "entity_ReadComponent");
+					transform_component->instance_name = memory_Malloc(ENTITY_NAME_MAX_LEN);
 				}
 
 				strcpy(transform_component->instance_name, component_record->component.transform_component.instance_name);
@@ -275,9 +278,9 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t parent_entity, s
 				/* if this is a reference to a def we need to make sure this
 				newly allocated transform component points to the original
 				def... */
-				//parent_entity_ptr = entity_GetEntityPointerHandle(parent_entity);	/* if we got here, entity will point to the parent entity of this ref... */
 				transform_component = entity_GetComponentPointer(parent_entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 				component = entity_GetComponentPointer(transform_component->child_transforms[transform_component->children_count - 1]);
+				component->flags |= COMPONENT_FLAG_ENTITY_DEF_REF;
 				component->entity = entity_GetEntityHandle(entity_record->name, entity_record->flags & ENTITY_RECORD_FLAG_DEF);
 			}
 			else
@@ -542,10 +545,12 @@ void entity_ReadCollider(void **buffer, struct entity_handle_t entity)
 
 
 
-void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct component_handle_t referencing_transform)
+void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct component_handle_t referencing_transform, int write_def_as_file_ref)
 {
 	struct entity_record_start_t *ent_record_start;
 	struct entity_record_end_t *ent_record_end;
+	struct entity_file_record_t *ent_file_record;
+	struct entity_source_file_t *ent_source_file;
 
 	struct entity_t *entity_def_ptr;
 	struct entity_t *entity_ptr;
@@ -562,6 +567,7 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 	int k;
 
 	char *out;
+	char *record_start;
 	out = *buffer;
 
 	entity_ptr = entity_GetEntityPointerHandle(entity);
@@ -606,6 +612,8 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 		ent_record_start = (struct entity_record_start_t *)out;
 		out += sizeof(struct entity_record_start_t);
 
+		record_start = out;
+
 		memset(ent_record_start, 0, sizeof(struct entity_record_start_t));
 		strcpy(ent_record_start->tag, entity_record_start_tag);
 		strcpy(ent_record_start->name, entity_ptr->name);
@@ -642,96 +650,112 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 			ent_record_start->flags |= ENTITY_RECORD_FLAG_MODIFIED;
 		}
 
-		/* Always write props, regardless of the entity having been modified or not... */
-		for(i = 0; i < entity_ptr->prop_count; i++)
+
+
+		if((ent_record_start->flags & ENTITY_RECORD_FLAG_DEF) && (!(ent_record_start->flags & ENTITY_RECORD_FLAG_DEF_REF)) && write_def_as_file_ref)
 		{
-			entity_WriteProp((void **)&out, entity_ptr->props + i);
+			/* don't serialize this entity def data, but instead just the file name
+			where it exists... */
+
+			ent_record_start->flags |= ENTITY_RECORD_FLAG_FILE_REF;
+
+			ent_file_record = (struct entity_file_record_t *)out;
+			out += sizeof(struct entity_file_record_t);
+
+			memset(ent_file_record, 0, sizeof(struct entity_file_record_t));
+
+			ent_source_file = entity_GetSourceFile(entity);
+			strcpy(ent_file_record->tag, entity_file_record_tag);
+            strcpy(ent_file_record->file_name, ent_source_file->file_name);
 		}
-
-		if(entity.def || (entity_ptr->flags & ENTITY_FLAG_MODIFIED))
+		else
 		{
-			/* If this is a def or it is a post-spawn modified entity,
-			write its stuff down... */
-
-			/* write components... */
-			for(i = 0; i < COMPONENT_TYPE_LAST; i++)
+			/* Always write props, regardless of the entity having been modified or not... */
+			for(i = 0; i < entity_ptr->prop_count; i++)
 			{
-				if(entity_ptr->components[i].type != COMPONENT_TYPE_NONE)
-				{
-					component = entity_GetComponentPointer(entity_ptr->components[i]);
-					entity_WriteComponent((void **)&out, component, 0, 0);
-				}
+				entity_WriteProp((void **)&out, entity_ptr->props + i);
 			}
 
+			if(entity.def || (entity_ptr->flags & ENTITY_FLAG_MODIFIED))
+			{
+				/* If this is a def or it is a post-spawn modified entity,
+				write its stuff down... */
 
-			k = (ent_record_start->flags & ENTITY_RECORD_FLAG_DEF_REF) && 1;
-
-            transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
-            /* write nestled transforms... */
-            for(j = 0; j <= k; j++)
-            {
-                for(i = 0; i < transform_component->children_count; i++)
-                {
-                    component = entity_GetComponentPointer(transform_component->child_transforms[i]);
-
-                    if(component->entity.entity_index != INVALID_ENTITY_INDEX)
-                    {
-                       /* this child transform component points to an entity,
-                       so write it to the buffer before continuing with the
-                       current entity... */
-                       entity_WriteEntity((void **)&out, component->entity, transform_component->child_transforms[i]);
-                    }
-                    else if(write_entity_data && (entity_ptr->flags & ENTITY_FLAG_MODIFIED))
-                    {
-                        /* This nestled transform belongs to some component
-                        that needs to keep spacial information (light, camera,
-                        particle system, etc).
-
-                        This just gets written if this isn't a reference to
-                        an entity def or it is a post-spawn modified entity... */
-                        entity_WriteComponent((void **)&out, component, 1, k);
-                    }
-                }
+				/* write components... */
+				for(i = 0; i < COMPONENT_TYPE_LAST; i++)
+				{
+					if(entity_ptr->components[i].type != COMPONENT_TYPE_NONE)
+					{
+						component = entity_GetComponentPointer(entity_ptr->components[i]);
+						entity_WriteComponent((void **)&out, component, 0, 0);
+					}
+				}
 
 
-                if(j < k)
-                {
-                    /* .ent files are supposed to be self-contained, meaning that
-                    they should not rely on other files to properly load their
-                    contents. To allow this we serialize the full entity def they
-                    reference, so if it isn't already loaded when this ref gets
-                    deserialized, it has the data it needs.
+				k = (ent_record_start->flags & ENTITY_RECORD_FLAG_DEF_REF) && 1;
 
-                    In the case where the entity def is already loaded when this
-                    ref gets deserialized, we only skip all the data from the
-                    def it references, and only load the data this ref has... */
-                    ent_record_start->def_ref_skip_offset = out - (char *)*buffer;
+				transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+				/* write nestled transforms... */
+				for(j = 0; j <= k; j++)
+				{
+					for(i = 0; i < transform_component->children_count; i++)
+					{
+						component = entity_GetComponentPointer(transform_component->child_transforms[i]);
+
+						if(component->entity.entity_index != INVALID_ENTITY_INDEX)
+						{
+						   /* this child transform component points to an entity,
+						   so write it to the buffer before continuing with the
+						   current entity... */
+						   entity_WriteEntity((void **)&out, component->entity, transform_component->child_transforms[i], write_def_as_file_ref);
+						}
+						else if(write_entity_data && (entity_ptr->flags & ENTITY_FLAG_MODIFIED))
+						{
+							/* This nestled transform belongs to some component
+							that needs to keep spacial information (light, camera,
+							particle system, etc).
+
+							This just gets written if this isn't a reference to
+							an entity def or it is a post-spawn modified entity... */
+							entity_WriteComponent((void **)&out, component, 1, k);
+						}
+					}
+
+
+					if(j < k)
+					{
+						/* .ent files are supposed to be self-contained, meaning that
+						they should not rely on other files to properly load their
+						contents. To allow this we serialize the full entity def they
+						reference, so if it isn't already loaded when this ref gets
+						deserialized, it has the data it needs.
+
+						In the case where the entity def is already loaded when this
+						ref gets deserialized, we only skip all the data from the
+						def it references, and only load the data this ref has... */
+						ent_record_start->def_ref_skip_offset = out - record_start;
 
 
 
-                    /* We write this ref's transform component, so we can have both
-                    nestled transforms from the original def and from this ref... */
-                    transform_component = entity_GetComponentPointer(referencing_transform);
-                    entity_WriteComponent((void **)&out, (struct component_t *)transform_component, 1, 1);
-                }
-            }
+						/* We write this ref's transform component, so we can have both
+						nestled transforms from the original def and from this ref... */
+						transform_component = entity_GetComponentPointer(referencing_transform);
+						entity_WriteComponent((void **)&out, (struct component_t *)transform_component, 1, 1);
+					}
+				}
+			}
+			else if(depth_level == 0)
+			{
+				/* if this is the root of the hierarchy of an unmodified entity, write
+				only it's transform... */
+				component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+				entity_WriteComponent((void **)&out, component, 0, 0);
+			}
 		}
-		else if(depth_level == 0)
-		{
-			/* if this is the root of the hierarchy of an unmodified entity, write
-			only it's transform... */
-			component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
-			entity_WriteComponent((void **)&out, component, 0, 0);
-		}
-	//	}
-	//	else
-	//	{
-	//	    component = entity_GetComponentPointer(referencing_transform);
-			/* This def was already serialized, which means this is just a reference to it, and as so
-			we'll just need to serialize this reference's transform component. We flag it as nestled here
-			so it can be added to the parent entity's transform component child list upon deserialization... */
-	//		entity_WriteComponent((void **)out, component, 1);
-	//	}
+
+
+
+
 
 		/* write record end... */
 		ent_record_end = (struct entity_record_end_t *)out;
@@ -751,6 +775,7 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
 	struct entity_record_start_t *ent_record_start;
 	struct entity_record_start_t *nestled_ent_record_start;
 	struct entity_record_end_t *ent_record_end;
+	struct entity_file_record_t *ent_file_record;
 
 	struct entity_handle_t handle;
 	struct entity_handle_t entity_def;
@@ -790,9 +815,8 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
 
             /* This record belongs to a reference to an entity def, which means that we'll be reading only a transform component
             that will point to the original entity def. This transform won't be added to the original def, but instead will be to the
-            child list of the parent entity of this reference. In order to do that, we need the handle to the parent entity, so we
-            can access it's transform component... */
-        //    handle = parent;
+            child list of the parent entity of this reference. Here we make the handle to the entity be invalid because we won't be
+            accessing the original def anyway... */
             handle = INVALID_ENTITY_HANDLE;
         }
         else
@@ -806,8 +830,17 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
 	{
 		if((ent_record_start->flags & ENTITY_RECORD_FLAG_DEF) || (ent_record_start->flags & ENTITY_RECORD_FLAG_MODIFIED))
 		{
-			/* This record belongs to an entity def or to post-spawned modified entity, so we create a new entity here... */
-			handle = entity_CreateEntity(ent_record_start->name, ent_record_start->flags & ENTITY_RECORD_FLAG_DEF);
+			/* if this entity record is belongs to a file reference, we don't create a entity
+			here, but instead just load it from the disk... */
+			if(!(ent_record_start->flags & ENTITY_RECORD_FLAG_FILE_REF))
+			{
+				/* This record belongs to an entity def or to post-spawned modified entity, so we create a new entity here... */
+				handle = entity_CreateEntity(ent_record_start->name, ent_record_start->flags & ENTITY_RECORD_FLAG_DEF);
+			}
+			else
+			{
+				handle = INVALID_ENTITY_HANDLE;
+			}
 		}
 		else
 		{
@@ -821,7 +854,8 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
 			}
 			else
 			{
-				/* if we're deeper in the hierarchy, this entity was already spawned, so we just get a handle to it... */
+				/* if we're deeper in the hierarchy, this entity was already spawned, so we just get a handle to it, and we'll
+				be pretty much just reading props... */
 				handle = entity_GetNestledEntityHandle(parent, ent_record_start->name);
 			}
 
@@ -835,7 +869,9 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
 		{
 			if(!strcmp(in, entity_record_end_tag))
 			{
-				//goto _gtfo;
+				ent_record_end = (struct entity_record_end_t *)in;
+				in += sizeof(struct entity_record_end_t);
+
 				loop = 0;
 				continue;
 			}
@@ -855,6 +891,12 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
 			{
 				entity_ReadProp((void **)&in, handle, ent_record_start);
 			}
+			else if(!strcmp(in, entity_file_record_tag))
+			{
+				ent_file_record = (struct entity_file_record_t *)in;
+				in += sizeof(struct entity_file_record_t);
+				handle = entity_LoadEntityDef(ent_file_record->file_name);
+			}
 			else
 			{
 				in++;
@@ -870,6 +912,7 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
 
 //	_gtfo:
 
+	entity = entity_GetEntityPointerHandle(handle);
     parent_entity = entity_GetEntityPointerHandle(parent);
 
 	if(parent_entity)
@@ -881,11 +924,15 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
 		    was already parented when it's parent read it's
 		    nestled transforms... */
 			entity_ParentEntity(parent, handle);
+
+			/* this def was loaded from a buffer that's likely come
+			from a file, so mark the entity as existing in a file... */
+			//entity->flags |= ENTITY_FLAG_ON_DISK;
+
 		}
 	}
 
-	ent_record_end = (struct entity_record_end_t *)in;
-	in += sizeof(struct entity_record_end_t);
+
 
 //	parent_entity = entity_GetEntityPointerHandle(parent);
 
@@ -909,8 +956,8 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
 
 void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_defs)
 {
-	struct entity_section_header_t *header;
-	struct entity_section_tail_t *tail;
+	struct entity_section_start_t *section_start;
+	struct entity_section_end_t *section_end;
 	struct entity_t *entity;
 	struct entity_handle_t handle;
 	struct component_t *component;
@@ -931,7 +978,7 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 	char *out;
 	int out_size = 0;
 
-	out_size = sizeof(struct entity_section_header_t) + sizeof(struct entity_section_tail_t);
+	out_size = sizeof(struct entity_section_start_t) + sizeof(struct entity_section_start_t);
 
 
 	/* clear the COMPONENT_FLAG_SERIALIZED from every component... */
@@ -998,19 +1045,19 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 		}
 	}
 
-	out = memory_Calloc(1, out_size, "entity_SerializeEntities");
+	out = memory_Calloc(1, out_size);
 
 	*buffer = out;
 	*buffer_size = out_size;
-	header = (struct entity_section_header_t *)out;
-	out += sizeof(struct entity_section_header_t);
+	section_start = (struct entity_section_start_t *)out;
+	out += sizeof(struct entity_section_start_t);
 
-	memset(header, 0, sizeof(struct entity_section_header_t));
-	strcpy(header->tag, entity_section_header_tag);
+	//memset(header, 0, sizeof(struct entity_section_header_t));
+	strcpy(section_start->tag, entity_section_start_tag);
 
-	header->entity_count = entity_count;
-	header->entity_def_count = entity_def_count;
-
+	section_start->entity_count = entity_count;
+	section_start->entity_def_count = entity_def_count;
+/*
 	header->reserved0 = 0;
 	header->reserved1 = 0;
 	header->reserved2 = 0;
@@ -1018,7 +1065,7 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 	header->reserved4 = 0;
 	header->reserved5 = 0;
 	header->reserved6 = 0;
-	header->reserved7 = 0;
+	header->reserved7 = 0;*/
 
 	for(k = serialize_defs; k >= 0; k--)
 	{
@@ -1042,7 +1089,7 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 					{
 						if(!(entity->flags & ENTITY_FLAG_ON_DISK))
 						{
-							entity_WriteEntity((void **)&out, handle, INVALID_COMPONENT_HANDLE);
+							entity_WriteEntity((void **)&out, handle, INVALID_COMPONENT_HANDLE, 1);
 						}
 					}
 				}
@@ -1050,11 +1097,11 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 		}
 	}
 
-	tail = (struct entity_section_tail_t *)out;
-	out += sizeof(struct entity_section_tail_t );
+	section_end = (struct entity_section_end_t *)out;
+	out += sizeof(struct entity_section_end_t );
 
-	memset(tail, 0, sizeof(struct entity_section_tail_t));
-	strcpy(tail->tag, entity_section_tail_tag);
+	//memset(tail, 0, sizeof(struct entity_section_tail_t));
+	strcpy(section_end->tag, entity_section_end_tag);
 }
 
 
@@ -1184,11 +1231,11 @@ void entity_SerializeEntityDef(void **buffer, int *buffer_size, struct entity_ha
 	void *write_buffer;
 
 	entity_CalculateBufferSize(&out_size, entity_def, INVALID_COMPONENT_HANDLE);
-	out_buffer = memory_Calloc(out_size, 1, "entity_SerializeEntityDef");
+	out_buffer = memory_Calloc(out_size, 1);
 
 	write_buffer = out_buffer;
 
-	entity_WriteEntity(&write_buffer, entity_def, INVALID_COMPONENT_HANDLE);
+	entity_WriteEntity(&write_buffer, entity_def, INVALID_COMPONENT_HANDLE, 0);
 
 	*buffer = out_buffer;
 	*buffer_size = out_size;
@@ -1202,40 +1249,39 @@ void entity_SerializeEntityDef(void **buffer, int *buffer_size, struct entity_ha
 void entity_DeserializeEntities(void **buffer, int deserialize_defs)
 {
 	char *in;
-	struct entity_section_header_t *header;
-	struct entity_section_tail_t *tail;
+	struct entity_section_start_t *section_start;
+	struct entity_section_end_t *section_end;
 	struct entity_handle_t handle;
 
 	int i;
 
 	in = *buffer;
 
-	header = (struct entity_section_header_t *)in;
-	in += sizeof(struct entity_section_header_t);
-
 	handle.entity_index = INVALID_ENTITY_INDEX;
 
 	while(1)
 	{
+		if(!strcmp(in, entity_section_start_tag))
+		{
+			section_start = (struct entity_section_start_t *)in;
+			in += sizeof(struct entity_section_start_t);
+		}
 		if(!strcmp(in, entity_record_start_tag))
 		{
 			entity_ReadEntity((void **)&in, handle);
 			continue;
 		}
-		if(!strcmp(in, entity_section_tail_tag))
+		if(!strcmp(in, entity_section_end_tag))
 		{
-			goto _gtfo;
+			section_end = (struct entity_section_end_t *)in;
+			in += sizeof(struct entity_section_end_t);
+			break;
 		}
 		else
 		{
 			in++;
 		}
 	}
-
-	_gtfo:
-
-	tail = (struct entity_section_tail_t *)in;
-	in += sizeof(struct entity_section_tail_t);
 
 	*buffer = in;
 }

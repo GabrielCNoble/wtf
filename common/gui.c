@@ -366,7 +366,7 @@ widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h, int t
 
 	//widget = malloc(sizeof(widget_t));
 	//widget = malloc(size);
-	widget = (widget_t *)memory_Malloc(size, "gui_CreateWidget");
+	widget = (widget_t *)memory_Malloc(size);
 
 	if(w < WIDGET_MIN_SIZE) w = WIDGET_MIN_SIZE;
 	if(h < WIDGET_MIN_SIZE) h = WIDGET_MIN_SIZE;
@@ -396,7 +396,7 @@ widget_t *gui_CreateWidget(char *name, short x, short y, short w, short h, int t
 	//widget->name = strdup(name);
 
 	//widget->name = malloc(WIDGET_NAME_MAX_LEN);
-	widget->name = (char *)memory_Malloc(WIDGET_NAME_MAX_LEN, "gui_CreateWidget");
+	widget->name = (char *)memory_Malloc(WIDGET_NAME_MAX_LEN);
 	widget->name[0] = '\0';
 
 	if(name)
@@ -970,9 +970,9 @@ gui_var_t *gui_CreateVar(char *name, short type, void *addr, void *refresh_base,
 		case GUI_VAR_ALLOCD_STRING:
 		case GUI_VAR_STRING:
 			//var = malloc(sizeof(gui_var_t));
-			var = (gui_var_t *)memory_Malloc(sizeof(gui_var_t), "gui_CreateVar");
+			var = (gui_var_t *)memory_Malloc(sizeof(gui_var_t));
 			//var->name = strdup(name);
-			var->name = memory_Strdup(name, "gui_CreateVar");
+			var->name = memory_Strdup(name);
 			var->type = type;
 			var->addr = addr;
 			var->base = refresh_base;
@@ -1111,7 +1111,7 @@ void gui_UpdateVars()
 						//memory_Free(v->prev_var_value.str_var);
 					}
 
-					v->prev_var_value.str_var = memory_Strdup(*((char **)v->addr), "gui_UpdateVars");
+					v->prev_var_value.str_var = memory_Strdup(*((char **)v->addr));
 					v->bm_flags |= GUI_VAR_VALUE_HAS_CHANGED;
 				}
 			break;
@@ -2164,7 +2164,7 @@ void gui_LinkLeftEdge(widget_t *widget, widget_t *left_edge)
 	{
 
 		//new_linked = malloc(sizeof(linked_edge_t));
-		new_linked = (linked_edge_t *)memory_Malloc(sizeof(linked_edge_t), "gui_LinkLeftEdge");
+		new_linked = (linked_edge_t *)memory_Malloc(sizeof(linked_edge_t));
 		new_linked->next = NULL;
 		new_linked->widget = widget;
 		new_linked->this_widget_edge = WIDGET_RIGHT_EDGE;
@@ -2197,7 +2197,7 @@ void gui_LinkBottomEdge(widget_t *widget, widget_t *bottom_edge)
 	if(widget && bottom_edge)
 	{
 
-		new_linked = (linked_edge_t *)memory_Malloc(sizeof(linked_edge_t), "gui_LinkBottomEdge");
+		new_linked = (linked_edge_t *)memory_Malloc(sizeof(linked_edge_t));
 		new_linked->next = NULL;
 		new_linked->widget = widget;
 		new_linked->this_widget_edge = WIDGET_TOP_EDGE;
@@ -2233,7 +2233,7 @@ linked_edge_t *gui_LinkEdges(widget_t *to_link, widget_t *link_to, int to_link_e
 		if(to_link_edge >= WIDGET_LEFT_EDGE && to_link_edge <= WIDGET_BOTTOM_EDGE &&
 		   link_to_edge >= WIDGET_LEFT_EDGE && link_to_edge <= WIDGET_BOTTOM_EDGE)
 		{
-			new_linked = (linked_edge_t *)memory_Malloc(sizeof(linked_edge_t), "gui_LinkEdges");
+			new_linked = (linked_edge_t *)memory_Malloc(sizeof(linked_edge_t));
 			new_linked->next = NULL;
 			new_linked->widget = to_link;
 			new_linked->this_widget_edge = link_to_edge;

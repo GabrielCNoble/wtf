@@ -40,16 +40,16 @@ void OnUpdate(particle_system_t @particle_system, array<vec4_t> @particle_positi
 			particle_positions[i].w = 0.01;
 		}
 			
-		if(particles[i].life >= particle_system.max_life - 1)
-		{
-			particle_frames[i] = 1;
-		}
-		else
-		{
+		//if(particles[i].life >= particle_system.max_life - 1)
+		//{
+		//	particle_frames[i] = 1;
+		//}
+		//else
+		//{
 			particle_frames[i] = 0;
-		}
+		//}
 			
-		particles[i].velocity.y += 0.025;
+		particles[i].velocity.y += 0.005;
 			
 		particle_positions[i].x += particles[i].velocity.x;
 		particle_positions[i].y += particles[i].velocity.y;

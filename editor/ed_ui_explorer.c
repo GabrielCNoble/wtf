@@ -77,8 +77,8 @@ cached_path_t *explorer_last_cached_path = NULL;
 
 
 void (*editor_FileClickCallback)() = NULL;
-int (*editor_ExplorerReadFileCallback)(char *, char *) = NULL;
-int (*editor_ExplorerWriteFileCallback)(char *, char *, void **, int *) = NULL;
+int (*editor_ExplorerReadFileCallback)(char *file_path, char *file_name) = NULL;
+int (*editor_ExplorerWriteFileCallback)(char *file_path, char *file_name, void **file_buffer, int *file_buffer_size) = NULL;
 
 #define MAX_EXT_FILTERS 64
 #define EXT_FILTER_MAX_LEN 12
@@ -474,7 +474,7 @@ void editor_InitExplorerUI()
 
 	for(i = 0; i < EXPLORER_MAX_SELECTIONS; i++)
 	{
-		ed_explorer_selected_files[i] = memory_Malloc(PATH_MAX, "editor_InitExplorerUI");
+		ed_explorer_selected_files[i] = memory_Malloc(PATH_MAX);
 		ed_explorer_selected_files[i][0] = '\0';
 	}
 
@@ -1029,7 +1029,7 @@ void editor_SetExplorerReadFileCallback(int (*read_file_callback)(char *director
 	editor_ExplorerReadFileCallback = read_file_callback;
 }
 
-void editor_SetExplorerWriteFileCallback(int (*write_file_callback)(char *directory, char *file_name, void **file_buffer, int *file_buffer_size))
+void editor_SetExplorerWriteFileCallback(int (*write_file_callback)(char *file_path, char *file_name, void **file_buffer, int *file_buffer_size))
 {
 	editor_ExplorerWriteFileCallback = write_file_callback;
 }
@@ -1125,11 +1125,11 @@ void editor_CachePath(char *path)
 	}
 	else
 	{
-		new_path = memory_Malloc(sizeof(cached_path_t), "editor_CachePath");
+		new_path = memory_Malloc(sizeof(cached_path_t));
 
 		new_path->next = NULL;
 		new_path->prev = NULL;
-		new_path->path = memory_Strdup(path, "editor_CachePath");
+		new_path->path = memory_Strdup(path);
 		new_path->refs = 1;
 
 		if(!explorer_cached_paths)

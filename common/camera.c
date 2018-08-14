@@ -104,7 +104,7 @@ camera_t *camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, 
 	int bit_index;
 	int int_index;
 
-	camera = memory_Malloc(sizeof(camera_t), "camera_CreateCamera");
+	camera = memory_Malloc(sizeof(camera_t));
 	camera->next = NULL;
 	camera->prev = NULL;
 
@@ -112,7 +112,7 @@ camera_t *camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, 
 	//name_len = (name_len + 3) & (~3);
 	//camera->name = malloc(name_len);
 	//strcpy(camera->name, name);
-	camera->name = memory_Strdup(name, "camera_CreateCamera");
+	camera->name = memory_Strdup(name);
 
 
 	//camera->local_position = position;

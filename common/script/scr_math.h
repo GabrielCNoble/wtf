@@ -24,6 +24,8 @@ float vec_get_op_index(void *this_pointer, int index);
 
 void vec_set_op_index(void *this_pointer, int index, float value);
 
+vec3_t *vec3_normalize(vec3_t *vec);
+
 /*
 ================================================================
 ================================================================

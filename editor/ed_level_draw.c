@@ -69,8 +69,9 @@ extern portal_t *ptl_portals;
 
 
 /* from navigation.c */
-extern int nav_waypoint_count;
-extern struct waypoint_t *nav_waypoints;
+extern struct stack_list_t nav_waypoints;
+//extern int nav_waypoint_count;
+//extern struct waypoint_t *nav_waypoints;
 
 
 /* from r_imediate.c */
@@ -494,6 +495,7 @@ void editor_LevelEditorDrawSelected()
 	camera_t *active_view;
 	portal_t *portal;
 	struct waypoint_t *waypoint;
+	struct waypoint_t *waypoints;
 
 	vec3_t portal_right_vector;
 	vec3_t portal_up_vector;
@@ -513,6 +515,8 @@ void editor_LevelEditorDrawSelected()
 	glEnable(GL_STENCIL_TEST);
 	//glCullFace(GL_FRONT);
 	glDisable(GL_CULL_FACE);
+
+	waypoints = (struct waypoint_t *)nav_waypoints.elements;
 
 	if(level_editor_editing_mode == EDITING_MODE_OBJECT)
 	{
@@ -575,7 +579,7 @@ void editor_LevelEditorDrawSelected()
 
 					case PICK_WAYPOINT:
 
-						waypoint = nav_waypoints + record->index0;
+						waypoint = waypoints + record->index0;
 
 						renderer_Begin(GL_QUADS);
 

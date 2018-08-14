@@ -809,9 +809,9 @@ void editor_RegisterEditor(char *name, void (*init_callback)(), void (*finish_ca
 {
 	editor_t *editor;
 
-	editor = memory_Malloc(sizeof(editor_t), "editor_RegisterEditor");
+	editor = memory_Malloc(sizeof(editor_t));
 
-	editor->name = memory_Strdup(name, "editor_RegisterEditor");
+	editor->name = memory_Strdup(name);
 	editor->init_callback = init_callback;
 	editor->finish_callback = finish_callback;
 	editor->restart_callback = restart_callback;

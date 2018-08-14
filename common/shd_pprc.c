@@ -120,16 +120,16 @@ void shader_AddDefine(char *name, char *value, int global)
 	struct shader_define *define;
 
 
-	define = memory_Malloc(sizeof(struct shader_define), "shader_AddDefine");
+	define = memory_Malloc(sizeof(struct shader_define));
 
-	define->name = memory_Strdup(name, "shader_AddDefine");
+	define->name = memory_Strdup(name);
 	define->value = NULL;
 
 	if(value)
 	{
 		if(value[0] != '\0')
 		{
-			define->value = memory_Strdup(value, "shader_AddDefine");
+			define->value = memory_Strdup(value);
 		}
 	}
 
@@ -517,7 +517,7 @@ int shader_Conditional(char **text, int *cursor, struct shader_conditional **con
 
 		if(cur_level < 1)
 		{
-			cond = memory_Malloc(sizeof(struct shader_conditional), "shader_Conditional");
+			cond = memory_Malloc(sizeof(struct shader_conditional));
 			cond->next = NULL;
 			cond->type = type;
 			cond->start = start;
@@ -526,7 +526,7 @@ int shader_Conditional(char **text, int *cursor, struct shader_conditional **con
 
 			if(value_str_cursor)
 			{
-				cond->value = memory_Strdup(value_str, "shader_Conditional");
+				cond->value = memory_Strdup(value_str);
 			}
 
 			if(!conds)
@@ -762,7 +762,7 @@ int shader_Include(char **text, int cursor)
 		include_file_size = ftell(file);
 		rewind(file);
 
-		include_text = memory_Malloc(include_file_size + 1, "shader_Include");
+		include_text = memory_Malloc(include_file_size + 1);
 		fread(include_text, include_file_size, 1, file);
 		fclose(file);
 
@@ -770,7 +770,7 @@ int shader_Include(char **text, int cursor)
 
 		new_text_len = strlen(*text) + 1 + include_file_size;
 
-		new_text = memory_Malloc(new_text_len, "shader_Include");
+		new_text = memory_Malloc(new_text_len);
 
 
 		/*for(old_text_include_start = old_text_include_end; old_text_include_start >= 0; old_text_include_start--)
@@ -883,7 +883,7 @@ int shader_Define(char **text, int *cursor)
 
 		if(define_value[0] != '\0')
 		{
-			define->value = memory_Strdup(define_value, "shader_Define");
+			define->value = memory_Strdup(define_value);
 		}
 	}
 	else

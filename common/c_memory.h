@@ -19,13 +19,13 @@ void memory_Init(int memory_mode);
 
 void memory_Finish();
 
-void *memory_Malloc(size_t size, char *caller);
+void *memory_MallocCaller(size_t size, const char *caller);
 
-void *memory_Calloc(size_t count, size_t elem_size, char *caller);
+void *memory_CallocCaller(size_t count, size_t elem_size, const char *caller);
 
 void memory_Free(void *memory);
 
-char *memory_Strdup(char *src, char *caller);
+char *memory_StrdupCaller(char *src, const char *caller);
 
 void memory_Report();
 
@@ -36,6 +36,12 @@ void memory_CheckCorrupted();
 #ifdef __cplusplus
 }
 #endif
+
+
+#define memory_Malloc(size) memory_MallocCaller(size, __func__)
+#define memory_Calloc(count, elem_size) memory_CallocCaller(count, elem_size, __func__)
+#define memory_Strdup(src) memory_StrdupCaller(src, __func__)
+
 
 
 #endif

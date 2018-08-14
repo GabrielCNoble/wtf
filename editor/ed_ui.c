@@ -22,7 +22,7 @@
 //#include "ed_ui_texture.h"
 #include "ed_ui_explorer.h"
 
- 
+
 
 
 /* from material.c */
@@ -44,6 +44,7 @@ extern brush_t *brushes;
 
 
 /* from r_main.c */
+extern int r_max_batch_size;
 extern int r_window_width;
 extern int r_window_height;
 extern int r_z_prepass;
@@ -144,7 +145,7 @@ extern int bm_mouse;
 
 void editor_InitUI()
 {
-	editor_InitExplorerUI();	
+	editor_InitExplorerUI();
 }
 
 void editor_FinishUI()
@@ -156,15 +157,15 @@ void editor_ProcessUI()
 {
 	editor_t *editor;
 	editor_t *selected_editor;
-	
-	
+
+
 	if(gui_ImGuiBeginMainMenuBar())
 	{
 		if(gui_ImGuiBeginMenu("File"))
 		{
 			if(gui_ImGuiMenuItem("New...", NULL, NULL, 1))
 			{
-				
+
 			}
 			if(gui_ImGuiMenuItem("Save...", NULL, NULL, 1))
 			{
@@ -178,10 +179,57 @@ void editor_ProcessUI()
 			{
 				engine_SetEngineState(ENGINE_QUIT);
 			}
-			
+
 			gui_ImGuiEndMenu();
 		}
-		
+
+		if(gui_ImGuiBeginMenu("Renderer"))
+		{
+			if(r_flat)
+			{
+				if(gui_ImGuiMenuItem("Disable fullbright", NULL, NULL, 1))
+				{
+					r_flat = 0;
+				}
+			}
+			else
+			{
+				if(gui_ImGuiMenuItem("Enable fullbright", NULL, NULL, 1))
+				{
+					r_flat = 1;
+				}
+			}
+
+			//if(gui_ImGuiBeginMenu("Renderer batch size"))
+			//{
+             //   gui_ImGuiBeginChild("Renderer batch size", vec2(520.0, 50.0), 0, 0);
+
+             //   gui_ImGuiSliderInt("Batch size", &r_max_batch_size, 0, 1000, "%d");
+
+                /*gui_ImGuiText("Current batch size: %d triangles\n", r_max_batch_size);
+
+                if(gui_ImGuiButton("+", vec2(20.0, 20.0)))
+				{
+					r_max_batch_size++;
+				}
+				if(gui_ImGuiButton("-", vec2(20.0, 20.0)))
+				{
+					if(r_max_batch_size)
+					{
+						r_max_batch_size--;
+					}
+				}*/
+
+             //   gui_ImGuiEndChild();
+			//	gui_ImGuiEndMenu();
+			//}
+
+
+
+
+			gui_ImGuiEndMenu();
+		}
+
 		if(gui_ImGuiBeginMenu("Misc"))
 		{
 			if(gui_ImGuiMenuItem("Reload shaders", NULL, NULL, 1))
@@ -200,23 +248,11 @@ void editor_ProcessUI()
 			{
 				memory_Report();
 			}
-			
-			
-			if(r_flat)
+			if(gui_ImGuiMenuItem("Reload path cfg", NULL, NULL, 1))
 			{
-				if(gui_ImGuiMenuItem("Disable fullbright", NULL, NULL, 1))
-				{
-					r_flat = 0;
-				}
+				path_ReadCfg();
 			}
-			else
-			{
-				if(gui_ImGuiMenuItem("Enable fullbright", NULL, NULL, 1))
-				{
-					r_flat = 1;
-				}
-			}
-			
+
 			if(r_debug)
 			{
 				if(gui_ImGuiMenuItem("Disable debug", NULL, NULL, 1))
@@ -231,8 +267,8 @@ void editor_ProcessUI()
 					renderer_Debug(1, r_debug_verbose);
 				}
 			}
-			
-			
+
+
 			if(r_debug_verbose)
 			{
 				if(gui_ImGuiMenuItem("Disable verbose debug", NULL, NULL, 1))
@@ -247,10 +283,10 @@ void editor_ProcessUI()
 					renderer_Debug(r_debug, 1);
 				}
 			}
-			
+
 			gui_ImGuiEndMenu();
 		}
-		
+
 		if(gui_ImGuiBeginMenu("Editors"))
 		{
 			editor = ed_editors;
@@ -261,21 +297,21 @@ void editor_ProcessUI()
 				{
 					selected_editor = editor;
 				}
-				
+
 				editor = editor->next;
 			}
 			gui_ImGuiEndMenu();
-			
+
 			if(selected_editor)
 			{
 				editor_StartEditor(selected_editor->name);
 			}
-		}	
+		}
 		gui_ImGuiEndMainMenuBar();
 	}
-	
-	
-	editor_UpdateExplorerUI();	
+
+
+	editor_UpdateExplorerUI();
 }
 
 void editor_LockUI()
@@ -295,7 +331,7 @@ void editor_HideUI()
 
 void editor_ShowUI()
 {
-	
+
 }
 
 void editor_EnumerateEditors()
@@ -303,9 +339,9 @@ void editor_EnumerateEditors()
 	/*editor_t *editor;
 	editor = ed_editors;
 	option_t *option;
-	
+
 	gui_RemoveAllOptions(editors_list);
-	
+
 	while(editor)
 	{
 		option = gui_AddOptionToList(editors_list, editor->name, editor->name);

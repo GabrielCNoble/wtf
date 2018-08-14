@@ -50,8 +50,8 @@ int ent_visible_entities_indexes[MAX_VISIBLE_ENTITIES];
 ===============================================================
 */
 
-static int COMPONENT_SIZES[COMPONENT_TYPE_LAST];
-struct component_fields_t COMPONENT_FIELDS[COMPONENT_TYPE_LAST];
+static int COMPONENT_SIZES[COMPONENT_TYPE_LAST] = {0};
+struct component_fields_t COMPONENT_FIELDS[COMPONENT_TYPE_LAST] = {(struct component_fields_t){NULL, COMPONENT_TYPE_NONE, -1}} ;
 //char *COMPONENT_FIELDS[COMPONENT_TYPE_LAST][16];
 
 #define DECLARE_COMPONENT_SIZE(type, size) COMPONENT_SIZES[type]=size
@@ -62,6 +62,7 @@ struct component_fields_t COMPONENT_FIELDS[COMPONENT_TYPE_LAST];
 
 struct stack_list_t ent_components[2][COMPONENT_TYPE_LAST];
 struct stack_list_t ent_entities[2];
+struct stack_list_t ent_entity_def_source_files;
 struct stack_list_t ent_entity_aabbs;
 struct stack_list_t ent_world_transforms;
 struct list_t ent_top_transforms;
@@ -133,6 +134,8 @@ int entity_Init()
 		ent_entities[i] = stack_list_create(sizeof(struct entity_t), 512, entity_EntityListDisposeCallback);
 	}
 
+	ent_entity_def_source_files = stack_list_create(sizeof(struct entity_source_file_t), 512, NULL);
+
 	ent_entity_aabbs = stack_list_create(sizeof(struct entity_aabb_t), 512, NULL);
 	ent_world_transforms = stack_list_create(sizeof(struct entity_transform_t), 512, NULL);
 	ent_top_transforms = list_create(sizeof(struct component_handle_t), 512, NULL);
@@ -165,10 +168,9 @@ int entity_Init()
 														});
 
 
-	//DECLARE_COMPONENT_FIELDS(COMPONENT_TYPE_CAMERA, {
-	//														COMPONENT_FIELD("position", SCRIPT_VAR_TYPE_COMPONENT, COMPONENT_FIELD_OFFSET(struct camera_component_t, transform)),
-	//												 		COMPONENT_FIELD("orientation", SCRIPT_VAR_TYPE_COMPONENT, COMPONENT_FIELD_OFFSET(struct camera_component_t, transform))
-	//												});
+
+
+
 
 	dispose_component_callback[COMPONENT_TYPE_TRANSFORM] = entity_TransformComponentDisposeCallback;
 
@@ -194,6 +196,7 @@ void entity_Finish()
 
 	stack_list_destroy(&ent_entities[0]);
 	stack_list_destroy(&ent_entities[1]);
+	stack_list_destroy(&ent_entity_def_source_files);
 
 	stack_list_destroy(&ent_entity_aabbs);
 	stack_list_destroy(&ent_world_transforms);
@@ -458,7 +461,7 @@ void entity_ParentTransformComponent(struct component_handle_t parent_transform,
 
 	if(parent->children_count >= parent->max_children)
 	{
-		transforms = memory_Malloc(sizeof(struct component_handle_t) * (parent->max_children + 4), "entity_ParentTransformComponent");
+		transforms = memory_Malloc(sizeof(struct component_handle_t) * (parent->max_children + 4));
 		if(parent->child_transforms)
 		{
 			memcpy(transforms, parent->child_transforms, sizeof(struct component_handle_t) * parent->max_children);
@@ -553,7 +556,7 @@ void entity_ParentEntityToEntityTransform(struct component_handle_t parent_trans
 
 		if(!transform_component->instance_name)
 		{
-			transform_component->instance_name = memory_Malloc(ENTITY_NAME_MAX_LEN, "entity_ParentEntity");
+			transform_component->instance_name = memory_Malloc(ENTITY_NAME_MAX_LEN);
 		}
 
 		strcpy(transform_component->instance_name, child_entity->name);
@@ -790,7 +793,7 @@ struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int
 
 					if(!transform_component->instance_name)
 					{
-						transform_component->instance_name = memory_Malloc(ENTITY_NAME_MAX_LEN, "entity_AddComponent");
+						transform_component->instance_name = memory_Malloc(ENTITY_NAME_MAX_LEN);
 					}
 
 					strcpy(transform_component->instance_name, entity_ptr->name);
@@ -920,7 +923,7 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 		{
 			if(entity_ptr->prop_count >= entity_ptr->max_props)
 			{
-				prop = memory_Malloc(sizeof(struct entity_prop_t) * (entity_ptr->max_props + 4), "entity_AddProp");
+				prop = memory_Malloc(sizeof(struct entity_prop_t) * (entity_ptr->max_props + 4));
 
 				if(entity_ptr->props)
 				{
@@ -936,7 +939,7 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 			prop = entity_ptr->props + entity_ptr->prop_count;
 			entity_ptr->prop_count++;
 
-			prop->name = memory_Strdup(name, "entity_AddProp");
+			prop->name = memory_Strdup(name);
 
 		}
 		else
@@ -948,7 +951,7 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 		size = (size + 3) & (~3);
 
 		prop->size = size;
-		prop->memory = memory_Malloc(prop->size, "entity_AddProp");
+		prop->memory = memory_Malloc(prop->size);
 	}
 }
 
@@ -1349,7 +1352,7 @@ struct entity_handle_t entity_CreateEntity(char *name, int def)
 	{
 		if(!entity_ptr->name)
 		{
-			entity_ptr->name = memory_Malloc(ENTITY_NAME_MAX_LEN, "entity_CreateEntity");
+			entity_ptr->name = memory_Malloc(ENTITY_NAME_MAX_LEN);
 		}
 
 		for(i = 0; name[i] && i < ENTITY_NAME_MAX_LEN - 1; i++)
@@ -1657,20 +1660,59 @@ void entity_RemoveAllEntities()
 	}
 }
 
+/* editor specific kludge... */
+void entity_ResetEntitySpawnTimes()
+{
+    int i;
+	int c;
+	struct entity_handle_t handle;
+	struct entity_t *entity;
+
+	c = ent_entities[0].element_count;
+
+	for(i = 0; i < c; i++)
+	{
+		handle.def = 0;
+		handle.entity_index = i;
+
+		entity = entity_GetEntityPointerHandle(handle);
+
+		if(entity)
+		{
+            entity->spawn_time = r_frame;
+		}
+	}
+}
+
 struct entity_t *entity_GetEntityPointer(char *name, int get_def)
 {
-	/*int i;
+	int i;
 	int c;
 	int entity_index;
 	struct entity_t *entities;
-	struct transform_component_t *transform;
-	struct component_handle_t *transform;
+	struct entity_t *entity;
+	//struct transform_component_t *transform;
+//	struct component_handle_t *transform;
 
 	static char ent_scoped_name[1024];
 
 	get_def = get_def && 1;
 
-	if(get_def)
+	entities = (struct entity_t *)ent_entities[get_def].elements;
+	c = ent_entities[get_def].element_count;
+
+	for(i = 0; i < c; i++)
+	{
+		entity = entities + i;
+
+        if(!strcmp(entity->name, name))
+		{
+			return entity;
+		}
+	}
+
+
+	/*if(get_def)
 	{
 		c = ent_entities[get_def].element_count;
 
@@ -1935,6 +1977,29 @@ __attribute__((always_inline)) inline struct entity_handle_t entity_GetNestledEn
 
 
 	return (struct entity_handle_t){parent_entity.def, INVALID_ENTITY_INDEX};
+}
+
+struct entity_source_file_t *entity_GetSourceFile(struct entity_handle_t entity)
+{
+	struct entity_source_file_t *source_file = NULL;
+	struct entity_t *entity_ptr;
+
+    if(!entity.def)
+	{
+		return NULL;
+	}
+
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+
+    if(entity_ptr)
+	{
+        if(entity_ptr->flags & ENTITY_FLAG_ON_DISK)
+		{
+            source_file = (struct entity_source_file_t *)ent_entity_def_source_files.elements + entity_ptr->spawn_time;
+		}
+	}
+
+	return source_file;
 }
 
 
@@ -2355,35 +2420,35 @@ void entity_UpdateScriptComponents()
 
 	if(engine_state & ENGINE_PLAYING)
 	{
-		if(engine_GetEngineState() & ENGINE_JUST_RESUMED)
+	//	if(engine_GetEngineState() & ENGINE_JUST_RESUMED)
+	//	{
+	//		for(i = 0; i < c; i++)
+	//		{
+	//			script_component = (struct script_component_t *)list->elements + i;
+
+	//			if(script_component->base.flags & COMPONENT_FLAG_INVALID)
+	//			{
+	//				continue;
+	//			}
+
+	//			entity = entity_GetEntityPointerHandle(script_component->base.entity);
+	//			entity->spawn_time = r_frame - 1;
+	//			script_ExecuteScriptImediate((struct script_t *)script_component->script, script_component);
+	//		}
+	//	}
+	//	else
+	//	{
+		for(i = 0; i < c; i++)
 		{
-			for(i = 0; i < c; i++)
+			script_component = (struct script_component_t *)list->elements + i;
+
+			if(script_component->base.flags & COMPONENT_FLAG_INVALID)
 			{
-				script_component = (struct script_component_t *)list->elements + i;
-
-				if(script_component->base.flags & COMPONENT_FLAG_INVALID)
-				{
-					continue;
-				}
-
-				entity = entity_GetEntityPointerHandle(script_component->base.entity);
-				entity->spawn_time = r_frame - 1;
-				script_ExecuteScriptImediate((struct script_t *)script_component->script, script_component);
+				continue;
 			}
+			script_ExecuteScriptImediate((struct script_t *)script_component->script, script_component);
 		}
-		else
-		{
-			for(i = 0; i < c; i++)
-			{
-				script_component = (struct script_component_t *)list->elements + i;
-
-				if(script_component->base.flags & COMPONENT_FLAG_INVALID)
-				{
-					continue;
-				}
-				script_ExecuteScriptImediate((struct script_t *)script_component->script, script_component);
-			}
-		}
+	//	}
 	}
 }
 
@@ -2986,6 +3051,7 @@ void entity_SaveEntityDef(char *file_name, struct entity_handle_t entity_def)
 
 	char *fname;
 	void *buffer;
+	struct entity_source_file_t *source_file;
 	int buffer_size;
 
 	struct entity_t *entity = entity_GetEntityPointerHandle(entity_def);
@@ -2997,18 +3063,30 @@ void entity_SaveEntityDef(char *file_name, struct entity_handle_t entity_def)
 	file = fopen(fname, "wb");
 	fwrite(buffer, buffer_size, 1, file);
 	fclose(file);
+
+
+    source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
+
+    if((!source_file) || strcmp(source_file->file_name, fname))
+	{
+		entity->spawn_time = stack_list_add(&ent_entity_def_source_files, NULL);
+		source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
+		strcpy(source_file->file_name, fname);
+	}
 }
 
 struct entity_handle_t entity_LoadEntityDef(char *file_name)
 {
 	FILE *file;
 	struct entity_t *entity;
+	struct entity_source_file_t *source_file;
 
 	file = path_TryOpenFile(file_name);
 	unsigned long int file_size = 0;
 
 	void *buffer;
 	void *read_buffer;
+	//char *source_file_name;
 
 	struct entity_handle_t entity_def;
 
@@ -3023,7 +3101,7 @@ struct entity_handle_t entity_LoadEntityDef(char *file_name)
 	rewind(file);
 
 
-	buffer = memory_Calloc(file_size, 1, "entity_LoadEntityDef");
+	buffer = memory_Calloc(file_size, 1);
 	read_buffer = buffer;
 
 	fread(buffer, file_size, 1, file);
@@ -3034,7 +3112,20 @@ struct entity_handle_t entity_LoadEntityDef(char *file_name)
 	memory_Free(buffer);
 
 	entity = entity_GetEntityPointerHandle(entity_def);
-	entity->flags |= ENTITY_FLAG_ON_DISK;
+
+	if(entity)
+	{
+		entity->flags |= ENTITY_FLAG_ON_DISK;
+
+		source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
+
+        if((!source_file) || strcmp(source_file->file_name, file_name))
+		{
+			entity->spawn_time = stack_list_add(&ent_entity_def_source_files, NULL);
+			source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
+			strcpy(source_file->file_name, file_name);
+		}
+	}
 
 	return entity_def;
 }

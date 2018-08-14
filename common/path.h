@@ -52,7 +52,9 @@ void path_Init(char *path);
 
 void path_Finish();
 
-void path_AddSearchPath(char *path, int type);
+void path_ReadCfg();
+
+void path_AddSearchPath(char *path);
 
 void path_ClearSearchPaths();
 
@@ -86,6 +88,8 @@ char *path_FormatPath(char *path);
 
 
 FILE *path_TryOpenFile(char *file_name);
+
+unsigned long path_GetFileSize(FILE *file);
 
 
 #ifdef __cplusplus

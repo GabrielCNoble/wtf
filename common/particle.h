@@ -28,13 +28,13 @@ enum PARTICLE_SYSTEM_FLAGS
 
 struct particle_system_script_t
 {
-	struct script_t script;	
-	
+	struct script_t script;
+
 	void *particle_position_array;
 	void *particle_frame_array;
 	void *particle_array;
 	void *particle_system;
-	
+
 	void *on_spawn_entry_point;
 	void *on_update_entry_point;
 	void *on_die_entry_point;
@@ -48,10 +48,10 @@ typedef struct
 	unsigned short respawn_time;
 	unsigned short flags;
 	unsigned int texture;
-	
+
 	//script_t *script;
 	struct particle_system_script_t *script;
-	
+
 	char *name;
 }particle_system_def_t;
 
@@ -71,10 +71,15 @@ typedef struct
 	vec3_t position;
 }particle_position_t;*/
 
+struct particle_emitter_t
+{
+
+};
+
 struct particle_system_t
 {
 	int def;
-	
+
 	short particle_count;
 	short max_particles;
 	short max_life;
@@ -82,23 +87,23 @@ struct particle_system_t
 	short respawn_time;
 	short respawn_countdown;
 	unsigned short flags;
-	
+
 	int spawn_frame;
 	int texture;
-	
+
 	struct particle_t *particles;
 	//vec3_t *particle_velocities;
 	vec4_t *particle_positions;
 	int *particle_frames;
-	
+
 	struct particle_system_script_t *script;
-	
+
 	mat3_t orientation;
 	vec3_t scale;
 	vec3_t position;
-	
+
 	vec3_t extents;
-	
+
 };
 
 
@@ -146,6 +151,8 @@ struct particle_system_t *particle_GetParticleSystemPointer(int particle_system)
 */
 
 void particle_UpdateParticleSystems(double delta_time);
+
+void particle_SortParticles(struct particle_system_t *particle_system);
 
 /*
 ===========================================================================================

@@ -158,49 +158,88 @@ void *entity_ScriptGetEntityPosition(struct entity_handle_t entity, int local)
 
 void *entity_ScriptGetOrientation(int local)
 {
-	struct entity_t *entity;
-	struct transform_component_t *transform;
+	return entity_ScriptGetEntityOrientation(ent_current_entity, local);
+}
+
+void *entity_ScriptGetEntityOrientation(struct entity_handle_t entity, int local)
+{
+	struct entity_t *entity_ptr;
+	struct transform_component_t *local_transform;
 	struct entity_transform_t *world_transform;
 
-	entity = entity_GetEntityPointerHandle(ent_current_entity);
+	entity_ptr = entity_GetEntityPointerHandle(entity);
 
-
-	if(local)
+	if(entity_ptr)
 	{
-		transform = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
-		mat3_ret = transform->orientation;
+		if(local)
+		{
+			local_transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+			mat3_ret = local_transform->orientation;
+		}
+		else
+		{
+			world_transform = entity_GetWorldTransformPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+
+			mat3_ret.floats[0][0] = world_transform->transform.floats[0][0];
+			mat3_ret.floats[0][1] = world_transform->transform.floats[0][1];
+			mat3_ret.floats[0][2] = world_transform->transform.floats[0][2];
+
+			mat3_ret.floats[1][0] = world_transform->transform.floats[1][0];
+			mat3_ret.floats[1][1] = world_transform->transform.floats[1][1];
+			mat3_ret.floats[1][2] = world_transform->transform.floats[1][2];
+
+			mat3_ret.floats[2][0] = world_transform->transform.floats[2][0];
+			mat3_ret.floats[2][1] = world_transform->transform.floats[2][1];
+			mat3_ret.floats[2][2] = world_transform->transform.floats[2][2];
+		}
 	}
-	else
-	{
-		world_transform = entity_GetWorldTransformPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
-
-		mat3_ret.floats[0][0] = world_transform->transform.floats[0][0];
-		mat3_ret.floats[0][1] = world_transform->transform.floats[0][1];
-		mat3_ret.floats[0][2] = world_transform->transform.floats[0][2];
-
-		mat3_ret.floats[1][0] = world_transform->transform.floats[1][0];
-		mat3_ret.floats[1][1] = world_transform->transform.floats[1][1];
-		mat3_ret.floats[1][2] = world_transform->transform.floats[1][2];
-
-		mat3_ret.floats[2][0] = world_transform->transform.floats[2][0];
-		mat3_ret.floats[2][1] = world_transform->transform.floats[2][1];
-		mat3_ret.floats[2][2] = world_transform->transform.floats[2][2];
-	}
-
 
 	return &mat3_ret;
 }
 
-void *entity_ScriptGetForwardVector()
+void *entity_ScriptGetForwardVector(int local)
 {
-	struct entity_t *entity;
-	struct transform_component_t *transform;
-
-	entity = entity_GetEntityPointerHandle(ent_current_entity);
-	transform = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
-
-	return &transform->orientation.r2;
+	return entity_ScriptGetEntityForwardVector(ent_current_entity, local);
 }
+
+void *entity_ScriptGetEntityForwardVector(struct entity_handle_t entity, int local)
+{
+    struct entity_t *entity_ptr;
+    struct transform_component_t *local_transform;
+    struct entity_transform_t *world_transform;
+
+    entity_ptr = entity_GetEntityPointerHandle(entity);
+
+    if(entity_ptr)
+	{
+		if(local)
+		{
+			local_transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+
+			vec3_ret.x = local_transform->orientation.floats[0][2];
+			vec3_ret.y = local_transform->orientation.floats[1][2];
+			vec3_ret.z = local_transform->orientation.floats[2][2];
+		}
+		else
+		{
+			world_transform = entity_GetWorldTransformPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+
+			vec3_ret.x = world_transform->transform.floats[0][2];
+			vec3_ret.y = world_transform->transform.floats[1][2];
+			vec3_ret.z = world_transform->transform.floats[2][2];
+		}
+	}
+	else
+	{
+		vec3_ret.x = 0.0;
+		vec3_ret.y = 0.0;
+		vec3_ret.z = 0.0;
+	}
+
+	return &vec3_ret;
+}
+
+
 
 void entity_ScriptRotate(vec3_t *axis, float angle, int set)
 {
@@ -213,6 +252,21 @@ void entity_ScriptRotate(vec3_t *axis, float angle, int set)
 	set = set && 1;
 
 	mat3_t_rotate(&transform->orientation, *axis, angle, set);
+}
+
+void entity_ScriptRotateEntity(struct entity_handle_t entity, vec3_t *axis, float angle, int set)
+{
+	struct entity_t *entity_ptr;
+	struct transform_component_t *transform_component;
+
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+
+	if(entity_ptr)
+	{
+        transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+		set = set && 1;
+		mat3_t_rotate(&transform_component->orientation, *axis, angle, set);
+	}
 }
 
 int entity_ScriptGetLife()
@@ -353,6 +407,12 @@ void entity_ScriptSetComponentValue33f(struct component_handle_t component, stru
 	entity_ScriptComponentValue(component, field, value, SCRIPT_VAR_TYPE_MAT3T, 1);
 }
 
+void entity_ScriptGetComponentValue33f(struct component_handle_t component, struct script_string_t *field_name, mat3_t *value)
+{
+	char *field = script_string_GetRawString(field_name);
+	entity_ScriptComponentValue(component, field, value, SCRIPT_VAR_TYPE_MAT3T, 0);
+}
+
 
 
 void entity_ScriptSetComponentValue3f(struct component_handle_t component, struct script_string_t *field_name, vec3_t *value)
@@ -365,6 +425,18 @@ void entity_ScriptGetComponentValue3f(struct component_handle_t component, struc
 {
 	char *field = script_string_GetRawString(field_name);
 	entity_ScriptComponentValue(component, field, value, SCRIPT_VAR_TYPE_VEC3T, 0);
+}
+
+
+
+void entity_ScriptSetComponentValue(struct component_handle_t component, struct script_string_t *field_name, void *value)
+{
+
+}
+
+void entity_ScriptGetComponentValue(struct component_handle_t component, struct script_string_t *field_name, void *value)
+{
+
 }
 
 
@@ -551,7 +623,7 @@ void entity_ScriptSetCameraPosition(vec3_t *position)
 }
 
 
-void entity_ScriptSetCamera(struct component_handle_t camera)
+void entity_ScriptSetCameraAsActive(struct component_handle_t camera)
 {
 	struct camera_component_t *camera_component;
 

@@ -126,69 +126,6 @@ typedef struct brush_t
 
 
 
-/*
-===================================================================
-===================================================================
-===================================================================
-*/
-
-/* serialization structures */
-
-typedef struct
-{
-	int brush_count;
-
-	int reserved0;
-	int reserved1;
-	int reserved2;
-	int reserved3;
-	int reserved4;
-	int reserved5;
-	int reserved6;
-	int reserved7;
-
-}brush_section_header_t;
-
-typedef struct
-{
-	mat3_t orientation;
-	vec3_t position;
-	vec3_t scale;
-	int vertex_count;
-	int triangle_group_count;
-	int polygon_count;
-	short type;
-	short bm_flags;
-
-	int reserved0;
-	int reserved1;
-	int reserved2;
-	int reserved3;
-	int reserved4;
-	int reserved5;
-	int reserved6;
-	int reserved7;
-
-}brush_record_t;
-
-typedef struct
-{
-	vec3_t normal;
-	int vert_count;
-	int first_index_offset;
-
-	int reserved0;
-	int reserved1;
-	int reserved2;
-	int reserved3;
-	int reserved4;
-	int reserved5;
-	int reserved6;
-	int reserved7;
-
-	char material_name[PATH_MAX];
-}polygon_record_t;
-
 
 
 /*
@@ -289,6 +226,8 @@ void brush_AddIntersectionRecord(brush_t *add_to, brush_t *to_add);
 void brush_RemoveIntersectionRecord(brush_t *remove_from, brush_t *to_remove, int free_record);
 
 intersection_record_t *brush_GetIntersectionRecord(brush_t *brush, brush_t *brush2);
+
+
 
 
 

@@ -111,7 +111,7 @@ void editor_EntityEditorInit()
 
 	entity_editor_pick_list.max_records = 1024;
 	entity_editor_pick_list.record_count = 0;
-	entity_editor_pick_list.records = memory_Malloc(sizeof(pick_record_t) * entity_editor_pick_list.max_records, "editor_EntityEditorInit");
+	entity_editor_pick_list.records = memory_Malloc(sizeof(pick_record_t) * entity_editor_pick_list.max_records);
 	entity_editor_pick_list.last_selection_type = PICK_NONE;
 
 	editor_EntityEditorInitUI();
@@ -807,16 +807,25 @@ int editor_EntityEditorLoadEntityFileCallback(char *path, char *file_name)
 	return 0;
 }
 
-int editor_EntityEditorSaveEntityFileCallback(char *path, char *file_name, void **out_buffer, int *out_buffer_size)
+int editor_EntityEditorSaveEntityFileCallback(char *file_directory, char *file_name, void **out_buffer, int *out_buffer_size)
 {
-    void *file_buffer;
+    /*void *file_buffer;
     int file_buffer_size;
     entity_SerializeEntityDef(&file_buffer, &file_buffer_size, ed_entity_editor_entity_def);
 
 	*out_buffer = file_buffer;
 	*out_buffer_size = file_buffer_size;
 
-	return 1;
+	return 1;*/
+
+	char full_path[PATH_MAX];
+
+	strcpy(full_path, file_directory);
+	strcat(full_path, "/");
+	strcat(full_path, file_name);
+
+	entity_SaveEntityDef(full_path, ed_entity_editor_entity_def);
+	return 0;
 }
 
 

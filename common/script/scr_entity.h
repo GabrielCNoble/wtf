@@ -45,13 +45,29 @@ void *entity_ScriptGetPosition(int local);
 
 void *entity_ScriptGetEntityPosition(struct entity_handle_t entity, int local);
 
+
+
 void *entity_ScriptGetOrientation(int local);
 
-void *entity_ScriptGetForwardVector();
+void *entity_ScriptGetEntityOrientation(struct entity_handle_t entity, int local);
+
+
+
+void *entity_ScriptGetForwardVector(int local);
+
+void *entity_ScriptGetEntityForwardVector(struct entity_handle_t entity, int local);
+
+
 
 void entity_ScriptRotate(vec3_t *axis, float angle, int set);
 
+void entity_ScriptRotateEntity(struct entity_handle_t entity, vec3_t *axis, float angle, int set);
+
+
+
 int entity_ScriptGetLife();
+
+
 
 struct entity_handle_t entity_ScriptGetCurrentEntity();
 
@@ -82,9 +98,18 @@ struct entity_handle_t entity_ScriptSpawnEntity(mat3_t *orientation, vec3_t *pos
 
 void entity_ScriptSetComponentValue33f(struct component_handle_t component, struct script_string_t *field_name, mat3_t *value);
 
+void entity_ScriptGetComponentValue33f(struct component_handle_t component, struct script_string_t *field_name, mat3_t *value);
+
+
 void entity_ScriptSetComponentValue3f(struct component_handle_t component, struct script_string_t *field_name, vec3_t *value);
 
 void entity_ScriptGetComponentValue3f(struct component_handle_t component, struct script_string_t *field_name, vec3_t *value);
+
+
+void entity_ScriptSetComponentValue(struct component_handle_t component, struct script_string_t *field_name, void *value);
+
+void entity_ScriptGetComponentValue(struct component_handle_t component, struct script_string_t *field_name, void *value);
+
 
 /*
 =====================================
@@ -146,7 +171,7 @@ void entity_ScriptSetCameraPosition(vec3_t *position);
 
 //void entity_ScriptSetCamera();
 
-void entity_ScriptSetCamera(struct component_handle_t camera);
+void entity_ScriptSetCameraAsActive(struct component_handle_t camera);
 
 /*
 =====================================

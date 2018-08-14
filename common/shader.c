@@ -101,8 +101,8 @@ int shader_Init()
 
 
 
-	shaders = memory_Malloc(sizeof(shader_t ) * shader_list_size, "shader_Init");
-	free_position_stack = memory_Malloc(sizeof(int) * shader_list_size, "shader_Init");
+	shaders = memory_Malloc(sizeof(shader_t ) * shader_list_size);
+	free_position_stack = memory_Malloc(sizeof(int) * shader_list_size);
 
 	r_z_pre_pass_shader = shader_LoadShader("engine/z_pre_pass");
 	r_forward_pass_shader = shader_LoadShader("engine/forward_pass");
@@ -241,7 +241,7 @@ int shader_FindShaderNamedUniformIndex(shader_t *shader, char *uniform_name)
 		{
 			if(shader->named_uniforms_list_size < 255)
 			{
-				named_uniform = memory_Malloc(sizeof(named_uniform_t) * (shader->named_uniforms_list_size + 1), "shader_GetShaderNamedUniformLocation");
+				named_uniform = memory_Malloc(sizeof(named_uniform_t) * (shader->named_uniforms_list_size + 1));
 
 				if(shader->named_uniforms)
 				{
@@ -263,7 +263,7 @@ int shader_FindShaderNamedUniformIndex(shader_t *shader, char *uniform_name)
 		named_uniform->uniform.location = uniform_location;
 		glGetActiveUniformsiv(shader->shader_program, 1, &uniform_location, GL_UNIFORM_TYPE, &uniform_type);
 		named_uniform->uniform.type = uniform_type;
-		named_uniform->name = memory_Strdup(uniform_name, "shader_GetShaderNamedUniformLocation");
+		named_uniform->name = memory_Strdup(uniform_name);
 		shader->named_uniforms_list_cursor++;
 		printf("shader [%s]: named uniform [%s (%s)] at [%d]\n", shader->name, uniform_name, renderer_GetGLEnumString(uniform_type), uniform_location);
 
@@ -367,7 +367,7 @@ int shader_LoadShader(char *file_name)
 	rewind(f);
 
 	//vertex_shader_source = calloc(file_size + 2, 1);
-	vertex_shader_source = memory_Calloc(file_size + 2, 1, "shader_LoadShader");
+	vertex_shader_source = memory_Calloc(file_size + 2, 1);
 	fread(vertex_shader_source, 1, file_size, f);
 	vertex_shader_source[file_size - 1] = '\0';
 	vertex_shader_source[file_size] = '\0';
@@ -390,7 +390,7 @@ int shader_LoadShader(char *file_name)
 	if(error_log_len > 0)
 	{
 		//error_log = malloc(error_log_len);
-		error_log = memory_Malloc(error_log_len, "shader_LoadShader");
+		error_log = memory_Malloc(error_log_len);
 		glGetShaderInfoLog(vertex_shader_object, error_log_len, NULL, error_log);
 		printf("********************************************\n[%s] shader vertex shader compilation stage info log:\n%s\n", file_name, error_log);
 		//free(error_log);
@@ -427,7 +427,7 @@ int shader_LoadShader(char *file_name)
 	rewind(f);
 
 	//fragment_shader_source = calloc(file_size + 2, 1);
-	fragment_shader_source = memory_Calloc(file_size + 2, 1, "shader_LoadShader");
+	fragment_shader_source = memory_Calloc(file_size + 2, 1);
 	fread(fragment_shader_source, 1, file_size, f);
 	fragment_shader_source[file_size - 1] = '\0';
 	fragment_shader_source[file_size] = '\0';
@@ -449,7 +449,7 @@ int shader_LoadShader(char *file_name)
 	if(error_log_len > 0)
 	{
 		//error_log = malloc(error_log_len);
-		error_log = memory_Malloc(error_log_len, "shader_LoadShader");
+		error_log = memory_Malloc(error_log_len);
 		glGetShaderInfoLog(fragment_shader_object, error_log_len, NULL, error_log);
 		printf("********************************************\n[%s] shader fragment shader compilation stage info log:\n%s\n", file_name, error_log);
 		//free(error_log);
@@ -500,7 +500,7 @@ int shader_LoadShader(char *file_name)
 	if(error_log_len > 0)
 	{
 		//error_log = malloc(error_log_len);
-		error_log = memory_Malloc(error_log_len, "shader_LoadShader");
+		error_log = memory_Malloc(error_log_len);
 		glGetProgramInfoLog(shader_program, error_log_len, NULL, error_log);
 		printf("********************************************\n[%s] shader link stage info log:\n%s\n", file_name, error_log);
 		memory_Free(error_log);
@@ -533,7 +533,7 @@ int shader_LoadShader(char *file_name)
 		if(shader_index >= shader_list_size)
 		{
 			//shader = malloc(sizeof(shader_t ) * (shader_list_size + 16));
-			shader = memory_Malloc(sizeof(shader_t ) * (shader_list_size + 16), "shader_LoadShader");
+			shader = memory_Malloc(sizeof(shader_t ) * (shader_list_size + 16));
 			memcpy(shader, shaders, sizeof(shader_t) * shader_list_size);
 			memory_Free(shaders);
 			//free(shaders);
@@ -550,8 +550,8 @@ int shader_LoadShader(char *file_name)
 	shader = &shaders[shader_index];
 	shader->shader_program = shader_program;
 	//shader->name = strdup(file_name);
-	shader->name = memory_Strdup(file_name, "shader_LoadShader");
-	shader->file_name = memory_Strdup(file_name, "shader_LoadShader");
+	shader->name = memory_Strdup(file_name);
+	shader->file_name = memory_Strdup(file_name);
 	//shader->file_name = strdup(file_name);
 
 
@@ -578,7 +578,7 @@ int shader_LoadShader(char *file_name)
 //	shader->uniforms = memory_Malloc(sizeof(uniform_t ) * UNIFORM_LAST_UNIFORM, "shader_LoadShader");
 
 
-	shader->default_uniforms = memory_Malloc(sizeof(uniform_t) * UNIFORM_LAST_UNIFORM, "shader_LoadShader");
+	shader->default_uniforms = memory_Malloc(sizeof(uniform_t) * UNIFORM_LAST_UNIFORM);
 
 	shader_GetShaderDefaultUniformsLocations(shader);
 
@@ -685,7 +685,7 @@ void shader_ReloadShader(int shader_index)
 	rewind(f);
 
 	//vertex_shader_source = calloc(file_size + 2, 1);
-	vertex_shader_source = memory_Calloc(file_size + 2, 1, "shader_RealoadShader");
+	vertex_shader_source = memory_Calloc(file_size + 2, 1);
 	fread(vertex_shader_source, 1, file_size, f);
 	vertex_shader_source[file_size - 1] = '\0';
 	vertex_shader_source[file_size] = '\0';
@@ -708,7 +708,7 @@ void shader_ReloadShader(int shader_index)
 	if(error_log_len > 0)
 	{
 		//error_log = malloc(error_log_len);
-		error_log = memory_Malloc(error_log_len, "shader_ReloadShader");
+		error_log = memory_Malloc(error_log_len);
 		glGetShaderInfoLog(vertex_shader_object, error_log_len, NULL, error_log);
 		printf("********************************************\n[%s] shader vertex shader compilation stage info log:\n%s\n", shader->file_name, error_log);
 		//free(error_log);
@@ -743,7 +743,7 @@ void shader_ReloadShader(int shader_index)
 	rewind(f);
 
 	//fragment_shader_source = calloc(file_size + 2, 1);
-	fragment_shader_source = memory_Calloc(file_size + 2, 1, "shader_ReloadShader");
+	fragment_shader_source = memory_Calloc(file_size + 2, 1);
 	fread(fragment_shader_source, 1, file_size, f);
 	fragment_shader_source[file_size - 1] = '\0';
 	fragment_shader_source[file_size] = '\0';
@@ -765,7 +765,7 @@ void shader_ReloadShader(int shader_index)
 	if(error_log_len > 0)
 	{
 		//error_log = malloc(error_log_len);
-		error_log = memory_Malloc(error_log_len, "shader_ReloadShader");
+		error_log = memory_Malloc(error_log_len);
 		glGetShaderInfoLog(fragment_shader_object, error_log_len, NULL, error_log);
 		printf("********************************************\n[%s] shader fragment shader compilation stage info log:\n%s\n", shader->file_name, error_log);
 		//free(error_log);
@@ -800,7 +800,7 @@ void shader_ReloadShader(int shader_index)
 	if(error_log_len > 0)
 	{
 		//error_log = malloc(error_log_len);
-		error_log = memory_Malloc(error_log_len, "shader_ReloadShader");
+		error_log = memory_Malloc(error_log_len);
 		glGetProgramInfoLog(shader_program, error_log_len, NULL, error_log);
 		printf("********************************************\n[%s] shader link stage info log:\n%s\n", shader->file_name, error_log);
 		//free(error_log);

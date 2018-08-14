@@ -18,7 +18,7 @@ struct list_t list_create(int element_size, int max_elements, void (*dispose_cal
 	list.max_elements = max_elements;
 	list.dispose_callback = dispose_callback;
 
-	list.elements = memory_Calloc(list.max_elements, list.element_size, "list_create");
+	list.elements = memory_Calloc(list.max_elements, list.element_size);
 
 	return list;
 }
@@ -48,7 +48,7 @@ int list_add(struct list_t *list, void *data)
 
 	if(item_index >= list->max_elements)
 	{
-		items = memory_Calloc(list->max_elements + 64, list->element_size, "list_add");
+		items = memory_Calloc(list->max_elements + 64, list->element_size);
 		memcpy(items, list->elements, list->element_size * list->element_count);
 
 		memory_Free(list->elements);
@@ -104,7 +104,7 @@ void list_resize(struct list_t *list, int new_size)
 
 	if(new_size > list->max_elements)
 	{
-		elems = memory_Calloc(new_size, list->element_size, "list_resize");
+		elems = memory_Calloc(new_size, list->element_size);
 		memcpy(elems, list->elements, list->element_size * list->max_elements);
 		memory_Free(list->elements);
 		list->elements = elems;

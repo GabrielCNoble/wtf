@@ -28,8 +28,8 @@ extern "C"
 int portal_Init()
 {
 	ptl_portal_list_size = 32;
-	ptl_portal_free_stack = memory_Malloc(sizeof(int) * ptl_portal_list_size, "portal_Init");
-	ptl_portals = memory_Malloc(sizeof(portal_t) * ptl_portal_list_size, "portal_Init");
+	ptl_portal_free_stack = memory_Malloc(sizeof(int) * ptl_portal_list_size);
+	ptl_portals = memory_Malloc(sizeof(portal_t) * ptl_portal_list_size);
 	return 1;
 }
 
@@ -59,8 +59,8 @@ int portal_CreatePortal(vec3_t position, vec2_t extents, mat3_t *orientation, in
 		{
 			memory_Free(ptl_portal_free_stack);
 
-			ptl_portal_free_stack = memory_Malloc(sizeof(int) * (ptl_portal_list_size + 16), "portal_CreatePortal");
-			portal = memory_Malloc(sizeof(portal_t) * (ptl_portal_list_size + 16), "portal_CreatePortal");
+			ptl_portal_free_stack = memory_Malloc(sizeof(int) * (ptl_portal_list_size + 16));
+			portal = memory_Malloc(sizeof(portal_t) * (ptl_portal_list_size + 16));
 
 			memcpy(portal, ptl_portals, sizeof(portal_t) * ptl_portal_list_size);
 
@@ -75,10 +75,10 @@ int portal_CreatePortal(vec3_t position, vec2_t extents, mat3_t *orientation, in
 
 	//portal->view = camera_CreateCamera("portal camera", position, orientation, 0.5, extents.x, extents.y, 0.1, 500.0, 0);
 
-	portal->portal_recursive_views = memory_Malloc(sizeof(portal_recursive_view_data_t) * W_MAX_PORTAL_RECURSION_LEVEL, "portal_CreatePortal");
+	portal->portal_recursive_views = memory_Malloc(sizeof(portal_recursive_view_data_t) * W_MAX_PORTAL_RECURSION_LEVEL);
 
 	/* first level of recursion, only seen by the current view point... */
-	portal->portal_recursive_views[0].views = memory_Malloc(sizeof(portal_view_data_t), "portal_CreatePortal");
+	portal->portal_recursive_views[0].views = memory_Malloc(sizeof(portal_view_data_t));
 	portal->portal_recursive_views[0].views_count = 0;
 	portal->portal_recursive_views[0].views_max = 1;
 	portal->portal_recursive_views[0].frame = 0;
@@ -389,7 +389,7 @@ int portal_CalculatePortalView(portal_t *portal, mat3_t *view_orientation, vec3_
 
 	if(recursive_view_data->views_count >= recursive_view_data->views_max)
 	{
-		view_data = memory_Malloc(sizeof(portal_view_data_t) * (recursive_view_data->views_max + 1), "portal_CalculatePortalView");
+		view_data = memory_Malloc(sizeof(portal_view_data_t) * (recursive_view_data->views_max + 1));
 
 		if(recursive_view_data->views)
 		{

@@ -3,7 +3,7 @@
 
 #include "r_common.h"
 #include "vector.h"
-#include "w_common.h"
+//#include "w_common.h"
 
 #include "gpu.h"
 

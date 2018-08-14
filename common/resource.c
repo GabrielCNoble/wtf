@@ -1,6 +1,8 @@
 #include "resource.h"
 #include "path.h"
 #include "ent_common.h"
+#include "w_common.h"
+#include "world.h"
 #include "entity.h"
 
 #include <stdio.h>
@@ -27,8 +29,10 @@ int resource_Init()
 
 	file_exts[RESOURCE_TYPE_ENTITY][0] = ENTITY_FILE_EXTENSION;
 
+
 	//file_exts[RESOURCE_TYPE_SCRIPT][0] = "as";
 	file_exts[RESOURCE_TYPE_SCRIPT][0] = ENTITY_SCRIPT_FILE_EXTENSION;
+	file_exts[RESOURCE_TYPE_SCRIPT][1] = WORLD_SCRIPT_FILE_EXTENSION;
 
 	return 1;
 }
@@ -96,6 +100,10 @@ void resource_LoadResource(char *file_name)
 						{
 							load_script_fn = (struct script_t *(*)(char *, char *))entity_LoadScript;
 						}
+						else if(!strcmp(ext, WORLD_SCRIPT_FILE_EXTENSION))
+                        {
+                            load_script_fn = (struct script_t *(*)(char *, char *))world_LoadScript;
+                        }
 
 						if(load_script_fn(file_name, path_GetNameNoExt(path_GetFileNameFromPath(file_name))))
 						{

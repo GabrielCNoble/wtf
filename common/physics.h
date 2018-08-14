@@ -80,7 +80,7 @@ void physics_DestroyCollisionShape(void *collision_shape);
 =================================================================
 =================================================================
 */
- 
+
 
 struct collider_handle_t physics_CreateEmptyCollider(int type);
 
@@ -142,7 +142,7 @@ struct collision_record_t *physics_GetColliderCollisionRecords(struct collider_h
 =================================================================
 */
 
-int physics_Raycast(vec3_t from, vec3_t to, vec3_t *hit_position, vec3_t *hit_normal);
+int physics_Raycast(vec3_t from, vec3_t to, vec3_t *hit_position, vec3_t *hit_normal, int world_only);
 
 /*
 =================================================================

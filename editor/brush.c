@@ -249,9 +249,6 @@ brush_t *brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, s
 			}
 
 			brush_LinkPolygonsToVertices(brush);
-			bsp_TriangulatePolygonsIndexes(brush->base_polygons, &indexes, &index_count);
-			model_CalculateTangentsIndexes(brush->base_polygons_vertices, indexes, index_count);
-			memory_Free(indexes);
 		break;
 
 
@@ -280,7 +277,7 @@ brush_t *brush_CreateEmptyBrush()
 	vec3_t p;
 	vec3_t v;
 
-	brush = memory_Malloc(sizeof(brush_t), "brush_CreateEmptyBrush");
+	brush = memory_Malloc(sizeof(brush_t));
 
 	brush->next = NULL;
 	brush->prev = NULL;
@@ -373,6 +370,9 @@ void brush_FinalizeBrush(brush_t *brush, int transform_base_vertices)
 	vec3_t p;
 	vec3_t v;
 
+	int *indexes = NULL;
+	int index_count = 0;
+
 	int i;
 	int c;
 
@@ -386,6 +386,11 @@ void brush_FinalizeBrush(brush_t *brush, int transform_base_vertices)
 		//brush->handle = gpu_AllocAlign(sizeof(vertex_t) * brush->max_vertexes, sizeof(vertex_t));
 		//brush->handle = gpu_AllocVerticesAlign(sizeof(compact_vertex_t ) * brush->max_vertexes, sizeof(compact_vertex_t));
 		//brush->start = gpu_GetAllocStart(brush->handle) / sizeof(compact_vertex_t);
+
+		bsp_TriangulatePolygonsIndexes(brush->base_polygons, &indexes, &index_count);
+		model_CalculateTangentsIndexes(brush->base_polygons_vertices, indexes, index_count);
+		memory_Free(indexes);
+
 
 		brush->handle = gpu_AllocVerticesAlign(sizeof(struct c_vertex_t ) * brush->max_vertexes, sizeof(struct c_vertex_t ));
 		brush->start = gpu_GetAllocStart(brush->handle) / sizeof(struct c_vertex_t );
@@ -524,7 +529,7 @@ void brush_AllocBaseVertices(brush_t *brush, int vert_count, vertex_t *vertices)
 		}
 
 		brush->base_polygons_vert_count = vert_count;
-		brush->base_polygons_vertices = memory_Malloc(sizeof(vertex_t) * brush->base_polygons_vert_count, "brush_AllocBaseVertices");
+		brush->base_polygons_vertices = memory_Malloc(sizeof(vertex_t) * brush->base_polygons_vert_count);
 
 		if(vertices)
 		{
@@ -553,7 +558,7 @@ void brush_AllocBasePolygons(brush_t *brush, int polygon_count)
 		}
 
 		brush->base_polygons_count = 0;
-		brush->base_polygons = memory_Malloc(sizeof(bsp_polygon_t) * polygon_count, "brush_AllocBasePolygons");
+		brush->base_polygons = memory_Malloc(sizeof(bsp_polygon_t) * polygon_count);
 
 		for(i = 0; i < polygon_count; i++)
 		{
@@ -569,6 +574,7 @@ void brush_AddPolygonToBrush(brush_t *brush, vertex_t *polygon_vertices, vec3_t 
 {
 	int i;
 	bsp_polygon_t *polygon;
+	bsp_polygon_t *prev_polygon;
 
 	if(brush && polygon_vertice_count > 0)
 	{
@@ -577,14 +583,30 @@ void brush_AddPolygonToBrush(brush_t *brush, vertex_t *polygon_vertices, vec3_t 
 		the polygons and it's vertices... */
 
 		polygon = brush->base_polygons + brush->base_polygons_count;
-		brush->base_polygons_count++;
 
-		polygon->vertices = polygon_vertices;
+
+		//polygon->vertices = polygon_vertices;
+
+		polygon->vertices = brush->base_polygons_vertices;
+
+		if(brush->base_polygons_count)
+		{
+			prev_polygon = brush->base_polygons + brush->base_polygons_count - 1;
+			polygon->vertices = prev_polygon->vertices + prev_polygon->vert_count;
+		}
+
+		if(polygon_vertices)
+		{
+			memcpy(polygon->vertices, polygon_vertices, sizeof(vertex_t) * polygon_vertice_count);
+		}
+
 		polygon->b_used = 0;
 		polygon->indexes = NULL;
 		polygon->material_index = material_index;
 		polygon->vert_count = polygon_vertice_count;
 		polygon->normal = normal;
+
+		brush->base_polygons_count++;
 	}
 }
 
@@ -884,8 +906,8 @@ void brush_CreateCylinder(int base_vertexes, int *vert_count, float **vertices, 
 	*vert_count = ((base_vertexes * 2 * 3) + (base_vertexes * 6));
 
 	//*vertices = (vertex_t *)malloc(sizeof(vertex_t) * (*vert_count));
-	*vertices = (float *)memory_Malloc(sizeof(float) * 3 * (*vert_count), "brush_CreateCylinder");
-	*normals = (float *)memory_Malloc(sizeof(float) * 3 * (*vert_count), "brush_CreateCylinder");
+	*vertices = (float *)memory_Malloc(sizeof(float) * 3 * (*vert_count));
+	*normals = (float *)memory_Malloc(sizeof(float) * 3 * (*vert_count));
 
 	verts = *vertices;
 	norms = *normals;
@@ -1145,7 +1167,7 @@ void brush_UploadBrushVertices(brush_t *brush)
 
 	R_DBG_PUSH_FUNCTION_NAME();
 
-	vertices = memory_Malloc(sizeof(vertex_t) * brush->clipped_polygons_vert_count, "brush_UploadBrushVertices");
+	vertices = memory_Malloc(sizeof(vertex_t) * brush->clipped_polygons_vert_count);
 	memcpy(vertices, brush->clipped_polygons_vertices, sizeof(vertex_t) * brush->clipped_polygons_vert_count);
 
 	for(i = 0; i < brush->clipped_polygons_vert_count; i++)
@@ -1329,7 +1351,7 @@ void brush_BuildEdgeList(brush_t *brush)
 						add it to the list... */
 						if(!check_edge)
 						{
-							edge = memory_Malloc(sizeof(bsp_edge_t), "brush_BuildEdgeList");
+							edge = memory_Malloc(sizeof(bsp_edge_t));
 							edge->v0 = p0;
 							edge->v1 = p1;
 							edge->v0_p0 = i;
@@ -1458,7 +1480,7 @@ void brush_BuildBatches(brush_t *brush)
 		//brush->max_triangle_groups += brush->clipped_polygon_count;
 		//brush->triangle_groups = malloc(sizeof(triangle_group_t) * brush->max_triangle_groups);
 		brush->max_batches += brush->clipped_polygon_count;
-		brush->batches = memory_Malloc(sizeof(struct batch_t) * brush->max_batches, "brush_BuildBatches");
+		brush->batches = memory_Malloc(sizeof(struct batch_t) * brush->max_batches);
 	}
 
 	//memcpy(brush->triangle_groups, triangle_groups, sizeof(triangle_group_t) * triangle_group_count);
@@ -2101,7 +2123,7 @@ void brush_AddIntersectionRecord(brush_t *add_to, brush_t *to_add)
 		}
 		else
 		{
-			record = memory_Malloc(sizeof(intersection_record_t), "brush_AddIntersectionRecord");
+			record = memory_Malloc(sizeof(intersection_record_t));
 		}
 
 		record->intersecting_brush = to_add;
@@ -2244,26 +2266,103 @@ intersection_record_t *brush_GetIntersectionRecord(brush_t *brush, brush_t *brus
 
 
 
+
+/*
+===================================================================
+===================================================================
+===================================================================
+*/
+
+/* serialization structures */
+
+char brush_section_start_tag[] = "[brush section start]";
+
+struct brush_section_start_t
+{
+	char tag[(sizeof(brush_section_start_tag) + 3) & (~3)];
+	int brush_count;
+
+	int reserved0;
+	int reserved1;
+	int reserved2;
+	int reserved3;
+	int reserved4;
+	int reserved5;
+	int reserved6;
+	int reserved7;
+
+};
+
+char brush_section_end_tag[] = "[brush section end]";
+
+struct brush_section_end_t
+{
+	char tag[(sizeof(brush_section_end_tag) + 3) & (~3)];
+};
+
+struct brush_record_t
+{
+	mat3_t orientation;
+	vec3_t position;
+	vec3_t scale;
+	int vertex_count;
+	int triangle_group_count;
+	int polygon_count;
+	short type;
+	short bm_flags;
+
+	int reserved0;
+	int reserved1;
+	int reserved2;
+	int reserved3;
+	int reserved4;
+	int reserved5;
+	int reserved6;
+	int reserved7;
+
+};
+
+struct polygon_record_t
+{
+	vec3_t normal;
+	int vert_count;
+	int first_index_offset;
+
+	int reserved0;
+	int reserved1;
+	int reserved2;
+	int reserved3;
+	int reserved4;
+	int reserved5;
+	int reserved6;
+	int reserved7;
+
+	char material_name[PATH_MAX];
+};
+
+
+
 void brush_SerializeBrushes(void **buffer, int *buffer_size)
 {
 	brush_t *brush;
-	brush_section_header_t *header;
-	brush_record_t *brush_record;
-	polygon_record_t *polygon_record;
+	struct brush_section_start_t *section_start;
+	struct brush_section_end_t *section_end;
+	struct brush_record_t *brush_record;
+	struct polygon_record_t *polygon_record;
 	bsp_polygon_t *polygon;
 	vertex_t *vertices;
 	char *out;
 	int size;
 	int i;
 
-	size = sizeof(brush_section_header_t) * sizeof(brush_record_t) * brush_count;
+	size = sizeof(struct brush_section_start_t) + sizeof(struct brush_section_end_t) + sizeof(struct brush_record_t) * brush_count;
 
 
 	brush = brushes;
 
 	while(brush)
 	{
-		size += sizeof(polygon_record_t) * brush->base_polygons_count;
+		size += sizeof(struct polygon_record_t) * brush->base_polygons_count;
 		polygon = brush->base_polygons;
 
 		while(polygon)
@@ -2275,31 +2374,33 @@ void brush_SerializeBrushes(void **buffer, int *buffer_size)
 		brush = brush->next;
 	}
 
-	out = memory_Malloc(size, "brush_SerialzieBrushes");
+	out = memory_Calloc(size, 1);
 
 	*buffer = out;
 	*buffer_size = size;
 
-	header = (brush_section_header_t *)out;
-	out += sizeof(brush_section_header_t);
+	section_start = (struct brush_section_start_t *)out;
+	out += sizeof(struct brush_section_start_t);
 
-	header->brush_count = brush_count;
-	header->reserved0 = 0;
-	header->reserved1 = 0;
-	header->reserved2 = 0;
-	header->reserved3 = 0;
-	header->reserved4 = 0;
-	header->reserved5 = 0;
-	header->reserved6 = 0;
-	header->reserved7 = 0;
+	strcpy(section_start->tag, brush_section_start_tag);
+
+	section_start->brush_count = brush_count;
+	section_start->reserved0 = 0;
+	section_start->reserved1 = 0;
+	section_start->reserved2 = 0;
+	section_start->reserved3 = 0;
+	section_start->reserved4 = 0;
+	section_start->reserved5 = 0;
+	section_start->reserved6 = 0;
+	section_start->reserved7 = 0;
 
 	brush = brushes;
 
 	while(brush)
 	{
 
-		brush_record = (brush_record_t *)out;
-		out += sizeof(brush_record_t);
+		brush_record = (struct brush_record_t *)out;
+		out += sizeof(struct brush_record_t);
 
 		brush_record->bm_flags = brush->bm_flags;
 
@@ -2326,8 +2427,8 @@ void brush_SerializeBrushes(void **buffer, int *buffer_size)
 
 		while(polygon)
 		{
-			polygon_record = (polygon_record_t *)out;
-			out += sizeof(polygon_record_t);
+			polygon_record = (struct polygon_record_t *)out;
+			out += sizeof(struct polygon_record_t);
 
 			strcpy(polygon_record->material_name,  material_GetMaterialName(polygon->material_index));
 			polygon_record->normal = polygon->normal;
@@ -2345,13 +2446,18 @@ void brush_SerializeBrushes(void **buffer, int *buffer_size)
 		}
 		brush = brush->next;
 	}
+
+	section_end = (struct brush_section_end_t *)out;
+	out += sizeof(struct brush_section_end_t);
+
+	strcpy(section_end->tag, brush_section_end_tag);
 }
 
 void brush_DeserializeBrushes(void **buffer)
 {
-	brush_section_header_t *header;
-	brush_record_t *brush_record;
-	polygon_record_t *polygon_record;
+	struct brush_section_start_t *header;
+	struct brush_record_t *brush_record;
+	struct polygon_record_t *polygon_record;
 	vertex_t *vertices;
 	brush_t *brush;
 	int i;
@@ -2361,41 +2467,47 @@ void brush_DeserializeBrushes(void **buffer)
 
 	in = (char *)*buffer;
 
-
-	header = (brush_section_header_t *)in;
-	in += sizeof(brush_section_header_t );
-
-	for(i = 0; i < header->brush_count; i++)
+	while(1)
 	{
-		brush_record = (brush_record_t *)in;
-		in += sizeof(brush_record_t);
-
-		brush = brush_CreateEmptyBrush();
-		brush_InitializeBrush(brush, &brush_record->orientation, brush_record->position, brush_record->scale, brush_record->type, brush_record->vertex_count, brush_record->polygon_count);
-
-		for(j = 0; j < brush_record->polygon_count; j++)
+        if(!strcmp(in, brush_section_start_tag))
 		{
-			polygon_record = (polygon_record_t *)in;
-			in += sizeof(polygon_record_t);
+			header = (struct brush_section_start_t *)in;
+			in += sizeof(struct brush_section_start_t );
 
-			vertices = (vertex_t *)in;
-			in += sizeof(vertex_t) * polygon_record->vert_count;
-
-			brush_AddPolygonToBrush(brush, NULL, polygon_record->normal, polygon_record->vert_count, material_MaterialIndex(polygon_record->material_name));
-
-			for(k = 0; k < polygon_record->vert_count; k++)
+			for(i = 0; i < header->brush_count; i++)
 			{
-				brush->base_polygons_vertices[k + brush->base_polygons_vert_count] = vertices[k];
+				brush_record = (struct brush_record_t *)in;
+				in += sizeof(struct brush_record_t);
+
+				brush = brush_CreateEmptyBrush();
+				brush_InitializeBrush(brush, &brush_record->orientation, brush_record->position, brush_record->scale, brush_record->type, brush_record->vertex_count, brush_record->polygon_count);
+
+				for(j = 0; j < brush_record->polygon_count; j++)
+				{
+					polygon_record = (struct polygon_record_t *)in;
+					in += sizeof(struct polygon_record_t);
+
+					vertices = (vertex_t *)in;
+					in += sizeof(vertex_t) * polygon_record->vert_count;
+
+					brush_AddPolygonToBrush(brush, vertices, polygon_record->normal, polygon_record->vert_count, material_MaterialIndex(polygon_record->material_name));
+				}
+
+				brush_FinalizeBrush(brush, 0);
 			}
-
-			brush->base_polygons_vert_count += polygon_record->vert_count;
 		}
-
-		brush_LinkPolygonsToVertices(brush);
+		else if(!strcmp(in, brush_section_end_tag))
+		{
+            in += sizeof(struct brush_section_end_t);
+			break;
+		}
+		else
+		{
+			in++;
+		}
 	}
 
 	*buffer = in;
-
 }
 
 

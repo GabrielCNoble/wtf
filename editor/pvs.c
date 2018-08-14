@@ -304,7 +304,7 @@ void bsp_SplitPortal(bsp_pnode_t *node, bsp_portal_t *portal, bsp_portal_t **fro
 	#ifndef USE_MEMORY_MALLOC
 	f = malloc(sizeof(bsp_portal_t));
 	#else
-	f = memory_Malloc(sizeof(bsp_portal_t ), "bsp_SplitPortal: f");
+	f = memory_Malloc(sizeof(bsp_portal_t ));
 	#endif
 	f->leaf0 = portal->leaf0;
 	f->leaf1 = portal->leaf1;
@@ -313,7 +313,7 @@ void bsp_SplitPortal(bsp_pnode_t *node, bsp_portal_t *portal, bsp_portal_t **fro
 	#ifndef USE_MEMORY_MALLOC
 	f->portal_polygon = malloc(sizeof(bsp_polygon_t));
 	#else
-	f->portal_polygon = memory_Malloc(sizeof(bsp_polygon_t), "bsp_SplitPortal: f->portal_polygon");
+	f->portal_polygon = memory_Malloc(sizeof(bsp_polygon_t));
 	#endif
 
 	f->portal_polygon->normal = polygon->normal;
@@ -322,7 +322,7 @@ void bsp_SplitPortal(bsp_pnode_t *node, bsp_portal_t *portal, bsp_portal_t **fro
 	#ifndef USE_MEMORY_MALLOC
 	f->portal_polygon->vertices = malloc(sizeof(vertex_t) * (front_vertex_count));
 	#else
-	f->portal_polygon->vertices = memory_Malloc(sizeof(vertex_t) * front_vertex_count, "bsp_SplitPortal: f->portal_polygon->vertices");
+	f->portal_polygon->vertices = memory_Malloc(sizeof(vertex_t) * front_vertex_count);
 	#endif
 	f->portal_polygon->next = NULL;
 
@@ -335,7 +335,7 @@ void bsp_SplitPortal(bsp_pnode_t *node, bsp_portal_t *portal, bsp_portal_t **fro
 	#ifndef USE_MEMORY_MALLOC
 	b = malloc(sizeof(bsp_portal_t ));
 	#else
-	b = memory_Malloc(sizeof(bsp_portal_t), "bsp_SplitPortal: b");
+	b = memory_Malloc(sizeof(bsp_portal_t));
 	#endif
 
 	b->leaf0 = portal->leaf0;
@@ -345,7 +345,7 @@ void bsp_SplitPortal(bsp_pnode_t *node, bsp_portal_t *portal, bsp_portal_t **fro
 	#ifndef USE_MEMORY_MALLOC
 	b->portal_polygon = malloc(sizeof(bsp_polygon_t));
 	#else
-	b->portal_polygon = memory_Malloc(sizeof(bsp_polygon_t), "bsp_SplitPortal: b->portal_polygon");
+	b->portal_polygon = memory_Malloc(sizeof(bsp_polygon_t));
 	#endif
 
 	b->portal_polygon->normal = polygon->normal;
@@ -354,7 +354,7 @@ void bsp_SplitPortal(bsp_pnode_t *node, bsp_portal_t *portal, bsp_portal_t **fro
 	#ifndef USE_MEMORY_MALLOC
 	b->portal_polygon->vertices = malloc(sizeof(vertex_t) * (back_vertex_count));
 	#else
-	b->portal_polygon->vertices = memory_Malloc(sizeof(vertex_t) * back_vertex_count, "bsp_SplitPortal: b->portal_polygon->vertices");
+	b->portal_polygon->vertices = memory_Malloc(sizeof(vertex_t) * back_vertex_count);
 	#endif
 	b->portal_polygon->next = NULL;
 
@@ -473,7 +473,7 @@ bsp_portal_t *bsp_ClipPortalToBsp(bsp_node_t *bsp, bsp_portal_t *portal)
 					#ifndef USE_MEMORY_MALLOC
 					front = malloc(sizeof(bsp_portal_t));
 					#else
-					front = memory_Malloc(sizeof(bsp_portal_t), "bsp_ClipPortalToBsp: front");
+					front = memory_Malloc(sizeof(bsp_portal_t));
 					#endif
 
 					front->leaf0 = portal->leaf0;
@@ -483,7 +483,7 @@ bsp_portal_t *bsp_ClipPortalToBsp(bsp_node_t *bsp, bsp_portal_t *portal)
 					#ifndef USE_MEMORY_MALLOC
 					back = malloc(sizeof(bsp_portal_t));
 					#else
-					back = memory_Malloc(sizeof(bsp_portal_t), "bsp_ClipPortalToBsp: back");
+					back = memory_Malloc(sizeof(bsp_portal_t));
 					#endif
 					back->leaf0 = portal->leaf0;
 					back->leaf1 = portal->leaf1;
@@ -1105,7 +1105,7 @@ void bsp_GeneratePortals(bsp_node_t *bsp, bsp_portal_t **portals)
 			#ifndef USE_MEMORY_MALLOC
 			t = malloc(sizeof(bsp_portal_t));
 			#else
-			t = memory_Malloc(sizeof(bsp_portal_t), "bsp_GeneratePortals: t");
+			t = memory_Malloc(sizeof(bsp_portal_t));
 			#endif
 			t->leaf0 = NULL;
 			t->leaf1 = NULL;
@@ -1172,8 +1172,8 @@ void bsp_RecursiveBuildNodePolygons(bsp_node_t *root, bsp_polygon_t **node_polyg
 	polygon = malloc(sizeof(bsp_polygon_t));
 	polygon->vertices = malloc(sizeof(vertex_t) * 4);
 	#else
-	polygon = memory_Malloc(sizeof(bsp_polygon_t), "bsp_RecursiveBuildNodePolygons: polygon");
-	polygon->vertices = memory_Malloc(sizeof(vertex_t) * 4, "bsp_RecursiveBuildNodePolygons: polygon->vertices");
+	polygon = memory_Malloc(sizeof(bsp_polygon_t));
+	polygon->vertices = memory_Malloc(sizeof(vertex_t) * 4);
 	#endif
 
 	/* make sure we have an orthonormal basis... */
@@ -2096,9 +2096,9 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 	out_valid_dst_portals = malloc(sizeof(bsp_portal_t *) * (256));
 	clipplanes = malloc(sizeof(bsp_clipplane_t ) * (256));
 	#else
-	valid_portals = memory_Malloc(sizeof(bsp_portal_t ) * (256), "bsp_RecursivePvsForLeaf: valid_portals");
-	out_valid_dst_portals = memory_Malloc(sizeof(bsp_portal_t *) * (256), "bsp_RecursivePvsForLeaf: out_valid_dst_portals");
-	clipplanes = memory_Malloc(sizeof(bsp_clipplane_t ) * (256), "bsp_RecursivePvsForLeaf: clipplanes");
+	valid_portals = memory_Malloc(sizeof(bsp_portal_t ) * (256));
+	out_valid_dst_portals = memory_Malloc(sizeof(bsp_portal_t *) * (256));
+	clipplanes = memory_Malloc(sizeof(bsp_clipplane_t ) * (256));
 	#endif
 
 	#ifdef LOG_STUFF
@@ -3049,7 +3049,7 @@ void bsp_BuildPvsJobList(bsp_node_t *bsp)
 			#ifndef USE_MEMORY_MALLOC
 			job = malloc(sizeof(pvs_job_t));
 			#else
-			job = memory_Malloc(sizeof(pvs_job_t), "bsp_BuildPvsJobList: job");
+			job = memory_Malloc(sizeof(pvs_job_t));
 			#endif
 			job->leaf = leaf;
 			job->time_out = SMALL_START_TIME_OUT;

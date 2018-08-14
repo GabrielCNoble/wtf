@@ -87,6 +87,52 @@ extern "C"
 #endif
 
 
+struct ClosestNotMeRaycastResultCallback : public btCollisionWorld::ClosestRayResultCallback
+{
+    btCollisionObject *m_me;
+
+    ClosestNotMeRaycastResultCallback(const btVector3 &from, const btVector3 &to, btCollisionObject *me) :
+    btCollisionWorld::ClosestRayResultCallback(from, to)
+    {
+        m_me = me;
+    }
+
+    btScalar addSingleResult(btCollisionWorld::LocalRayResult &ray_result, bool world_normal)
+    {
+        if(ray_result.m_collisionObject == m_me)
+        {
+            return 1.0;
+        }
+
+        return ClosestRayResultCallback::addSingleResult(ray_result, world_normal);
+    }
+};
+
+
+struct ClosestWorldOnlyRaycaseResultCallback : public btCollisionWorld::ClosestRayResultCallback
+{
+	btCollisionObject *m_world;
+
+	ClosestWorldOnlyRaycaseResultCallback(const btVector3 &from, const btVector3 &to, btCollisionObject *world)	:
+	btCollisionWorld::ClosestRayResultCallback(from, to)
+	{
+        m_world = world;
+	}
+
+	btScalar addSingleResult(btCollisionWorld::LocalRayResult &ray_result, bool world_normal)
+	{
+		if(m_world)
+		{
+			if(ray_result.m_collisionObject != m_world)
+			{
+				return 1.0;
+			}
+		}
+
+		return ClosestRayResultCallback::addSingleResult(ray_result, world_normal);
+	}
+};
+
 
 int physics_Init()
 {
@@ -183,9 +229,9 @@ void physics_ProcessCollisions(double delta_time)
 collider_def_t *physics_CreateColliderDef(char *name)
 {
 	collider_def_t *def;
-	def = (collider_def_t *) memory_Malloc(sizeof(collider_def_t), "physics_CreateColliderDef");
+	def = (collider_def_t *) memory_Malloc(sizeof(collider_def_t));
 
-	def->name = memory_Strdup(name, "physics_CreateColliderDef");
+	def->name = memory_Strdup(name);
 	def->ref_count = 0;
 	def->next = NULL;
 	def->prev = NULL;
@@ -229,7 +275,7 @@ collider_def_t *physics_CreateRigidBodyColliderDef(char *name)
 	def->mass = 1.0;
 	def->max_collision_shapes = 16;
 	def->collision_shape_count = 0;
-	def->collision_shape = (collision_shape_t *) memory_Malloc(sizeof(collision_shape_t) * def->max_collision_shapes, "physics_CreateColliderDef");
+	def->collision_shape = (collision_shape_t *) memory_Malloc(sizeof(collision_shape_t) * def->max_collision_shapes);
 	def->flags = COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
 	def->type = COLLIDER_TYPE_RIGID_BODY_COLLIDER;
 
@@ -396,7 +442,7 @@ void physics_AddCollisionShape(collider_def_t *def, vec3_t scale, vec3_t relativ
 
 				if(collision_shape_index >= def->max_collision_shapes)
 				{
-					collision_shape = (collision_shape_t *) memory_Malloc(sizeof(collision_shape_t ) * (def->max_collision_shapes + 16), "physics_AddCollisionShape");
+					collision_shape = (collision_shape_t *) memory_Malloc(sizeof(collision_shape_t ) * (def->max_collision_shapes + 16));
 					memcpy(collision_shape, def->collision_shape, sizeof(collision_shape_t ) * def->max_collision_shapes);
 
 					memory_Free(def->collision_shape);
@@ -947,7 +993,7 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	collider_motion_state = new btDefaultMotionState(collider_transform);
 	collider_rigid_body = new btRigidBody(def->mass, collider_motion_state, collider_collision_shape, btVector3(def->inertia_tensor.x, def->inertia_tensor.y, def->inertia_tensor.z));
 
-	physics_world->addRigidBody(collider_rigid_body);
+	physics_world->addRigidBody(collider_rigid_body, 0xffff, 0xffff);
 
 
 	collider_rigid_body->setWorldTransform(collider_transform);
@@ -1622,34 +1668,43 @@ struct collision_record_t *physics_GetColliderCollisionRecords(struct collider_h
 =================================================================
 */
 
-int physics_Raycast(vec3_t from, vec3_t to, vec3_t *hit_position, vec3_t *hit_normal)
+int physics_Raycast(vec3_t from, vec3_t to, vec3_t *hit_position, vec3_t *hit_normal, int world_only)
 {
 
-	btVector3 vfrom = btVector3(from.x, from.y, from.z);
-	btVector3 vto = btVector3(to.x, to.y, to.z);
+	btVector3 v_from = btVector3(from.x, from.y, from.z);
+	btVector3 v_to = btVector3(to.x, to.y, to.z);
 
-	btCollisionWorld::ClosestRayResultCallback callback(vfrom, vto);
+	//btCollisionWorld::ClosestRayResultCallback hit(v_from, v_to);
+
+	btCollisionObject *world = NULL;
+
+	if(world_only)
+	{
+		world = world_collision_object;
+	}
+
+	ClosestWorldOnlyRaycaseResultCallback hit(v_from, v_to, world);
 
 	float htime;
 
 	if(world_collision_object)
 	{
-		physics_world->rayTest(vfrom, vto, callback);
+		physics_world->rayTest(v_from, v_to, hit);
 
-		if(callback.m_closestHitFraction < 1.0)
+		if(hit.m_closestHitFraction < 1.0)
 		{
 			if(hit_position)
 			{
-				hit_position->x = callback.m_hitPointWorld[0];
-				hit_position->y = callback.m_hitPointWorld[1];
-				hit_position->z = callback.m_hitPointWorld[2];
+				hit_position->x = hit.m_hitPointWorld[0];
+				hit_position->y = hit.m_hitPointWorld[1];
+				hit_position->z = hit.m_hitPointWorld[2];
 			}
 
 			if(hit_normal)
 			{
-				hit_normal->x = callback.m_hitNormalWorld[0];
-				hit_normal->y = callback.m_hitNormalWorld[1];
-				hit_normal->z = callback.m_hitNormalWorld[2];
+				hit_normal->x = hit.m_hitNormalWorld[0];
+				hit_normal->y = hit.m_hitNormalWorld[1];
+				hit_normal->z = hit.m_hitNormalWorld[2];
 			}
 
 			return 1;
@@ -1673,6 +1728,7 @@ void physics_ClearWorldCollisionMesh()
 		physics_world->removeCollisionObject(world_collision_object);
 		delete world_collision_object;
 		delete world_collision_mesh;
+		delete world_triangles;
 
 		world_collision_object = NULL;
 		world_collision_mesh = NULL;
@@ -1694,7 +1750,8 @@ void physics_BuildWorldCollisionMesh()
 
 
 //	triangle_mesh = new btTriangleMesh();
-	world_triangles = new btTriangleMesh();
+	world_triangles = new btTriangleMesh(true, false);
+
 	for(i = 0; i < w_world_vertices_count; i += 3)
 	{
 		world_triangles->addTriangle(btVector3(w_world_vertices[i	 ].position.x, w_world_vertices[i	 ].position.y, w_world_vertices[i	 ].position.z),
@@ -1702,13 +1759,13 @@ void physics_BuildWorldCollisionMesh()
 								     btVector3(w_world_vertices[i + 2].position.x, w_world_vertices[i + 2].position.y, w_world_vertices[i + 2].position.z));
 	}
 
-	world_collision_mesh = new btBvhTriangleMeshShape(world_triangles, true, true);
+	world_collision_mesh = new btBvhTriangleMeshShape(world_triangles, false, true);
 
 	world_collision_object = new btCollisionObject();
 	world_collision_object->setCollisionShape(world_collision_mesh);
 	world_collision_object->setUserIndex(*(int *)&handle);
 
-	physics_world->addCollisionObject(world_collision_object);
+	physics_world->addCollisionObject(world_collision_object, 0xffff, 0xffff);
 }
 
 #ifdef __cplusplus

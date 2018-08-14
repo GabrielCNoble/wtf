@@ -31,6 +31,7 @@
 #include "..\..\common\script\script.h"
 #include "..\..\common\navigation.h"
 #include "..\..\common\resource.h"
+#include "..\..\common\sound.h"
 
 #include "..\..\common\containers\stack_list.h"
 
@@ -98,8 +99,9 @@ extern struct stack_list_t ent_components[2][COMPONENT_TYPE_LAST];
 
 
 /* from navigation.c */
-extern int nav_waypoint_count;
-extern struct waypoint_t *nav_waypoints;
+struct stack_list_t *nav_waypoints;
+//extern int nav_waypoint_count;
+//extern struct waypoint_t *nav_waypoints;
 
 
 /* from portal.c */
@@ -192,6 +194,15 @@ struct batch_t *level_editor_world_batches = NULL;
 int level_editor_entity_buffer_size = 0;
 void *level_editor_entity_buffer = NULL;
 
+int level_editor_waypoint_buffer_size = 0;
+void *level_editor_waypoint_buffer = NULL;
+
+int level_editor_light_buffer_size = 0;
+void *level_editor_light_buffer = NULL;
+
+int level_editor_buffer_size = 0;
+void *level_editor_buffer = NULL;
+
 //int level_editor_entity_list_cursor = 0;
 //int level_editor_entity_list_size = 0;
 //int level_editor_entity_free_stack_top = -1;
@@ -249,17 +260,17 @@ void editor_LevelEditorInit()
 
 	level_editor_pick_list.max_records = 1024;
 	level_editor_pick_list.record_count = 0;
-	level_editor_pick_list.records = memory_Malloc(sizeof(pick_record_t) * level_editor_pick_list.max_records, "editor_LevelEditorInit");
+	level_editor_pick_list.records = memory_Malloc(sizeof(pick_record_t) * level_editor_pick_list.max_records);
 
 
 	level_editor_brush_face_pick_list.max_records = 10;
 	level_editor_brush_face_pick_list.record_count = 0;
-	level_editor_brush_face_pick_list.records = memory_Malloc(sizeof(pick_record_t) * level_editor_brush_face_pick_list.max_records, "editor_LevelEditorInit");
+	level_editor_brush_face_pick_list.records = memory_Malloc(sizeof(pick_record_t) * level_editor_brush_face_pick_list.max_records);
 
 
 	level_editor_brush_face_uv_pick_list.max_records = 128;
 	level_editor_brush_face_uv_pick_list.record_count = 0;
-	level_editor_brush_face_uv_pick_list.records = memory_Malloc(sizeof(pick_record_t) * level_editor_brush_face_uv_pick_list.max_records, "editor_LevelEditorInit");
+	level_editor_brush_face_uv_pick_list.records = memory_Malloc(sizeof(pick_record_t) * level_editor_brush_face_uv_pick_list.max_records);
 
 	camera_PitchYawCamera(level_editor_camera, level_editor_camera_yaw, level_editor_camera_pitch);
 	camera_ComputeWorldToCameraMatrix(level_editor_camera);
@@ -276,15 +287,17 @@ void editor_LevelEditorInit()
 	struct particle_system_script_t *script = particle_LoadParticleSystemScript("scripts/particle_system.as", "particle_system_test_script");
 	//struct script_t *particle_system_script = script_LoadScript("scripts/particle_system.as", "particle_system_test_script");
 
-	int ps_def = particle_CreateParticleSystemDef("particle system", 500, 120, 1, 0, 0, script);
+	int texture = texture_LoadTexture("Branches0013_1_S.png", "cloud", 0);
 
-	//particle_SpawnParticleSystem(vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, ps_def);
+	//int ps_def = particle_CreateParticleSystemDef("particle system", 500, 120, 1, 0, texture, script);
 
-	struct entity_script_t *player_script = entity_LoadScript("scripts/player.as", "player");
+	//particle_SpawnParticleSystem(vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), &r, ps_def);
+
+	//struct entity_script_t *player_script = entity_LoadScript("scripts/player.as", "player");
 	//struct entity_script_t *enemy_script = entity_LoadScript("scripts/enemy.as", "enemy");
 	//struct entity_script_t *bullet_script = entity_LoadScript("scripts/bullet.as", "bullet");
 
-	struct collider_def_t *def;
+	//struct collider_def_t *def;
 
 	//def = physics_CreateCharacterColliderDef("test collider", 1.0, 0.5, 0.3, 0.15, 0.7);
 	//int model_index2 = model_LoadModel("cube.mpk", "cube");
@@ -295,12 +308,12 @@ void editor_LevelEditorInit()
 	resource_LoadResource("toilet.mpk");
 	resource_LoadResource("cube.mpk");*/
 
-	struct entity_handle_t body_entity;
+	/*struct entity_handle_t body_entity;
 	struct entity_handle_t camera_entity;
 	struct entity_handle_t weapon_entity;
 	struct entity_handle_t spawn_entity;
 	int model_index;
-	int model_index2;
+	int model_index2;*/
 
 	//model_index = model_GetModel("toilet2");
 	//model_index2 = model_GetModel("cube");
@@ -351,9 +364,26 @@ void editor_LevelEditorInit()
 
 	//entity = entity_GetNestledEntityHandle(entity, "weapon entity");
 
+    struct world_script_t *world_script = world_LoadScript("test.was", "test");
+    world_SetWorldScript(world_script);
 
 
-	r = mat3_t_id();
+    //struct sound_handle_t noise = sound_GenerateNoise("noise", 2.0);
+
+    struct sound_handle_t sine = sound_GenerateSineWave("sine", 10.0, 60.0);
+
+    sound_PlaySound(sine, vec3_t_c(0.0, 0.0, 0.0), 0.5);
+
+    sine = sound_GenerateSineWave("sine", 10.0, 61.0);
+
+    sound_PlaySound(sine, vec3_t_c(0.0, 0.0, 0.0), 0.5);
+
+    /*sine = sound_GenerateSineWave("sine", 5.0, 240.0);
+
+    sound_PlaySound(sine, vec3_t_c(0.0, 0.0, 0.0), 1.0);*/
+
+
+	//r = mat3_t_id();
 
 	//entity_SpawnEntity(&r, vec3_t_c(0.0, 2.0, -10.0), vec3_t_c(1.0, 1.0, 1.0), body_entity, "test player");
 
@@ -450,9 +480,9 @@ void editor_LevelEditorFinish()
 		//memory_Free(level_editor_collider_free_stack);
 		//memory_Free(level_editor_colliders);
 
-		memory_Free(level_editor_light_positions);
-		memory_Free(level_editor_light_params);
-		memory_Free(level_editor_light_free_stack);
+		//memory_Free(level_editor_light_positions);
+		//memory_Free(level_editor_light_params);
+		//memory_Free(level_editor_light_free_stack);
 
 		//memory_Free(level_editor_portal_free_stack);
 		//memory_Free(level_editor_portals);
@@ -469,6 +499,9 @@ void editor_LevelEditorSetup()
 	renderer_RegisterCallback(editor_LevelEditorPostDraw, POST_SHADING_STAGE_CALLBACK);
 	editor_LevelEditorUISetup();
 	editor_LevelEditorRestoreLevelData();
+
+	editor_SetExplorerReadFileCallback(editor_LevelEditorLoadLevel);
+	editor_SetExplorerWriteFileCallback(editor_LevelEditorSaveLevel);
 }
 
 void editor_LevelEditorShutdown()
@@ -481,6 +514,8 @@ void editor_LevelEditorShutdown()
 	editor_LevelEditorUIShutdown();
 	editor_LevelEditorCopyLevelData();
 	editor_LevelEditorClearLevelData();
+
+	editor_ClearExplorerFileCallbacks();
 
 	camera_Deactivate(level_editor_camera);
 }
@@ -649,6 +684,12 @@ void editor_LevelEditorUpdate3dHandlePosition()
 	level_editor_3d_handle_position.x = 0.0;
 	level_editor_3d_handle_position.y = 0.0;
 	level_editor_3d_handle_position.z = 0.0;
+
+	struct waypoint_t *waypoint;
+
+
+	//waypoints = (struct waypoint_t *)nav_waypoints.elements;
+
 	brush_t *brush;
 
 	for(i = 0; i < level_editor_pick_list.record_count; i++)
@@ -687,9 +728,12 @@ void editor_LevelEditorUpdate3dHandlePosition()
 			break;
 
 			case PICK_WAYPOINT:
-				level_editor_3d_handle_position.x += nav_waypoints[level_editor_pick_list.records[i].index0].position.x;
-				level_editor_3d_handle_position.y += nav_waypoints[level_editor_pick_list.records[i].index0].position.y;
-				level_editor_3d_handle_position.z += nav_waypoints[level_editor_pick_list.records[i].index0].position.z;
+
+				waypoint = navigation_GetWaypointPointer(level_editor_pick_list.records[i].index0);
+
+				level_editor_3d_handle_position.x += waypoint->position.x;
+				level_editor_3d_handle_position.y += waypoint->position.y;
+				level_editor_3d_handle_position.z += waypoint->position.z;
 			break;
 		}
 
@@ -1261,6 +1305,13 @@ void editor_LevelEditorStartPIE()
 	editor_LevelEditorCopyLevelData();
 	engine_SetEngineState(ENGINE_PLAYING);
 	level_editor_state = EDITOR_PIE;
+
+	entity_ResetEntitySpawnTimes();
+
+	/* this makes the "OnMapEntry" function to be
+	called... */
+	world_SetWorldScript(world_GetWorldScript());
+
 }
 
 void editor_LevelEditorStopPIE()
@@ -1300,6 +1351,9 @@ void editor_LevelEditorCopyLevelData()
 		level_editor_world_batch_count = w_world_batch_count;
 		level_editor_world_batches = w_world_batches;
 
+
+
+
 		if(level_editor_entity_buffer)
 		{
 			memory_Free(level_editor_entity_buffer);
@@ -1307,11 +1361,30 @@ void editor_LevelEditorCopyLevelData()
 
 		entity_SerializeEntities(&level_editor_entity_buffer, &level_editor_entity_buffer_size, 0);
 
-		FILE *file;
+
+        if(level_editor_waypoint_buffer)
+		{
+			memory_Free(level_editor_waypoint_buffer);
+		}
+
+		navigation_SerializeWaypoints(&level_editor_waypoint_buffer, &level_editor_waypoint_buffer_size);
+
+		if(level_editor_light_buffer)
+		{
+			memory_Free(level_editor_light_buffer);
+		}
+
+		light_SerializeLights(&level_editor_light_buffer, &level_editor_light_buffer_size);
+
+
+
+
+
+		/*FILE *file;
 
 		file = fopen("test.dmp", "wb");
 		fwrite(level_editor_entity_buffer, level_editor_entity_buffer_size, 1, file);
-		fclose(file);
+		fclose(file);*/
 
 		/************************************************************************************************/
 
@@ -1367,7 +1440,7 @@ void editor_LevelEditorCopyLevelData()
 
 		/************************************************************************************************/
 
-		if(l_light_list_size >= level_editor_light_list_size)
+		/*if(l_light_list_size >= level_editor_light_list_size)
 		{
 			if(level_editor_light_params)
 			{
@@ -1376,9 +1449,9 @@ void editor_LevelEditorCopyLevelData()
 				memory_Free(level_editor_light_free_stack);
 			}
 
-			level_editor_light_params = memory_Malloc(sizeof(light_params_t) * l_light_list_size, "editor_LevelEditorCopyLevelData");
-			level_editor_light_positions = memory_Malloc(sizeof(light_position_t) * l_light_list_size, "editor_LevelEditorCopyLevelData");
-			level_editor_light_free_stack = memory_Malloc(sizeof(int) * l_light_list_size, "editor_LevelEditorCopyLevelData");
+			level_editor_light_params = memory_Malloc(sizeof(light_params_t) * l_light_list_size);
+			level_editor_light_positions = memory_Malloc(sizeof(light_position_t) * l_light_list_size);
+			level_editor_light_free_stack = memory_Malloc(sizeof(int) * l_light_list_size);
 
 			level_editor_light_list_size = l_light_list_size;
 		}
@@ -1391,7 +1464,7 @@ void editor_LevelEditorCopyLevelData()
 		}
 
 		level_editor_light_list_cursor = l_light_list_cursor;
-		level_editor_light_free_stack_top = l_free_position_stack_top;
+		level_editor_light_free_stack_top = l_free_position_stack_top;*/
 
 		/************************************************************************************************/
 
@@ -1410,6 +1483,10 @@ void editor_LevelEditorClearLevelData()
 		last_brush = NULL;
 		brush_count = 0;
 
+        entity_RemoveAllEntities();
+		navigation_DestroyAllWaypoints();
+		light_DestroyAllLights();
+
 		w_world_vertices_count = 0;
 		w_world_vertices = NULL;
 
@@ -1422,7 +1499,7 @@ void editor_LevelEditorClearLevelData()
 		w_world_batch_count = 0;
 		w_world_batches = NULL;
 
-		entity_RemoveAllEntities();
+
 
 		l_light_list_cursor = 0;
 		l_free_position_stack_top = -1;
@@ -1460,15 +1537,23 @@ void editor_LevelEditorRestoreLevelData()
 		w_world_batch_count = level_editor_world_batch_count;
 		w_world_batches = level_editor_world_batches;
 
-		read_buffer = level_editor_entity_buffer;
 
+
+
+		read_buffer = level_editor_entity_buffer;
 		entity_DeserializeEntities(&read_buffer, 0);
+
+		read_buffer = level_editor_waypoint_buffer;
+		navigation_DeserializeWaypoints(&read_buffer);
+
+		read_buffer = level_editor_light_buffer;
+		light_DeserializeLights(&read_buffer);
 
 
 		/************************************************************************************************/
 
 
-		for(i = 0; i < level_editor_light_list_cursor; i++)
+		/*for(i = 0; i < level_editor_light_list_cursor; i++)
 		{
 			l_light_params[i] = level_editor_light_params[i];
 			l_light_positions[i] = level_editor_light_positions[i];
@@ -1476,16 +1561,188 @@ void editor_LevelEditorRestoreLevelData()
 		}
 
 		l_light_list_cursor = level_editor_light_list_cursor;
-		l_free_position_stack_top = level_editor_light_free_stack_top;
+		l_free_position_stack_top = level_editor_light_free_stack_top;*/
 
 	}
-
-
-
 }
 
 
+/*
+====================================================================
+====================================================================
+====================================================================
+*/
 
+static char level_editor_buffer_start_tag[] = "[buffer start]";
+
+struct level_editor_buffer_start_t
+{
+    char tag[(sizeof(level_editor_buffer_start_tag) + 3) & (~3)];
+};
+
+static char level_editor_buffer_end_tag[] = "[buffer end]";
+
+struct level_editor_buffer_end_t
+{
+	char tag[(sizeof(level_editor_buffer_end_tag) + 3) & (~3)];
+};
+
+void editor_LevelEditorSerialize(void **buffer, int *buffer_size)
+{
+	char *out = NULL;
+	int out_size = 0;
+
+	struct level_editor_buffer_start_t *buffer_start;
+	struct level_editor_buffer_end_t *buffer_end;
+
+
+    void *brush_buffer;
+    int brush_buffer_size;
+
+    void *waypoint_buffer;
+	int waypoint_buffer_size;
+
+	void *light_buffer;
+	int light_buffer_size;
+
+
+    brush_SerializeBrushes(&brush_buffer, &brush_buffer_size);
+    navigation_SerializeWaypoints(&waypoint_buffer, &waypoint_buffer_size);
+    light_SerializeLights(&light_buffer, &light_buffer_size);
+
+    out_size = brush_buffer_size + waypoint_buffer_size + light_buffer_size + sizeof(struct level_editor_buffer_start_t) + sizeof(struct level_editor_buffer_end_t);
+    out = memory_Calloc(out_size, 1);
+
+	*buffer = out;
+    *buffer_size = out_size;
+
+
+    buffer_start = (struct level_editor_buffer_start_t *)out;
+    out += sizeof(struct level_editor_buffer_start_t);
+
+    strcpy(buffer_start->tag, level_editor_buffer_start_tag);
+
+	if(brush_buffer_size)
+	{
+		memcpy(out, brush_buffer, brush_buffer_size);
+		out += brush_buffer_size;
+	}
+
+	if(waypoint_buffer_size)
+	{
+		memcpy(out, waypoint_buffer, waypoint_buffer_size);
+		out += waypoint_buffer_size;
+	}
+
+	if(light_buffer_size)
+	{
+		memcpy(out, light_buffer, light_buffer_size);
+		out += light_buffer_size;
+	}
+
+    buffer_end = (struct level_editor_buffer_end_t *)out;
+    out += sizeof(struct level_editor_buffer_end_t);
+
+	strcpy(buffer_end->tag, level_editor_buffer_end_tag);
+
+	memory_Free(brush_buffer);
+	memory_Free(waypoint_buffer);
+}
+
+
+extern char waypoint_section_start_tag[];
+extern char brush_section_start_tag[];
+extern char light_section_start_tag[];
+
+void editor_LevelEditorDeserialize(void **buffer)
+{
+	char *in;
+	int i = 0;
+
+	struct level_editor_buffer_start_t *buffer_start;
+	struct level_editor_buffer_end_t *buffer_end;
+
+	in = *buffer;
+
+    while(1)
+	{
+        if(!strcmp(in, level_editor_buffer_start_tag))
+		{
+			buffer_start = (struct level_editor_buffer_start_t *)in;
+			in += sizeof(struct level_editor_buffer_start_t );
+		}
+		else if(!strcmp(in, waypoint_section_start_tag))
+		{
+            navigation_DeserializeWaypoints((void **)&in);
+		}
+		else if(!strcmp(in, brush_section_start_tag))
+		{
+			brush_DeserializeBrushes((void **)&in);
+		}
+		else if(!strcmp(in, light_section_start_tag))
+		{
+			light_DeserializeLights((void **)&in);
+		}
+		else if(!strcmp(in, level_editor_buffer_end_tag))
+		{
+			buffer_end = (struct level_editor_buffer_end_t *)in;
+			in += sizeof(struct level_editor_buffer_end_t );
+			break;
+		}
+		else
+		{
+			in++;
+		}
+	}
+
+    *buffer = in;
+}
+
+
+int editor_LevelEditorSaveLevel(char *file_path, char *file_name, void **file_buffer, int *file_buffer_size)
+{
+	editor_LevelEditorSerialize(file_buffer, file_buffer_size);
+	return 1;
+}
+
+int editor_LevelEditorLoadLevel(char *path, char *file_name)
+{
+	char file_path[PATH_MAX];
+	unsigned long file_size;
+	void *file_buffer;
+	void *read_buffer;
+
+	FILE *file;
+
+	if(!strcmp(path_GetFileExtension(file_name), "wtf"))
+    {
+        strcpy(file_path, path);
+        strcat(file_path, "/");
+        strcat(file_path, file_name);
+
+
+        file = fopen(file_path, "rb");
+
+        if(file)
+        {
+            file_size = path_GetFileSize(file);
+
+            file_buffer = memory_Calloc(file_size, 1);
+            fread(file_buffer, file_size, 1, file);
+            fclose(file);
+
+            read_buffer = file_buffer;
+
+            editor_LevelEditorDeserialize(&read_buffer);
+
+            memory_Free(file_buffer);
+
+            return 1;
+        }
+    }
+
+	return 0;
+}
 
 
 

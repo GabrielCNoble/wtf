@@ -37,7 +37,7 @@ struct light_cluster_t
 	unsigned x0 : 6;
 	unsigned y0 : 5;
 	unsigned z0 : 5;
-	
+
 	unsigned x1 : 6;
 	unsigned y1 : 5;
 	unsigned z1 : 5;
@@ -51,48 +51,48 @@ typedef struct
 }light_position_t;
 
 
-typedef struct 
+typedef struct
 {
 	bsp_dleaf_t *leaf;					/* in which leaf this light is in (updated every time it moves)... */
 	vec3_t box_max;								/* this box is calculated when the visible triangles are determined. As long as
 												   the light remains inside this box, no update is needed...*/
-	vec3_t box_min;		
-	
+	vec3_t box_min;
+
 	unsigned char r;
 	unsigned char g;
 	unsigned char b;
 	char cache;									/* which cache slot holds this light... */
-	
+
 	unsigned short radius;
 	unsigned short energy;
 	unsigned short visible_triangle_count;		/* this could go somewhere else... */
 	//unsigned int shadow_map;
-	
+
 	unsigned char bm_flags;
 	unsigned char align0;
-	
+
 	short shadow_map;
-	
+
 	short x;
 	short y;
 	short w;
 	short h;
-	
+
 	//unsigned char align1;
 	//unsigned char align2;
-	
+
 	//int view_cluster_count;
 	//unsigned short view_cluster_list_cursor;
 	//unsigned short view_cluster_list_size;
 	//view_clusters_t *view_clusters;
 	//unsigned int *view_clusters;
 	//view_cluster_t *view_clusters;
-	
+
 //	unsigned int first_cluster;
 //	unsigned int last_cluster;
-	
+
 	struct light_cluster_t cluster;
-	
+
 }light_params_t;
 
 
@@ -104,7 +104,7 @@ typedef struct
 
 struct gpu_light_t
 {
-	
+
 	vec4_t forward_axis;
 	vec4_t position_radius;
 	vec4_t color_energy;
@@ -139,48 +139,6 @@ typedef struct
 ===================================================================
 */
 
-typedef struct
-{
-	int light_count;
-	
-	int reserved0;
-	int reserved1;
-	int reserved2;
-	int reserved3;
-	int reserved4;
-	int reserved5;
-	int reserved6;
-	int reserved7;
-}light_section_header_t;
-
-
-typedef struct
-{
-	mat3_t orientation;
-	vec3_t position;
-	vec3_t color;
-	float radius;
-	float energy;
-	int flags;
-	
-	int reserved0;
-	int reserved1;
-	int reserved2;
-	int reserved3;
-	int reserved4;
-	int reserved5;
-	int reserved6;
-	int reserved7;
-	
-	char name[LIGHT_MAX_NAME_LEN];
-	
-}light_record_t;
-
-/*
-===================================================================
-===================================================================
-===================================================================
-*/
 
 
 int light_Init();
@@ -193,18 +151,20 @@ int light_DestroyLight(char *name);
 
 int light_DestroyLightIndex(int light_index);
 
+void light_DestroyAllLights();
+
 int light_Getlight(char *name);
 
 light_ptr_t light_GetLightPointer(char *name);
 
 light_ptr_t light_GetLightPointerIndex(int light_index);
 
-void light_DestroyAllLights();
+
 
 /* updates which leaves contains which lights... */
 //void light_MarkLightsOnLeaves();
 
-/* find out which clusters each visible light affect 
+/* find out which clusters each visible light affect
 (and eliminate lights outside the frustum)... */
 //void light_LightBounds();
 
@@ -221,6 +181,8 @@ render its shadow map... */
 
 
 void light_ClearLightLeaves();
+
+void light_EntitiesOnLights();
 
 void light_TranslateLight(int light_index, vec3_t direction, float amount);
 

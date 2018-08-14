@@ -83,7 +83,7 @@ void engine_Init(int width, int height, int init_mode, int argc, char *argv[])
 	memory_Init(0);
 
 	path_Init(argv[0]);
-	path_AddSearchPath("fonts", SEARCH_PATH_FONT);
+	//path_AddSearchPath("fonts");
 
 	b_init_properly = 1;
 
@@ -233,6 +233,7 @@ void engine_MainLoop()
 		if(engine_state & ENGINE_PLAYING)
 		{
 			entity_UpdateScriptComponents();
+			world_ExecuteWorldScript();
 			physics_ProcessCollisions(delta_time);
 		}
 
@@ -255,6 +256,7 @@ void engine_MainLoop()
 		world_VisibleWorld();
 		world_VisibleEntities();
 		world_VisibleLights();
+
 
 		gui_CloseGuiFrame();
 

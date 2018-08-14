@@ -71,6 +71,9 @@ int w_visible_lights_count = 0;
 unsigned short w_visible_lights[MAX_WORLD_LIGHTS];
 
 
+struct world_script_t *w_world_script = NULL;
+int w_execute_on_map_enter = 0;
+
 struct list_t w_visible_entities;
 
 
@@ -94,6 +97,8 @@ int w_need_to_clear_world = 0;
 int w_world_batch_count = 0;
 struct batch_t *w_world_batches = NULL;
 
+
+struct list_t w_world_vars;
 
 
 //unsigned int world_element_buffer = 0;
@@ -139,8 +144,10 @@ extern "C"
 
 int world_Init()
 {
-	w_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS, "world_Init");
+	w_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS);
 	w_visible_entities = list_create(sizeof(struct entity_handle_t), 128, NULL);
+
+	w_world_vars = list_create(sizeof(struct world_var_t), 128, NULL);
 
 	return 1;
 }
@@ -149,6 +156,7 @@ void world_Finish()
 {
 	world_Clear();
 
+	list_destroy(&w_world_vars);
 	memory_Free(w_light_buffer);
 	list_destroy(&w_visible_entities);
 }
@@ -3097,6 +3105,299 @@ void world_VisibleWorld()
 }
 
 
+
+
+
+
+
+struct world_var_t *world_AddWorldVar(char *name, int size)
+{
+	struct world_var_t *world_var;
+	struct world_var_t *world_vars;
+	void *old_value;
+	int world_var_index;
+	int i;
+	int c;
+
+	if(size <= 0)
+	{
+		return;
+	}
+
+	world_var = world_GetWorldVarPointer(name);
+
+    if(!world_var)
+	{
+	    /* create if non-existant... */
+		world_var_index = list_add(&w_world_vars, NULL);
+		world_var = list_get(&w_world_vars, world_var_index);
+
+		memset(world_var, 0, sizeof(struct world_var_t));
+
+        world_var->name = memory_Strdup(name);
+        world_var->element_size = size;
+        world_var->value = memory_Malloc(size);
+	}
+	else
+    {
+        if(world_var->element_size < size)
+        {
+            /* resize if requested size is larger... */
+            old_value = world_var->value;
+            world_var->value = memory_Malloc(size);
+            memcpy(world_var->value, old_value, world_var->element_size);
+            memory_Free(old_value);
+            world_var->element_size = size;
+        }
+    }
+
+	return world_var;
+}
+
+struct world_var_t *world_AddWorldArrayVar(char *name, int elem_size, int max_elements)
+{
+    struct world_var_t *world_var;
+
+    int elem_count = 0;
+
+    world_var = world_GetWorldVarPointer(name);
+
+    if(world_var)
+    {
+        /* if this var already exists, save it's element count in
+        case it's being resized... */
+        elem_count = world_var->element_count;
+    }
+
+    world_var = world_AddWorldVar(name, elem_size * max_elements);
+
+    /* adjust element size for array vars... */
+    world_var->element_size = elem_size;
+    world_var->max_elements = max_elements;
+    world_var->element_count = elem_count;
+
+    return world_var;
+}
+
+void world_RemoveWorldVar(char *name)
+{
+	struct world_var_t *world_var;
+	struct world_var_t *first_world_var;
+	int world_var_index;
+
+	world_var = world_GetWorldVarPointer(name);
+
+	if(world_var)
+	{
+        first_world_var = list_get(&w_world_vars, 0);
+		world_var_index = world_var - first_world_var;
+
+		memory_Free(world_var->name);
+		memory_Free(world_var->value);
+
+		list_remove(&w_world_vars, world_var_index);
+	}
+}
+
+
+
+
+struct world_var_t *world_GetWorldVarPointer(char *name)
+{
+	struct world_var_t *world_var;
+	struct world_var_t *world_vars;
+
+	int i;
+	int c;
+
+
+	world_vars = (struct world_var_t *)w_world_vars.elements;
+	c = w_world_vars.element_count;
+
+    for(i = 0; i < c; i++)
+	{
+		if(!strcmp(name, world_vars[i].name))
+		{
+			return world_vars + i;
+		}
+	}
+
+	return NULL;
+}
+
+
+
+
+void world_WorldVarValue(char *name, void *value, int set)
+{
+	struct world_var_t *world_var;
+
+	world_var = world_GetWorldVarPointer(name);
+
+	if(world_var)
+	{
+        if(set)
+		{
+			memcpy(world_var->value, value, world_var->element_size);
+		}
+		else
+		{
+            memcpy(value, world_var->value, world_var->element_size);
+		}
+	}
+}
+
+void world_WorldArrayVarValue(char *name, void *value, int index, int set)
+{
+    struct world_var_t *world_var;
+    int offset;
+
+    world_var = world_GetWorldVarPointer(name);
+
+    if(world_var)
+    {
+        if(index < 0)
+        {
+            index = world_var->element_count;
+            world_var->element_count++;
+        }
+
+
+
+        if(index >= world_var->max_elements)
+        {
+        	if(set)
+			{
+				/* if index is out of bounds, resize the var to avoid the user having to explicitly do it... */
+				world_var = world_AddWorldArrayVar(name, world_var->element_size, (index + 3) & (~3));
+			}
+			else
+			{
+				return;
+			}
+
+        }
+
+        offset = world_var->element_size * index;
+
+        if(set)
+        {
+            memcpy((char *)world_var->value + offset, value, world_var->element_size);
+        }
+        else
+        {
+            memcpy(value, (char *)world_var->value + offset, world_var->element_size);
+        }
+    }
+}
+
+
+
+void world_SetWorldVarValue(char *name, void *value)
+{
+	world_WorldVarValue(name, value, 1);
+}
+
+void world_GetWorldVarValue(char *name, void *value)
+{
+	world_WorldVarValue(name, value, 0);
+}
+
+void world_SetWorldArrayVarValue(char *name, void *value, int index)
+{
+    world_WorldArrayVarValue(name, value, index, 1);
+}
+
+void world_GetWorldArrayVarValue(char *name, void *value, int index)
+{
+    world_WorldArrayVarValue(name, value, index, 0);
+}
+
+void world_AppendWorldArrayVarValue(char *name, void *value)
+{
+    world_WorldArrayVarValue(name, value, -1, 1);
+}
+
+void world_ClearWorldArrayVar(char *name)
+{
+    struct world_var_t *world_var;
+
+    world_var = world_GetWorldVarPointer(name);
+
+    if(world_var)
+	{
+		world_var->element_count = 0;
+	}
+}
+
+
+
+
+void *world_SetupScriptDataCallback(struct script_t *script, void *data)
+{
+    struct world_script_t *world_script;
+
+
+    world_script = (struct world_script_t *)script;
+
+    if(w_execute_on_map_enter)
+    {
+        script_QueueEntryPoint(world_script->on_map_enter);
+        w_execute_on_map_enter = 0;
+    }
+
+    script_QueueEntryPoint(world_script->on_map_update);
+
+    return NULL;
+}
+
+int world_GetScriptDataCallback(struct script_t *script)
+{
+    struct world_script_t *world_script;
+
+    world_script = (struct world_script_t *)script;
+
+    world_script->on_map_update = script_GetFunctionAddress("OnMapUpdate", script);
+    world_script->on_map_exit = script_GetFunctionAddress("OnMapExit", script);
+    world_script->on_map_enter = script_GetFunctionAddress("OnMapEnter", script);
+}
+
+
+
+
+struct world_script_t *world_LoadScript(char *file_name, char *script_name)
+{
+    return (struct world_script_t *)script_LoadScript(file_name, script_name, sizeof(struct world_script_t), world_GetScriptDataCallback, world_SetupScriptDataCallback);
+}
+
+
+void world_SetWorldScript(struct world_script_t *world_script)
+{
+    w_world_script = world_script;
+
+    if(world_script)
+    {
+        w_execute_on_map_enter = 1;
+    }
+}
+
+struct world_script_t *world_GetWorldScript()
+{
+	return w_world_script;
+}
+
+void world_ExecuteWorldScript()
+{
+    if(w_world_script)
+    {
+        script_ExecuteScriptImediate((struct script_t *)w_world_script, NULL);
+    }
+}
+
+
+
+
+
 void world_AddLeafIndexes(int leaf_index)
 {
 
@@ -3133,9 +3434,9 @@ void world_Update()
 	}
 
 
-	w_leaf_lights = memory_Malloc(sizeof(bsp_lights_t ) * w_world_leaves_count, "world_Update: leaf_lights");
+	w_leaf_lights = memory_Malloc(sizeof(bsp_lights_t ) * w_world_leaves_count);
 	//leaf_entities = memory_Malloc(sizeof(bsp_entities_t) * world_leaves_count, "world_Update: leaf_entities");
-	w_index_buffer = memory_Malloc(sizeof(unsigned int ) * w_world_vertices_count, "world_Update: index_buffer");
+	w_index_buffer = memory_Malloc(sizeof(unsigned int ) * w_world_vertices_count);
 
 
 	for(i = 0; i < w_world_leaves_count; i++)
@@ -3159,10 +3460,10 @@ void world_Update()
 	//world_start = gpu_GetAllocStart(world_handle) / sizeof(vertex_t);
 
 	//world_handle = gpu_AllocAlign(sizeof(compact_vertex_t) * world_vertices_count, sizeof(compact_vertex_t), 1);
-	w_world_handle = gpu_AllocVerticesAlign(sizeof(compact_vertex_t) * w_world_vertices_count, sizeof(compact_vertex_t));
+	w_world_handle = gpu_AllocVerticesAlign(sizeof(compact_vertex_t) * w_world_vertices_count + 1024 * 64, sizeof(compact_vertex_t));
 	w_world_start = gpu_GetAllocStart(w_world_handle) / sizeof(compact_vertex_t);
 
-	w_world_index_handle = gpu_AllocIndexesAlign(sizeof(int) * w_world_vertices_count, sizeof(int));
+	w_world_index_handle = gpu_AllocIndexesAlign(sizeof(int) * w_world_vertices_count + 1024 * 64, sizeof(int));
 	w_world_index_start = gpu_GetAllocStart(w_world_index_handle) / sizeof(int);
 
 	compact_world_vertices = model_ConvertVertices(w_world_vertices, w_world_vertices_count);

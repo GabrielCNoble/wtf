@@ -47,10 +47,10 @@ int material_Init()
 	mat_material_count = 0;
 	mat_free_position_stack_top = -1;
 
-	mat_material_name_records = memory_Malloc(sizeof(material_name_record_t) * mat_material_list_size, "material_Init");
-	mat_materials = memory_Malloc(sizeof(material_t) * (mat_material_list_size + 1), "material_Init");
-	mat_material_names = memory_Malloc(sizeof(char **) * (mat_material_list_size + 1), "material_Init");
-	mat_free_position_stack = memory_Malloc(sizeof(int) * mat_material_list_size, "material_Init");
+	mat_material_name_records = memory_Malloc(sizeof(material_name_record_t) * mat_material_list_size);
+	mat_materials = memory_Malloc(sizeof(material_t) * (mat_material_list_size + 1));
+	mat_material_names = memory_Malloc(sizeof(char **) * (mat_material_list_size + 1));
+	mat_free_position_stack = memory_Malloc(sizeof(int) * mat_material_list_size);
 
 	default_material = mat_materials;
 
@@ -193,7 +193,7 @@ char *material_AddNameRecord(char *name)
 		record = &mat_material_name_records[mat_material_name_record_count];
 		mat_material_name_record_count++;
 
-		record->base_name = memory_Strdup(base_name, "material_AddNameRecord");
+		record->base_name = memory_Strdup(base_name);
 
 		for(j = 0; j < MAX_MATERIALS >> 3; j++)
 		{
@@ -466,7 +466,7 @@ int material_CreateMaterial(char *name, vec4_t base_color, float metalness, floa
 	}
 
 
-	*material_name = memory_Strdup(name, "material_CreateMaterial");
+	*material_name = memory_Strdup(name);
 
 	mat_material_count++;
 	return material_index;
@@ -649,7 +649,7 @@ int material_SetMaterialName(char *name, int material_index)
 
 	material_RemoveNameRecord(mat_material_names[material_index]);
 	memory_Free(mat_material_names[material_index]);
-	mat_material_names[material_index] = memory_Strdup(material_AddNameRecord(name), "material_SetMaterialName");
+	mat_material_names[material_index] = memory_Strdup(material_AddNameRecord(name));
 	return 1;
 }
 
@@ -800,7 +800,7 @@ void material_SerializeMaterials(void **buffer, int *buffer_size)
 	int name_offset = 0;
 
 	size = sizeof(material_section_header_t) + sizeof(material_record_t) * mat_material_count;
-	out = memory_Malloc(size, "material_SerializeMaterials");
+	out = memory_Malloc(size);
 
 	*buffer = out;
 	*buffer_size = size;

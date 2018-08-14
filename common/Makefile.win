@@ -1,17 +1,17 @@
-# Project: mcvtr2
-# Makefile created by Dev-C++ 5.10
+# Project: texcvtr
+# Makefile created by Dev-C++ 5.11
 
 CPP      = g++.exe -D__DEBUG__
 CC       = gcc.exe -D__DEBUG__
 WINDRES  = windres.exe
-OBJ      = mcvtr2.o mpk_read.o mpk_write.o gmath/vector.o c_memory.o
-LINKOBJ  = mcvtr2.o mpk_read.o mpk_write.o gmath/vector.o c_memory.o
-LIBS     = -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib32" -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -m32 -g3
-INCS     = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include" -I"gmath"
-CXXINCS  = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include/c++" -I"gmath"
-BIN      = mcvtr2.exe
+OBJ      = texcvtr.o tex_ptx.o c_memory.o soil/stb_image_aug.o path.o
+LINKOBJ  = texcvtr.o tex_ptx.o c_memory.o soil/stb_image_aug.o path.o
+LIBS     = -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -m32 -g3
+INCS     = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include"
+CXXINCS  = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include/c++"
+BIN      = texcvtr.exe
 CXXFLAGS = $(CXXINCS) -march=native -m32 -g3
-CFLAGS   = $(INCS) -march=native -m32 -g3 -masm=intel
+CFLAGS   = $(INCS) -march=native -m32 -g3
 RM       = rm.exe -f
 
 .PHONY: all all-before all-after clean clean-custom
@@ -24,17 +24,17 @@ clean: clean-custom
 $(BIN): $(OBJ)
 	$(CC) $(LINKOBJ) -o $(BIN) $(LIBS)
 
-mcvtr2.o: mcvtr2.c
-	$(CC) -c mcvtr2.c -o mcvtr2.o $(CFLAGS)
+texcvtr.o: texcvtr.c
+	$(CC) -c texcvtr.c -o texcvtr.o $(CFLAGS)
 
-mpk_read.o: mpk_read.c
-	$(CC) -c mpk_read.c -o mpk_read.o $(CFLAGS)
-
-mpk_write.o: mpk_write.c
-	$(CC) -c mpk_write.c -o mpk_write.o $(CFLAGS)
-
-gmath/vector.o: gmath/vector.c
-	$(CC) -c gmath/vector.c -o gmath/vector.o $(CFLAGS)
+tex_ptx.o: tex_ptx.c
+	$(CC) -c tex_ptx.c -o tex_ptx.o $(CFLAGS)
 
 c_memory.o: c_memory.c
 	$(CC) -c c_memory.c -o c_memory.o $(CFLAGS)
+
+soil/stb_image_aug.o: soil/stb_image_aug.c
+	$(CC) -c soil/stb_image_aug.c -o soil/stb_image_aug.o $(CFLAGS)
+
+path.o: path.c
+	$(CC) -c path.c -o path.o $(CFLAGS)

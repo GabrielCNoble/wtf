@@ -47,7 +47,7 @@ int mpk_read(char *file_name, struct output_params_t *out_params)
 	rewind(file);
 
 
-	file_buffer = memory_Malloc(file_size, "read_mpk");
+	file_buffer = memory_Malloc(file_size);
 	fread(file_buffer, file_size, 1, file);
 	fclose(file);
 
@@ -69,21 +69,21 @@ int mpk_read(char *file_name, struct output_params_t *out_params)
 	out_params->out_indices_count = header->indice_count;
 
 	/* then we read all the vertices accessed from all batches/lods... */
-	out_params->out_vertices = memory_Malloc(sizeof(vertex_t) * header->vertice_count, "mpk_read");
-	
+	out_params->out_vertices = memory_Malloc(sizeof(vertex_t) * header->vertice_count);
+
 	for(i = 0; i < header->vertice_count; i++)
 	{
 		out_params->out_vertices[i] = *(vertex_t *)in;
 		in += sizeof(vertex_t);
 	}
-	
+
 	//memcpy(out_params->out_vertices, in, sizeof(vertex_t) * header->vertice_count);
 	//in += sizeof(vertex_t) * header->vertice_count;
 
 
-	out_params->out_lods = memory_Malloc(sizeof(struct mpk_lod_t) * header->lod_count, "mpk_read");
-    out_params->out_lods_batches = memory_Malloc(sizeof(struct mpk_batch_t) * header->lod_count * header->batch_count, "mpk_read");
-    out_params->out_lods_indices = memory_Malloc(sizeof(int) * header->lod_count, "mpk_read");
+	out_params->out_lods = memory_Malloc(sizeof(struct mpk_lod_t) * header->lod_count);
+    out_params->out_lods_batches = memory_Malloc(sizeof(struct mpk_batch_t) * header->lod_count * header->batch_count);
+    out_params->out_lods_indices = memory_Malloc(sizeof(int) * header->lod_count);
 
     for(i = 0; i < header->lod_count; i++)
 	{
@@ -94,15 +94,15 @@ int mpk_read(char *file_name, struct output_params_t *out_params)
         out_params->out_lods[i].indice_count = lod->indice_count;
 
         /* and the indices it has... */
-        out_params->out_lods_indices[i] = memory_Malloc(sizeof(int) * lod->indice_count, "mpk_read");
-        out_params->out_lods_batches[i] = memory_Malloc(sizeof(struct mpk_batch_t) * header->batch_count, "mpk_read");
-        
+        out_params->out_lods_indices[i] = memory_Malloc(sizeof(int) * lod->indice_count);
+        out_params->out_lods_batches[i] = memory_Malloc(sizeof(struct mpk_batch_t) * header->batch_count);
+
         for(j = 0; j < lod->indice_count; j++)
 		{
 			*(out_params->out_lods_indices[i] + j) = *(int *)in;
 			in += sizeof(int);
 		}
-        
+
         //memcpy(out_params->out_lods_indices[i], in, sizeof(int) * lod->indice_count);
         //in += sizeof(int) * lod->indice_count;
 
@@ -114,7 +114,7 @@ int mpk_read(char *file_name, struct output_params_t *out_params)
 			memcpy(out_params->out_lods_batches[i * out_params->out_batches_count + j], batch, sizeof(struct mpk_batch_t));
 		}
 	}
-	
+
 
 
 

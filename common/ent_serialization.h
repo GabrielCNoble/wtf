@@ -6,12 +6,12 @@
 
 
 
-static char entity_section_header_tag[] = "[entity section start]";
+static char entity_section_start_tag[] = "[entity section start]";
 
-struct entity_section_header_t
+struct entity_section_start_t
 {
 	/* this field has to be the first... */
-	char tag[(sizeof(entity_section_header_tag) + 3) & (~3)];
+	char tag[(sizeof(entity_section_start_tag) + 3) & (~3)];
 
 
 	unsigned int entity_count;
@@ -29,11 +29,11 @@ struct entity_section_header_t
 };
 
 
-static char entity_section_tail_tag[] = "[entity section end]";
+static char entity_section_end_tag[] = "[entity section end]";
 
-struct entity_section_tail_t
+struct entity_section_end_t
 {
-	char tag[(sizeof(entity_section_tail_tag) + 3) & (~3)];
+	char tag[(sizeof(entity_section_end_tag) + 3) & (~3)];
 };
 
 
@@ -49,6 +49,7 @@ enum ENTITY_RECORD_FLAGS
 	ENTITY_RECORD_FLAG_DEF_REF = 1 << 1,
 	ENTITY_RECORD_FLAG_MODIFIED = 1 << 2,
 	ENTITY_RECORD_FLAG_ON_DISK = 1 << 3,
+	ENTITY_RECORD_FLAG_FILE_REF = 1 << 4,				/* if a record have this flag, it means it is referencing a file that has to be open... */
 };
 
 
@@ -69,6 +70,15 @@ struct entity_record_end_t
 {
 	char tag[(sizeof(entity_record_end_tag) + 3) & (~3)];
 };
+
+static char entity_file_record_tag[] = "[entity file record]";
+
+struct entity_file_record_t
+{
+	char tag[(sizeof(entity_file_record_tag) + 3) & (~3)];
+	char file_name[PATH_MAX];
+};
+
 
 
 /*
@@ -231,7 +241,7 @@ void entity_WriteProp(void **buffer, struct entity_prop_t *prop);
 
 void entity_WriteCollider(void **buffer, struct collider_def_t *collider_def);
 
-void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct component_handle_t referencing_transform);
+void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct component_handle_t referencing_transform, int write_def_as_file_ref);
 
 void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_defs);
 

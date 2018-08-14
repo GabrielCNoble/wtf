@@ -167,7 +167,7 @@ unsigned int query_object;
 
 
 
-
+int r_max_batch_size = 10;
 int r_draw_command_group_count = 0;
 int r_draw_cmds_count = 0;
 int r_max_draw_cmds_count = 0;
@@ -302,9 +302,9 @@ int renderer_Init(int width, int height, int init_mode)
 	//r_active_shader = -1;
 
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG | SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
 	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 1);
 
@@ -357,7 +357,7 @@ int renderer_Init(int width, int height, int init_mode)
 	//r_draw_groups = malloc(sizeof(draw_group_t) * MAX_MATERIALS);
 	//r_draw_cmds = malloc(sizeof(draw_command_t) * MAX_MATERIALS * MAX_ENTITIES);
 
-	r_draw_command_groups = memory_Malloc(sizeof(draw_command_group_t) * (MAX_MATERIALS + 1), "renderer_Init");
+	r_draw_command_groups = memory_Malloc(sizeof(draw_command_group_t) * (MAX_MATERIALS + 1));
 
 /*	for(i = 0; i <= MAX_MATERIALS; i++)
 	{
@@ -367,10 +367,10 @@ int renderer_Init(int width, int height, int init_mode)
 	}*/
 
 	r_max_draw_cmds_count = 32768;
-	r_unsorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * r_max_draw_cmds_count, "renderer_Init");
-	r_sorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * r_max_draw_cmds_count, "renderer_Init");
+	r_unsorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * r_max_draw_cmds_count);
+	r_sorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * r_max_draw_cmds_count);
 
-	r_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS, "renderer_Init");
+	r_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS);
 
 	//assert(r_draw_command_groups);
 	//assert(r_draw_cmds);
@@ -909,9 +909,9 @@ void renderer_SortDrawCommands()
 	if(r_draw_cmds_count >= r_max_draw_cmds_count)
 	{
 		memory_Free(r_sorted_draw_cmds);
-		r_sorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * (r_max_draw_cmds_count + R_DRAW_COMMAND_LIST_RESIZE_INCREMENT), "renderer_SortDrawCommands");
+		r_sorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * (r_max_draw_cmds_count + R_DRAW_COMMAND_LIST_RESIZE_INCREMENT));
 
-		draw_commands = memory_Malloc(sizeof(draw_command_t) * (r_max_draw_cmds_count + R_DRAW_COMMAND_LIST_RESIZE_INCREMENT), "renderer_SortDrawCommands");
+		draw_commands = memory_Malloc(sizeof(draw_command_t) * (r_max_draw_cmds_count + R_DRAW_COMMAND_LIST_RESIZE_INCREMENT));
 
 		memcpy(draw_commands, r_unsorted_draw_cmds, sizeof(draw_command_t) * r_max_draw_cmds_count);
 
@@ -1902,7 +1902,7 @@ void renderer_SetViewDrawCommands(view_data_t *view_data)
 	{
 		r_max_draw_cmds_count = (view_data->view_draw_command_list_cursor - R_DRAW_COMMAND_LIST_RESIZE_INCREMENT - 1) & (~(R_DRAW_COMMAND_LIST_RESIZE_INCREMENT - 1));
 		memory_Free(r_sorted_draw_cmds);
-		r_sorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * (r_max_draw_cmds_count + R_DRAW_COMMAND_LIST_RESIZE_INCREMENT), "renderer_SubmitDrawCommand");
+		r_sorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * (r_max_draw_cmds_count + R_DRAW_COMMAND_LIST_RESIZE_INCREMENT));
 		r_max_draw_cmds_count += R_DRAW_COMMAND_LIST_RESIZE_INCREMENT;
 	}
 
@@ -2200,7 +2200,7 @@ void renderer_ZPrePass()
 
 	float color[4];
 
-
+	//return;
 
 	/*#ifdef QUERY_STAGES
 	unsigned int elapsed;
@@ -2219,7 +2219,7 @@ void renderer_ZPrePass()
 //	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_element_buffer);
 	//shader_UseShader(z_pre_pass_shader);
 	renderer_SetShader(r_z_pre_pass_shader);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->position);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(compact_vertex_t), &((compact_vertex_t *)0)->position);
 
 	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
 	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
@@ -2314,9 +2314,23 @@ void renderer_ExecuteDrawCmds()
 {
 	int i;
 	int j;
+	int k;
 	int draw_cmd_count;
 
 	draw_command_t *draw_cmds;
+	draw_command_t batch_draw_command;
+
+	/*int next_start;
+
+	int command_end;
+	int command_count;
+	int draw_mode;*/
+
+	int command_start;
+	int command_count;
+	int last_command_count;
+	int batch_count;
+	int command_draw_mode;
 
 	renderer_SetClusterTexture();
 	renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
@@ -2329,15 +2343,47 @@ void renderer_ExecuteDrawCmds()
 		draw_cmd_count = r_draw_command_groups[i].draw_cmds_count;
 		draw_cmds = r_draw_command_groups[i].draw_cmds;
 
-		//printf("%d\n",draw_cmd_count);
-
 		for(j = 0; j < draw_cmd_count; j++)
 		{
 			renderer_SetModelMatrix(draw_cmds[j].transform);
 			renderer_UpdateMatrices();
+
 			if(draw_cmds[j].flags & DRAW_COMMAND_FLAG_INDEXED_DRAW)
 			{
+			//	if(r_max_batch_size && draw_cmds[j].count > r_max_batch_size)
+			//	{
+			//		command_start = draw_cmds[j].start;
+			//		command_count = draw_cmds[j].count;
+			//		last_command_count = command_count % r_max_batch_size;
+
+			//		batch_count = command_count / r_max_batch_size;
+			//		command_draw_mode = draw_cmds[j].draw_mode;
+
+			//		for(k = 0; k < batch_count; k++)
+			//		{
+			//			renderer_DrawElements(command_draw_mode, r_max_batch_size, GL_UNSIGNED_INT, (void *)(command_start * sizeof(int)));
+			//			command_start += r_max_batch_size;
+			//		}
+
+			//		if(last_command_count)
+			//		{
+			//			renderer_DrawElements(command_draw_mode, last_command_count, GL_UNSIGNED_INT, (void *)(command_start * sizeof(int)));
+			//		}
+
+					//command_end = draw_cmds[j].start + draw_cmds[j].count;
+
+					//next_start = draw_cmds[j].start;
+
+					//while(next_start < command_end)
+					//{
+					//	renderer_DrawElements(draw_cmds[j].draw_mode, r_max_batch_size * 3, GL_UNSIGNED_INT, (void *)(next_start * sizeof(int)));
+					//	next_start += r_max_batch_size;
+					//}
+			//	}
+			//	else
+			//	{
 				renderer_DrawElements(draw_cmds[j].draw_mode, draw_cmds[j].count, GL_UNSIGNED_INT, (void *)(draw_cmds[j].start * sizeof(int)));
+			//	}
 			}
 			else
 			{
@@ -2361,6 +2407,8 @@ void renderer_DrawOpaque()
 	unsigned int vert_count;
 	float s;
 	float e;
+
+	//return;
 
 	draw_command_t *draw_cmds;
 
@@ -2666,6 +2714,9 @@ void renderer_DrawParticles()
 
 	glDisable(GL_CULL_FACE);
 
+	glEnable(GL_BLEND);
+	glDepthMask(GL_FALSE);
+
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 4, GL_FLOAT, 0, 0, NULL);
 
 	particle_systems = (struct particle_system_t *)ps_particle_systems.elements;
@@ -2680,7 +2731,7 @@ void renderer_DrawParticles()
 			continue;
 		}
 
-		renderer_SetTexture(GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, -1);
+		renderer_SetTexture(GL_TEXTURE0, GL_TEXTURE_2D, ps->texture);
 		renderer_SetDefaultUniform4fv(UNIFORM_particle_positions, ps->particle_count, (float *)ps->particle_positions);
 		renderer_SetDefaultUniform1iv(UNIFORM_particle_frames, ps->particle_count, ps->particle_frames);
 		renderer_SetDefaultUniform1i(UNIFORM_texture_array_sampler0, 0);
@@ -2688,6 +2739,8 @@ void renderer_DrawParticles()
 	}
 
 	glEnable(GL_CULL_FACE);
+	glDepthMask(GL_TRUE);
+	glDisable(GL_BLEND);
 
 }
 

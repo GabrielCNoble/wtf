@@ -2,7 +2,7 @@
 #define MPK_FILE_H
 
 
-#include "bsp_file.h"
+//#include "bsp_file.h"
 #include "model.h"
 #include <limits.h>
 
@@ -48,7 +48,8 @@ struct mpk_lod_t
 
 struct mpk_triangle_t
 {
-	int verts[3];
+	//int verts[3];
+	int *verts;
 	char *material_name;
 };
 

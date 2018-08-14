@@ -87,7 +87,7 @@ void editor_EntityEditorScaleSelections(vec3_t axis, float amount);
 
 int editor_EntityEditorLoadEntityFileCallback(char *path, char *file_name);
 
-int editor_EntityEditorSaveEntityFileCallback(char *path, char *file_name, void **out_buffer, int *out_buffer_size);
+int editor_EntityEditorSaveEntityFileCallback(char *file_path, char *file_name, void **out_buffer, int *out_buffer_size);
 
 
 #endif

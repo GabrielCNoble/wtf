@@ -34,8 +34,11 @@ extern struct entity_transform_t *ent_global_transforms;
 extern struct stack_list_t ent_entity_aabbs;
 
 /* from navigation.c */
-extern int nav_waypoint_count;
-extern struct waypoint_t *nav_waypoints;
+extern struct stack_list_t nav_waypoints;
+//extern int nav_waypoint_count;
+//extern struct waypoint_t *nav_waypoints;
+
+
 
 
 /*int r_dbg_debug_cmd_count = 0;
@@ -184,10 +187,10 @@ void renderer_InitDebug()
 	}
 
 	r_dbg_max_dbg_cmds = 2048;
-	r_dbg_debug_cmds = memory_Malloc(sizeof(dbg_command_t) * r_dbg_max_dbg_cmds, "renderer_InitDebug");
+	r_dbg_debug_cmds = memory_Malloc(sizeof(dbg_command_t) * r_dbg_max_dbg_cmds);
 
 	r_dbg_max_draw_bytes = 4 << 16;
-	r_dbg_draw_bytes = memory_Malloc(r_dbg_max_draw_bytes, "renderer_InitDebug");
+	r_dbg_draw_bytes = memory_Malloc(r_dbg_max_draw_bytes);
 
 	renderer_VerboseDebugOutput(0);
 
@@ -893,16 +896,22 @@ void renderer_DrawViews()
 void renderer_DrawWaypoints()
 {
 	int i;
+	int c;
 	int j;
 
+	struct waypoint_t *waypoints;
 	struct waypoint_t *waypoint;
 	struct waypoint_t *linked_waypoint;
 	renderer_SetModelMatrix(NULL);
 
 
-	for(i = 0; i < nav_waypoint_count; i++)
+	waypoints = (struct waypoint_t *)nav_waypoints.elements;
+	c = nav_waypoints.element_count;
+
+
+	for(i = 0; i < c; i++)
 	{
-		waypoint = nav_waypoints + i;
+		waypoint = waypoints + i;
 
 		if(waypoint->flags & WAYPOINT_FLAG_INVALID)
 		{
@@ -929,12 +938,7 @@ void renderer_DrawWaypoints()
 
 		for(j = 0; j < waypoint->links_count; j++)
 		{
-			if(i == j)
-			{
-				continue;
-			}
-
-			linked_waypoint = nav_waypoints + waypoint->links[j].waypoint_index;
+			linked_waypoint = waypoints + waypoint->links[j].waypoint_index;
 
 			if(linked_waypoint->flags & WAYPOINT_FLAG_INVALID)
 			{
@@ -945,11 +949,7 @@ void renderer_DrawWaypoints()
 			renderer_Vertex3f(linked_waypoint->position.x, linked_waypoint->position.y, linked_waypoint->position.z);
 		}
 
-
 		renderer_End();
-
-
-
 	}
 
 }

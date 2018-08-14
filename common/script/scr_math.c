@@ -7,7 +7,7 @@
 
 
 #ifdef __cplusplus
-extern "C" 
+extern "C"
 {
 #endif
 
@@ -18,11 +18,11 @@ static vec3_t vec3_ret;
 float randfloat()
 {
 	short x;
-	
+
 	x = rand() % RAND_MAX;
-	
+
 	return (float)x / (float)RAND_MAX;
-} 
+}
 
 /*
 ================================================================
@@ -42,6 +42,12 @@ void vec_set_op_index(void *this_pointer, int index, float value)
 	v->floats[index] = value;
 }
 
+vec3_t *vec3_normalize(vec3_t *vec)
+{
+    vec3_ret = normalize3(*vec);
+    return &vec3_ret;
+}
+
 
 
 /*
@@ -52,7 +58,7 @@ void vec_set_op_index(void *this_pointer, int index, float value)
 
 void vec2_constructor(void *this_pointer)
 {
-	
+
 }
 
 void vec2_constructor_init(void *this_pointer, float x, float y)
@@ -65,7 +71,7 @@ void vec2_constructor_init(void *this_pointer, float x, float y)
 
 void vec2_destructor(void *this_pointer)
 {
-	
+
 }
 
 void *vec2_op_assign(void *this_pointer, void *other)
@@ -82,7 +88,7 @@ void *vec2_op_assign(void *this_pointer, void *other)
 
 void vec3_constructor(void *this_pointer)
 {
-	
+
 }
 
 void vec3_constructor_init(void *this_pointer, float x, float y, float z)
@@ -95,7 +101,7 @@ void vec3_constructor_init(void *this_pointer, float x, float y, float z)
 
 void vec3_destructor(void *this_pointer)
 {
-	
+
 }
 
 void *vec3_op_assign(void *this_pointer, void *other)
@@ -141,7 +147,7 @@ float vec3_dot(void *vec_a, void *vec_b)
 
 void vec4_constructor(void *this_pointer)
 {
-	
+
 }
 
 void vec4_constructor_init(void *this_pointer, float x, float y, float z, float w)
@@ -155,7 +161,7 @@ void vec4_constructor_init(void *this_pointer, float x, float y, float z, float 
 
 void vec4_destructor(void *this_pointer)
 {
-	
+
 }
 
 void *vec4_op_assign(void *this_pointer, void *other)
@@ -172,7 +178,7 @@ void *vec4_op_assign(void *this_pointer, void *other)
 
 void mat3_constructor(void *this_pointer)
 {
-	
+
 }
 
 void mat3_constructor_init(void *this_pointer, void *r0, void *r1, void *r2)
@@ -184,7 +190,7 @@ void mat3_constructor_init(void *this_pointer, void *r0, void *r1, void *r2)
 
 void mat3_destructor(void *this_pointer)
 {
-	
+
 }
 
 void *mat3_op_assign(void *this_pointer, void *other)
@@ -204,10 +210,10 @@ void mat3_set_op_index(void *this_pointer, int index, void *row)
 {
 	mat3_t *mat;
 	vec3_t *v;
-	
+
 	mat = (mat3_t *)this_pointer;
 	v = (vec3_t *)row;
-	
+
 	mat->floats[index][0] = v->x;
 	mat->floats[index][1] = v->y;
 	mat->floats[index][2] = v->z;
@@ -225,11 +231,11 @@ void mat3_identity(void *this_pointer)
 	((mat3_t *)this_pointer)->floats[0][0] = 1.0;
 	((mat3_t *)this_pointer)->floats[0][1] = 0.0;
 	((mat3_t *)this_pointer)->floats[0][2] = 0.0;
-	
+
 	((mat3_t *)this_pointer)->floats[1][0] = 0.0;
 	((mat3_t *)this_pointer)->floats[1][1] = 1.0;
 	((mat3_t *)this_pointer)->floats[1][2] = 0.0;
-	
+
 	((mat3_t *)this_pointer)->floats[2][0] = 0.0;
 	((mat3_t *)this_pointer)->floats[2][1] = 0.0;
 	((mat3_t *)this_pointer)->floats[2][2] = 1.0;

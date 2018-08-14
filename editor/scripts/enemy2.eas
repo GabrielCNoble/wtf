@@ -4,17 +4,97 @@
 void main()
 {
     vec3_t direction;
+    vec3_t player_position;
+    vec3_t current_position;
+    mat3_t orientation;
+    entity_handle_t player_entity;
+    entity_handle_t current_entity;
+    float angle;
+    //vec3_t forward_vector;
 
     entity_GetWaypointDirection(direction);
 
+    orientation = entity_GetOrientation(0);
+    //direction.y = 0.0;
+
+    //player_entity = entity_GetEntity("player entity", 0);
+    //current_entity = entity_GetCurrentEntity();
+
+    //orientation = entity_GetEntityOrientation(player_entity, 0);
+    //player_position = entity_GetEntityPosition(player_entity, 0);
+   // current_position = entity_GetPosition(0);
+
+
+
+    /*direction = player_position - current_position;
+    float dist_squared = dot(direction, direction);
+
+    direction = normalize(direction);*/
     direction.y = 0.0;
 
+    angle = dot(direction, orientation[2]);
+
+    entity_Rotate(vec3_t(0.0, 1.0, 0.0), -(angle) * 0.05, 0);
+
     entity_Move(direction * 50.0);
+
+    /*if(dist_squared < 4.0)
+	{
+		entity_Jump(3.5);
+	}*/
+
+
+
+
+
+    if(entity_GetEntityProp1i(current_entity, "enemy") != -1)
+	{
+		entity_DIEYOUMOTHERFUCKER();
+	}
+
 }
 
 void OnSpawn()
 {
-    entity_FindPath(vec3_t(0.0, 0.0, -18.0));
+    entity_FindPath(vec3_t(25.0, 0.0, -25.0));
+    entity_handle_t current_entity = entity_GetCurrentEntity();
+
+    entity_AddEntityProp1i(current_entity, "enemy");
+    entity_SetEntityProp1i(current_entity, "enemy", -1);
+}
+
+void OnDie()
+{
+	int particle_system_def = particle_GetParticleSystemDef("particle system");
+	entity_handle_t current_entity = entity_GetCurrentEntity();
+	vec3_t position = entity_GetEntityPosition(current_entity, 0);
+	particle_SpawnParticleSystem(position, particle_system_def);
+}
+
+void OnCollision(array<entity_contact_t> @contacts)
+{
+	int i;
+	int value;
+	entity_handle_t entity;
+	entity_handle_t current_entity;
+
+	for(i = 0; i < contacts.count; i++)
+	{
+		entity = contacts[i].entity;
+
+        if(entity_IsEntityValid(entity) != 0)
+        {
+            if(entity_EntityHasProp(entity, "bullet") != 0)
+            {
+                current_entity = entity_GetCurrentEntity();
+
+                if(entity_GetEntityProp1i(current_entity, "enemy") < 0)
+                {
+                    entity_SetEntityProp1i(current_entity, "enemy", 0);
+                }
+            }
+        }
+	}
 }
 
 

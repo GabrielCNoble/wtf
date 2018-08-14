@@ -54,8 +54,10 @@ extern light_params_t *l_light_params;
 extern light_position_t *l_light_positions;
 
 
-extern int nav_waypoint_count;
-extern struct waypoint_t *nav_waypoints;
+/* from navigation.c */
+extern struct stack_list_t nav_waypoints;
+//extern int nav_waypoint_count;
+//extern struct waypoint_t *nav_waypoints;
 
 
 /* from player.c */
@@ -152,6 +154,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	pick_record_t *records;
 	struct model_t *model;
 	struct waypoint_t *waypoint;
+	struct waypoint_t *waypoints;
 	mesh_t *mesh;
 	portal_t *portal;
 
@@ -291,9 +294,12 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	renderer_SetNamedUniform1f("pick_type", *(float *)&value);
 	renderer_SetModelMatrix(NULL);
 
-	for(i = 0; i < nav_waypoint_count; i++)
+	waypoints = (struct waypoint_t *)nav_waypoints.elements;
+	c = nav_waypoints.element_count;
+
+	for(i = 0; i < c; i++)
 	{
-		waypoint = nav_waypoints + i;
+		waypoint = waypoints + i;
 
 		value = i + 1;
 		renderer_SetNamedUniform1f("pick_index", *(float *)&value);
@@ -762,7 +768,7 @@ void editor_AddSelection(pick_record_t *record, pick_list_t *pick_list)
 
 	if(pick_list->record_count >= pick_list->max_records)
 	{
-		records = memory_Malloc(sizeof(pick_record_t) * (pick_list->max_records + 256), "editor_AddSelection");
+		records = memory_Malloc(sizeof(pick_record_t) * (pick_list->max_records + 256));
 		memcpy(records, pick_list->records, sizeof(pick_record_t) * pick_list->max_records);
 		memory_Free(pick_list->records);
 		pick_list->records = records;

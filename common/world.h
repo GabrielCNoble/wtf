@@ -3,6 +3,7 @@
 
 #include "w_common.h"
 #include "bsp_common.h"
+#include "scr_common.h"
 #include "camera.h"
 #include "portal.h"
 
@@ -90,6 +91,51 @@ void world_VisibleLeaves();
 
 void world_VisibleWorld();
 
+
+
+
+
+
+struct world_var_t *world_AddWorldVar(char *name, int size);
+
+struct world_var_t *world_AddWorldArrayVar(char *name, int elem_size, int max_elements);
+
+void world_RemoveWorldVar(char *name);
+
+
+
+struct world_var_t *world_GetWorldVarPointer(char *name);
+
+
+
+void world_WorldVarValue(char *name, void *value, int set);
+
+void world_WorldArrayVarValue(char *name, void *value, int index, int set);
+
+
+
+void world_SetWorldVarValue(char *name, void *value);
+
+void world_GetWorldVarValue(char *name, void *value);
+
+void world_SetWorldArrayVarValue(char *name, void *value, int index);
+
+void world_GetWorldArrayVarValue(char *name, void *value, int index);
+
+void world_AppendWorldArrayVarValue(char *name, void *value);
+
+void world_ClearWorldArrayVar(char *name);
+
+
+
+
+struct world_script_t *world_LoadScript(char *file_name, char *script_name);
+
+void world_SetWorldScript(struct world_script_t *world_script);
+
+struct world_script_t *world_GetWorldScript();
+
+void world_ExecuteWorldScript();
 
 
 void world_AddLeafIndexes(int leaf_index);

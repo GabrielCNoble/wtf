@@ -1,19 +1,22 @@
 #include "navigation.h"
 #include "physics.h"
 #include "c_memory.h"
+#include "containers/list.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <float.h>
 
-int nav_waypoint_count = 0;
-int nav_max_waypoints = 0;
-int nav_waypoint_stack_top = -1;
-int *nav_waypoint_stack = NULL;
+//int nav_waypoint_count = 0;
+//int nav_max_waypoints = 0;
+//int nav_waypoint_stack_top = -1;
+//int *nav_waypoint_stack = NULL;
 struct waypoint_t nav_temp_end_waypoint;
 struct waypoint_t nav_temp_start_waypoint;
-struct waypoint_t *nav_waypoints = NULL;
+//struct waypoint_t *nav_waypoints = NULL;
+
+struct stack_list_t nav_waypoints;
 
 static int nav_closed_list_cursor = 0;
 static struct waypoint_t **nav_closed_list = NULL;
@@ -29,12 +32,14 @@ extern "C"
 int navigation_Init()
 {
 
-	nav_waypoint_stack = memory_Malloc(sizeof(int) * MAX_WAYPOINTS, "navigation_Init");
-	nav_waypoints = memory_Malloc(sizeof(struct waypoint_t) * MAX_WAYPOINTS, "navigation_Init");
+	//nav_waypoint_stack = memory_Malloc(sizeof(int) * MAX_WAYPOINTS);
+	//nav_waypoints = memory_Malloc(sizeof(struct waypoint_t) * MAX_WAYPOINTS);
+
+	nav_waypoints = stack_list_create(sizeof(struct waypoint_t), MAX_WAYPOINTS, NULL);
 
 
-	nav_closed_list = memory_Malloc(sizeof(struct waypoint_t *) * MAX_WAYPOINTS, "navigation_Init");
-	nav_open_list = memory_Malloc(sizeof(struct waypoint_t *) * MAX_WAYPOINTS, "navigation_Init");
+	nav_closed_list = memory_Malloc(sizeof(struct waypoint_t *) * MAX_WAYPOINTS);
+	nav_open_list = memory_Malloc(sizeof(struct waypoint_t *) * MAX_WAYPOINTS);
 	return 1;
 }
 
@@ -42,7 +47,7 @@ void navigation_Finish()
 {
 	int i;
 
-	for(i = 0; i < nav_waypoint_count; i++)
+	/*for(i = 0; i < nav_waypoint_count; i++)
 	{
 		if(nav_waypoints[i].flags & WAYPOINT_FLAG_INVALID)
 		{
@@ -50,10 +55,12 @@ void navigation_Finish()
 		}
 
 		memory_Free(nav_waypoints[i].links);
-	}
+	}*/
 
-	memory_Free(nav_waypoint_stack);
-	memory_Free(nav_waypoints);
+	//memory_Free(nav_waypoint_stack);
+	//memory_Free(nav_waypoints);
+
+	stack_list_destroy(&nav_waypoints);
 
 	memory_Free(nav_closed_list);
 	memory_Free(nav_open_list);
@@ -73,7 +80,7 @@ int navigation_CreateWaypoint(vec3_t position)
 
 	char name[512];
 
-	if(nav_waypoint_stack_top >= 0)
+	/*if(nav_waypoint_stack_top >= 0)
 	{
 		waypoint_index = nav_waypoint_stack[nav_waypoint_stack_top];
 		nav_waypoint_stack_top--;
@@ -82,21 +89,28 @@ int navigation_CreateWaypoint(vec3_t position)
 	{
 		waypoint_index = nav_waypoint_count;
 		nav_waypoint_count++;
-	}
+	}*/
 
-	waypoint = nav_waypoints + waypoint_index;
+	waypoint_index = stack_list_add(&nav_waypoints, NULL);
+	waypoint = stack_list_get(&nav_waypoints, waypoint_index);
+
+	//waypoint = nav_waypoints + waypoint_index;
 
 
 	waypoint->max_links = 16;
 	waypoint->links_count = 0;
-	waypoint->links = memory_Malloc(sizeof(struct waypoint_link_t) * waypoint->max_links, "navigation_CreateWaypoint");
+	waypoint->links = memory_Malloc(sizeof(struct waypoint_link_t) * waypoint->max_links);
 	waypoint->position = position;
 	waypoint->flags = 0;
 	waypoint->parent = NULL;
 
-	sprintf(name, "waypoint.%d", waypoint_index);
+	//if(!waypoint->name)
+	//{
 
-	waypoint->name = memory_Strdup(name, "navigation_CreateWaypoint");
+	//}
+
+	//sprintf(name, "waypoint.%d", waypoint_index);
+	//waypoint->name = memory_Strdup(name);
 
 	return waypoint_index;
 }
@@ -106,12 +120,12 @@ void navigation_DestroyWaypoint(int waypoint_index)
 	int i;
 	struct waypoint_t *waypoint;
 
-	if(waypoint_index >= 0 && waypoint_index < nav_waypoint_count)
-	{
-		if(!(nav_waypoints[waypoint_index].flags & WAYPOINT_FLAG_INVALID))
-		{
-			waypoint = nav_waypoints + waypoint_index;
+	waypoint = stack_list_get(&nav_waypoints, waypoint_index);
 
+	if(waypoint)
+	{
+		if(!(waypoint->flags & WAYPOINT_FLAG_INVALID))
+		{
 			waypoint->flags |= WAYPOINT_FLAG_INVALID;
 
 			for(i = 0; waypoint->links_count; i++)
@@ -119,18 +133,39 @@ void navigation_DestroyWaypoint(int waypoint_index)
 				navigation_UnlinkWaypoints(waypoint_index, waypoint->links[i].waypoint_index);
 			}
 
-			memory_Free(waypoint->name);
-
-			nav_waypoint_stack_top++;
-			nav_waypoint_stack[nav_waypoint_stack_top] = waypoint_index;
+			stack_list_remove(&nav_waypoints, waypoint_index);
 		}
 	}
 
 }
 
+void navigation_DestroyAllWaypoints()
+{
+    int i;
+    int c;
+    struct waypoint_t *waypoints;
+    struct waypoint_t *waypoint;
+
+
+    waypoints = (struct waypoint_t *)nav_waypoints.elements;
+    c = nav_waypoints.element_count;
+
+    for(i = 0; i < c; i++)
+	{
+        waypoint = waypoints + i;
+
+		if(waypoint->flags & WAYPOINT_FLAG_INVALID)
+		{
+			continue;
+		}
+
+		navigation_DestroyWaypoint(i);
+	}
+}
+
 struct waypoint_t *navigation_GetWaypointPointer(int waypoint_index)
 {
-	if(waypoint_index >= 0 && waypoint_index < nav_waypoint_count)
+	/*if(waypoint_index >= 0 && waypoint_index < nav_waypoint_count)
 	{
 		if(!(nav_waypoints[waypoint_index].flags & WAYPOINT_FLAG_INVALID))
 		{
@@ -138,7 +173,8 @@ struct waypoint_t *navigation_GetWaypointPointer(int waypoint_index)
 		}
 	}
 
-	return NULL;
+	return NULL;*/
+	return stack_list_get(&nav_waypoints, waypoint_index);
 }
 
 void navigation_LinkWaypoints(int waypoint_a, int waypoint_b)
@@ -152,8 +188,11 @@ void navigation_LinkWaypoints(int waypoint_a, int waypoint_b)
 
 	struct waypoint_link_t *link;
 
-	a = nav_waypoints + waypoint_a;
-	b = nav_waypoints + waypoint_b;
+	//a = nav_waypoints + waypoint_a;
+	//b = nav_waypoints + waypoint_b;
+
+	a = stack_list_get(&nav_waypoints, waypoint_a);
+	b = stack_list_get(&nav_waypoints, waypoint_b);
 
 	for(i = 0; i < a->links_count; i++)
 	{
@@ -165,7 +204,7 @@ void navigation_LinkWaypoints(int waypoint_a, int waypoint_b)
 
 	if(a->links_count >= a->max_links)
 	{
-		link = memory_Malloc(sizeof(struct waypoint_link_t) * (a->max_links + 16), "navigation_LinkWaypoints");
+		link = memory_Malloc(sizeof(struct waypoint_link_t) * (a->max_links + 16));
 		memcpy(link, a->links, sizeof(struct waypoint_link_t) * a->max_links);
 		memory_Free(a->links);
 		a->links = link;
@@ -174,7 +213,7 @@ void navigation_LinkWaypoints(int waypoint_a, int waypoint_b)
 
 	if(b->links_count >= b->max_links)
 	{
-		link = memory_Malloc(sizeof(struct waypoint_link_t) * (b->max_links + 16), "navigation_LinkWaypoints");
+		link = memory_Malloc(sizeof(struct waypoint_link_t) * (b->max_links + 16));
 		memcpy(link, b->links, sizeof(struct waypoint_link_t) * b->max_links);
 		memory_Free(b->links);
 		b->links = link;
@@ -209,8 +248,11 @@ void navigation_UnlinkWaypoints(int waypoint_a, int waypoint_b)
 	struct waypoint_t *a;
 	struct waypoint_t *b;
 
-	a = nav_waypoints + waypoint_a;
-	b = nav_waypoints + waypoint_b;
+//	a = nav_waypoints + waypoint_a;
+//	b = nav_waypoints + waypoint_b;
+
+	a = stack_list_get(&nav_waypoints, waypoint_a);
+	b = stack_list_get(&nav_waypoints, waypoint_b);
 
 	for(i = 0; i < a->links_count; i++)
 	{
@@ -244,7 +286,7 @@ void navigation_UnlinkWaypoints(int waypoint_a, int waypoint_b)
 
 void navigation_BuildLinks()
 {
-	int i;
+	/*int i;
 	int j;
 
 	struct waypoint_t *current_waypoint;
@@ -276,7 +318,7 @@ void navigation_BuildLinks()
 
 		}
 
-	}
+	}*/
 
 }
 
@@ -286,23 +328,26 @@ void navigation_UpdateWaypoint(int waypoint_index)
 	int j;
 
 	struct waypoint_t *waypoint;
+	struct waypoint_t *waypoints;
 	struct waypoint_t *linked_waypoint;
 
 	vec3_t v;
 	float sqrd_cost;
 
-	if(waypoint_index >= 0 && waypoint_index < nav_waypoint_count)
+	waypoint = stack_list_get(&nav_waypoints, waypoint_index);
+
+	if(waypoint)
 	{
-		if(nav_waypoints[waypoint_index].flags & WAYPOINT_FLAG_INVALID)
+        if(waypoint->flags & WAYPOINT_FLAG_INVALID)
 		{
 			return;
 		}
 
-		waypoint = nav_waypoints + waypoint_index;
+		waypoints = (struct waypoint_t *)nav_waypoints.elements;
 
 		for(i = 0; i < waypoint->links_count; i++)
 		{
-			linked_waypoint = nav_waypoints + waypoint->links[i].waypoint_index;
+			linked_waypoint = waypoints + waypoint->links[i].waypoint_index;
 
 			v.x = waypoint->position.x - linked_waypoint->position.x;
 			v.y = waypoint->position.y - linked_waypoint->position.y;
@@ -328,21 +373,20 @@ void navigation_UpdateWaypoint(int waypoint_index)
 		}
 
 	}
-
 }
 
 void navigation_MoveWaypoint(int waypoint_index, vec3_t direction, float amount)
 {
 	struct waypoint_t *waypoint;
 
-	if(waypoint_index >= 0 && waypoint_index < MAX_WAYPOINTS)
+	waypoint = stack_list_get(&nav_waypoints, waypoint_index);
+
+	if(waypoint)
 	{
-		if(nav_waypoints[waypoint_index].flags & WAYPOINT_FLAG_INVALID)
+		if(waypoint->flags & WAYPOINT_FLAG_INVALID)
 		{
 			return;
 		}
-
-		waypoint = nav_waypoints + waypoint_index;
 
 		waypoint->position.x += direction.x * amount;
 		waypoint->position.y += direction.y * amount;
@@ -350,8 +394,6 @@ void navigation_MoveWaypoint(int waypoint_index, vec3_t direction, float amount)
 
 		navigation_UpdateWaypoint(waypoint_index);
 	}
-
-
 }
 
 /*
@@ -360,30 +402,34 @@ void navigation_MoveWaypoint(int waypoint_index, vec3_t direction, float amount)
 =================================================================
 */
 
-struct waypoint_t *navigation_GetClosestWaypoint(vec3_t position)
+struct waypoint_t *navigation_GetClosestWaypoint(vec3_t position, int ignore_world)
 {
 	float lowest_d = FLT_MAX;
 	struct waypoint_t *closest = NULL;
+	struct waypoint_t *waypoints;
 	float d;
 	vec3_t v;
 	int i;
+	int c;
 
+	waypoints = (struct waypoint_t *)nav_waypoints.elements;
+	c = nav_waypoints.element_count;
 
-	for(i = 0; i < nav_waypoint_count; i++)
+	for(i = 0; i < c; i++)
 	{
-		v.x = position.x - nav_waypoints[i].position.x;
-		v.y = position.y - nav_waypoints[i].position.y;
-		v.z = position.z - nav_waypoints[i].position.z;
+		v.x = position.x - waypoints[i].position.x;
+		v.y = position.y - waypoints[i].position.y;
+		v.z = position.z - waypoints[i].position.z;
 
 		d = v.x * v.x + v.y * v.y + v.z * v.z;
 
 
 		if(d < lowest_d)
 		{
-			//if(!physics_Raycast(position, nav_waypoints[i].position, NULL, NULL))
+			if((!physics_Raycast(waypoints[i].position, position, NULL, NULL, 1)) || ignore_world)
 			{
 				lowest_d = d;
-				closest = nav_waypoints + i;
+				closest = waypoints + i;
 			}
 		}
 	}
@@ -399,6 +445,9 @@ struct waypoint_t **navigation_FindPath(int *waypoint_count, vec3_t from, vec3_t
 	struct waypoint_t *neighbor;
 	struct waypoint_link_t *links;
 
+	struct waypoint_t *waypoints;
+
+
 	float cost;
 	float new_cost;
 
@@ -409,6 +458,7 @@ struct waypoint_t **navigation_FindPath(int *waypoint_count, vec3_t from, vec3_t
 	vec3_t v;
 
 	int i;
+	int c;
 	int current_index;
 	int lowest_index;
 	int link_count;
@@ -416,8 +466,8 @@ struct waypoint_t **navigation_FindPath(int *waypoint_count, vec3_t from, vec3_t
 	/* find the path backwards, so the list can
 	be constructed in the right direction by
 	following the parent pointers... */
-	start_point = navigation_GetClosestWaypoint(to);
-	end_point = navigation_GetClosestWaypoint(from);
+	start_point = navigation_GetClosestWaypoint(to, 1);
+	end_point = navigation_GetClosestWaypoint(from, 0);
 
 	nav_open_list_cursor = 0;
 	nav_closed_list_cursor = 0;
@@ -439,10 +489,13 @@ struct waypoint_t **navigation_FindPath(int *waypoint_count, vec3_t from, vec3_t
 	nav_open_list[nav_open_list_cursor] = start_point;
 	nav_open_list_cursor++;
 
-	for(i = 0; i < nav_waypoint_count; i++)
+	waypoints = (struct waypoint_t *)nav_waypoints.elements;
+	c = nav_waypoints.element_count;
+
+	for(i = 0; i < c; i++)
 	{
-		nav_waypoints[i].flags &= ~(WAYPOINT_FLAG_OPEN | WAYPOINT_FLAG_CLOSED);
-		nav_waypoints[i].parent = NULL;
+		waypoints[i].flags &= ~(WAYPOINT_FLAG_OPEN | WAYPOINT_FLAG_CLOSED);
+		waypoints[i].parent = NULL;
 	}
 
 	while(nav_open_list_cursor)
@@ -522,7 +575,7 @@ struct waypoint_t **navigation_FindPath(int *waypoint_count, vec3_t from, vec3_t
 
 		for(i = 0; i < link_count; i++)
 		{
-			neighbor = nav_waypoints + links[i].waypoint_index;
+			neighbor = waypoints + links[i].waypoint_index;
 
 			/* the total cost of this route if we are to move to this neighbor waypoint... */
 			cost = current->route_cost + links[i].sqrd_cost;
@@ -566,6 +619,255 @@ struct waypoint_t **navigation_FindPath(int *waypoint_count, vec3_t from, vec3_t
 
 
 	return NULL;
+}
+
+/*
+=================================================================
+=================================================================
+=================================================================
+*/
+
+
+
+char waypoint_section_start_tag[] = "[waypoint section start]";
+
+struct waypoint_section_start_t
+{
+	char tag[(sizeof(waypoint_section_start_tag) + 3) & (~3)];
+	int waypoint_count;
+};
+
+char waypoint_section_end_tag[] = "[waypoint section end]";
+
+struct waypoint_section_end_t
+{
+    char tag[(sizeof(waypoint_section_end_tag) + 3) & (~3)];
+};
+
+char waypoint_record_tag[] = "[waypoint]";
+
+struct waypoint_record_t
+{
+	char tag[(sizeof(waypoint_record_tag) + 3) & (~3)];
+	int  waypoint_index;
+    vec3_t position;
+};
+
+char waypoint_link_record_tag[] = "[waypoint links]";
+
+struct waypoint_link_record_t
+{
+    char tag[(sizeof(waypoint_link_record_tag) + 3) & (~3)];
+    int link_count;
+    int next_offset;
+};
+
+
+
+void navigation_SerializeWaypoints(void **buffer, int *buffer_size)
+{
+	struct waypoint_section_start_t *section_start;
+	struct waypoint_section_end_t *section_end;
+	struct waypoint_record_t *waypoint_record;
+	struct waypoint_link_record_t *link_record;
+
+	struct waypoint_record_t *first_waypoint_record;
+	struct waypoint_link_record_t *first_waypoint_link_record;
+
+	int i;
+	int j;
+	int c;
+
+	int out_buffer_size = 0;
+	char *out_buffer = NULL;
+	int *links;
+
+    struct waypoint_t *waypoints;
+    struct waypoint_t *waypoint;
+    struct waypoint_t *linked_waypoint;
+
+    waypoints = (struct waypoint_t *) nav_waypoints.elements;
+    c = nav_waypoints.element_count;
+
+	out_buffer_size += sizeof(struct waypoint_section_start_t) + sizeof(struct waypoint_section_end_t);
+
+    for(i = 0; i < c; i++)
+	{
+		waypoint = waypoints + i;
+
+		if(waypoint->flags & WAYPOINT_FLAG_INVALID)
+		{
+			continue;
+		}
+
+		out_buffer_size += sizeof(struct waypoint_record_t);
+		out_buffer_size += sizeof(struct waypoint_link_record_t) * waypoint->links_count;
+	}
+
+	out_buffer = memory_Calloc(out_buffer_size, 1);
+
+	*buffer = out_buffer;
+	*buffer_size = out_buffer_size;
+
+
+	section_start = (struct waypoint_section_start_t *)out_buffer;
+	out_buffer += sizeof(struct waypoint_section_start_t);
+
+	strcpy(section_start->tag, waypoint_section_start_tag);
+
+	first_waypoint_record = (struct waypoint_record_t *)out_buffer;
+
+	for(i = 0; i < c; i++)
+	{
+        waypoint = waypoints + i;
+
+		if(waypoint->flags & WAYPOINT_FLAG_INVALID)
+		{
+			continue;
+		}
+
+		waypoint_record = (struct waypoint_record_t *)out_buffer;
+		out_buffer += sizeof(struct waypoint_record_t);
+
+		strcpy(waypoint_record->tag, waypoint_record_tag);
+
+		waypoint_record->position = waypoint->position;
+
+		/* store the index of the record belonging to this
+		waypoint as it will be necessary when generating the
+		link records... */
+		waypoint->open_list_index = section_start->waypoint_count;
+
+		section_start->waypoint_count++;
+	}
+
+	first_waypoint_link_record = (struct waypoint_link_record_t *)out_buffer;
+
+	for(i = 0; i < c; i++)
+	{
+		waypoint = waypoints + i;
+
+		if(waypoint->flags & WAYPOINT_FLAG_INVALID)
+		{
+			continue;
+		}
+
+        link_record = (struct waypoint_link_record_t *)out_buffer;
+        out_buffer += sizeof(struct waypoint_link_record_t);
+
+        strcpy(link_record->tag, waypoint_link_record_tag);
+
+		link_record->next_offset = sizeof(struct waypoint_link_record_t) + sizeof(int) * waypoint->links_count;
+		link_record->link_count = waypoint->links_count;
+
+		links = (int *)out_buffer;
+		out_buffer += sizeof(int) * waypoint->links_count;
+
+		for(j = 0; j < waypoint->links_count; j++)
+		{
+			linked_waypoint = waypoints + waypoint->links[j].waypoint_index;
+			/* store the waypoint record index as a link... */
+			links[j] = linked_waypoint->open_list_index;
+
+			//*(int *)out_buffer = linked_waypoint->open_list_index;
+			//out_buffer += sizeof(int);
+		}
+	}
+
+	section_end = (struct waypoint_section_end_t *)out_buffer;
+	out_buffer += sizeof(struct waypoint_section_end_t);
+
+    strcpy(section_end->tag, waypoint_section_end_tag);
+}
+
+void navigation_DeserializeWaypoints(void **buffer)
+{
+	struct waypoint_section_start_t *header;
+	struct waypoint_record_t *waypoint_record;
+	struct waypoint_record_t *linked_waypoint_record;
+	struct waypoint_link_record_t *link_record;
+
+	struct waypoint_record_t *first_waypoint_record = NULL;
+	struct waypoint_link_record_t * first_link_record = NULL;
+	int *links;
+
+	int header_found = 0;
+	int records_found = 0;
+	int links_found = 0;
+
+	int i;
+	int j;
+
+	char *in;
+
+	in = *buffer;
+
+	while(1)
+	{
+		if(header_found && records_found && links_found)
+		{
+			for(i = 0; i < header->waypoint_count; i++)
+			{
+				/* first create the waypoints, and store their
+				indexes into the waypoint records, so they can
+				be properly linked...*/
+				waypoint_record = first_waypoint_record + i;
+				waypoint_record->waypoint_index = navigation_CreateWaypoint(waypoint_record->position);
+			}
+
+			for(i = 0; i < header->waypoint_count; i++)
+			{
+				waypoint_record = first_waypoint_record + i;
+
+				link_record = (struct waypoint_link_record_t *)in;
+				in += sizeof(struct waypoint_link_record_t);
+
+				links = (int *)in;
+				in += sizeof(int) * link_record->link_count;
+
+				for(j = 0; j < link_record->link_count; j++)
+				{
+					/* go over the links inside this link record, and
+					use the waypoint record it references to get the real
+					waypoint index back... */
+					linked_waypoint_record = first_waypoint_record + links[j];
+					navigation_LinkWaypoints(waypoint_record->waypoint_index, linked_waypoint_record->waypoint_index);
+				}
+			}
+
+			header_found = 0;
+			records_found = 0;
+			links_found = 0;
+		}
+        else if(!strcmp(in, waypoint_section_start_tag))
+		{
+			header = (struct waypoint_section_start_t *)in;
+			in += sizeof(struct waypoint_section_start_t);
+			header_found = 1;
+		}
+		else if(!strcmp(in, waypoint_record_tag))
+		{
+			first_waypoint_record = (struct waypoint_record_t *)in;
+			in += sizeof(struct waypoint_record_t) * header->waypoint_count;
+			records_found = 1;
+		}
+		else if(!strcmp(in, waypoint_link_record_tag))
+		{
+            first_link_record = (struct waypoint_link_record_t *)in;
+            links_found = 1;
+		}
+		else if(!strcmp(in, waypoint_section_end_tag))
+		{
+            in += sizeof(struct waypoint_section_end_t);
+			break;
+		}
+		else
+		{
+			in++;
+		}
+	}
+
+	*buffer = in;
 }
 
 
