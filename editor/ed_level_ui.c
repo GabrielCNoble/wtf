@@ -52,11 +52,16 @@ int ed_level_editor_delete_selections_menu_open = 0;
 vec2_t ed_level_editor_delete_selections_menu_pos;
 
 
+vec2_t ed_level_editor_snap_3d_cursor_menu_pos;
+
+
 /* from ed_level.c */
 extern vec3_t level_editor_3d_cursor_position;
 extern int level_editor_need_to_copy_data;
 extern pick_list_t level_editor_pick_list;
-
+extern float level_editor_linear_snap_value;
+extern float level_editor_angular_snap_value;
+extern int level_editor_3d_handle_transform_mode;
 
 /* from r_main.c */
 extern int r_window_width;
@@ -224,6 +229,8 @@ void editor_LevelEditorUpdateUI()
 {
 	editor_LevelEditorMenuWindow();
 	editor_LevelEditorWorldMenu();
+	editor_LevelEditorSnapValueMenu();
+	editor_LevelEditorSnap3dCursorMenu();
 	editor_LevelEditorAddToWorldMenu();
 	editor_LevelEditorDeleteSelectionsMenu();
 	editor_LevelEditorWaypointOptionsMenu();
@@ -361,6 +368,9 @@ void editor_LevelEditorBrushOptionsMenu()
 	material_t *brush_face_material;
 
 	char *brush_face_material_name;
+
+	char is_subtractive;
+
 	int i;
 
 	if(ed_level_editor_brush_options_menu_open)
@@ -373,8 +383,33 @@ void editor_LevelEditorBrushOptionsMenu()
 		gui_ImGuiText("Vertices: %d", brush->clipped_polygons_vert_count);
 		gui_ImGuiText("Faces: %d", brush->clipped_polygon_count);
 
+		if(brush->bm_flags & BRUSH_SUBTRACTIVE)
+		{
+			is_subtractive = 1;
+		}
+		else
+		{
+			is_subtractive = 0;
+		}
+
+		gui_ImGuiCheckbox("Subtractive", &is_subtractive);
+
+		if(is_subtractive)
+		{
+			//is_subtractive = 1;
+			brush->bm_flags |= BRUSH_SUBTRACTIVE;
+		}
+		else
+		{
+			brush->bm_flags &= ~BRUSH_SUBTRACTIVE;
+			//is_subtractive = 0;
+		}
+
 		if(ed_level_editor_brush_face_option_open)
 		{
+
+
+
 			pick = &level_editor_brush_face_pick_list.records[level_editor_brush_face_pick_list.record_count - 1];
 			brush_face_index = pick->index0;
 
@@ -756,7 +791,7 @@ void editor_LevelEditorWorldMenu()
 			}
 			if(gui_ImGuiMenuItem("Clear bsp", NULL, NULL, 1))
 			{
-				//world_Clear();
+				world_Clear(0);
 				level_editor_need_to_copy_data = 1;
 			}
 			gui_ImGuiEndMenu();
@@ -766,6 +801,168 @@ void editor_LevelEditorWorldMenu()
 	}
 
 	//gui_ImGuiPopID();
+}
+
+void editor_LevelEditorSnapValueMenu()
+{
+	static char linear_snap_value_label[512];
+	static char angular_snap_value_label[512];
+
+	static char *linear_unit_str;
+
+	if(gui_ImGuiBeginMainMenuBar())
+	{
+
+		switch(level_editor_3d_handle_transform_mode)
+		{
+			case ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION:
+			case ED_3D_HANDLE_TRANSFORM_MODE_SCALE:
+
+				if(gui_ImGuiBeginMenu("Snap offset: "))
+				{
+					if(gui_ImGuiMenuItem("10 m", NULL, NULL, 1))
+					{
+						level_editor_linear_snap_value = 10.0;
+					}
+
+					if(gui_ImGuiMenuItem("5 m", NULL, NULL, 1))
+					{
+						level_editor_linear_snap_value = 5.0;
+					}
+
+					if(gui_ImGuiMenuItem("1 m", NULL, NULL, 1))
+					{
+						level_editor_linear_snap_value = 1.0;
+					}
+
+					if(gui_ImGuiMenuItem("50 cm", NULL, NULL, 1))
+					{
+						level_editor_linear_snap_value = 0.5;
+					}
+
+					if(gui_ImGuiMenuItem("10 cm", NULL, NULL, 1))
+					{
+						level_editor_linear_snap_value = 0.1;
+					}
+
+					if(gui_ImGuiMenuItem("1 cm", NULL, NULL, 1))
+					{
+						level_editor_linear_snap_value = 0.01;
+					}
+
+					if(gui_ImGuiMenuItem("None", NULL, NULL, 1))
+					{
+						level_editor_linear_snap_value = 0.0;
+					}
+
+					gui_ImGuiEndMenu();
+				}
+
+				gui_ImGuiSameLine(0.0, -1.0);
+
+				if(!level_editor_linear_snap_value)
+				{
+					gui_ImGuiText("None\n");
+				}
+				else
+				{
+					gui_ImGuiText("%.02f m\n", level_editor_linear_snap_value);
+				}
+
+			break;
+
+			case ED_3D_HANDLE_TRANSFORM_MODE_ROTATION:
+				if(gui_ImGuiBeginMenu("Snap offset: "))
+				{
+					if(gui_ImGuiMenuItem("1 rad", NULL, NULL, 1))
+					{
+						level_editor_angular_snap_value = 10.0;
+					}
+
+					if(gui_ImGuiMenuItem("0.5 rad", NULL, NULL, 1))
+					{
+						level_editor_angular_snap_value = 0.5;
+					}
+
+					if(gui_ImGuiMenuItem("0.25 rad", NULL, NULL, 1))
+					{
+						level_editor_angular_snap_value = 0.25;
+					}
+
+					if(gui_ImGuiMenuItem("0.125 rad", NULL, NULL, 1))
+					{
+						level_editor_angular_snap_value = 0.125;
+					}
+
+					if(gui_ImGuiMenuItem("0.0625 rad", NULL, NULL, 1))
+					{
+						level_editor_angular_snap_value = 0.0625;
+					}
+
+					if(gui_ImGuiMenuItem("0.03125 rad", NULL, NULL, 1))
+					{
+						level_editor_angular_snap_value = 0.03125;
+					}
+
+					if(gui_ImGuiMenuItem("None", NULL, NULL, 1))
+					{
+						level_editor_angular_snap_value = 0.0;
+					}
+
+					gui_ImGuiEndMenu();
+				}
+
+				gui_ImGuiSameLine(0.0, -1.0);
+
+				if(!level_editor_angular_snap_value)
+				{
+					gui_ImGuiText("None\n");
+				}
+				else
+				{
+					gui_ImGuiText("%.05f rad\n", level_editor_angular_snap_value);
+				}
+			break;
+		}
+
+
+
+
+
+		gui_ImGuiEndMainMenuBar();
+	}
+}
+
+void editor_LevelEditorSnap3dCursorMenu()
+{
+	if(gui_ImGuiIsPopupOpen("snap 3d cursor menu"))
+	{
+		gui_ImGuiSetNextWindowPos(ed_level_editor_snap_3d_cursor_menu_pos, 0, vec2(0.0, 0.0));
+
+        if(gui_ImGuiBeginPopup("snap 3d cursor menu", 0))
+		{
+
+			if(gui_ImGuiMenuItem("Snap cursor to origin", NULL, NULL, 1))
+			{
+				level_editor_3d_cursor_position = vec3_t_c(0.0, 0.0, 0.0);
+				gui_ImGuiCloseCurrentPopup();
+			}
+
+			if(gui_ImGuiMenuItem("Snap cursor to nearest snap value", NULL, NULL, 1))
+			{
+				if(level_editor_linear_snap_value > 0.0)
+				{
+					level_editor_3d_cursor_position.x = level_editor_linear_snap_value * ((int)(level_editor_3d_cursor_position.x / level_editor_linear_snap_value));
+					level_editor_3d_cursor_position.y = level_editor_linear_snap_value * ((int)(level_editor_3d_cursor_position.y / level_editor_linear_snap_value));
+					level_editor_3d_cursor_position.z = level_editor_linear_snap_value * ((int)(level_editor_3d_cursor_position.z / level_editor_linear_snap_value));
+				}
+
+				gui_ImGuiCloseCurrentPopup();
+			}
+
+			gui_ImGuiEndPopup();
+		}
+	}
 }
 
 void editor_LevelEditorAddToWorldMenu()
@@ -1040,6 +1237,20 @@ void editor_LevelEditorCloseWaypointOptionMenu()
 	{
 		gui_SetInvisible((widget_t *)level_editor_waypoints_options_menu);
 	}*/
+}
+
+
+void editor_LevelEditorOpenSnap3dCursorMenu(int x, int y)
+{
+    //ed_level_editor_snap_3d_cursor_menu_open = 1;
+
+	if(!gui_ImGuiIsPopupOpen("snap 3d cursor menu"))
+	{
+		gui_ImGuiOpenPopup("snap 3d cursor menu");
+	}
+
+    ed_level_editor_snap_3d_cursor_menu_pos.x = x;
+    ed_level_editor_snap_3d_cursor_menu_pos.y = y;
 }
 
 

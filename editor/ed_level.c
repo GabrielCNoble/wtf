@@ -289,9 +289,11 @@ void editor_LevelEditorInit()
 
 	int texture = texture_LoadTexture("Branches0013_1_S.png", "cloud", 0);
 
-	//int ps_def = particle_CreateParticleSystemDef("particle system", 500, 120, 1, 0, texture, script);
+	int texture2 = texture_LoadTexture("explosion2.ptx", "explosion", 0);
 
-	//particle_SpawnParticleSystem(vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), &r, ps_def);
+	int ps_def = particle_CreateParticleSystemDef("particle system", 1, 120, 1, 0, texture2, script);
+
+	particle_SpawnParticleSystem(vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), &r, ps_def);
 
 	//struct entity_script_t *player_script = entity_LoadScript("scripts/player.as", "player");
 	//struct entity_script_t *enemy_script = entity_LoadScript("scripts/enemy.as", "enemy");
@@ -370,13 +372,23 @@ void editor_LevelEditorInit()
 
     //struct sound_handle_t noise = sound_GenerateNoise("noise", 2.0);
 
-    struct sound_handle_t sine = sound_GenerateSineWave("sine", 10.0, 60.0);
+   // struct sound_handle_t sine = sound_GenerateSineWave("sine", 10.0, 60.0);
 
-    sound_PlaySound(sine, vec3_t_c(0.0, 0.0, 0.0), 0.5);
+//    sound_PlaySound(sine, vec3_t_c(0.0, 0.0, 0.0), 0.5);
 
-    sine = sound_GenerateSineWave("sine", 10.0, 61.0);
+  //  sine = sound_GenerateSineWave("sine", 10.0, 61.0);
 
-    sound_PlaySound(sine, vec3_t_c(0.0, 0.0, 0.0), 0.5);
+   // sound_PlaySound(sine, vec3_t_c(0.0, 0.0, 0.0), 0.5);
+
+
+	struct sound_handle_t sound = sound_LoadSound("Groaning Ambience.ogg", "music");
+
+
+	sound_LoadSound("explode3.wav", "explosion0");
+	sound_LoadSound("explode4.wav", "explosion1");
+	sound_LoadSound("explode5.wav", "explosion2");
+
+	//sound_PlaySound(sound, vec3_t_c(0.0, 0.0, 0.0), 1.0, 0);
 
     /*sine = sound_GenerateSineWave("sine", 5.0, 240.0);
 
@@ -1047,6 +1059,10 @@ void editor_LevelEditorEdit(float delta_time)
 			{
 				editor_LevelEditorOpenWaypointOptionMenu(mouse_x, r_window_height - mouse_y);
 			}
+			else if(input_GetKeyStatus(SDL_SCANCODE_S) & KEY_JUST_PRESSED)
+			{
+				editor_LevelEditorOpenSnap3dCursorMenu(mouse_x, r_window_height - mouse_y);
+			}
 
 			if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED)
 			{
@@ -1321,6 +1337,8 @@ void editor_LevelEditorStopPIE()
 	editor_LevelEditorRestoreLevelData();
 	level_editor_state = EDITOR_EDITING;
 	camera_SetCamera(level_editor_camera);
+
+	sound_StopAllSounds();
 }
 
 /*
@@ -1605,12 +1623,17 @@ void editor_LevelEditorSerialize(void **buffer, int *buffer_size)
 	void *light_buffer;
 	int light_buffer_size;
 
+	void *entity_buffer;
+	int entity_buffer_size;
+
 
     brush_SerializeBrushes(&brush_buffer, &brush_buffer_size);
     navigation_SerializeWaypoints(&waypoint_buffer, &waypoint_buffer_size);
     light_SerializeLights(&light_buffer, &light_buffer_size);
+    entity_SerializeEntities(&entity_buffer, &entity_buffer_size, 1);
 
-    out_size = brush_buffer_size + waypoint_buffer_size + light_buffer_size + sizeof(struct level_editor_buffer_start_t) + sizeof(struct level_editor_buffer_end_t);
+
+    out_size = brush_buffer_size + waypoint_buffer_size + light_buffer_size + entity_buffer_size + sizeof(struct level_editor_buffer_start_t) + sizeof(struct level_editor_buffer_end_t);
     out = memory_Calloc(out_size, 1);
 
 	*buffer = out;
@@ -1638,6 +1661,12 @@ void editor_LevelEditorSerialize(void **buffer, int *buffer_size)
 	{
 		memcpy(out, light_buffer, light_buffer_size);
 		out += light_buffer_size;
+	}
+
+	if(entity_buffer_size)
+	{
+		memcpy(out, entity_buffer, entity_buffer_size);
+		out += entity_buffer_size;
 	}
 
     buffer_end = (struct level_editor_buffer_end_t *)out;
@@ -1682,6 +1711,10 @@ void editor_LevelEditorDeserialize(void **buffer)
 		else if(!strcmp(in, light_section_start_tag))
 		{
 			light_DeserializeLights((void **)&in);
+		}
+		else if(!strcmp(in, entity_section_start_tag))
+		{
+			entity_DeserializeEntities((void **)&in, 1);
 		}
 		else if(!strcmp(in, level_editor_buffer_end_tag))
 		{
@@ -1738,6 +1771,8 @@ int editor_LevelEditorLoadLevel(char *path, char *file_name)
             memory_Free(file_buffer);
 
             return 1;
+
+            level_editor_need_to_copy_data = 1;
         }
     }
 

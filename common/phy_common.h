@@ -157,6 +157,7 @@ struct collider_def_t
 	float radius;
 	float step_height;
 	float slope_angle;
+	float max_walk_speed;
 	//	}character_collider_data;
 	//}collider_data;
 
@@ -203,6 +204,7 @@ struct collider_t
 	float height;
 	float step_height;
 	float max_slope;
+	float max_walk_speed;
 	int character_collider_flags;
 
 	void *rigid_body;						/* opaque reference to a btRigidBody... */

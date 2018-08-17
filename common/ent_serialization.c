@@ -442,6 +442,7 @@ void entity_WriteCollider(void **buffer, struct collider_def_t *collider_def)
 				collider_record_start->collider.collider_data.max_slope_angle = collider_def->slope_angle;
 				collider_record_start->collider.collider_data.max_step_height = collider_def->step_height;
 				collider_record_start->collider.collider_data.jump_height = 0.0;
+				collider_record_start->collider.collider_data.max_walk_speed = collider_def->max_walk_speed;
 			break;
 
 			case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
@@ -498,7 +499,8 @@ void entity_ReadCollider(void **buffer, struct entity_handle_t entity)
 																			      collider_record_start->collider.collider_data.crouch_height,
 																				  collider_record_start->collider.collider_data.radius,
 																				  collider_record_start->collider.collider_data.max_step_height,
-																				  collider_record_start->collider.collider_data.max_slope_angle);
+																				  collider_record_start->collider.collider_data.max_slope_angle,
+																				  collider_record_start->collider.collider_data.max_walk_speed);
 		break;
 
 		case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
@@ -652,7 +654,7 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 
 
 
-		if((ent_record_start->flags & ENTITY_RECORD_FLAG_DEF) && (!(ent_record_start->flags & ENTITY_RECORD_FLAG_DEF_REF)) && write_def_as_file_ref)
+		if((ent_record_start->flags & ENTITY_RECORD_FLAG_DEF) && (!(ent_record_start->flags & ENTITY_RECORD_FLAG_DEF_REF)) && write_def_as_file_ref && (entity_ptr->flags & ENTITY_FLAG_ON_DISK))
 		{
 			/* don't serialize this entity def data, but instead just the file name
 			where it exists... */
@@ -1087,10 +1089,9 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 				{
 					if(transform_component->parent.type == COMPONENT_TYPE_NONE)
 					{
-						if(!(entity->flags & ENTITY_FLAG_ON_DISK))
-						{
-							entity_WriteEntity((void **)&out, handle, INVALID_COMPONENT_HANDLE, 1);
-						}
+						//if(!(entity->flags & ENTITY_FLAG_ON_DISK))
+						entity_WriteEntity((void **)&out, handle, INVALID_COMPONENT_HANDLE, 1);
+
 					}
 				}
 			}

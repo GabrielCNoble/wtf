@@ -2,6 +2,7 @@
 #include "scr_math.h"
 #include "scr_types.h"
 #include "scr_typeof.h"
+#include "scr_sound.h"
 #include "vector.h"
 #include "c_memory.h"
 #include "particle.h"
@@ -12,6 +13,7 @@
 #include "scr_world.h"
 #include "input.h"
 
+#include "sound.h"
 
 
 #include "path.h"
@@ -131,9 +133,10 @@ void script_Finish()
 	memory_Free(scr_contexts_stack);
 }
 
-void script_DebugPrint()
+void script_ScriptPrint(struct script_string_t *fmt)
 {
-	printf("debug print\n");
+	char *str = script_string_GetRawString(fmt);
+	printf(str);
 }
 
 void script_RegisterTypesAndFunctions()
@@ -155,10 +158,12 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("double sqrt(double _X)", asFUNCTION(sqrt), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("double pow(double _X, double _Y)", asFUNCTION(pow), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("float randfloat()", asFUNCTION(randfloat), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void script_DebugPrint()", asFUNCTION(script_DebugPrint), asCALL_CDECL);
+//	scr_virtual_machine->RegisterGlobalFunction("void script_DebugPrint()", asFUNCTION(script_DebugPrint), asCALL_CDECL);
 
 	scr_virtual_machine->RegisterGlobalProperty("const int r_frame", &r_frame);
 	scr_virtual_machine->RegisterGlobalProperty("const int ps_frame", &ps_frame);
+
+	scr_virtual_machine->RegisterGlobalFunction("int rand()", asFUNCTION(rand), asCALL_CDECL);
 
 	/*
 	===============================================
@@ -356,7 +361,7 @@ void script_RegisterTypesAndFunctions()
 	RegisterStdString(scr_virtual_machine);
 
 	scr_virtual_machine->RegisterGlobalFunction("void script_TestPrint(string &in message)", asFUNCTION(script_string_TestPrint), asCALL_CDECL);
-
+	scr_virtual_machine->RegisterGlobalFunction("void script_Print(string &in fmt)", asFUNCTION(script_ScriptPrint), asCALL_CDECL);
 
 
 
@@ -368,14 +373,17 @@ void script_RegisterTypesAndFunctions()
 
 
 
-	scr_virtual_machine->RegisterObjectType("array<class T>", 0, asOBJ_REF | asOBJ_TEMPLATE | asOBJ_NOCOUNT);
+	scr_virtual_machine->RegisterObjectType("array<class T>", 0, asOBJ_REF | asOBJ_TEMPLATE);
 
-//	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_ADDREF, "void AddRef()", asFUNCTION(script_array_AddRef), asCALL_CDECL_OBJFIRST);
-//	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_RELEASE, "void Release()", asFUNCTION(script_array_Release), asCALL_CDECL_OBJFIRST);
+	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_ADDREF, "void AddRef()", asFUNCTION(script_array_AddRef), asCALL_CDECL_OBJFIRST);
+	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_RELEASE, "void Release()", asFUNCTION(script_array_Release), asCALL_CDECL_OBJFIRST);
 
 	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_FACTORY, "array<T>@ Constructor(? &in sub_type)", asFUNCTION(script_array_Constructor), asCALL_CDECL);
 	scr_virtual_machine->RegisterObjectBehaviour("array<T>", asBEHAVE_FACTORY, "array<T>@ Constructor_Sized(? &in sub_type, int size)", asFUNCTION(script_array_Constructor_Sized), asCALL_CDECL);
 	scr_virtual_machine->RegisterObjectMethod("array<T>", "T &opIndex(int index)", asFUNCTION(script_array_ElementAt), asCALL_CDECL_OBJFIRST);
+	scr_virtual_machine->RegisterObjectMethod("array<T>", "array<T> @opAssign(array<T> &in other)", asFUNCTION(script_array_OpAssign), asCALL_CDECL_OBJFIRST);
+	scr_virtual_machine->RegisterObjectMethod("array<T>", "void Clear()", asFUNCTION(script_array_Clear), asCALL_CDECL_OBJFIRST);
+	scr_virtual_machine->RegisterObjectMethod("array<T>", "void Append(? &in element)", asFUNCTION(script_array_Append), asCALL_CDECL_OBJFIRST);
 	scr_virtual_machine->RegisterObjectProperty("array<T>", "int count", asOFFSET(struct script_array_t, element_count));
 
 
@@ -439,7 +447,7 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Jump(float jump_force)", asFUNCTION(entity_ScriptJump), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Move(vec3_t &in direction)", asFUNCTION(entity_ScriptMove), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_FindPath(vec3_t &in to)", asFUNCTION(entity_ScriptFindPath), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void entity_GetWaypointDirection(vec3_t &out direction)", asFUNCTION(entity_ScriptGetWaypointDirection), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("vec3_t &entity_GetWaypointDirection()", asFUNCTION(entity_ScriptGetWaypointDirection), asCALL_CDECL);
 
 
 
@@ -525,7 +533,7 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("int entity_EntityHasProp(entity_handle_t entity, string &in name)", asFUNCTION(entity_ScriptEntityHasProp), asCALL_CDECL);
 
 	scr_virtual_machine->RegisterGlobalFunction("int entity_IsEntityValid(entity_handle_t entity)", asFUNCTION(entity_ScriptIsEntityValid), asCALL_CDECL);
-
+	scr_virtual_machine->RegisterGlobalFunction("int entity_LineOfSightToEntity(entity_handle_t entity)", asFUNCTION(entity_ScriptLineOfSightToEntity), asCALL_CDECL);
 
 	/*
 	===============================================
@@ -537,7 +545,7 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("void world_AddWorldVar(string &in name, ? &in type)", asFUNCTION(world_ScriptAddWorldVar), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void world_AddWorldArrayVar(string &in name, int max_elements, ? &in type)", asFUNCTION(world_ScriptAddWorldArrayVar), asCALL_CDECL);
     scr_virtual_machine->RegisterGlobalFunction("void world_RemoveWorldVar(string &in name)", asFUNCTION(world_ScriptRemoveWorldVar), asCALL_CDECL);
-    scr_virtual_machine->RegisterGlobalFunction("int world_GetWorldArrayVarLenght(string &in name)", asFUNCTION(world_ScriptGetWorldArrayVarLength), asCALL_CDECL);
+    scr_virtual_machine->RegisterGlobalFunction("int world_GetWorldArrayVarLength(string &in name)", asFUNCTION(world_ScriptGetWorldArrayVarLength), asCALL_CDECL);
 
     scr_virtual_machine->RegisterGlobalFunction("void world_SetWorldVarValue(string &in name, ? &in value)", asFUNCTION(world_ScriptSetWorldVarValue), asCALL_CDECL);
     scr_virtual_machine->RegisterGlobalFunction("void world_GetWorldVarValue(string &in name, ? &out value)", asFUNCTION(world_ScriptGetWorldVarValue), asCALL_CDECL);
@@ -545,7 +553,20 @@ void script_RegisterTypesAndFunctions()
     scr_virtual_machine->RegisterGlobalFunction("void world_GetWorldArrayVarValue(string &in name, int index, ? &out value)", asFUNCTION(world_ScriptGetWorldArrayVarValue), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void world_AppendWorldArrayVarValue(string &in name, ? &in value)", asFUNCTION(world_ScriptAppendWorldArrayVarValue), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void world_ClearWorldArrayVar(string &in name)", asFUNCTION(world_ScriptClearWorldArrayVar), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("array<entity_handle_t> @world_GetEntities()", asFUNCTION(world_ScriptGetEntities), asCALL_CDECL);
 
+
+	/*
+	===============================================
+	===============================================
+	===============================================
+	*/
+
+
+	scr_virtual_machine->RegisterObjectType("sound_handle_t", sizeof(struct sound_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
+
+	scr_virtual_machine->RegisterGlobalFunction("sound_handle_t sound_GetSound(string &in name)", asFUNCTION(sound_ScriptGetSound), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void sound_PlaySound(sound_handle_t sound, vec3_t &in position, float gain, int loop)", asFUNCTION(sound_ScriptPlaySound), asCALL_CDECL);
 
 
 }
@@ -996,6 +1017,11 @@ void *script_GetFunctionAddress(char *function, script_t *script)
 	module = (asIScriptModule *)script->script_module;
 
 	return module->GetFunctionByName(function);
+}
+
+void *script_GetTypeInfo(char *type)
+{
+    return scr_virtual_machine->GetTypeInfoByName(type);
 }
 
 

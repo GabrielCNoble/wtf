@@ -35,9 +35,11 @@ extern light_params_t *light_params;
 extern light_position_t *light_positions;
 
 /* from texture.c */
-extern int texture_count;
-extern texture_t *textures;
-extern texture_info_t *texture_info;
+//extern int texture_count;
+//extern texture_t *textures;
+//extern texture_info_t *texture_info;
+
+extern struct stack_list_t tex_textures;
 
 /* from brush.c */
 extern brush_t *brushes;

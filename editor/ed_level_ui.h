@@ -33,6 +33,10 @@ void editor_LevelEditorBrushUVMenu();
 
 void editor_LevelEditorWorldMenu();
 
+void editor_LevelEditorSnapValueMenu();
+
+void editor_LevelEditorSnap3dCursorMenu();
+
 void editor_LevelEditorAddToWorldMenu();
 
 void editor_LevelEditorDeleteSelectionsMenu();
@@ -53,6 +57,12 @@ void editor_LevelEditorCloseDeleteSelectionsMenu();
 void editor_LevelEditorOpenWaypointOptionMenu(int x, int y);
 
 void editor_LevelEditorCloseWaypointOptionMenu();
+
+
+
+void editor_LevelEditorOpenSnap3dCursorMenu(int x, int y);
+
+
 
 
 

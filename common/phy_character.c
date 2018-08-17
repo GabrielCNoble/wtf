@@ -499,9 +499,9 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 
 		horizontal_delta = sqrt(linear_velocity[0] * linear_velocity[0] + linear_velocity[2] * linear_velocity[2]);
 
-		if(horizontal_delta > MAX_HORIZONTAL_DELTA)
+		if(horizontal_delta > collider->max_walk_speed)
 		{
-			horizontal_delta = MAX_HORIZONTAL_DELTA / horizontal_delta;
+			horizontal_delta = collider->max_walk_speed / horizontal_delta;
 
 			linear_velocity[0] *= horizontal_delta;
 			linear_velocity[2] *= horizontal_delta;

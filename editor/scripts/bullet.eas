@@ -17,19 +17,23 @@ void OnSpawn()
 
 void OnDie()
 {
-	
+
 }
 
-void OnCollision(array<entity_handle_t> @collided_entities)
+void OnCollision(array<entity_contact_t> @contacts)
 {
 	int i;
-	
-	for(i = 0; i < collided_entities.count; i++)
+
+	for(i = 0; i < contacts.count; i++)
 	{
-		if(entity_EntityHasProp(collided_entities[i], "enemy") != 0)
+		if(entity_IsEntityValid(contacts[i].entity) != 0)
 		{
-			entity_Die();
+			if(entity_EntityHasProp(contacts[i].entity, "enemy") != 0)
+			{
+				entity_Die();
+			}
 		}
+
 	}
-	
+
 }

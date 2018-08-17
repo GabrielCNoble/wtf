@@ -115,8 +115,10 @@ extern int mat_material_count;
 extern material_t *mat_materials;
 
 /* from texture.c */
-extern int tex_texture_count;
-extern texture_t *tex_textures;
+//extern int tex_texture_count;
+//extern texture_t *tex_textures;
+
+extern struct stack_list_t tex_textures;
 
 /* from shader.c */
 extern shader_t *shaders;
@@ -328,6 +330,8 @@ int renderer_Init(int width, int height, int init_mode)
 	log_LogMessage(LOG_MESSAGE_NONE, "Window resolution: %d x %d", r_width, r_height);
 
 
+    renderer_CheckFunctionPointers();
+
 
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	glClearStencil(0);
@@ -429,7 +433,8 @@ void renderer_SetDiffuseTexture(int texture_index)
 	}
 	else
 	{
-		gl_handle = tex_textures[texture_index].gl_handle;
+		texture_index++;
+		gl_handle = ((struct texture_t *)tex_textures.elements + texture_index)->gl_handle;
 	}
 
 	glActiveTexture(GL_TEXTURE0);
@@ -449,7 +454,8 @@ void renderer_SetNormalTexture(int texture_index)
 	}
 	else
 	{
-		gl_handle = tex_textures[texture_index].gl_handle;
+		texture_index++;
+		gl_handle = ((struct texture_t *)tex_textures.elements + texture_index)->gl_handle;
 	}
 
 	glActiveTexture(GL_TEXTURE1);
@@ -485,17 +491,23 @@ void renderer_SetTexture(int texture_unit, int texture_target, int texture_index
 {
 	int gl_texture;
 
-	if(texture_index < 0 || texture_index >= tex_texture_count)
+	struct texture_t *texture;
+
+	if(texture_index < 0 || texture_index >= tex_textures.element_count)
 	{
 		texture_index = -1;
 	}
 
-	if(tex_textures[texture_index].bm_flags & TEXTURE_INVALID)
+	texture_index++;
+
+	texture = (struct texture_t *)tex_textures.elements + texture_index;
+
+	if(texture->bm_flags & TEXTURE_INVALID)
 	{
 		texture_index = -1;
 	}
 
-	gl_texture = tex_textures[texture_index].gl_handle;
+	gl_texture = texture->gl_handle;
 	glActiveTexture(texture_unit);
 	glBindTexture(texture_target, gl_texture);
 }
@@ -717,7 +729,7 @@ default material will be used...
 void renderer_SetMaterial(int material_index)
 {
 	material_t *material;
-	texture_t *texture;
+	struct texture_t *texture;
 	float color[4];
 	int texture_flags = 0;
 
@@ -747,7 +759,7 @@ void renderer_SetMaterial(int material_index)
 			renderer_SetNormalTexture(material->normal_texture);
 			texture_flags |= MATERIAL_USE_NORMAL_TEXTURE;
 
-			texture = &tex_textures[material->normal_texture];
+			texture = (struct texture_t *)tex_textures.elements + material->normal_texture;
 
 
 			if(texture->bm_flags & TEXTURE_INVERT_X)
@@ -2219,7 +2231,7 @@ void renderer_ZPrePass()
 //	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_element_buffer);
 	//shader_UseShader(z_pre_pass_shader);
 	renderer_SetShader(r_z_pre_pass_shader);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(compact_vertex_t), &((compact_vertex_t *)0)->position);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->position);
 
 	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
 	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
@@ -2289,10 +2301,10 @@ void renderer_DrawWorld()
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->tangent);
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, s izeof(vertex_t), &((vertex_t *)0)->tex_coord);*/
 
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(compact_vertex_t), &((compact_vertex_t *)0)->position);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(compact_vertex_t), &((compact_vertex_t *)0)->normal);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(compact_vertex_t), &((compact_vertex_t *)0)->tangent);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(compact_vertex_t), &((compact_vertex_t *)0)->tex_coord);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->position);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->normal);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->tangent);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->tex_coord);
 
 	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
 	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
@@ -2421,15 +2433,15 @@ void renderer_DrawOpaque()
 		renderer_SetShader(r_forward_pass_shader);
 	}
 
-	//renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(compact_vertex_t), &(((compact_vertex_t *)0)->position));
-	//renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(compact_vertex_t), &(((compact_vertex_t *)0)->normal));
-	//renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(compact_vertex_t), &(((compact_vertex_t *)0)->tangent));
-	//renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(compact_vertex_t), &(((compact_vertex_t *)0)->tex_coord));
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &(((struct compact_vertex_t *)0)->position));
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(struct compact_vertex_t), &(((struct compact_vertex_t *)0)->normal));
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(struct compact_vertex_t), &(((struct compact_vertex_t *)0)->tangent));
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &(((struct compact_vertex_t *)0)->tex_coord));
 
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_HALF_FLOAT, GL_FALSE, sizeof(struct c_vertex_t), &(((struct c_vertex_t *)0)->position_x));
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 3, GL_BYTE, GL_TRUE, sizeof(struct c_vertex_t), &(((struct c_vertex_t *)0)->normal_x));
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 3, GL_BYTE, GL_TRUE, sizeof(struct c_vertex_t), &(((struct c_vertex_t *)0)->tangent_x));
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_HALF_FLOAT, GL_FALSE, sizeof(struct c_vertex_t), &(((struct c_vertex_t *)0)->tex_coord_u));
+	//renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_HALF_FLOAT, GL_FALSE, sizeof(struct c_vertex_t), &(((struct c_vertex_t *)0)->position_x));
+	//renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 3, GL_BYTE, GL_TRUE, sizeof(struct c_vertex_t), &(((struct c_vertex_t *)0)->normal_x));
+	//renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 3, GL_BYTE, GL_TRUE, sizeof(struct c_vertex_t), &(((struct c_vertex_t *)0)->tangent_x));
+	//renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_HALF_FLOAT, GL_FALSE, sizeof(struct c_vertex_t), &(((struct c_vertex_t *)0)->tex_coord_u));
 
 	renderer_ExecuteDrawCmds();
 }
@@ -2717,6 +2729,7 @@ void renderer_DrawParticles()
 	glEnable(GL_BLEND);
 	glDepthMask(GL_FALSE);
 
+    renderer_ClearVertexAttribPointers();
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 4, GL_FLOAT, 0, 0, NULL);
 
 	particle_systems = (struct particle_system_t *)ps_particle_systems.elements;
@@ -2731,11 +2744,19 @@ void renderer_DrawParticles()
 			continue;
 		}
 
-		renderer_SetTexture(GL_TEXTURE0, GL_TEXTURE_2D, ps->texture);
+		if(!ps->particle_count)
+		{
+			continue;
+		}
+
+		//renderer_SetTexture(GL_TEXTURE0, GL_TEXTURE_2D, ps->texture);
+		renderer_SetTexture(GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, ps->texture);
 		renderer_SetDefaultUniform4fv(UNIFORM_particle_positions, ps->particle_count, (float *)ps->particle_positions);
 		renderer_SetDefaultUniform1iv(UNIFORM_particle_frames, ps->particle_count, ps->particle_frames);
 		renderer_SetDefaultUniform1i(UNIFORM_texture_array_sampler0, 0);
+
 		renderer_DrawArraysInstanced(GL_QUADS, ps_particle_quad_start, 4, ps->particle_count);
+		//renderer_DrawArrays(GL_QUADS, ps_particle_quad_start, 4);
 	}
 
 	glEnable(GL_CULL_FACE);

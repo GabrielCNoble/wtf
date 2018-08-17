@@ -12,24 +12,52 @@ void main()
     float angle;
     //vec3_t forward_vector;
 
-    entity_GetWaypointDirection(direction);
-
     orientation = entity_GetOrientation(0);
     //direction.y = 0.0;
 
-    //player_entity = entity_GetEntity("player entity", 0);
-    //current_entity = entity_GetCurrentEntity();
-
-    //orientation = entity_GetEntityOrientation(player_entity, 0);
-    //player_position = entity_GetEntityPosition(player_entity, 0);
-   // current_position = entity_GetPosition(0);
+    player_entity = entity_GetEntity("player entity", 0);
+    current_entity = entity_GetCurrentEntity();
 
 
+	if(entity_LineOfSightToEntity(player_entity) != 0)
+	{
+		entity_SetEntityProp1i(current_entity, "state", 1);
+	}
+	else
+	{
+		if(entity_GetEntityProp1i(current_entity, "state") == 1)
+		{
+            /* we were chasing the player but it got out of sight,
+            so calculate a new route */
+            entity_SetEntityProp1i(current_entity, "state", 2);
+		}
+	}
 
-    /*direction = player_position - current_position;
-    float dist_squared = dot(direction, direction);
 
-    direction = normalize(direction);*/
+	if(entity_GetEntityProp1i(current_entity, "state") == 1)
+	{
+		/* chasing player... */
+		player_position = entity_GetEntityPosition(player_entity, 0);
+		current_position = entity_GetPosition(0);
+
+		direction = player_position - current_position;
+
+		direction = normalize(direction);
+	}
+	else
+	{
+
+		if(entity_GetEntityProp1i(current_entity, "state") == 2)
+		{
+            /* calculate route */
+			player_position = entity_GetEntityPosition(player_entity, 0);
+			entity_FindPath(player_position);
+            entity_SetEntityProp1i(current_entity, "state", 0);
+		}
+
+		direction = entity_GetWaypointDirection();
+	}
+
     direction.y = 0.0;
 
     angle = dot(direction, orientation[2]);
@@ -43,10 +71,6 @@ void main()
 		entity_Jump(3.5);
 	}*/
 
-
-
-
-
     if(entity_GetEntityProp1i(current_entity, "enemy") != -1)
 	{
 		entity_DIEYOUMOTHERFUCKER();
@@ -56,11 +80,14 @@ void main()
 
 void OnSpawn()
 {
-    entity_FindPath(vec3_t(25.0, 0.0, -25.0));
+    //entity_FindPath(vec3_t(25.0, 0.0, -25.0));
     entity_handle_t current_entity = entity_GetCurrentEntity();
 
     entity_AddEntityProp1i(current_entity, "enemy");
     entity_SetEntityProp1i(current_entity, "enemy", -1);
+
+    entity_AddEntityProp1i(current_entity, "state");
+    entity_SetEntityProp1i(current_entity, "state", 2);
 }
 
 void OnDie()
@@ -69,6 +96,32 @@ void OnDie()
 	entity_handle_t current_entity = entity_GetCurrentEntity();
 	vec3_t position = entity_GetEntityPosition(current_entity, 0);
 	particle_SpawnParticleSystem(position, particle_system_def);
+
+	int sound_index;
+
+	sound_handle_t explosion_sound;
+
+	sound_index = rand() % 3;
+
+	switch(sound_index)
+	{
+		case 0:
+			explosion_sound = sound_GetSound("explosion0");
+		break;
+
+		case 1:
+			explosion_sound = sound_GetSound("explosion1");
+		break;
+
+		case 2:
+			explosion_sound = sound_GetSound("explosion2");
+		break;
+	}
+
+	//sound_handle_t explosion_sound = sound_GetSound("explosion");
+	sound_PlaySound(explosion_sound, position, 10.0, 0);
+
+	//script_Print("DIE!\n");
 }
 
 void OnCollision(array<entity_contact_t> @contacts)

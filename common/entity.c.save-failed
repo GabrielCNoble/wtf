@@ -889,8 +889,6 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 
 	int prop_index;
 
-	int i;
-
 	entity_ptr = entity_GetEntityPointerHandle(entity);
 
 	if(size <= 0)
@@ -941,14 +939,7 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 			prop = entity_ptr->props + entity_ptr->prop_count;
 			entity_ptr->prop_count++;
 
-			prop->name = memory_Calloc(ENTITY_PROP_NAME_MAX_LEN, 1);
-
-			for(i = 0; i < ENTITY_PROP_NAME_MAX_LEN - 1 && name[i]; i++)
-			{
-				prop->name[i] = name[i];
-			}
-
-			//prop->name = memory_Strdup(name);
+			prop->name = memory_Strdup(name);
 
 		}
 		else
@@ -966,31 +957,7 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 
 void entity_RemoveProp(struct entity_handle_t entity, char *name)
 {
-	int i;
-	struct entity_t *entity_ptr;
 
-
-    entity_ptr = entity_GetEntityPointerHandle(entity);
-
-    if(entity_ptr)
-	{
-		for(i = 0; i < entity_ptr->prop_count; i++)
-		{
-			if(!strcmp(name, entity_ptr->props[i].name))
-			{
-				memory_Free(entity_ptr->props[i].memory);
-				memory_Free(entity_ptr->props[i].name);
-
-                if(i < entity_ptr->prop_count - 1 )
-				{
-					entity_ptr->props[i] = entity_ptr->props[entity_ptr->prop_count - 1];
-				}
-				entity_ptr->prop_count--;
-
-				return;
-			}
-		}
-	}
 }
 
 void entity_PropValue(struct entity_handle_t entity, char *name, void *value, int set)
@@ -1575,7 +1542,6 @@ void entity_MarkForRemoval(struct entity_handle_t entity)
 {
 	struct entity_t *entity_ptr;
 	struct component_handle_t component;
-	struct entity_script_t *script;
 	struct script_component_t *script_component;
 
 
@@ -1590,18 +1556,6 @@ void entity_MarkForRemoval(struct entity_handle_t entity)
 	if(entity_ptr)
 	{
 		entity_ptr->flags |= ENTITY_FLAG_MARKED_INVALID;
-
-		/*script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
-
-		if(script_component)
-		{
-			script = (struct entity_script_t *)script_component->script;
-
-			if(!script->on_die_entry_point)
-			{
-				entity_ptr->flags |= ENTITY_FLAG_EXECUTED_DIE_FUNCTION;
-			}
-		}*/
 
 		if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type != COMPONENT_TYPE_NONE)
 		{
@@ -1638,12 +1592,12 @@ void entity_RemoveEntity(struct entity_handle_t entity)
 
 		entity_ptr->flags |= ENTITY_FLAG_MARKED_INVALID;
 
-		//if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type != COMPONENT_TYPE_NONE)
-		//{
-		//	script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
+		if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type != COMPONENT_TYPE_NONE)
+		{
+			script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
 
-		//	script_ExecuteScriptImediate(script_component->script, script_component);
-		//}
+			script_ExecuteScriptImediate(script_component->script, script_component);
+		}
 
 		transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
@@ -2898,7 +2852,7 @@ void entity_ClearMarkedEntities()
 
 		if(entity)
 		{
-			if((entity->flags & ENTITY_FLAG_MARKED_INVALID) && (entity->flags & ENTITY_FLAG_EXECUTED_DIE_FUNCTION))
+			if(entity->flags & ENTITY_FLAG_MARKED_INVALID)
 			{
 				entity_RemoveEntity(handle);
 			}
@@ -2994,24 +2948,13 @@ void *entity_SetupScriptDataCallback(struct script_t *script, void *script_contr
 
 	if(ent->flags & ENTITY_FLAG_MARKED_INVALID)
 	{
-		if(!(ent->flags & ENTITY_FLAG_EXECUTED_DIE_FUNCTION))
-		{
-			script_QueueEntryPoint(entity_script->on_die_entry_point);
-		}
-
-		ent->flags |= ENTITY_FLAG_EXECUTED_DIE_FUNCTION;
+		script_QueueEntryPoint(entity_script->on_die_entry_point);
 	}
 	else
 	{
 		if(r_frame - ent->spawn_time <= 1)
 		{
-			if(!(ent->flags & ENTITY_FLAG_EXECUTED_SPAWN_FUNCTION))
-			{
-				script_QueueEntryPoint(entity_script->on_spawn_entry_point);
-			}
-
-			ent->flags |= ENTITY_FLAG_EXECUTED_SPAWN_FUNCTION;
-			//script_QueueEntryPoint(entity_script->on_spawn_entry_point);
+			script_QueueEntryPoint(entity_script->on_spawn_entry_point);
 		}
 
 		if(physics_component)

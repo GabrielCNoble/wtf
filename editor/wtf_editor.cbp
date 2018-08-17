@@ -37,7 +37,7 @@
 			<Add directory='&quot;level editor&quot;' />
 			<Add directory='&quot;entity editor&quot;' />
 			<Add directory='&quot;material editor&quot;' />
-			<Add directory="../common/ogg/include" />
+			<Add directory="../common/vorbis/include" />
 		</Compiler>
 		<Linker>
 			<Add option="-m32" />
@@ -54,6 +54,8 @@
 			<Add library="BulletDynamics" />
 			<Add library="BulletCollision" />
 			<Add library="LinearMath" />
+			<Add library="vorbisfile" />
+			<Add library="vorbis" />
 			<Add library="ogg" />
 			<Add directory="../common/SDL/lib/mingw" />
 			<Add directory="../common/OPENAL/Win32" />
@@ -66,7 +68,7 @@
 			<Add directory="../common/ozz/options" />
 			<Add directory="../common/ozz/animation/runtime" />
 			<Add directory="../common/ozz/animation/offline" />
-			<Add directory="../common/ogg/lib" />
+			<Add directory="../common/vorbis/lib" />
 		</Linker>
 		<Unit filename="../common/animation.c">
 			<Option compilerVar="CPP" />
@@ -398,6 +400,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/script/scr_particle.h" />
+		<Unit filename="../common/script/scr_sound.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/script/scr_sound.h" />
 		<Unit filename="../common/script/scr_world.c">
 			<Option compilerVar="CC" />
 		</Unit>

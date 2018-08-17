@@ -392,8 +392,11 @@ void brush_FinalizeBrush(brush_t *brush, int transform_base_vertices)
 		memory_Free(indexes);
 
 
-		brush->handle = gpu_AllocVerticesAlign(sizeof(struct c_vertex_t ) * brush->max_vertexes, sizeof(struct c_vertex_t ));
-		brush->start = gpu_GetAllocStart(brush->handle) / sizeof(struct c_vertex_t );
+		//brush->handle = gpu_AllocVerticesAlign(sizeof(struct c_vertex_t ) * brush->max_vertexes, sizeof(struct c_vertex_t ));
+		//brush->start = gpu_GetAllocStart(brush->handle) / sizeof(struct c_vertex_t );
+
+		brush->handle = gpu_AllocVerticesAlign(sizeof(struct compact_vertex_t ) * brush->max_vertexes, sizeof(struct compact_vertex_t ));
+		brush->start = gpu_GetAllocStart(brush->handle) / sizeof(struct compact_vertex_t );
 
 		brush->index_handle = gpu_AllocIndexesAlign(sizeof(int) * brush->max_vertexes, sizeof(int));
 		brush->index_start = gpu_GetAllocStart(brush->index_handle) / sizeof(int);
@@ -1150,7 +1153,8 @@ void brush_UpdateBrushElementBuffer(brush_t *brush)
 
 void brush_UploadBrushVertices(brush_t *brush)
 {
-	struct c_vertex_t *compact_vertices;
+	//struct c_vertex_t *compact_vertices;
+	struct compact_vertex_t *compact_vertices;
 	struct vertex_t *vertices;
 
 	int i;
@@ -1178,10 +1182,14 @@ void brush_UploadBrushVertices(brush_t *brush)
 	}
 
 
-	compact_vertices = model_ConvertVertices2(vertices, brush->clipped_polygons_vert_count);
+	//compact_vertices = model_ConvertVertices2(vertices, brush->clipped_polygons_vert_count);
+
+	compact_vertices = model_ConvertVertices(vertices, brush->clipped_polygons_vert_count);
 
 	//gpu_Write(brush->handle, 0, brush->clipped_polygons_vertices, sizeof(vertex_t) * brush->clipped_polygons_vert_count);
-	gpu_Write(brush->handle, 0, compact_vertices, sizeof(struct c_vertex_t ) * brush->clipped_polygons_vert_count);
+	//gpu_Write(brush->handle, 0, compact_vertices, sizeof(struct c_vertex_t ) * brush->clipped_polygons_vert_count);
+
+	gpu_Write(brush->handle, 0, compact_vertices, sizeof(struct compact_vertex_t ) * brush->clipped_polygons_vert_count);
 
 	memory_Free(compact_vertices);
 	memory_Free(vertices);

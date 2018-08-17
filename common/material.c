@@ -719,10 +719,13 @@ engine...
 */
 void material_WriteMaterialRecord(material_t *material, char *material_name, void **buffer)
 {
+	#if 0
 	char *out;
 	char *name;
 	int name_offset = 0;
 	material_record_t *record;
+
+	struct texture_t *texture;
 
 	out = *buffer;
 
@@ -742,15 +745,17 @@ void material_WriteMaterialRecord(material_t *material, char *material_name, voi
 
 	if(record->bm_flags & MATERIAL_USE_DIFFUSE_TEXTURE)
 	{
-		name = texture_GetTextureName(material->diffuse_texture);
-		strcpy(record->names + name_offset, name);
+		texture = texture_GetTexturePointer(material->diffuse_texture);
+		//name = texture_GetTextureName(material->diffuse_texture);
+		strcpy(record->names + name_offset, texture->texture_info->name);
 		name_offset += strlen(name) + 1;
 	}
 
 	if(record->bm_flags & MATERIAL_USE_NORMAL_TEXTURE)
 	{
-		name = texture_GetTextureName(material->normal_texture);
-		strcpy(record->names + name_offset, name);
+		//name = texture_GetTextureName(material->normal_texture);
+		texture =
+		//strcpy(record->names + name_offset, name);
 		name_offset += strlen(name) + 1;
 	}
 
@@ -787,10 +792,13 @@ void material_WriteMaterialRecord(material_t *material, char *material_name, voi
 	out += sizeof(material_record_t) - (sizeof(material_record_t) - name_offset);
 
 	*buffer = out;
+
+	#endif
 }
 
 void material_SerializeMaterials(void **buffer, int *buffer_size)
 {
+	#if 0
 	int i;
 	material_section_header_t *header;
 	material_record_t *record;
@@ -850,6 +858,8 @@ void material_SerializeMaterials(void **buffer, int *buffer_size)
 
 	*buffer = out;
 
+	#endif
+
 }
 
 
@@ -864,6 +874,8 @@ material_WriteMaterialRecord...
 */
 void material_ReadMaterialRecord(material_record_t *record, void **buffer)
 {
+
+	#if 0
 	material_record_t *in_record;
 	char *material_name;
 	char *texture_name;
@@ -944,10 +956,14 @@ void material_ReadMaterialRecord(material_record_t *record, void **buffer)
 	in += sizeof(material_record_t) - (sizeof(material_record_t) - i);
 
 	*buffer = in;
+
+	#endif
 }
 
 void material_DeserializeMaterials(void **buffer)
 {
+
+	#if 0
 	material_section_header_t *header;
 	material_record_t record;
 	char *in;
@@ -1015,6 +1031,8 @@ void material_DeserializeMaterials(void **buffer)
 	}
 
 	*buffer = in;
+
+	#endif
 }
 
 

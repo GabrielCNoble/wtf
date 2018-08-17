@@ -1,7 +1,20 @@
 #include "scr_world.h"
 #include "world.h"
+
+#include "ent_common.h"
+#include "containers/stack_list.h"
+#include "script_types/scr_array.h"
+
+#include "c_memory.h"
+
 //#include "angelscript.h"
 
+
+
+extern struct stack_list_t ent_entities[2];
+
+
+struct script_array_t array_return;
 
 void world_ScriptAddWorldVar(struct script_string_t *name, void *type)
 {
@@ -110,6 +123,43 @@ void world_ScriptClearWorldArrayVar(struct script_string_t *name)
 	var_name = script_string_GetRawString(name);
 
 	world_ClearWorldArrayVar(var_name);
+}
+
+
+void *world_ScriptGetEntities()
+{
+	int i;
+
+	struct entity_handle_t *entity_handles;
+	struct entity_t *entities;
+
+    if(!array_return.buffer)
+	{
+        array_return.buffer = memory_Calloc(512, sizeof(struct entity_handle_t));
+	}
+
+	array_return.element_count = 0;
+	entities = (struct entity_t *)ent_entities[0].elements;
+	entity_handles = (struct entity_handle_t *)array_return.buffer;
+
+	for(i = 0; i < ent_entities[0].element_count; i++)
+	{
+        if(entities[i].flags & ENTITY_FLAG_INVALID)
+		{
+			continue;
+		}
+
+		entity_handles[array_return.element_count].def = 0;
+		entity_handles[array_return.element_count].entity_index = i;
+
+		array_return.element_count++;
+	}
+
+	array_return.element_size = sizeof(struct entity_handle_t);
+	array_return.extern_buffer = 1;
+	array_return.extern_array = 1;
+
+	return &array_return;
 }
 
 

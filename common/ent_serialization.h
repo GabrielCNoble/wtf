@@ -197,6 +197,7 @@ struct collider_record_start_t
 			float max_slope_angle;
 			float max_step_height;
 			float jump_height;
+			float max_walk_speed;
 
 		}collider_data;
 

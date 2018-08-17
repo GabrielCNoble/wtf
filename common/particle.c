@@ -11,6 +11,7 @@
 #include "particle.h"
 #include "c_memory.h"
 #include "camera.h"
+#include "texture.h"
 
 #include "script.h"
 #include "stack_list.h"
@@ -86,7 +87,8 @@ int particle_Init()
 
 	ps_particle_systems = stack_list_create(sizeof(struct particle_system_t), 512, particle_DisposeParticleSystemCallback);
 
-	ps_particle_quad_handle = gpu_AllocAlign(sizeof(vec4_t) * 4, sizeof(vec4_t), 0);
+	//ps_particle_quad_handle = gpu_AllocAlign(sizeof(vec4_t) * 4, sizeof(vec4_t), 0);
+	ps_particle_quad_handle = gpu_AllocVerticesAlign(sizeof(vec4_t ) * 4, sizeof(vec4_t));
 	ps_particle_quad_start = gpu_GetAllocStart(ps_particle_quad_handle) / sizeof(vec4_t);
 
 	particle_quad[0].x = -1.0;
@@ -273,6 +275,7 @@ int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientat
 {
 	particle_system_def_t *def;
 	struct particle_system_t *ps;
+	struct texture_t *texture;
 	int ps_index;
 
 
@@ -317,7 +320,7 @@ int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientat
 	ps = stack_list_get(&ps_particle_systems, ps_index);
 	ps->def = particle_system_def;
 
-	ps->flags = def->flags | PARTICLE_SYSTEM_FLAG_JUST_SPAWNED;
+	//ps->flags = def->flags | PARTICLE_SYSTEM_FLAG_JUST_SPAWNED;
 
 
 	if(!ps->particles)
@@ -334,19 +337,20 @@ int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientat
 			memory_Free(ps->particle_positions);
 			memory_Free(ps->particle_frames);
 
-			ps->particles = memory_Malloc(sizeof(struct particle_t) * ps->max_particles);
-			ps->particle_positions = memory_Malloc(sizeof(vec4_t) * ps->max_particles);
-			ps->particle_frames = memory_Malloc(sizeof(int) * ps->max_particles);
+			ps->particles = memory_Malloc(sizeof(struct particle_t) * def->max_particles);
+			ps->particle_positions = memory_Malloc(sizeof(vec4_t) * def->max_particles);
+			ps->particle_frames = memory_Malloc(sizeof(int) * def->max_particles);
 		}
 
 
 	}
 
 
+	texture = texture_GetTexturePointer(def->texture);
 
 
 	//ps->max_frame = def->max_frame;
-	ps->max_frame = 1;
+	ps->max_frame = texture->frame_count;
 	ps->max_life = def->max_life;
 	ps->max_particles = def->max_particles;
 	ps->respawn_time = def->respawn_time;
@@ -354,6 +358,7 @@ int particle_SpawnParticleSystem(vec3_t position, vec3_t scale, mat3_t *orientat
 	ps->particle_count = 0;
 	ps->position = position;
 	ps->scale = scale;
+	ps->flags = 0;
 
 	if(!orientation)
 	{
@@ -392,10 +397,11 @@ void particle_MarkForRemoval(int particle_system)
 
 	if(ps)
 	{
-		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_INVALID))
-		{
-			ps->flags |= PARTICLE_SYSTEM_FLAG_MARKED_INVALID | PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID;
-		}
+		ps->flags |= PARTICLE_SYSTEM_FLAG_MARKED_FOR_REMOVAL;
+		//if(!(ps->flags & PARTICLE_SYSTEM_FLAG_INVALID))
+		//{
+			//ps->flags |= PARTICLE_SYSTEM_FLAG_MARKED_INVALID | PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID;
+		//}
 	}
 }
 
@@ -407,13 +413,9 @@ void particle_DeallocParticleSystem(int particle_system)
 
 	if(ps)
 	{
-		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_INVALID))
-		{
-			ps->flags &= ~PARTICLE_SYSTEM_FLAG_MARKED_INVALID;
-			ps->flags |= PARTICLE_SYSTEM_FLAG_INVALID;
-
-			stack_list_remove(&ps_particle_systems, particle_system);
-		}
+		//ps->flags &= ~PARTICLE_SYSTEM_FLAG_MARKED_INVALID;
+		ps->flags = PARTICLE_SYSTEM_FLAG_INVALID;
+		stack_list_remove(&ps_particle_systems, particle_system);
 	}
 }
 
@@ -489,7 +491,7 @@ void particle_UpdateParticleSystems(double delta_time)
 		ps = particle_systems + i;
 
 
-		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_MARKED_INVALID))
+		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_MARKED_FOR_REMOVAL))
 		{
 			if(ps->respawn_time)
 			{
@@ -558,7 +560,7 @@ void particle_UpdateParticleSystems(double delta_time)
 		{
 			if(ps->particles[j].life >= ps->max_life)
 			{
-				if(j <= ps->particle_count - 1)
+				if(j < ps->particle_count - 1)
 				{
 					ps->particles[j] = ps->particles[ps->particle_count - 1];
 					ps->particle_positions[j] = ps->particle_positions[ps->particle_count - 1];
@@ -581,18 +583,18 @@ void particle_UpdateParticleSystems(double delta_time)
 			without update... */
 			//for(j = 0; j < elapsed_frames; j++)
 			{
-				//script_ExecuteScriptImediate(ps->script, ps, particle_SetupParticleScriptCallback);
 				script_ExecuteScriptImediate((struct script_t *)ps->script, (void *)i);
 			}
 		}
 
 		if(!ps->particle_count)
 		{
+			//printf("deallocd\n");
 			particle_DeallocParticleSystem(i);
 			continue;
 		}
 
-		particle_SortParticles(ps);
+		//particle_SortParticles(ps);
 
 	//	ps->flags &= ~PARTICLE_SYSTEM_FLAG_JUST_SPAWNED;
 	}
@@ -757,20 +759,28 @@ void *particle_SetupScriptDataCallback(struct script_t *script, void *particle_s
 	particle_positions_array.element_size = sizeof(vec4_t);
 	particle_positions_array.element_count = ps->particle_count;
 
-	if(ps->flags & PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID)
+	//if(ps->flags & PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID)
+	if(ps->flags & PARTICLE_SYSTEM_FLAG_MARKED_FOR_REMOVAL)
 	{
-		ps->flags &= ~PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID;
+		//ps->flags &= ~PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID;
+		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_EXECUTED_DIE_FUNCTION))
+		{
+			script_QueueEntryPoint(ps_script->on_die_entry_point);
+			script_PushArg(ps, SCRIPT_ARG_TYPE_ADDRESS);
+		}
 
-		script_QueueEntryPoint(ps_script->on_die_entry_point);
-		script_PushArg(ps, SCRIPT_ARG_TYPE_ADDRESS);
+		ps->flags |= PARTICLE_SYSTEM_FLAG_EXECUTED_DIE_FUNCTION;
+
 	}
-	else if(ps_frame - ps->spawn_frame <= 1)
+	else if(!(ps->flags & PARTICLE_SYSTEM_FLAG_EXECUTED_SPAWN_FUNCTION))
 	{
 		script_QueueEntryPoint(ps_script->on_spawn_entry_point);
 		script_PushArg(ps, SCRIPT_ARG_TYPE_ADDRESS);
 		script_PushArg(&particle_positions_array, SCRIPT_ARG_TYPE_ADDRESS);
 		script_PushArg(&particle_array, SCRIPT_ARG_TYPE_ADDRESS);
 		script_PushArg(&particle_frame_array, SCRIPT_ARG_TYPE_ADDRESS);
+
+		ps->flags |= PARTICLE_SYSTEM_FLAG_EXECUTED_SPAWN_FUNCTION;
 	}
 
 	script_QueueEntryPoint(ps_script->on_update_entry_point);

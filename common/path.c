@@ -243,6 +243,18 @@ char *path_GetPathToFile(char *file_name)
 
 	static char path_to_file[1024];
 
+	/* try to open the file by the name suplied... */
+	file = fopen(file_name, "rb");
+
+
+	if(file)
+	{
+		fclose(file);
+		/* good enough... */
+		return file_name;
+	}
+
+
 	for(i = -DEFAULT_SEARCH_PATH_COUNT; i < pth_search_path_count; i++)
 	{
 		if(!pth_search_paths[i].path[0])

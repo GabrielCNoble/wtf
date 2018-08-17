@@ -12,6 +12,7 @@
 
 #define ENTITY_NAME_MAX_LEN 24				/* including trailing null... */
 #define ENTITY_DEF_NAME_MAX_LEN 24
+#define ENTITY_PROP_NAME_MAX_LEN 24
 
 #define MAX_ENTITIES 65536
 #define MAX_VISIBLE_ENTITIES 1024
@@ -50,7 +51,10 @@ enum ENTITY_FLAGS
 	ENTITY_FLAG_HAS_MOVED = 1 << 1,
 	ENTITY_FLAG_INVISIBLE = 1 << 2,
 	ENTITY_FLAG_MARKED_INVALID = 1 << 3,
-	ENTITY_FLAG_NOT_INITIALIZED = 1 << 4,
+	ENTITY_FLAG_EXECUTED_SPAWN_FUNCTION = 1 << 4,
+	ENTITY_FLAG_EXECUTED_DIE_FUNCTION = 1 << 5,
+
+	ENTITY_FLAG_NOT_INITIALIZED = 1 << 6,
 	ENTITY_FLAG_SERIALIZED = 1 << 27,
 	ENTITY_FLAG_MODIFIED = 1 << 28,					/* to allow serialization of entities that were modified after being spawned... */
 	ENTITY_FLAG_ON_DISK = 1 << 29
@@ -300,10 +304,22 @@ struct entity_script_t
 	void *collided_array;
 };
 
+
+enum ENTITY_PROP_TYPE
+{
+	ENTITY_PROP_TYPE_INT,
+	ENTITY_PROP_TYPE_FLOAT,
+	ENTITY_PROP_TYPE_VEC3,
+	ENTITY_PROP_TYPE_LAST,
+	ENTITY_PROP_TYPE_NONE,
+};
+
+
 struct entity_prop_t
 {
 	char *name;
 	int size;
+	int type;
 	void *memory;
 };
 
@@ -332,8 +348,7 @@ to the referenced entity def. This component is not directly reachable
 from the original def, but the original def is reachable from it.
 
 The handle for this allocated component will be stored in the children
-list of the transform component of the parent entity to the referenced
-def.
+list of the transform component of the parent entity to the reference.
 
 */
 struct entity_t

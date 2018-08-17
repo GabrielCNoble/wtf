@@ -650,7 +650,7 @@ void entity_ScriptFindPath(vec3_t *to)
 	entity_FindPath(ent_current_entity, *to);
 }
 
-void entity_ScriptGetWaypointDirection(vec3_t *direction)
+vec3_t *entity_ScriptGetWaypointDirection()
 {
 	struct entity_t *entity_ptr;
 	struct waypoint_t *waypoints;
@@ -699,7 +699,8 @@ void entity_ScriptGetWaypointDirection(vec3_t *direction)
 		}
 	}
 
-	*direction = d;
+	vec3_ret = d;
+	return &vec3_ret;
 }
 
 void entity_ScriptAdvanceWaypoint()
@@ -717,6 +718,11 @@ void entity_ScriptAdvanceWaypoint()
 			navigation_component->current_waypoint++;
 		}
 	}
+}
+
+int entity_ScriptLineOfSightToEntity(struct entity_handle_t entity)
+{
+	return entity_LineOfSightToEntity(ent_current_entity, entity);
 }
 
 void entity_ScriptPrint(struct script_string_t *script_string)

@@ -80,6 +80,10 @@ int ed_entity_editor_defs_menu_open = 0;
 vec2_t ed_entity_editor_defs_menu_pos;
 
 
+int ed_entity_editor_prop_menu_open = 0;
+vec2_t ed_entity_editor_prop_menu_pos;
+
+
 /*
 ===============================================================
 ===============================================================
@@ -304,6 +308,11 @@ void editor_EntityEditorAddComponentMenu()
 	}
 }
 
+void editor_EntityEditorPropMenu()
+{
+
+}
+
 
 
 int editor_EntityEditorSetModelComponentValue(struct entity_handle_t entity)
@@ -382,7 +391,7 @@ editor_EntityEditorSetPhysicsComponentValue(struct entity_handle_t entity)
 		{
 			if(gui_ImGuiMenuItem("Character collider", NULL, NULL, 1))
 			{
-				collider_defs = physics_CreateCharacterColliderDef("New character collider", 0.5, 0.5, 0.25, 0.5, 0.5);
+				collider_defs = physics_CreateCharacterColliderDef("New character collider", 0.5, 0.5, 0.25, 0.5, 0.5, 2.0);
 				keep_open = 0;
 			}
 
@@ -710,6 +719,11 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 					ed_entity_editor_update_preview_entity = 1;
 				}
 
+				if(gui_ImGuiDragFloat("max walk speed", &collider_def->max_walk_speed, 0.01, 0.1, 10.0, "%0.3f", 1.0))
+				{
+					ed_entity_editor_update_preview_entity = 1;
+				}
+
 			break;
 
 			case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
@@ -885,6 +899,45 @@ void editor_EntityEditorScriptComponent(struct script_component_t *script_compon
 	gui_ImGuiText("Script: %s", script_name);
 }
 
+void editor_EntityEditorProp(struct entity_handle_t entity)
+{
+    int i;
+    struct entity_t *entity_ptr;
+    struct entity_prop_t *prop;
+
+    int name_len;
+
+    entity_ptr = entity_GetEntityPointerHandle(entity);
+
+    if(entity_ptr)
+	{
+		if(gui_ImGuiTreeNode("Props", "Props"))
+		{
+			for(i = 0; i < entity_ptr->prop_count; i++)
+			{
+				prop = entity_ptr->props + i;
+				gui_ImGuiPushIDi(i);
+
+				gui_ImGuiInputText(" ", prop->name, ENTITY_PROP_NAME_MAX_LEN, ImGuiInputTextFlags_EnterReturnsTrue);
+
+				gui_ImGuiSameLine(0.0, -1.0);
+				if(gui_ImGuiButton("Remove", vec2(80.0, 16.0)))
+				{
+					entity_RemoveProp(entity, prop->name);
+				}
+				gui_ImGuiPopID();
+			}
+
+			if(gui_ImGuiMenuItem("Add prop", NULL, NULL, 1))
+			{
+				entity_AddProp(entity, "New prop", 4);
+			}
+
+			gui_ImGuiTreePop();
+		}
+	}
+}
+
 void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct component_handle_t transform, int ref_on_ref)
 {
 	struct entity_t *entity_ptr;
@@ -949,6 +1002,8 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 				/* add component to entity popup... */
 				editor_EntityEditorOpenAddComponentMenu(mouse_x, r_window_height - mouse_y, entity, transform);
 			}
+
+			editor_EntityEditorProp(entity);
 
 
 
@@ -1102,6 +1157,14 @@ void editor_EntityEditorOpenAddComponentMenu(int x, int y, struct entity_handle_
 	ed_entity_editor_add_component_menu_pos.y = y;
 	ed_entity_editor_selected_def = entity;
 	ed_entity_editor_selected_def_transform = transform;
+}
+
+void editor_EntityEditorOpenAddPropMenu(int x, int y, struct entity_handle_t entity)
+{
+	ed_entity_editor_prop_menu_open = 1;
+	ed_entity_editor_prop_menu_pos.x = x;
+	ed_entity_editor_prop_menu_pos.y = y;
+	ed_entity_editor_selected_def = entity;
 }
 
 void editor_EntityEditorOpenSetComponentValueMenu(int x, int y, struct entity_handle_t entity, int component_type)

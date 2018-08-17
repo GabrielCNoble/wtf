@@ -145,7 +145,7 @@ void main()
 		fire_timer++;
 	}
 
-	if((input_GetMouseStatus() & MOUSE_LEFT_BUTTON_CLICKED) != 0 && fire_timer >= 1)
+	if((input_GetMouseStatus() & MOUSE_LEFT_BUTTON_CLICKED) != 0 && fire_timer >= 3)
 	{
 		fire_timer = 0;
 

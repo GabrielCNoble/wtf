@@ -2,19 +2,7 @@
 #define TEX_COMMON_H
 
 
-
-
-typedef struct
-{
-	unsigned int gl_handle;
-	unsigned int bm_flags;
-
-	unsigned short frame_count;
-	unsigned short target;
-
-}texture_t;
-
-typedef struct
+struct texture_info_t
 {
 	char *name;
 	char *file_name;
@@ -31,7 +19,24 @@ typedef struct
 	unsigned char max_level;
 	unsigned short align;
 	int ref_count;
-}texture_info_t;
+};
+
+
+
+struct texture_t
+{
+	unsigned int gl_handle;
+	unsigned int bm_flags;
+
+	unsigned short frame_count;
+	unsigned short target;
+
+	struct texture_info_t *texture_info;
+
+
+};
+
+
 
 
 

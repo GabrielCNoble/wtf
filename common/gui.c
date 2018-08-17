@@ -104,7 +104,7 @@ void gui_ImGuiInit()
 
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
-	font_texture = texture_GenGLTexture(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
+	font_texture = renderer_GenGLTexture(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
 
 	glBindTexture(GL_TEXTURE_2D, font_texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);

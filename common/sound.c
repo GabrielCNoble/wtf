@@ -11,10 +11,13 @@
 #include "c_memory.h"
 #include "containers/stack_list.h"
 #include "containers/stack.h"
+#include "path.h"
 
 #include "SDL2\SDL.h"
 
-#include "ogg/ogg.h"
+//#include "ogg/ogg.h"
+
+#include "vorbisfile.h"
 
 
 #define MAX_SOUND_SOURCES 128
@@ -24,7 +27,7 @@
 
 ALCdevice *sound_device;
 ALCcontext *sound_context;
-SDL_Thread *sound_thread;
+SDL_Thread *snd_sound_thread;
 
 
 //static int sound_list_size;
@@ -64,12 +67,12 @@ SDL_mutex *snd_sound_commands_mutex;
 //struct stack_t snd_sound_sources_stack;
 
 
-int snd_next_in_sound_command = 0;
-int snd_next_out_sound_command = 0;
+unsigned int snd_next_in_sound_command = 0;
+unsigned int snd_next_out_sound_command = 0;
 struct sound_command_t *snd_sound_commands = NULL;
 
-int snd_next_in_sound_source = 0;
-int snd_next_out_sound_source = 0;
+unsigned int snd_next_in_sound_source = 0;
+unsigned int snd_next_out_sound_source = 0;
 /* ring buffer with indices into the sound source buffer... */
 int *snd_sound_sources_indices = NULL;
 
@@ -94,6 +97,12 @@ extern "C"
 {
 #endif
 
+int sound_SoundBackend(void *param);
+
+
+
+
+
 int sound_Init()
 {
 	sound_device = alcOpenDevice(NULL);
@@ -113,35 +122,7 @@ int sound_Init()
 
 	sound_context = alcCreateContext(sound_device, context_params);
 	alcMakeContextCurrent(sound_context);
-	sound_thread = SDL_CreateThread(sound_SoundThread, "sound thread", NULL);
-
-
-
-
-	//sound_list_size = 64;
-	//sound_count = 0;
-	//sound_free_position_stack_top = -1;
-	//sound_free_position_stack = malloc(sizeof(int) * sound_list_size);
-	//sounds = malloc(sizeof(sound_t) * sound_list_size);
-
-	//max_sound_commands = MAX_SOUND_COMMANDS;
-//	last_in = 0;
-//	last_out = 0;
-//	sound_commands = malloc(sizeof(sound_command_t) * MAX_SOUND_COMMANDS);
-//	sound_commands_mutex = SDL_CreateMutex();
-
-	//max_
-	//sound_param_free_stack_top = -1;
-//	last_used_sound_param_buffer = 0;
-//	last_released_sound_param_buffer = 0;
-	//sound_param_free_stack = malloc(sizeof(int) * MAX_SOUND_PARAM_BUFFERS);
-//	sound_param_buffers = malloc(sizeof(sound_param_buffer_t) * MAX_SOUND_PARAM_BUFFERS);
-
-    //snd_sound_commands_mutex = SDL_CreateMutex();
-
-
-    //snd_sound_commands = memory_Calloc(sizeof(struct sound_command_t) * MAX_SOUND_COMMANDS);
-
+	snd_sound_thread = SDL_CreateThread(sound_SoundBackend, "sound backend", NULL);
 
 	snd_active_sound_sources_indices = memory_Calloc(sizeof(int), MAX_SOUND_SOURCES);
 	snd_sound_sources_indices = memory_Calloc(sizeof(int), MAX_SOUND_SOURCES);
@@ -164,6 +145,11 @@ int sound_Init()
 void sound_Finish()
 {
 	int i;
+
+	sound_EmitSoundCommand(SOUND_COMMAND_TYPE_STOP_BACKEND, -1);
+
+	SDL_WaitThread(snd_sound_thread, NULL);
+
 	alcDestroyContext(sound_context);
 	alcCloseDevice(sound_device);
 
@@ -172,37 +158,9 @@ void sound_Finish()
 		alDeleteSources(1, &snd_sound_sources[i].source_handle);
 	}
 
-	/*for(i = 0; i < sound_count; i++)
-	{
-		free(sounds[i].name);
-		free(sounds[i].data);
-		alDeleteBuffers(1, &sounds[i].al_buffer_handle);
-	}*/
-
-	//free(sound_free_position_stack);
-	//free(sound_source_free_stack);
-	//free(sound_param_free_stack);
-
-
-	//free(sounds);
-	//free(sound_commands);
-	//free(sound_param_buffers);
-	//free(active_sound_sources);
-
 	stack_list_destroy(&snd_sounds);
 	memory_Free(snd_sound_commands);
 	memory_Free(snd_sound_sources);
-
-//	memory_Free(snd_sound_sources_stack);
-	//stack_list_destroy(&snd_sound_sources);
-
-	//SDL_DestroyMutex(sound_commands_mutex);
-
-	/* FIX ME: the sound thread does not
-	check to see if it should stop. Waiting
-	for it here will hang engine... */
-
-	//SDL_WaitThread(sound_thread, NULL);
 }
 
 struct sound_handle_t sound_CreateEmptySound(char *name)
@@ -215,7 +173,10 @@ struct sound_handle_t sound_CreateEmptySound(char *name)
     sound = stack_list_get(&snd_sounds, handle.sound_index);
     memset(sound, 0, sizeof(struct sound_t));
 
-    sound->name = memory_Strdup(name);
+	if(name)
+	{
+		sound->name = memory_Strdup(name);
+	}
 
     return handle;
 }
@@ -235,12 +196,12 @@ void sound_SetSoundData(struct sound_handle_t sound, void *data, int size, int f
         {
             case AL_FORMAT_MONO8:
             case AL_FORMAT_STEREO8:
-                data_size = sizeof(unsigned char);
+                data_size = sizeof(char);
             break;
 
             case AL_FORMAT_MONO16:
             case AL_FORMAT_STEREO16:
-                data_size = sizeof(unsigned short);
+                data_size = sizeof(short);
             break;
 
             default:
@@ -260,28 +221,54 @@ void sound_SetSoundData(struct sound_handle_t sound, void *data, int size, int f
 
 struct sound_handle_t sound_LoadSound(char *file_name, char *name)
 {
-	/*struct sound_t *sound;
-	sound = sound_LoadWAV(file_name);
+    char *file_ext;
+	struct sound_handle_t sound = INVALID_SOUND_HANDLE;
+	struct sound_t *sound_ptr;
 
-	if(sound)
+    file_ext = path_GetFileExtension(file_name);
+
+	char *file_path;
+
+	struct sound_handle_t (*loader)(char *file_name) = NULL;
+
+    if(!strcmp(file_ext, "ogg"))
 	{
-		sound->name = strdup(name);
-		return sound->sound_index;
+		loader = sound_LoadOGG;
+	}
+	else if(!strcmp(file_ext, "wav"))
+	{
+		loader = sound_LoadWAV;
 	}
 
-	return -1;*/
+
+	if(loader)
+	{
+		file_path = path_GetPathToFile(file_name);
+
+		sound = loader(file_path);
+
+        sound_ptr = sound_GetSoundPointer(sound);
+
+        if(sound_ptr)
+		{
+            sound_ptr->name = memory_Strdup(name);
+		}
+	}
+
+
+	return sound;
 }
 
 struct sound_handle_t sound_GenerateWhiteNoise(char *name, float lenght)
 {
-    unsigned short *sound_data;
+    short *sound_data;
     struct sound_handle_t sound;
     int i;
 
     int data_frequency = 48000;
     int data_lenght = data_frequency * lenght;
 
-    sound_data = memory_Calloc(data_lenght, sizeof(unsigned short));
+    sound_data = memory_Calloc(data_lenght, sizeof(short));
 
     for(i = 0; i < data_lenght; i++)
     {
@@ -296,7 +283,7 @@ struct sound_handle_t sound_GenerateWhiteNoise(char *name, float lenght)
 
 struct sound_handle_t sound_GenerateSineWave(char *name, float length, float frequency)
 {
-    unsigned short *sound_data;
+    short *sound_data;
     struct sound_handle_t sound;
 
     float angle_step;
@@ -309,7 +296,7 @@ struct sound_handle_t sound_GenerateSineWave(char *name, float length, float fre
     int data_frequency = 48000;
     int data_lenght = data_frequency * length;
 
-    sound_data = memory_Calloc(data_lenght, sizeof(unsigned short));
+    sound_data = memory_Calloc(data_lenght, sizeof(short));
 
     /* this gives us how much to step in the unity cycle in
     each sample to fulfill the desired amount of oscillations
@@ -333,153 +320,223 @@ struct sound_handle_t sound_GenerateSineWave(char *name, float length, float fre
     return sound;
 }
 
-struct sound_t *sound_LoadWAV(char *file_name)
+
+
+
+struct wav_riff_chunk_t
 {
+    unsigned int chunk_id;
+    unsigned int chunk_size;
+    unsigned int format;
+};
 
-	#if 0
-	FILE *f;
-	unsigned long long file_size;
-	char *file_data;
-	int *sound_data;
-	short compression;
-	short channels;
-	short bits_per_sample;
-	int sample_rate;
-	int data_size;
-	int i;
-	int c;
 
-	int sound_index;
-	sound_t *sound = NULL;
+struct wav_fmt_chunk_t
+{
+	unsigned int sub_chunk_id;
+	unsigned int sub_chunk_size;
+	unsigned short audio_format;
+	unsigned short channel_count;
+	unsigned int sample_rate;
+	unsigned int byte_rate;
+	unsigned short block_align;
+	unsigned short bits_per_sample;
+};
 
-	if(!(f = fopen(file_name, "rb")))
+struct wav_data_chunk_t
+{
+    unsigned int sub_chunk_id;
+    unsigned int sub_chunk_size;
+};
+
+
+struct sound_handle_t sound_LoadWAV(char *file_name)
+{
+    FILE *file;
+
+	char *file_buffer;
+	unsigned int file_buffer_size;
+	struct sound_handle_t sound = INVALID_SOUND_HANDLE;
+
+	int format;
+
+	struct wav_riff_chunk_t *riff_chunk;
+	struct wav_fmt_chunk_t *fmt_chunk;
+	struct wav_data_chunk_t *data_chunk;
+
+	char *sound_buffer;
+	unsigned int sound_buffer_size;
+
+	char *in;
+
+    file = path_TryOpenFile(file_name);
+
+    if(file)
 	{
-		printf("couldn't open %s!\n", file_name);
-		return NULL;
-	}
+		file_buffer_size = path_GetFileSize(file);
 
-	fseek(f, 0, SEEK_END);
-	file_size = ftell(f);
-	rewind(f);
+		file_buffer = memory_Calloc(1, file_buffer_size);
+		fread(file_buffer, file_buffer_size, 1, file);
+		fclose(file);
 
-	//fseek(f, 20, SEEK_CUR);
+        in = file_buffer;
 
+        riff_chunk = (struct wav_riff_chunk_t *)in;
+        in += sizeof(struct wav_riff_chunk_t);
 
-	/**((char *)&compression)=fgetc(f);	//any compression?
-	*((char *)&compression+1)=fgetc(f);
+		fmt_chunk = (struct wav_fmt_chunk_t *)in;
+		in += sizeof(struct wav_fmt_chunk_t);
 
-	*((char *)&channels)=fgetc(f);		//how many channels.
-	*((char *)&channels+1)=fgetc(f);
-
-	*((char *)&sample_rate)=fgetc(f);	//sample rate
-	*((char *)&sample_rate+1)=fgetc(f);
-	*((char *)&sample_rate+2)=fgetc(f);
-	*((char *)&sample_rate+3)=fgetc(f);
-
-	fseek(f, 6, SEEK_CUR);
-	*((char *)&bits_per_sample)=fgetc(f);
-	*((char *)&bits_per_sample+1)=fgetc(f);
-
-	fseek(f, 4, SEEK_CUR);
-	*((char *)&data_size)=fgetc(f);
-	*((char *)&data_size+1)=fgetc(f);
-	*((char *)&data_size+2)=fgetc(f);
-	*((char *)&data_size+3)=fgetc(f);*/
+        data_chunk = (struct wav_data_chunk_t *)in;
+        in += sizeof(struct wav_data_chunk_t);
 
 
-	file_data = malloc(file_size);
-	fread(file_data, 1, file_size, f);
-	fclose(f);
+		/* seems counter-intuitive to divide this by eight here, but sound_SetSoundData
+		requires sound_buffer_size as being the amount of samples inside it, regardless
+		of their size... */
+		sound_buffer_size = data_chunk->sub_chunk_size / (fmt_chunk->bits_per_sample >> 3);
+		sound_buffer = memory_Calloc(fmt_chunk->bits_per_sample >> 3, sound_buffer_size);
 
-	c = 20;
-	compression = *(short *)(&file_data[c]);
-	c += 2;
-	channels = *(short *)(&file_data[c]);
-	c += 2;
-	sample_rate = *(int *)(&file_data[c]);
-	c += 10;
-	bits_per_sample = *(short *)(&file_data[c]);
-	c += 6;
-	data_size = *(int *)(&file_data[c]);
-	c += 4;
-	sound_data = malloc(data_size);
+		memcpy(sound_buffer, in, sound_buffer_size);
 
-	for(i = 0; i < data_size >> 2; i++)
-	{
-		sound_data[i] = *(int *)&file_data[c + i * 4];
-	}
-
-	free(file_data);
-
-
-	if(sound_free_position_stack_top >= 0)
-	{
-		sound_index = sound_free_position_stack[sound_free_position_stack_top--];
-	}
-	else
-	{
-		sound_index = sound_count++;
-
-		if(sound_index >= sound_list_size)
+		switch(fmt_chunk->bits_per_sample)
 		{
-			free(sound_free_position_stack);
+			case 16:
+				if(fmt_chunk->channel_count == 2)
+				{
+                    format = AL_FORMAT_STEREO16;
+				}
+				else
+				{
+					format = AL_FORMAT_MONO16;
+				}
+			break;
 
-			sound_free_position_stack = malloc(sizeof(int) * (sound_list_size + 16));
-			sound = malloc(sizeof(sound_t) * (sound_list_size + 16));
-
-			memcpy(sound, sounds, sizeof(sound_t) * sound_list_size);
-			free(sounds);
-			sounds = sound;
-			sound_list_size += 16;
+			case 8:
+				if(fmt_chunk->channel_count == 2)
+				{
+					format = AL_FORMAT_STEREO8;
+				}
+				else
+				{
+					format = AL_FORMAT_MONO8;
+				}
+			break;
 		}
+
+
+		sound = sound_CreateEmptySound(NULL);
+		sound_SetSoundData(sound, sound_buffer, sound_buffer_size, format, fmt_chunk->sample_rate);
+
+
+		memory_Free(file_buffer);
 	}
-
-	sound = &sounds[sound_index];
-
-
-	switch(channels)
-	{
-		case 1:
-			if(bits_per_sample == 1)
-			{
-				sound->format = AL_FORMAT_MONO8;
-			}
-			else
-			{
-				sound->format = AL_FORMAT_MONO16;
-			}
-		break;
-
-		case 2:
-			if(bits_per_sample == 1)
-			{
-				sound->format = AL_FORMAT_STEREO8;
-			}
-			else
-			{
-				sound->format = AL_FORMAT_STEREO16;
-			}
-		break;
-	}
-
-	sound->bits_per_sample = bits_per_sample;
-	sound->sample_rate = sample_rate;
-	sound->size = data_size;
-	sound->data = sound_data;
-	sound->sound_index = sound_index;
-	alGenBuffers(1, &sound->al_buffer_handle);
-	alBufferData(sound->al_buffer_handle, sound->format, sound->data, sound->size, sound->sample_rate);
 
 	return sound;
-
-	#endif
-
 }
 
 
-struct sound_t *sound_LoadOGG(char *file_name)
+struct sound_handle_t sound_LoadOGG(char *file_name)
 {
+	OggVorbis_File ogg_file;
+	vorbis_info *file_info;
+	struct sound_handle_t sound = INVALID_SOUND_HANDLE;
+//	FILE *file;
 
+//	char *path;
+
+	unsigned long samples;
+	int channels;
+	double duration;
+
+	unsigned long sound_buffer_size;
+	short *sound_buffer;
+
+	int format;
+	int bytes_read;
+	int sample_size = 1;
+	unsigned int write_offset = 0;
+
+	//path = path_GetPathToFile(file_name);
+
+	int cur_bitstream;
+
+	//if(path)
+	//{
+	if(!ov_fopen(file_name, &ogg_file))
+	{
+		file_info = ov_info(&ogg_file, -1);
+
+		if(file_info)
+		{
+            samples = ov_pcm_total(&ogg_file, -1);
+            duration = ov_time_total(&ogg_file, -1);
+            channels = file_info->channels;
+
+			/* seems like ov_pcm_total reports the amount of samples
+			per channel, instead of the amount of samples for all channels... */
+            sound_buffer_size = samples * channels;
+
+			sound_buffer = memory_Calloc(sound_buffer_size, sizeof(short));
+
+				//while(ov_read(&ogg_file, (char *)sound_buffer, 4096, 0, 1, 1, &cur_bitstream));
+
+			do
+			{
+				bytes_read = ov_read(&ogg_file, (char *)sound_buffer + write_offset, 8192, 0, 2, 1, &cur_bitstream);
+				write_offset += bytes_read;
+			}while(bytes_read);
+
+
+			switch(file_info->channels)
+			{
+				case 2:
+					format = AL_FORMAT_STEREO16;
+				break;
+
+				case 1:
+					format = AL_FORMAT_MONO16;
+				break;
+
+
+			}
+
+
+			sound = sound_CreateEmptySound(NULL);
+			sound_SetSoundData(sound, sound_buffer, sound_buffer_size, format, file_info->rate);
+		}
+
+		ov_clear(&ogg_file);
+	}
+	//}
+
+	return sound;
+}
+
+struct sound_handle_t sound_GetSound(char *name)
+{
+	int i;
+	int c;
+	struct sound_t *sounds;
+	struct sound_handle_t sound_handle = INVALID_SOUND_HANDLE;
+
+	c = snd_sounds.element_count;
+	sounds = (struct sound_t *)snd_sounds.elements;
+
+	for(i = 0; i < c; i++)
+	{
+        if(sounds[i].flags & SOUND_FLAG_INVALID)
+		{
+			continue;
+		}
+
+		if(!strcmp(name, sounds[i].name))
+		{
+            sound_handle.sound_index = i;
+		}
+	}
+
+	return sound_handle;
 }
 
 struct sound_t *sound_GetSoundPointer(struct sound_handle_t sound)
@@ -492,19 +549,50 @@ struct sound_t *sound_GetSoundPointer(struct sound_handle_t sound)
 	}
 
 	return sound_ptr;
-};
+}
 
-int sound_PlaySound(struct sound_handle_t sound, vec3_t position, float gain)
+struct sound_source_t *sound_GetSoundSourcePointer(int sound_source)
 {
-	int source_index = -1;
-	int stack_index;
-	int sound_param_buffer_index;
-	int command_index = -1;
+	struct sound_source_t *source;
 
-	struct sound_t *sound_ptr;
+    if(sound_source >= 0 && sound_source < MAX_SOUND_SOURCES)
+	{
+		source = &snd_sound_sources[sound_source];
 
-	struct sound_command_t *sound_command;
-	struct sound_source_t *sound_source;
+		if(source->flags & SOURCE_FLAG_ASSIGNED)
+		{
+			return source;
+		}
+	}
+
+	return NULL;
+}
+
+
+int sound_IsSoundSourceAvailable()
+{
+	if(snd_next_in_sound_source == snd_next_out_sound_source - 1)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+int sound_IsSoundCommandAvailable()
+{
+	if(snd_next_in_sound_command == snd_next_out_sound_command - 1)
+	{
+		return 0;
+	}
+
+	return 1;
+}
+
+
+int sound_AllocSoundSource()
+{
+	int source_index;
 
 	/* first we get the position inside the indice ring buffer... */
 	source_index = snd_next_in_sound_source;
@@ -516,63 +604,138 @@ int sound_PlaySound(struct sound_handle_t sound, vec3_t position, float gain)
 
     snd_next_in_sound_source = (snd_next_in_sound_source + 1) % MAX_SOUND_SOURCES;
 
-    command_index = snd_next_in_sound_command;
+	/* then we get the actual source indice from the ring buffer... */
+	source_index = snd_sound_sources_indices[source_index];
+
+    return source_index;
+}
+
+
+int sound_EmitSoundCommand(int type, int source)
+{
+    int command_index;
+    int source_index;
+	struct sound_command_t *sound_command;
+	//struct sound_t *sound_ptr;
+
+	command_index = snd_next_in_sound_command;
 
     if(snd_next_in_sound_command == snd_next_out_sound_command - 1)
 	{
 		return -1;
 	}
 
+	if(type < SOUND_COMMAND_TYPE_START_SOUND || type > SOUND_COMMAND_TYPE_LAST)
+	{
+		return -1;
+	}
+
+	//printf("sound_EmitSoundCommand\n");
+
+	sound_command = &snd_sound_commands[command_index];
+
+	sound_command->cmd_id = type;
+	sound_command->source = source;
+
+	/* "submit" this command to the backend queue... */
 	snd_next_in_sound_command = (snd_next_in_sound_command + 1) % MAX_SOUND_COMMANDS;
 
-	/* then we get the actual source indice from the ring buffer... */
-	source_index = snd_sound_sources_indices[source_index];
+    return command_index;
+}
 
-    sound_command = &snd_sound_commands[command_index];
 
-	sound_ptr = sound_GetSoundPointer(sound);
+int sound_PlaySound(struct sound_handle_t sound, vec3_t position, float gain, int loop)
+{
+	int source_index = -1;
+	int stack_index;
+	int sound_param_buffer_index;
+	int command_index = -1;
 
-    sound_command->cmd_id = SOUND_COMMAND_TYPE_START_SOUND;
-    sound_command->source = source_index;
-    sound_command->params.position = position;
-    sound_command->params.gain = gain;
-    sound_command->params.al_sound_buffer = sound_ptr->al_buffer_handle;
+	struct sound_t *sound_ptr;
 
-    //snd_next_in_sound_source = source_index;
-    //snd_next_in_sound_command = command_index;
+	struct sound_command_t *sound_command;
+	struct sound_source_t *sound_source;
 
+    if(sound_IsSoundSourceAvailable() && sound_IsSoundCommandAvailable())
+	{
+		sound_ptr = sound_GetSoundPointer(sound);
+
+		if(sound_ptr)
+		{
+			source_index = sound_AllocSoundSource();
+			sound_source = &snd_sound_sources[source_index];
+
+			sound_source->params.position = position;
+			sound_source->params.gain = gain;
+			sound_source->params.al_sound_buffer = sound_ptr->al_buffer_handle;
+
+			if(loop)
+			{
+				sound_source->flags |= SOURCE_FLAG_LOOP;
+			}
+
+			sound_EmitSoundCommand(SOUND_COMMAND_TYPE_START_SOUND, source_index);
+		}
+	}
 	return source_index;
+}
 
-	return -1;
+void sound_PauseSound(int sound_source)
+{
+	if(sound_GetSoundSourcePointer(sound_source))
+	{
+        sound_EmitSoundCommand(SOUND_COMMAND_TYPE_PAUSE_SOUND, sound_source);
+	}
+}
+
+void sound_ResumeSound(int sound_source)
+{
+    if(sound_GetSoundSourcePointer(sound_source))
+	{
+		sound_EmitSoundCommand(SOUND_COMMAND_TYPE_RESUME_SOUND, sound_source);
+	}
+}
+
+void sound_StopSound(int sound_source)
+{
+	if(sound_GetSoundSourcePointer(sound_source))
+	{
+        sound_EmitSoundCommand(SOUND_COMMAND_TYPE_STOP_SOUND, sound_source);
+	}
+}
+
+void sound_ResumeAllSounds()
+{
+
+}
+
+void sound_PauseAllSounds()
+{
+
+}
+
+void sound_StopAllSounds()
+{
+	sound_EmitSoundCommand(SOUND_COMMAND_TYPE_STOP_ALL_SOUNDS, -1);
 }
 
 void sound_ProcessSound()
 {
-
-	#if 0
-//	mat3_t orientation;
 	camera_t *active_camera = camera_GetActiveCamera();
 
-	//orientation = active_camera->world_orientation;
-
 	vec3_t orientation[2];
+
 	orientation[0] = active_camera->world_orientation.f_axis;
+	orientation[1] = active_camera->world_orientation.u_axis;
 
 	orientation[0].x = -orientation[0].x;
 	orientation[0].y = -orientation[0].y;
 	orientation[0].z = -orientation[0].z;
 
-	orientation[1] = active_camera->world_orientation.u_axis;
 
-
-
-	//mat3_t_transpose(&orientation);
 
 	alListener3f(AL_POSITION, active_camera->world_position.x, active_camera->world_position.y, active_camera->world_position.z);
 	alListenerfv(AL_ORIENTATION, &orientation[0].floats[0]);
-
-	#endif
-
 }
 
 void sound_SuspendSoundBackend()
@@ -586,7 +749,7 @@ void sound_ResumeSoundBackend()
 }
 
 
-int sound_SoundThread(void *param)
+int sound_SoundBackend(void *param)
 {
 	vec3_t source_position;
 	unsigned int source_handle;
@@ -611,42 +774,78 @@ int sound_SoundThread(void *param)
 			switch(sound_command->cmd_id)
 			{
 				case SOUND_COMMAND_TYPE_START_SOUND:
-                    sound_source->params = sound_command->params;
+                    //sound_source->params = sound_command->params;
 
                     /* we only need the al handle to check the source status... */
                     snd_active_sound_sources_indices[snd_active_sound_sources_count] = sound_command->source;
                     snd_active_sound_sources_count++;
 
-                    sound_source->flags = SOURCE_FLAG_PLAYING;
-
                     alSourcei(sound_source->source_handle, AL_BUFFER, sound_source->params.al_sound_buffer);
-                    alSourcef(sound_source->source_handle, AL_GAIN, sound_source->params.gain);
-                    alSource3f(sound_source->source_handle, AL_POSITION, sound_source->params.position.x, sound_source->params.position.y, sound_source->params.position.z);
-					alSourcePlay(sound_source->source_handle);
 
+				case SOUND_COMMAND_TYPE_RESUME_SOUND:
+					alSourcePlay(sound_source->source_handle);
+					alSourcei(sound_source->source_handle, AL_LOOPING, (sound_source->flags & SOURCE_FLAG_LOOP ? AL_TRUE : AL_FALSE));
+					sound_source->flags = SOURCE_FLAG_PLAYING | SOURCE_FLAG_ASSIGNED;
+				break;
+
+				case SOUND_COMMAND_TYPE_PAUSE_SOUND:
+					alSourcePause(sound_source->source_handle);
+					sound_source->flags &= ~SOURCE_FLAG_PLAYING;
+					sound_source->flags |= SOURCE_FLAG_PAUSED;
 				break;
 
 				case SOUND_COMMAND_TYPE_STOP_SOUND:
 					alSourceStop(sound_source->source_handle);
 				break;
+
+
+
+
+				case SOUND_COMMAND_TYPE_RESUME_ALL_SOUNDS:
+					for(r = 0; r < snd_active_sound_sources_count; r++)
+					{
+                        sound_EmitSoundCommand(SOUND_COMMAND_TYPE_RESUME_SOUND, snd_active_sound_sources_indices[r]);
+					}
+				break;
+
+				case SOUND_COMMAND_TYPE_PAUSE_ALL_SOUNDS:
+					for(r = 0; r < snd_active_sound_sources_count; r++)
+					{
+                        sound_EmitSoundCommand(SOUND_COMMAND_TYPE_PAUSE_SOUND, snd_active_sound_sources_indices[r]);
+					}
+				break;
+
+				case SOUND_COMMAND_TYPE_STOP_ALL_SOUNDS:
+					for(r = 0; r < snd_active_sound_sources_count; r++)
+					{
+                        sound_EmitSoundCommand(SOUND_COMMAND_TYPE_STOP_SOUND, snd_active_sound_sources_indices[r]);
+					}
+				break;
+
+
+				case SOUND_COMMAND_TYPE_STOP_BACKEND:
+					return 0;
 			}
 
 			snd_next_out_sound_command = (snd_next_out_sound_command + 1) % MAX_SOUND_COMMANDS;
 		}
 
+		//printf("%d active sources\n", snd_active_sound_sources_count);
+
 		for(r = 0; r < snd_active_sound_sources_count; r++)
 		{
 			source_index = snd_active_sound_sources_indices[r];
+
+			//printf("%d\n", source_index);
+
 			sound_source = &snd_sound_sources[source_index];
-			source_handle = sound_source->source_handle;
 
-			alGetSourcei(source_handle, AL_SOURCE_STATE, &source_state);
-
+			alGetSourcei(sound_source->source_handle, AL_SOURCE_STATE, &source_state);
 
 			if(source_state == AL_STOPPED)
 			{
 				/* this source is done playing, so free it... */
-				sound_source->flags &= ~SOURCE_FLAG_PLAYING;
+				sound_source->flags &= ~(SOURCE_FLAG_PLAYING | SOURCE_FLAG_ASSIGNED);
 
 				if(r < snd_active_sound_sources_count - 1)
 				{
@@ -659,14 +858,20 @@ int sound_SoundThread(void *param)
 				/* add its indice back into the ring buffer... */
 				snd_sound_sources_indices[snd_next_out_sound_source] = source_index;
 
+				//printf("source %d returned to %d\n", source_index, snd_next_out_sound_source);
+
 				/*if(snd_next_out_sound_source == snd_next_in_sound_source - 1)
 				{
 					continue;
 				}*/
 
 				snd_next_out_sound_source = (snd_next_out_sound_source + 1) % MAX_SOUND_SOURCES;
+
+				continue;
 			}
 
+			alSourcef(sound_source->source_handle, AL_GAIN, sound_source->params.gain);
+			alSource3f(sound_source->source_handle, AL_POSITION, sound_source->params.position.x, sound_source->params.position.y, sound_source->params.position.z);
 		}
 	}
 }

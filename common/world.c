@@ -3422,7 +3422,7 @@ void world_Update()
 	int cur_group_index;
 	int cur_batch_index;
 
-	compact_vertex_t *compact_world_vertices;
+	struct compact_vertex_t *compact_world_vertices;
 
 
 	if(!w_world_leaves)
@@ -3430,7 +3430,7 @@ void world_Update()
 
 	if(w_need_to_clear_world)
 	{
-		world_Clear();
+		world_Clear(1);
 	}
 
 
@@ -3460,15 +3460,15 @@ void world_Update()
 	//world_start = gpu_GetAllocStart(world_handle) / sizeof(vertex_t);
 
 	//world_handle = gpu_AllocAlign(sizeof(compact_vertex_t) * world_vertices_count, sizeof(compact_vertex_t), 1);
-	w_world_handle = gpu_AllocVerticesAlign(sizeof(compact_vertex_t) * w_world_vertices_count + 1024 * 64, sizeof(compact_vertex_t));
-	w_world_start = gpu_GetAllocStart(w_world_handle) / sizeof(compact_vertex_t);
+	w_world_handle = gpu_AllocVerticesAlign(sizeof(struct compact_vertex_t) * w_world_vertices_count + 1024 * 64, sizeof(struct compact_vertex_t));
+	w_world_start = gpu_GetAllocStart(w_world_handle) / sizeof(struct compact_vertex_t);
 
 	w_world_index_handle = gpu_AllocIndexesAlign(sizeof(int) * w_world_vertices_count + 1024 * 64, sizeof(int));
 	w_world_index_start = gpu_GetAllocStart(w_world_index_handle) / sizeof(int);
 
 	compact_world_vertices = model_ConvertVertices(w_world_vertices, w_world_vertices_count);
 	//gpu_Write(world_handle, 0, world_vertices, sizeof(vertex_t) * world_vertices_count, 0);
-	gpu_Write(w_world_handle, 0, compact_world_vertices, sizeof(compact_vertex_t) * w_world_vertices_count);
+	gpu_Write(w_world_handle, 0, compact_world_vertices, sizeof(struct compact_vertex_t) * w_world_vertices_count);
 
 	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_element_buffer);
 	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * world_vertices_count, NULL, GL_DYNAMIC_DRAW);
@@ -3484,22 +3484,29 @@ void world_Update()
 
 }
 
-void world_Clear()
+void world_Clear(int clear_collision_mesh)
 {
 	if(w_world_leaves)
 	{
-		physics_ClearWorldCollisionMesh();
+		if(clear_collision_mesh)
+		{
+			physics_ClearWorldCollisionMesh();
+		}
 
 		gpu_Free(w_world_handle);
 		gpu_Free(w_world_index_handle);
 		memory_Free(w_world_vertices);
 		memory_Free(w_world_nodes);
 		memory_Free(w_world_leaves);
+		memory_Free(w_world_batches);
 		memory_Free(w_index_buffer);
 
 		w_world_handle = INVALID_GPU_ALLOC_HANDLE;
 		w_world_index_handle = INVALID_GPU_ALLOC_HANDLE;
 		w_index_buffer = NULL;
+
+		w_world_batches = NULL;
+		w_world_batch_count = 0;
 
 		w_world_vertices_count = 0;
 		w_world_vertices = NULL;

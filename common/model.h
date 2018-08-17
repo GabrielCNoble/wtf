@@ -27,7 +27,7 @@ typedef struct vertex_t
 	vec2_t tex_coord;
 }vertex_t;
 
-typedef struct
+struct compact_vertex_t
 {
 	vec3_t position;
 	int normal;
@@ -35,7 +35,7 @@ typedef struct
 	int align0;
 	vec2_t tex_coord;
 
-}compact_vertex_t;
+};
 
 struct c_vertex_t
 {
@@ -231,7 +231,7 @@ void model_GenerateIndexes(struct model_t *model);
 
 //void mesh_LoadWorldModel(char *file_name);
 
-compact_vertex_t *model_ConvertVertices(vertex_t *vertices, int vert_count);
+struct compact_vertex_t *model_ConvertVertices(vertex_t *vertices, int vert_count);
 
 struct c_vertex_t *model_ConvertVertices2(vertex_t *vertices, int vert_count);
 

@@ -29,7 +29,7 @@ struct collider_def_t *physics_CreateColliderDef(char *name);
 
 struct collider_def_t *physics_CreateRigidBodyColliderDef(char *name);
 
-struct collider_def_t *physics_CreateCharacterColliderDef(char *name, float height, float crouch_height, float radius, float step_height, float slope_angle);
+struct collider_def_t *physics_CreateCharacterColliderDef(char *name, float height, float crouch_height, float radius, float step_height, float slope_angle, float max_walk_speed);
 
 struct collider_def_t *physics_CreateProjectileColliderDef(char *name, float radius, float mass);
 

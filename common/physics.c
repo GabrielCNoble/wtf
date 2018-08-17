@@ -282,7 +282,7 @@ collider_def_t *physics_CreateRigidBodyColliderDef(char *name)
 	return def;
 }
 
-collider_def_t *physics_CreateCharacterColliderDef(char *name, float height, float crouch_height, float radius, float step_height, float slope_angle)
+collider_def_t *physics_CreateCharacterColliderDef(char *name, float height, float crouch_height, float radius, float step_height, float slope_angle, float max_walk_speed)
 {
 	collider_def_t *def;
 	def = physics_CreateColliderDef(name);
@@ -292,6 +292,7 @@ collider_def_t *physics_CreateCharacterColliderDef(char *name, float height, flo
 	def->radius = radius;
 	def->slope_angle = slope_angle;
 	def->step_height = step_height;
+	def->max_walk_speed = max_walk_speed;
 
 	def->mass = 1.0;
 
@@ -972,6 +973,7 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	collider->type = def->type;
 	collider->flags = COLLIDER_FLAG_UPDATE_RIGID_BODY;
 	collider->def = def;
+	collider->max_walk_speed = def->max_walk_speed;
 
 	collider_transform.setIdentity();
 	collider_transform.setOrigin(btVector3(position.x, position.y, position.z));
@@ -994,7 +996,6 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	collider_rigid_body = new btRigidBody(def->mass, collider_motion_state, collider_collision_shape, btVector3(def->inertia_tensor.x, def->inertia_tensor.y, def->inertia_tensor.z));
 
 	physics_world->addRigidBody(collider_rigid_body, 0xffff, 0xffff);
-
 
 	collider_rigid_body->setWorldTransform(collider_transform);
 	collider_rigid_body->setLinearVelocity(btVector3(0.0, 0.0, 0.0));

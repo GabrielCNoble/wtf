@@ -17,6 +17,9 @@ enum SOURCE_FLAGS
 	SOURCE_FLAG_START_SOUND = 1 << 8,
 	SOURCE_FLAG_PAUSE_SOUND = 1 << 9,
 	SOURCE_FLAG_STOP_SOUND = 1 << 10,
+
+	SOURCE_FLAG_ASSIGNED = 1 << 11,
+	SOURCE_FLAG_LOOP = 1 << 12,
 };
 
 
@@ -24,7 +27,22 @@ enum SOUND_COMMAND_TYPE
 {
 	SOUND_COMMAND_TYPE_START_SOUND = 1,
 	SOUND_COMMAND_TYPE_PAUSE_SOUND,
+	SOUND_COMMAND_TYPE_RESUME_SOUND,
 	SOUND_COMMAND_TYPE_STOP_SOUND,
+
+	SOUND_COMMAND_TYPE_RESUME_ALL_SOUNDS,
+	SOUND_COMMAND_TYPE_PAUSE_ALL_SOUNDS,
+	SOUND_COMMAND_TYPE_STOP_ALL_SOUNDS,
+
+	SOUND_COMMAND_TYPE_STOP_BACKEND,
+
+	SOUND_COMMAND_TYPE_LAST,
+	SOUND_COMMAND_TYPE_NONE,
+};
+
+enum SOUND_FLAGS
+{
+	SOUND_FLAG_INVALID = 1,
 };
 
 struct sound_t
@@ -33,7 +51,7 @@ struct sound_t
 	unsigned short format;
 	unsigned short sample_rate;
 	unsigned short bits_per_sample;
-	unsigned short align2;
+	unsigned short flags;
 	unsigned int size;
 	unsigned int al_buffer_handle;
 
@@ -105,21 +123,53 @@ struct sound_handle_t sound_GenerateWhiteNoise(char *name, float length);
 
 struct sound_handle_t sound_GenerateSineWave(char *name, float length, float frequency);
 
-struct sound_t *sound_LoadWAV(char *file_name);
+struct sound_handle_t sound_LoadWAV(char *file_name);
 
-struct sound_t *sound_LoadOGG(char *file_name);
+struct sound_handle_t sound_LoadOGG(char *file_name);
+
+struct sound_handle_t sound_GetSound(char *name);
 
 struct sound_t *sound_GetSoundPointer(struct sound_handle_t sound);
 
-int sound_PlaySound(struct sound_handle_t sound, vec3_t position, float gain);
+struct sound_source_t *sound_GetSoundSourcePointer(int sound_source);
+
+
+/* those are for internal use only. Calling them is likely to
+cause problems... */
+int sound_IsSoundSourceAvailable();
+
+int sound_IsSoundCommandAvailable();
+
+int sound_AllocSoundSource();
+
+int sound_EmitSoundCommand(int type, int source);
+
+
+
+
+int sound_PlaySound(struct sound_handle_t sound, vec3_t position, float gain, int loop);
+
+void sound_PauseSound(int sound_source);
+
+void sound_ResumeSound(int sound_source);
+
+void sound_StopSound(int sound_source);
+
+void sound_ResumeAllSounds();
+
+void sound_PauseAllSounds();
+
+void sound_StopAllSounds();
+
+
+
+
+
 
 void sound_ProcessSound();
 
-void sound_SuspendSoundBackend();
 
-void sound_ResumeSoundBackend();
 
-int sound_SoundThread(void *param);
 
 
 #ifdef __cplusplus

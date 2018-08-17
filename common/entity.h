@@ -206,9 +206,9 @@ void entity_UpdateCameraComponents();
 
 void entity_ClearMarkedEntities();
 
-//void entity_Update
-
 void entity_UpdateEntities();
+
+int entity_LineOfSightToEntity(struct entity_handle_t from, struct entity_handle_t to);
 
 /*
 ==============================================================

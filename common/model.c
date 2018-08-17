@@ -185,7 +185,9 @@ int model_LoadModel(char *file_name, char *model_name)
 	struct batch_t *batches;
 	int indice_buffer_start;
 
-	struct c_vertex_t *compact_vertices;
+	//struct c_vertex_t *compact_vertices;
+
+	struct compact_vertex_t *compact_vertices;
 
 	vec3_t max_extents;
 	vec3_t min_extents;
@@ -221,8 +223,11 @@ int model_LoadModel(char *file_name, char *model_name)
 		/* the batch buffer gets shared with all the lods... */
 		batches = memory_Malloc(sizeof(struct batch_t) * model->lod_count * model->batch_count);
 
-		model->vertice_buffer_handle = gpu_AllocVerticesAlign(sizeof(struct c_vertex_t) * model->vert_count, sizeof(struct c_vertex_t));
-		model->vert_buffer_start = gpu_GetAllocStart(model->vertice_buffer_handle) / sizeof(struct c_vertex_t);
+		//model->vertice_buffer_handle = gpu_AllocVerticesAlign(sizeof(struct c_vertex_t) * model->vert_count, sizeof(struct c_vertex_t));
+		//model->vert_buffer_start = gpu_GetAllocStart(model->vertice_buffer_handle) / sizeof(struct c_vertex_t);
+
+		model->vertice_buffer_handle = gpu_AllocVerticesAlign(sizeof(struct compact_vertex_t) * model->vert_count, sizeof(struct compact_vertex_t));
+		model->vert_buffer_start = gpu_GetAllocStart(model->vertice_buffer_handle) / sizeof(struct compact_vertex_t);
 
 		model->indice_buffer_handle = gpu_AllocIndexesAlign(sizeof(int) * out_params.out_indices_count, sizeof(int));
 		indice_buffer_start = gpu_GetAllocStart(model->indice_buffer_handle) / sizeof(int);
@@ -300,8 +305,10 @@ int model_LoadModel(char *file_name, char *model_name)
 
 		model->aabb_max = max_extents;
 
-		compact_vertices = model_ConvertVertices2(model->vertices, model->vert_count);
-        gpu_Write(model->vertice_buffer_handle, 0, compact_vertices, sizeof(struct c_vertex_t) * model->vert_count);
+		//compact_vertices = model_ConvertVertices2(model->vertices, model->vert_count);
+		compact_vertices = model_ConvertVertices(model->vertices, model->vert_count);
+        //gpu_Write(model->vertice_buffer_handle, 0, compact_vertices, sizeof(struct c_vertex_t) * model->vert_count);
+        gpu_Write(model->vertice_buffer_handle, 0, compact_vertices, sizeof(struct compact_vertex_t) * model->vert_count);
 
 	}
 
@@ -1027,13 +1034,13 @@ void model_GenerateIndexes(struct model_t *model)
 
 }
 
-compact_vertex_t *model_ConvertVertices(vertex_t *in_vertices, int vert_count)
+struct compact_vertex_t *model_ConvertVertices(vertex_t *in_vertices, int vert_count)
 {
 	int i;
-	compact_vertex_t *out_vertices;
+	struct compact_vertex_t *out_vertices;
 
 	//out_vertices = malloc(sizeof(compact_vertex_t) * vert_count * 10);
-	out_vertices = memory_Malloc(sizeof(compact_vertex_t) * vert_count);
+	out_vertices = memory_Malloc(sizeof(struct compact_vertex_t) * vert_count);
 
 
 	for(i = 0; i < vert_count; i++)

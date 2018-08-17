@@ -28,4 +28,7 @@ void world_ScriptAppendWorldArrayVarValue(struct script_string_t *name, void *va
 
 void world_ScriptClearWorldArrayVar(struct script_string_t *name);
 
+
+void *world_ScriptGetEntities();
+
 #endif // SCR_WORLD_H

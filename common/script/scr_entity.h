@@ -182,9 +182,11 @@ void entity_ScriptSetCameraAsActive(struct component_handle_t camera);
 
 void entity_ScriptFindPath(vec3_t *to);
 
-void entity_ScriptGetWaypointDirection(vec3_t *direction);
+vec3_t *entity_ScriptGetWaypointDirection();
 
 void entity_ScriptAdvanceWaypoint();
+
+int entity_ScriptLineOfSightToEntity(struct entity_handle_t entity);
 
 void entity_ScriptPrint(struct script_string_t *script_string);
 

@@ -55,19 +55,17 @@ void texture_Finish();
 
 void texture_SetPath(char *path);
 
-unsigned int texture_GenGLTexture(int target, int min_filter, int mag_filter, int wrap_s, int wrap_t, int wrap_r, int base_level, int max_level);
-
-//int texture_LoadTexture(char *file_name, char *name, int bm_flags);
+int texture_CreateEmtpyTexture(char *name);
 
 int texture_LoadTexture(char *file_name, char *name, int bm_flags);
 
 int texture_LoadCubeTexture(char *files, char *name);
 
-void texture_DeleteTextureByIndex(int texture_index);
+void texture_DestroyTextureIndex(int texture_index);
 
 int texture_GetTexture(char *name);
 
-char *texture_GetTextureName(int texture_index);
+struct texture_t *texture_GetTexturePointer(int texture_index);
 
 void texture_UploadTexture(int texture_index);
 

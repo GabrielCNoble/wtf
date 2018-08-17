@@ -66,6 +66,8 @@ void *script_GetGlobalVarAddress(char *var, struct script_t *script);
 
 void *script_GetFunctionAddress(char *function, struct script_t *script);
 
+void *script_GetTypeInfo(char *type);
+
 
 int script_GetScriptTypeSize(int type);
 

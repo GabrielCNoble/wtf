@@ -8,6 +8,8 @@ void renderer_PushStates(GLenum cap);
 
 void renderer_PopStates(GLenum cap);
 
+void renderer_CheckFunctionPointers();
+
 /*
 ===============================================================================
 ===============================================================================
@@ -37,7 +39,7 @@ void renderer_DrawArraysInstanced(int mode, int first, int count, int primcount)
 ===============================================================================
 ===============================================================================
 ===============================================================================
-*/ 
+*/
 
 struct framebuffer_t renderer_CreateFramebuffer(int width, int height);
 
