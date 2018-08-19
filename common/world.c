@@ -1012,7 +1012,7 @@ void world_LightBounds()
 		ac.y = light_origin.z;
 		d = ac.x * ac.x + ac.y * ac.y;
 		l = light_radius * light_radius;
-		k = -znear - ac.y;
+		k = znear - ac.y;
 		k = sqrt(light_radius * light_radius - k * k);
 
 		if(d > l)
@@ -1128,23 +1128,28 @@ void world_LightBounds()
 			cluster_y_start = (int)((y_min * 0.5 + 0.5) * CLUSTER_ROWS);
 			light_z = light_origin.z + light_radius;
 
+			if(cluster_x_start >= CLUSTERS_PER_ROW) cluster_x_start = CLUSTERS_PER_ROW - 1;
+			if(cluster_y_start >= CLUSTER_ROWS) cluster_y_start = CLUSTER_ROWS - 1;
+
+
 			if(light_z > -CLUSTER_NEAR) cluster_z_start = 0;
 			else cluster_z_start = (int)((log(-light_z / CLUSTER_NEAR) / denom) * (float)(CLUSTER_LAYERS));
-			if(cluster_z_start > CLUSTER_LAYERS)
-				cluster_z_start = CLUSTER_LAYERS - 1;
 
-			//params->first_cluster = PACK_CLUSTER_INDEXES(cluster_x_start, cluster_y_start, cluster_z_start);
-
+			if(cluster_z_start > CLUSTER_LAYERS) cluster_z_start = CLUSTER_LAYERS - 1;
 
 
 			cluster_x_end = (int)((x_max * 0.5 + 0.5) * CLUSTERS_PER_ROW);
 			cluster_y_end = (int)((y_max * 0.5 + 0.5) * CLUSTER_ROWS);
 			light_z = light_origin.z - light_radius;
 
+			if(cluster_x_end >= CLUSTERS_PER_ROW) cluster_x_end = CLUSTERS_PER_ROW - 1;
+			if(cluster_y_end >= CLUSTER_ROWS) cluster_y_end = CLUSTER_ROWS - 1;
+
 			if(light_z > -CLUSTER_NEAR) cluster_z_end = 0;
 			else cluster_z_end = (int)((log(-light_z / CLUSTER_NEAR) / denom) * (float)(CLUSTER_LAYERS));
-			if(cluster_z_end > CLUSTER_LAYERS)
-				cluster_z_end = CLUSTER_LAYERS - 1;
+
+			if(cluster_z_end > CLUSTER_LAYERS) cluster_z_end = CLUSTER_LAYERS - 1;
+
 
 			params->cluster.x0 = cluster_x_start;
 			params->cluster.y0 = cluster_y_start;
@@ -1162,7 +1167,19 @@ void world_LightBounds()
 			//view_clusters->view = view;
 			//view->view_lights[i].view_cluster_index = view_clusters_index;
 		}
+
+
+
+		renderer_Draw2dLine(vec2(x_min, y_max), vec2(x_min, y_min), vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
+		renderer_Draw2dLine(vec2(x_min, y_min), vec2(x_max, y_min), vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
+		renderer_Draw2dLine(vec2(x_max, y_min), vec2(x_max, y_max), vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
+		renderer_Draw2dLine(vec2(x_max, y_max), vec2(x_min, y_max), vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
+
+
+
 	}
+
+	w_visible_lights_count = c;
 
 }
 
@@ -2794,6 +2811,7 @@ void world_VisibleLights()
 			}
 
 			w_visible_lights_count--;
+			c--;
 		}
 	}
 

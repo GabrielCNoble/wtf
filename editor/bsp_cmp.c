@@ -2542,6 +2542,8 @@ bsp_polygon_t *bsp_ClipContiguousPolygonsToBsp(int op, bsp_node_t *bsp0, bsp_nod
 	bsp_polygon_t *r = NULL;
 	bsp_polygon_t *s = NULL;
 	bsp_polygon_t *clipped = NULL;
+	bsp_node_t *bsp2;
+
 
 	/* this convert the polygons from a contiguous list to a linked list... */
 	r = bsp_DeepCopyPolygons(polygons0);
@@ -2551,7 +2553,8 @@ bsp_polygon_t *bsp_ClipContiguousPolygonsToBsp(int op, bsp_node_t *bsp0, bsp_nod
 		r->next = NULL;
 
 		/* first clip the current brush polygons against the
-		other brush... */
+		other brush. This essentially carves out the part
+		that's intersecting the subtractive brush... */
 		r = bsp_OpPolygonToBsp(CSG_OP_UNION, bsp0, r, 0);
 
 		if(r)
@@ -2568,6 +2571,7 @@ bsp_polygon_t *bsp_ClipContiguousPolygonsToBsp(int op, bsp_node_t *bsp0, bsp_nod
 
 	if(op == CSG_OP_SUBTRACTION)
 	{
+		/* copy the subtractive brush's polygons... */
 		r = bsp_DeepCopyPolygons(polygons1);
 
 		/* HACK: necessary so multiple subtractive brushes can properly act on normal brushes. The
@@ -2578,16 +2582,16 @@ bsp_polygon_t *bsp_ClipContiguousPolygonsToBsp(int op, bsp_node_t *bsp0, bsp_nod
 		subtractive clips. To solve this, we build a temporary bsp using the clipped polygons from
 		the brush. This way, this subtraction operation will see previous subtractions... */
 		s = bsp_DeepCopyPolygons(polygons0);
-		bsp1 = bsp_SolidBsp(s);
+		bsp2 = bsp_SolidBsp(s);
 
 		while(r)
 		{
 			p = r->next;
 			r->next = NULL;
 			/* if we're doing a subtraction, take the original polygons
-			of the second brush and do a subtraction against the first
+			of the subtractive brush and do a subtraction against the first
 			brush bsp... */
-			r = bsp_OpPolygonToBsp(CSG_OP_SUBTRACTION, bsp1, r, 0);
+			r = bsp_OpPolygonToBsp(CSG_OP_SUBTRACTION, bsp2, r, 0);
 
 			if(r)
 			{
@@ -2601,7 +2605,49 @@ bsp_polygon_t *bsp_ClipContiguousPolygonsToBsp(int op, bsp_node_t *bsp0, bsp_nod
 			r = p;
 		}
 
-		bsp_DeleteSolidBsp(bsp1, 1);
+		bsp_DeleteSolidBsp(bsp2, 1);
+
+
+		r = clipped;
+		clipped = NULL;
+
+		/* HACK: whenever two normal brushes touch each other face to face,
+		and those faces have the same size, both faces will be clipped,
+		and a "hole" will be formed.
+
+		This "hole" would only exist if their clipped polygons were to be
+		used to build a new bsp. Which is exactly what happens here.
+
+		In order to generate the inside polygons, the subtractive brush's
+		polygons get clipped against a bsp formed by the clipped polygons
+		from the other brush. This bsp will have a "hole" in it, making
+		the clipping code sometimes incorrectly consider the whole subtractive
+		brush to be in solid space, given that there's no polygon in this
+		"hole" to close the mesh...
+
+		To fix the whole brush being in solid space we also clip the inside
+		polygons against the original brush's bsp. This bsp is guaranteed
+		to have no holes... */
+
+		while(r)
+		{
+            p = r->next;
+			r->next = NULL;
+
+			r = bsp_OpPolygonToBsp(CSG_OP_INTERSECTION, bsp1, r, 0);
+
+			if(r)
+			{
+				s = r;
+				while(s->next) s = s->next;
+
+				s->next = clipped;
+				clipped = r;
+			}
+
+			r = p;
+		}
+
 	}
 
 	if(clipped)
@@ -3297,7 +3343,7 @@ bsp_polygon_t *bsp_OpPolygonToBsp(int op, bsp_node_t *bsp, bsp_polygon_t *polygo
 				empty space and keeps faces in solid space, everytime we do an intersection operation
 				and find a face being coplanar and facing the same direction as the splitting plane,
 				we'll send it to the opposite subtree instead. This guarantees that there won't be no
-				missing faces when two brushes are touching each other...  */
+				missing faces when two brushes are touching ...  */
 				if(op == CSG_OP_INTERSECTION) return bsp_OpPolygonToBsp(op, bsp->back, polygon, copy);
 			case POLYGON_FRONT:
 				return bsp_OpPolygonToBsp(op, bsp->front, polygon, copy);

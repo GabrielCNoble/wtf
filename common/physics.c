@@ -48,7 +48,7 @@ extern bsp_pnode_t *world_hull;
 
 
 struct stack_list_t phy_colliders[COLLIDER_TYPE_LAST];
-struct list_t phy_collision_records;
+struct list_t phy_contact_records;
 
 
 /* I'm not sure why this works, but it does... */
@@ -154,7 +154,7 @@ int physics_Init()
 		phy_colliders[i] = stack_list_create(sizeof(collider_t), 64, NULL);
 	}
 
-	phy_collision_records = list_create(sizeof(struct collision_record_t), 32000, NULL);
+	phy_contact_records = list_create(sizeof(struct contact_record_t), 32000, NULL);
 
 
 	return 1;
@@ -185,7 +185,7 @@ void physics_Finish()
 		stack_list_destroy(&phy_colliders[i]);
 	}
 
-	list_destroy(&phy_collision_records);
+	list_destroy(&phy_contact_records);
 
 	delete physics_world;
 	delete solver;
@@ -912,9 +912,9 @@ struct collider_handle_t physics_CreateEmptyCollider(int type)
 	collider->type = type;
 	collider->rigid_body = NULL;
 	collider->def = NULL;
-	collider->max_collision_records = 32;
-	collider->collision_record_count = 0;
-	collider->first_collision_record = 0;
+	collider->max_contact_records = 32;
+	collider->contact_record_count = 0;
+	collider->first_contact_record = 0;
 	//collider->collision_shape = NULL;
 
 	return handle;
@@ -1375,7 +1375,7 @@ void physics_PostUpdateColliders()
 	int collider_count;
 
 	int prev_start = 0;
-	int collision_record_index;
+	int contact_record_index;
 
 	struct collider_t *collider;
 	struct stack_list_t *list;
@@ -1387,9 +1387,35 @@ void physics_PostUpdateColliders()
 	btMatrix3x3 collider_rigid_body_orientation;
 	btPersistentManifold **persistent_manifolds;
 	btPersistentManifold *persistent_manifold;
+
+	int triangle_index;
+
+
+	vec3_t *triangles;
+
+	PHY_ScalarType vert_type;
+	PHY_ScalarType index_type;
+
+	int vert_count;
+	int vert_stride;
+
+	int *indexes;
+	int index_count;
+	int index_stride;
+
+
+	vec3_t a;
+	vec3_t b;
+	vec3_t c;
+
+	vec3_t e0;
+	vec3_t e1;
+	vec3_t contact_normal;
+	vec3_t contact_position;
+
 	//btManifoldPoint &contact_point = NULL;
 
-	struct collision_record_t *collision_records;
+	struct contact_record_t *contact_records;
 
 	btRigidBody *body0;
 	btRigidBody *body1;
@@ -1401,6 +1427,158 @@ void physics_PostUpdateColliders()
 	int handle1;
 
 	float step_delta;
+
+	/* "realloc" contacts... */
+	for(j = 0; j < COLLIDER_TYPE_LAST; j++)
+	{
+        list = &phy_colliders[j];
+		collider_count = list->element_count;
+
+		for(i = 0; i < collider_count; i++)
+		{
+			collider = (struct collider_t *)list->elements + i;
+
+			if(collider->flags & COLLIDER_FLAG_INVALID)
+				continue;
+
+			if(collider->contact_record_count > collider->max_contact_records)
+			{
+				j = collider->contact_record_count;
+				collider->max_contact_records = (j + 3) & (~3);
+			}
+
+			collider->contact_record_count = 0;
+			collider->first_contact_record = prev_start;
+
+			prev_start += collider->max_contact_records;
+		}
+	}
+
+	if(prev_start > phy_contact_records.max_elements)
+	{
+		list_resize(&phy_contact_records, prev_start);
+	}
+
+	j = narrow_phase->getNumManifolds();
+
+	persistent_manifolds = narrow_phase->getInternalManifoldPointer();
+
+	contact_records = (struct contact_record_t *)phy_contact_records.elements;
+
+	if(persistent_manifolds && world_triangles)
+	{
+		triangles = (vec3_t *)&world_triangles->m_3componentVertices[0];
+
+		for(i = 0; i < j; i++)
+		{
+			persistent_manifold = persistent_manifolds[i];
+
+			body0 = (btRigidBody *)persistent_manifold->getBody0();
+			body1 = (btRigidBody *)persistent_manifold->getBody1();
+
+			handle0 = body0->getUserIndex();
+			handle1 = body1->getUserIndex();
+
+			collider0 = physics_GetColliderPointerHandle(*(struct collider_handle_t *)&handle0);
+			collider1 = physics_GetColliderPointerHandle(*(struct collider_handle_t *)&handle1);
+
+			contact_point_count = persistent_manifold->getNumContacts();
+
+			for(contact_point_index = 0; contact_point_index < contact_point_count; contact_point_index++)
+			{
+				btManifoldPoint &contact_point = persistent_manifold->getContactPoint(contact_point_index);
+
+				contact_position.x = contact_point.m_positionWorldOnA[0];
+				contact_position.y = contact_point.m_positionWorldOnA[1];
+				contact_position.z = contact_point.m_positionWorldOnA[2];
+
+
+
+				if(!(collider0 && collider1))
+				{
+					if(!collider0)
+					{
+						triangle_index = contact_point.m_index0 * 3;
+					}
+					else
+					{
+						triangle_index = contact_point.m_index1 * 3;
+					}
+
+
+					e0.x = triangles[triangle_index + 1].x - triangles[triangle_index].x;
+                    e0.y = triangles[triangle_index + 1].y - triangles[triangle_index].y;
+                    e0.z = triangles[triangle_index + 1].z - triangles[triangle_index].z;
+
+                    e1.x = triangles[triangle_index + 2].x - triangles[triangle_index + 1].x;
+                    e1.y = triangles[triangle_index + 2].y - triangles[triangle_index + 1].y;
+                    e1.z = triangles[triangle_index + 2].z - triangles[triangle_index + 1].z;
+
+                    contact_normal = cross(e0, e1);
+                    contact_normal = normalize3(contact_normal);
+				}
+				else
+				{
+					contact_normal.x = contact_point.m_normalWorldOnB[0];
+					contact_normal.y = contact_point.m_normalWorldOnB[1];
+					contact_normal.z = contact_point.m_normalWorldOnB[2];
+				}
+
+
+
+				if(collider0)
+				{
+					if(collider0->contact_record_count < collider0->max_contact_records)
+					{
+						contact_record_index = collider0->first_contact_record + collider0->contact_record_count;
+
+						if(body1)
+						{
+							contact_records[contact_record_index].collider = *(struct collider_handle_t *)&handle1;
+						}
+						else
+						{
+							contact_records[contact_record_index].collider = INVALID_COLLIDER_HANDLE;
+						}
+
+						contact_records[contact_record_index].normal = contact_normal;
+						contact_records[contact_record_index].position = contact_position;
+						contact_records[contact_record_index].life = contact_point.m_lifeTime;
+
+					}
+					collider0->contact_record_count++;
+				}
+
+
+				if(collider1)
+				{
+					if(collider1->contact_record_count < collider1->max_contact_records)
+					{
+						contact_record_index = collider1->first_contact_record + collider1->contact_record_count;
+
+						if(body0)
+						{
+							contact_records[contact_record_index].collider = *(struct collider_handle_t *)&handle0;
+						}
+						else
+						{
+							contact_records[contact_record_index].collider = INVALID_COLLIDER_HANDLE;
+						}
+
+						contact_records[contact_record_index].normal = contact_normal;
+						contact_records[contact_record_index].position = contact_position;
+						contact_records[contact_record_index].life = contact_point.m_lifeTime;
+					}
+					collider1->contact_record_count++;
+				}
+			}
+		}
+	}
+
+
+	//world_collision_mesh->getMeshInterface()->unLockVertexBase(0);
+
+
 
 	for(j = 0; j < COLLIDER_TYPE_LAST; j++)
 	{
@@ -1414,16 +1592,16 @@ void physics_PostUpdateColliders()
 			if(collider->flags & COLLIDER_FLAG_INVALID)
 				continue;
 
-			if(collider->collision_record_count > collider->max_collision_records)
-			{
-				j = collider->collision_record_count;
-				collider->max_collision_records = (j + 3) & (~3);
-			}
+			//if(collider->collision_record_count > collider->max_collision_records)
+			//{
+			//	j = collider->collision_record_count;
+			//	collider->max_collision_records = (j + 3) & (~3);
+			//}
 
-			collider->collision_record_count = 0;
-			collider->first_collision_record = prev_start;
+			//collider->collision_record_count = 0;
+			//collider->first_collision_record = prev_start;
 
-			prev_start += collider->max_collision_records;
+			//prev_start += collider->max_collision_records;
 
 			switch(collider->type)
 			{
@@ -1501,87 +1679,7 @@ void physics_PostUpdateColliders()
 		}
 	}
 
-	if(prev_start > phy_collision_records.max_elements)
-	{
-		list_resize(&phy_collision_records, prev_start);
-	}
 
-	j = narrow_phase->getNumManifolds();
-
-	persistent_manifolds = narrow_phase->getInternalManifoldPointer();
-
-	collision_records = (struct collision_record_t *)phy_collision_records.elements;
-
-	if(persistent_manifolds)
-	{
-		for(i = 0; i < j; i++)
-		{
-			persistent_manifold = persistent_manifolds[i];
-
-			body0 = (btRigidBody *)persistent_manifold->getBody0();
-			body1 = (btRigidBody *)persistent_manifold->getBody1();
-
-			handle0 = body0->getUserIndex();
-			handle1 = body1->getUserIndex();
-
-			collider0 = physics_GetColliderPointerHandle(*(struct collider_handle_t *)&handle0);
-			collider1 = physics_GetColliderPointerHandle(*(struct collider_handle_t *)&handle1);
-
-			//assert(collider0 != collider1);
-
-			contact_point_count = persistent_manifold->getNumContacts();
-
-			for(contact_point_index = 0; contact_point_index < contact_point_count; contact_point_index++)
-			{
-				btManifoldPoint &contact_point = persistent_manifold->getContactPoint(contact_point_index);
-
-				if(collider0)
-				{
-					if(collider0->collision_record_count < collider0->max_collision_records)
-					{
-						collision_record_index = collider0->first_collision_record + collider0->collision_record_count;
-
-						if(body1)
-						{
-							collision_records[collision_record_index].collider = *(struct collider_handle_t *)&handle1;
-							collision_records[collision_record_index].collided_with_world = 0;
-						}
-						else
-						{
-							collision_records[collision_record_index].collided_with_world = 1;
-						}
-
-						collision_records[collision_record_index].life = contact_point.m_lifeTime;
-
-					}
-					collider0->collision_record_count++;
-				}
-
-
-				if(collider1)
-				{
-					if(collider1->collision_record_count < collider1->max_collision_records)
-					{
-						collision_record_index = collider1->first_collision_record + collider1->collision_record_count;
-
-						if(body0)
-						{
-							collision_records[collision_record_index].collider = *(struct collider_handle_t *)&handle0;
-							collision_records[collision_record_index].collided_with_world = 0;
-						}
-						else
-						{
-							collision_records[collision_record_index].collided_with_world = 1;
-						}
-
-						//collision_records[collision_record_index].collider = *(struct collider_handle_t *)&handle0;
-						collision_records[collision_record_index].life = contact_point.m_lifeTime;
-					}
-					collider1->collision_record_count++;
-				}
-			}
-		}
-	}
 
 
 }
@@ -1596,22 +1694,22 @@ void physics_PostUpdateColliders()
 int physics_AreColliding(struct collider_handle_t collider_a, struct collider_handle_t collider_b)
 {
 	struct collider_t *collider;
-	struct collision_record_t *collision_records;
+	struct contact_record_t *contact_records;
 	int i;
-	int first_collision_record;
+	int first_contact_record;
 
 	collider = physics_GetColliderPointerHandle(collider_a);
-	collision_records = (struct collision_record_t *)phy_collision_records.elements;
+	contact_records = (struct contact_record_t *)phy_contact_records.elements;
 
 	if(collider)
 	{
-		first_collision_record = collider->first_collision_record;
+		first_contact_record = collider->first_contact_record;
 
-		for(i = 0; i < collider->collision_record_count; i++)
+		for(i = 0; i < collider->contact_record_count; i++)
 		{
-			if(collider_b.type == collision_records[first_collision_record + i].collider.type)
+			if(collider_b.type == contact_records[first_contact_record + i].collider.type)
 			{
-				if(collider_b.index == collision_records[first_collision_record + i].collider.index)
+				if(collider_b.index == contact_records[first_contact_record + i].collider.index)
 				{
 					return 1;
 				}
@@ -1625,18 +1723,18 @@ int physics_AreColliding(struct collider_handle_t collider_a, struct collider_ha
 int physics_HasNewCollisions(struct collider_handle_t collider)
 {
 	struct collider_t *collider_ptr;
-	struct collision_record_t *collision_records;
+	struct contact_record_t *contact_records;
 	int i;
 
 	collider_ptr = physics_GetColliderPointerHandle(collider);
 
 	if(collider_ptr)
 	{
-		collision_records = (struct collision_record_t *)phy_collision_records.elements;
+		contact_records = (struct contact_record_t *)phy_contact_records.elements;
 
-		for(i = 0; i < collider_ptr->collision_record_count; i++)
+		for(i = 0; i < collider_ptr->contact_record_count; i++)
 		{
-			if(collision_records[collider_ptr->first_collision_record + i].life <= 1)
+			if(contact_records[collider_ptr->first_contact_record + i].life <= 1)
 			{
 				return 1;
 			}
@@ -1646,7 +1744,7 @@ int physics_HasNewCollisions(struct collider_handle_t collider)
 	return 0;
 }
 
-struct collision_record_t *physics_GetColliderCollisionRecords(struct collider_handle_t collider)
+struct contact_record_t *physics_GetColliderContactRecords(struct collider_handle_t collider)
 {
 	struct collider_t *collider_ptr;
 
@@ -1654,9 +1752,9 @@ struct collision_record_t *physics_GetColliderCollisionRecords(struct collider_h
 
 	if(collider_ptr)
 	{
-		if(collider_ptr->collision_record_count)
+		if(collider_ptr->contact_record_count)
 		{
-			return (struct collision_record_t *)phy_collision_records.elements + collider_ptr->first_collision_record;
+			return (struct contact_record_t *)phy_contact_records.elements + collider_ptr->first_contact_record;
 		}
 	}
 

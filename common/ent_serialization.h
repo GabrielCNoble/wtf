@@ -61,7 +61,7 @@ struct entity_record_start_t
 	char name[ENTITY_NAME_MAX_LEN];
 	char def_name[ENTITY_NAME_MAX_LEN];
 	int flags;
-	unsigned int def_ref_skip_offset;
+	unsigned int data_skip_offset;
 };
 
 static char entity_record_end_tag[] = "[entity record end]";

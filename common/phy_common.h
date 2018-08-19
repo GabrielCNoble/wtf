@@ -181,6 +181,9 @@ struct collider_handle_t
 	unsigned index : 29;
 };
 
+
+#define INVALID_COLLIDER_HANDLE (struct collider_handle_t){COLLIDER_TYPE_NONE, INVALID_COLLIDER_INDEX}
+
 struct collider_t
 {
 	//union
@@ -214,18 +217,24 @@ struct collider_t
 
 	int entity_index;
 
-	short collision_record_count;
-	unsigned short max_collision_records;
-	unsigned int first_collision_record;
+	short contact_record_count;
+	unsigned short max_contact_records;
+	unsigned int first_contact_record;
 
 };
 
-struct collision_record_t
+struct contact_record_t
 {
 	struct collider_handle_t collider;
 	int life;
 	short material_index;
-	short collided_with_world;
+	unsigned short align;
+
+	vec3_t position;
+	vec3_t normal;
+	float applied_impulse;
+
+	//short collided_with_world;
 	//int material_index;
 	//vec3_t world_position;
 };

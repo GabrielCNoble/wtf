@@ -134,7 +134,7 @@ int physics_AreColliding(struct collider_handle_t collider_a, struct collider_ha
 
 int physics_HasNewCollisions(struct collider_handle_t collider);
 
-struct collision_record_t *physics_GetColliderCollisionRecords(struct collider_handle_t collider);
+struct contact_record_t *physics_GetColliderContactRecords(struct collider_handle_t collider);
 
 /*
 =================================================================

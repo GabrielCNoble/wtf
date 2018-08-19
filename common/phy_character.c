@@ -213,6 +213,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	//btAlignedObjectArray *positions;
 
 	vec3_t point;
+	vec3_t contact_position;
 	vec3_t normal;
 
 	int i;
@@ -234,7 +235,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	btVector3 linear_velocity;
 	btVector3 gravity_on_plane;
 	btManifoldPoint contact_point;
-	btVector3 contact_position;
+//	btVector3 contact_position;
 	btVector3 contact_normal;
 	//btVector3 smallest_angle_contact_point;
 	//btVector3 smallest_hit_normal;
@@ -247,6 +248,9 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	int vert_count;
 	int vert_stride;
 	btVector3 *triangles;
+
+	struct contact_record_t *contact_records;
+	int contact_record_count;
 
 	vec3_t *v3_triangles;
 
@@ -338,84 +342,96 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	smallest_vertical_contact_dist = 2.0;
 	smallest_horizontal_contact_time = 2.0;
 
+
+	contact_records = physics_GetColliderContactRecords(character_collider);
+
 //	c = result_callback.m_hitFractions.size();
 
 	bottom_hit_dist = collider->height * 0.5;
 	collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_ON_GROUND;
 
-	world_collision_mesh->getMeshInterface()->getLockedVertexIndexBase((unsigned char **)&triangles, vert_count, vert_type, vert_stride, (unsigned char **)&indexes, index_stride, index_count, index_type, 0);
+	//world_collision_mesh->getMeshInterface()->getLockedVertexIndexBase((unsigned char **)&triangles, vert_count, vert_type, vert_stride, (unsigned char **)&indexes, index_stride, index_count, index_type, 0);
 
-	persistent_manifolds = narrow_phase->getInternalManifoldPointer();
+	//persistent_manifolds = narrow_phase->getInternalManifoldPointer();
 
-	if(persistent_manifolds)
+	//if(persistent_manifolds)
 	{
-		persistent_manifolds_count = narrow_phase->getNumManifolds();
+	//	persistent_manifolds_count = narrow_phase->getNumManifolds();
 
-		for(i = 0; i < persistent_manifolds_count; i++)
+		for(i = 0; i < collider->contact_record_count; i++)
 		{
 			/* go over all contacts... */
-			persistent_manifold = persistent_manifolds[i];
+			//persistent_manifold = persistent_manifolds[i];
 
-			if(persistent_manifold->getBody0() == rigid_body || persistent_manifold->getBody1() == rigid_body)
+			//if(persistent_manifold->getBody0() == rigid_body || persistent_manifold->getBody1() == rigid_body)
 			{
 				/* if this collider is involved in this contact point... */
-				c = persistent_manifold->getNumContacts();
+				//c = persistent_manifold->getNumContacts();
 
-				for(j = 0; j < c; j++)
+				//for(j = 0; j < c; j++)
 				{
-					contact_point = persistent_manifold->getContactPoint(j);
 
-					point.x = contact_point.m_positionWorldOnA[0];
-					point.y = contact_point.m_positionWorldOnA[1];
-					point.z = contact_point.m_positionWorldOnA[2];
+					//point = contact_records[i].position;
 
-					if(persistent_manifold->getBody0() == world_collision_object)
-					{
+					contact_position = contact_records[i].position;
+
+					contact_normal[0] = contact_records[i].normal.x;
+					contact_normal[1] = contact_records[i].normal.y;
+					contact_normal[2] = contact_records[i].normal.z;
+
+					//contact_point = persistent_manifold->getContactPoint(j);
+
+					//point.x = contact_point.m_positionWorldOnA[0];
+					//point.y = contact_point.m_positionWorldOnA[1];
+					//point.z = contact_point.m_positionWorldOnA[2];
+
+					//if(persistent_manifold->getBody0() == world_collision_object)
+					//{
 						//triangles = &world_triangles->m_3componentVertices[0];
-						v3_triangles = (vec3_t *)&world_triangles->m_3componentVertices[0];
-						triangle_index = contact_point.m_index0 * 3;
-						collision_with_world = 1;
-					}
-					else if(persistent_manifold->getBody1() == world_collision_object)
-					{
+					//	v3_triangles = (vec3_t *)&world_triangles->m_3componentVertices[0];
+					//	triangle_index = contact_point.m_index0 * 3;
+					//	collision_with_world = 1;
+					//}
+					//else if(persistent_manifold->getBody1() == world_collision_object)
+					//{
 						//triangles = &world_triangles->m_3componentVertices[0];
-						v3_triangles = (vec3_t *)&world_triangles->m_3componentVertices[0];
-						triangle_index = contact_point.m_index1 * 3;
-						collision_with_world = 1;
-					}
-					else
-					{
-						collision_with_world = 0;
-					}
+					//	v3_triangles = (vec3_t *)&world_triangles->m_3componentVertices[0];
+					//	triangle_index = contact_point.m_index1 * 3;
+					//	collision_with_world = 1;
+					//}
+					//else
+					//{
+					//	collision_with_world = 0;
+					//}
 
 
-					if(collision_with_world)
-					{
+					//if(collision_with_world)
+					//{
 						/* if the other collision object involved is the world,
 						get the contact normal directly from the collision mesh... */
 						//e0 = triangles[triangle_index + 1] - triangles[triangle_index];
 						//e1 = triangles[triangle_index + 2] - triangles[triangle_index + 1];
 
-						e0[0] = v3_triangles[triangle_index + 1].x - v3_triangles[triangle_index].x;
-						e0[1] = v3_triangles[triangle_index + 1].y - v3_triangles[triangle_index].y;
-						e0[2] = v3_triangles[triangle_index + 1].z - v3_triangles[triangle_index].z;
+					//	e0[0] = v3_triangles[triangle_index + 1].x - v3_triangles[triangle_index].x;
+					//	e0[1] = v3_triangles[triangle_index + 1].y - v3_triangles[triangle_index].y;
+					//	e0[2] = v3_triangles[triangle_index + 1].z - v3_triangles[triangle_index].z;
 
-						e1[0] = v3_triangles[triangle_index + 2].x - v3_triangles[triangle_index + 1].x;
-						e1[1] = v3_triangles[triangle_index + 2].y - v3_triangles[triangle_index + 1].y;
-						e1[2] = v3_triangles[triangle_index + 2].z - v3_triangles[triangle_index + 1].z;
+					//	e1[0] = v3_triangles[triangle_index + 2].x - v3_triangles[triangle_index + 1].x;
+					//	e1[1] = v3_triangles[triangle_index + 2].y - v3_triangles[triangle_index + 1].y;
+					//	e1[2] = v3_triangles[triangle_index + 2].z - v3_triangles[triangle_index + 1].z;
 
-						contact_normal = e0.cross(e1);
-						contact_normal = contact_normal.normalize();
-					}
-					else
-					{
-						contact_normal = contact_point.m_normalWorldOnB;
-					}
-
-
+					//	contact_normal = e0.cross(e1);
+					//	contact_normal = contact_normal.normalize();
+					//}
+					//else
+					//{
+					//	contact_normal = contact_point.m_normalWorldOnB;
+					//}
 
 
-					hit_point_y = point.y;
+
+
+					hit_point_y = contact_position.y;
 
 					/* distance from the contact point to
 					the middle of the collider... */
@@ -425,8 +441,8 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 					it is to the middle of the box */
 					hit_time = (1.0 - (dist / bottom_hit_dist));
 
-					renderer_DrawPoint(point, vec3_t_c(0.0, 1.0, 0.0), 8.0, 1, 0, 1);
-					renderer_DrawLine(point, vec3_t_c(point.x + contact_point.m_normalWorldOnB[0], point.y + contact_point.m_normalWorldOnB[1], point.z + contact_point.m_normalWorldOnB[2]), vec3_t_c(1.0, 1.0, 0.0), 1.0, 1);
+					renderer_DrawPoint(contact_position, vec3_t_c(0.0, 1.0, 0.0), 8.0, 1, 0, 1);
+					renderer_DrawLine(contact_position, vec3_t_c(contact_position.x + contact_normal[0], contact_position.y + contact_normal[1], contact_position.z + contact_normal[2]), vec3_t_c(1.0, 1.0, 0.0), 1.0, 1);
 
 					contact_slope = 1.0 - fabs(contact_normal[1]);
 
@@ -585,7 +601,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 
 	collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_WALKING;
 
-	world_collision_mesh->getMeshInterface()->unLockVertexBase(0);
+	//world_collision_mesh->getMeshInterface()->unLockVertexBase(0);
 }
 
 

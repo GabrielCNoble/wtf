@@ -211,8 +211,8 @@ void engine_MainLoop()
 
 		engine_UpdateDeltaTime();
 
-		s = engine_GetDeltaTime();
-		renderer_StartGpuTimer();
+		//s = engine_GetDeltaTime();
+		//renderer_StartGpuTimer();
 
 		renderer_OpenFrame();
 		input_GetInput(delta_time);
@@ -263,7 +263,7 @@ void engine_MainLoop()
 		renderer_DrawFrame();
 
 		renderer_CloseFrame();
-		e = engine_GetDeltaTime();
+		/*e = engine_GetDeltaTime();
 
 
 		accum_cpu_time += e - s;
@@ -286,7 +286,7 @@ void engine_MainLoop()
 		else
 		{
 			captured_frames++;
-		}
+		}*/
 
 		engine_state &= ~(ENGINE_JUST_PAUSED | ENGINE_JUST_RESUMED);
 	}

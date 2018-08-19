@@ -2199,7 +2199,7 @@ struct entity_handle_t *entity_GetTouchedEntities(struct entity_handle_t entity,
 	int start;
 	int touched = 0;
 	struct physics_component_t *physics_component;
-	struct collision_record_t *collision_records;
+	struct contact_record_t *contact_records;
 	struct collider_t *collider;
 	struct collider_t *other;
 	struct entity_t *entity_ptr;
@@ -2216,11 +2216,11 @@ struct entity_handle_t *entity_GetTouchedEntities(struct entity_handle_t entity,
 		physics_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
 		collider = physics_GetColliderPointerHandle(physics_component->collider.collider_handle);
 
-		collision_records = physics_GetColliderCollisionRecords(physics_component->collider.collider_handle);
+		contact_records = physics_GetColliderContactRecords(physics_component->collider.collider_handle);
 
-		for(i = 0; i < collider->collision_record_count && i < MAX_TOUCHED_ENTITIES; i++)
+		for(i = 0; i < collider->contact_record_count && i < MAX_TOUCHED_ENTITIES; i++)
 		{
-			other = physics_GetColliderPointerHandle(collision_records[i].collider);
+			other = physics_GetColliderPointerHandle(contact_records[i].collider);
 
 			if(other)
 			{
@@ -2507,8 +2507,8 @@ void entity_UpdatePhysicsComponents()
     struct physics_component_t *physics_component;
     struct collider_t *collider;
     struct collider_t *other;
-    struct collision_record_t *collision_records;
-    struct collision_record_t *collision_record;
+    struct contact_record_t *contact_records;
+    struct contact_record_t *contact_record;
 
     struct entity_contact_t *entity_contacts;
     struct entity_contact_t *first_entity_contact;
@@ -2542,7 +2542,7 @@ void entity_UpdatePhysicsComponents()
 
             prev_start += physics_component->max_entity_contact_count;
 
-            collision_records = physics_GetColliderCollisionRecords(physics_component->collider.collider_handle);
+            contact_records = physics_GetColliderContactRecords(physics_component->collider.collider_handle);
 
             increment = physics_component->max_entity_contact_count + ent_entity_contacts.element_count;
 
@@ -2555,15 +2555,15 @@ void entity_UpdatePhysicsComponents()
 
             first_entity_contact = entity_contacts + physics_component->first_entity_contact;
 
-            for(j = 0; j < collider->collision_record_count; j++)
+            for(j = 0; j < collider->contact_record_count; j++)
             {
                 if(physics_component->entity_contact_count < physics_component->max_entity_contact_count)
                 {
                     entity_contact = first_entity_contact + physics_component->entity_contact_count;
 
-                    collision_record = collision_records + j;
+                    contact_record = contact_records + j;
 
-                    other = physics_GetColliderPointerHandle(collision_record->collider);
+                    other = physics_GetColliderPointerHandle(contact_record->collider);
 
                     if(other)
                     {

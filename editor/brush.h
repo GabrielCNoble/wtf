@@ -118,6 +118,8 @@ typedef struct brush_t
 	intersection_record_t *freed_records;
 
 
+	//intersection_record_t *
+
 	int max_intersections;
 	int *intersections;
 

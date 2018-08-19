@@ -697,6 +697,7 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 				k = (ent_record_start->flags & ENTITY_RECORD_FLAG_DEF_REF) && 1;
 
 				transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+
 				/* write nestled transforms... */
 				for(j = 0; j <= k; j++)
 				{
@@ -711,10 +712,10 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 						   current entity... */
 						   entity_WriteEntity((void **)&out, component->entity, transform_component->child_transforms[i], write_def_as_file_ref);
 						}
-						else if(write_entity_data && (entity_ptr->flags & ENTITY_FLAG_MODIFIED))
+						else if(entity_ptr->flags & ENTITY_FLAG_MODIFIED)
 						{
 							/* This nestled transform belongs to some component
-							that needs to keep spacial information (light, camera,
+							that needs to keep spatial information (light, camera,
 							particle system, etc).
 
 							This just gets written if this isn't a reference to
@@ -723,8 +724,7 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 						}
 					}
 
-
-					if(j < k)
+					if(!j)
 					{
 						/* .ent files are supposed to be self-contained, meaning that
 						they should not rely on other files to properly load their
@@ -734,11 +734,16 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 
 						In the case where the entity def is already loaded when this
 						ref gets deserialized, we only skip all the data from the
-						def it references, and only load the data this ref has... */
-						ent_record_start->def_ref_skip_offset = out - record_start;
+						def it references, and only load the data this ref has.
 
+						This is also useful to avoid loading the same entity def
+						data twice. If the entity def already exists, the loader
+						will simply skip over the data to the end record tag... */
+						ent_record_start->data_skip_offset = out - record_start;
+					}
 
-
+					if(j < k)
+					{
 						/* We write this ref's transform component, so we can have both
 						nestled transforms from the original def and from this ref... */
 						transform_component = entity_GetComponentPointer(referencing_transform);
@@ -787,6 +792,8 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
 	struct component_t *component;
 	struct transform_component_t *parent_transform_component;
 
+	int load_entity_data = 1;
+
 	char *in;
 	int i;
 	int loop = 1;
@@ -812,7 +819,7 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
         {
             /* The entity def being referenced already exists,
             so we just load this ref specific data... */
-            in += ent_record_start->def_ref_skip_offset;
+            in += ent_record_start->data_skip_offset;
 
 
             /* This record belongs to a reference to an entity def, which means that we'll be reading only a transform component
@@ -823,7 +830,16 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
         }
         else
         {
-            handle = entity_CreateEntity(ent_record_start->name, ent_record_start->flags & ENTITY_RECORD_FLAG_DEF);
+        	//handle = entity_GetEntityHandle(ent_record_start->name, 1);
+
+        	//if(handle.entity_index == INVALID_ENTITY_INDEX)
+			//{
+			handle = entity_CreateEntity(ent_record_start->name, ent_record_start->flags & ENTITY_RECORD_FLAG_DEF);
+			//}
+			//else
+			//{
+			//	in += ent_record_start->def_ref_skip_offset;
+			//}
         }
 
 
@@ -837,7 +853,19 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
 			if(!(ent_record_start->flags & ENTITY_RECORD_FLAG_FILE_REF))
 			{
 				/* This record belongs to an entity def or to post-spawned modified entity, so we create a new entity here... */
-				handle = entity_CreateEntity(ent_record_start->name, ent_record_start->flags & ENTITY_RECORD_FLAG_DEF);
+
+				handle = entity_GetEntityHandle(ent_record_start->name, 1);
+
+				if(handle.entity_index == INVALID_ENTITY_INDEX)
+				{
+					handle = entity_CreateEntity(ent_record_start->name, ent_record_start->flags & ENTITY_RECORD_FLAG_DEF);
+				}
+				else
+				{
+					in += ent_record_start->data_skip_offset;
+					//load_entity_data = 0;
+				}
+
 			}
 			else
 			{
@@ -1087,7 +1115,7 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 
 				if(transform_component)
 				{
-					if(transform_component->parent.type == COMPONENT_TYPE_NONE)
+					if(transform_component->parent.type == COMPONENT_TYPE_NONE && (!(entity->flags & ENTITY_FLAG_SERIALIZED)))
 					{
 						//if(!(entity->flags & ENTITY_FLAG_ON_DISK))
 						entity_WriteEntity((void **)&out, handle, INVALID_COMPONENT_HANDLE, 1);

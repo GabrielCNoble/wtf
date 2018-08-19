@@ -76,6 +76,13 @@ void main()
 		entity_DIEYOUMOTHERFUCKER();
 	}
 
+
+	if(entity_GetLife() >= 1800)
+	{
+		entity_Die();
+	}
+
+
 }
 
 void OnSpawn()
