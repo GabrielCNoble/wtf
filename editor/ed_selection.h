@@ -69,4 +69,10 @@ void editor_CopySelections(pick_list_t *pick_list);
 
 void editor_DestroySelection(pick_list_t *pick_list);
 
+vec3_t editor_GetCenterOfSelections(pick_list_t *pick_list);
+
 #endif
+
+
+
+

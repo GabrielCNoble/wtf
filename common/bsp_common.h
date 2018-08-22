@@ -3,12 +3,12 @@
 
 #include "vector.h"
 #include "model.h"
-#include "l_common.h"
+//#include "l_common.h"
 
 
-#define TRIS_FIRST_VERTEX(tri) (tri&0x00ffffff)
-#define TRIS_GROUP(tri) ((tri&0xff000000)>>24)
-#define PACK_TRIS(group, first_index) ((group<<24)|(first_index&0x00ffffff))
+//#define TRIS_FIRST_VERTEX(tri) (tri&0x00ffffff)
+//#define TRIS_GROUP(tri) ((tri&0xff000000)>>24)
+//#define PACK_TRIS(group, first_index) ((group<<24)|(first_index&0x00ffffff))
 
 
 
@@ -18,9 +18,9 @@ this triangle belongs to. bsp_triangle_t's may be unsorted on memory. */
 typedef struct
 {
 	int first_vertex;
-	int batch;		/* a.k.a. material */
+	int batch;				/* a.k.a. material */
 }bsp_striangle_t;			/* could cut this struct in half... 8 bits for triangle group + 24 bits for the first vertex, which
-gives 256 different triangle groups and 5592405 triangles... */
+gives 256 different triangle batches and 5592405 triangles... */
 
 
 typedef struct
@@ -28,6 +28,7 @@ typedef struct
 	int byte_count;
 	char *leaves;
 }pvs_t;
+
 
 #define BSP_EMPTY_LEAF 0x0000
 #define BSP_SOLID_LEAF 0xffff
@@ -37,24 +38,16 @@ typedef struct
 {
 	vec3_t center;
 	vec3_t extents;
-	//int leaf_index;
-	//int first_batch;
-	//int batch_count;
-	bsp_striangle_t *tris;
-	//unsigned int *tris;				
 	unsigned int tris_count;			/* could get rid of this... */
+	bsp_striangle_t *tris;
 	unsigned char *pvs;					/* this makes this struct not 32 byte aligned. Fuck! */
-	
-	//unsigned int first_light_indexes;
-	//unsigned int last_light_indexes;
-	
 }bsp_dleaf_t;
 
-#define PACK_NEXT_PREV_CURSOR(next, prev, cursor) ((next&0x00003fff)|((prev&0x00003fff)<<14)|((cursor&0x0000000f)<<28))
+//#define PACK_NEXT_PREV_CURSOR(next, prev, cursor) ((next&0x00003fff)|((prev&0x00003fff)<<14)|((cursor&0x0000000f)<<28))
 
-#define UNPACK_NEXT_PREV_CURSOR(next_prev_cursor, next, prev, cursor) next=next_prev_cursor&0x00003fff;				\
+//#define UNPACK_NEXT_PREV_CURSOR(next_prev_cursor, next, prev, cursor) next=next_prev_cursor&0x00003fff;				\
 																	  prev=(next_prev_cursor>>14)&0x00003fff;		\
-																	  cursor=(next_prev_cursor>>28)&0x0000000f;		
+																	  cursor=(next_prev_cursor>>28)&0x0000000f;
 
 
 
@@ -71,7 +64,7 @@ typedef struct
 
 typedef struct
 {
-	unsigned int lights[MAX_WORLD_LIGHTS >> 5];
+	unsigned int lights[512 >> 5];
 }bsp_lights_t;
 
 typedef struct
@@ -117,13 +110,12 @@ typedef struct bsp_polygon_t
 /* if this node has both child == 0, it means
 it points to a empty leaf, child == 0xffff points
 to a solid leaf. In case of empty leaf, the leaf
-index will be contained in dist. To obtain the index, 
+index will be contained in dist. To obtain the index,
 just do *(int *)&dist... */
 typedef struct
 {
 	vec3_t normal;					/* could use packed normal here, but bsp's are really finicky with precision... */
-	//vec3_t point;
-	float dist;									
+	float dist;
 	unsigned short child[2];		/* relative displacement... */	 /* given that the front child will be always one position away, it's
 																		only necessary to keep the stride to the back child. */
 }bsp_pnode_t;	/* would like to shrink this from 20 to 16 bytes... */

@@ -543,6 +543,7 @@ struct framebuffer_t framebuffer_stack[FRAMEBUFFER_STACK_DEPTH];
 void renderer_PushFramebuffer(struct framebuffer_t *framebuffer)
 {
 	struct framebuffer_t *fb;
+
 	if(framebuffer_stack_top < FRAMEBUFFER_STACK_DEPTH - 1)
 	{
 		framebuffer_stack_top++;

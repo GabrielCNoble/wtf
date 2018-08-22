@@ -211,7 +211,7 @@ void engine_MainLoop()
 
 		engine_UpdateDeltaTime();
 
-		//s = engine_GetDeltaTime();
+		s = engine_GetDeltaTime();
 		//renderer_StartGpuTimer();
 
 		renderer_OpenFrame();
@@ -244,7 +244,7 @@ void engine_MainLoop()
 		script_ExecuteScripts(delta_time);
 
 
-		entity_ClearMarkedEntities();
+		//entity_ClearMarkedEntities();
 
 
 		sound_ProcessSound();
@@ -263,11 +263,11 @@ void engine_MainLoop()
 		renderer_DrawFrame();
 
 		renderer_CloseFrame();
-		/*e = engine_GetDeltaTime();
+		e = engine_GetDeltaTime();
 
 
 		accum_cpu_time += e - s;
-		accum_gpu_time += renderer_StopGpuTimer();
+		/*accum_gpu_time += renderer_StopGpuTimer();*/
 		capture_time += delta_time;
 
 
@@ -275,7 +275,7 @@ void engine_MainLoop()
 		if(capture_time >= 1000.0)
 		{
 			accum_cpu_time /= captured_frames;
-			accum_gpu_time /= captured_frames;
+			//accum_gpu_time /= captured_frames;
 			printf("frame time - |gpu: %0.3f| |cpu: %0.3f| |fps(gpu): %0.3f| |fps(cpu): %0.3f|\n", accum_gpu_time, accum_cpu_time, 1.0 / (accum_gpu_time * 0.001), 1.0 / (accum_cpu_time * 0.001));
 
 			accum_cpu_time = 0.0;
@@ -286,7 +286,7 @@ void engine_MainLoop()
 		else
 		{
 			captured_frames++;
-		}*/
+		}
 
 		engine_state &= ~(ENGINE_JUST_PAUSED | ENGINE_JUST_RESUMED);
 	}

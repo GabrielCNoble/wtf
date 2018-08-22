@@ -16,8 +16,8 @@
 #define PACK_LIGHT_VIEW_CLUSTER_INDEXES(light_index, view_cluster_index) ((light_index<<7)|(view_cluster_index))
 #define UNPACK_LIGHT_VIEW_CLUSTER_INDEXES(light_index, view_cluster_index, packed_indexes) light_index=((packed_indexes>>7)&0x000003ff);	\
 																							view_cluster_index=packed_indexes&0x0000007f;
-																							
-#define CAMERA_NAME_MAX_LEN 24																							
+
+#define CAMERA_NAME_MAX_LEN 24
 
 enum CAMERA_FLAGS
 {
@@ -61,61 +61,61 @@ typedef struct
 	unsigned int last_touched;
 	unsigned short frame_ref_count;
 	unsigned short align;
-	
-	
+
+
 }view_material_ref_record_t;
 
 
 typedef struct
 {
-	
+
 	mat4_t projection_matrix;
 	mat4_t view_matrix;
-	
-	//frustum_t frustum;
-	
-	unsigned short view_lights_list_cursor;
-	unsigned short view_lights_list_size;
-	view_light_t *view_lights;
 
-	unsigned short view_entities_list_cursor;
-	unsigned short view_entities_list_size;
-	unsigned short *view_entities;
-	
-	unsigned int view_portals_frame;
-	unsigned short view_portals_list_cursor;
-	unsigned short view_portals_list_size;
-	unsigned short *view_portals;
-	
-	unsigned short view_triangles_cursor;
-	unsigned short view_triangles_size;
-	bsp_striangle_t *view_triangles;
+	//frustum_t frustum;
+
+//	unsigned short view_lights_list_cursor;
+//	unsigned short view_lights_list_size;
+//	view_light_t *view_lights;
+
+//	unsigned short view_entities_list_cursor;
+//	unsigned short view_entities_list_size;
+//	unsigned short *view_entities;
+
+//	unsigned int view_portals_frame;
+//	unsigned short view_portals_list_cursor;
+//	unsigned short view_portals_list_size;
+//	unsigned short *view_portals;
+
+//	unsigned short view_triangles_cursor;
+//	unsigned short view_triangles_size;
+//	bsp_striangle_t *view_triangles;
 	//unsigned int view_world_batch_cursor;
 	//unsigned int view_world_batch_size;
 	//batch_t *view_world_batches;
 	//unsigned int *view_visible_world;
-	
+
 	//view_material_ref_record_t *view_material_refs;
-	
-	unsigned int view_draw_command_frame;
-	unsigned int view_draw_command_list_size;
-	unsigned int view_draw_command_list_cursor;
-	draw_command_t *view_draw_commands;
-	
-	int view_leaves_list_cursor;
-	int view_leaves_list_size;
-	bsp_dleaf_t **view_leaves;
+
+//	unsigned int view_draw_command_frame;
+//	unsigned int view_draw_command_list_size;
+//	unsigned int view_draw_command_list_cursor;
+//	draw_command_t *view_draw_commands;
+
+//	int view_leaves_list_cursor;
+//	int view_leaves_list_size;
+//	bsp_dleaf_t **view_leaves;
 }view_data_t;
 /*struct view_def
 {
 	struct view_def *next;
 	struct view_def *prev;
-	
+
 	mat4_t projection_matrix;
 	mat4_t view_matrix;
 	mat3_t orientation;
 	vec3_t position;
-	
+
 	int type;
 };*/
 
@@ -123,9 +123,9 @@ typedef struct camera_t
 {
 	struct camera_t *next;		/* cameras won't be created all the time, so a linked list will be easier to manage... */
 	struct camera_t *prev;
-	
+
 	view_data_t view_data;
-	
+
 	//mat4_t projection_matrix;
 	//mat4_t world_to_camera_matrix;
 	//mat3_t local_orientation;			/* this will be useful only when there's a scenegraph... */
@@ -136,12 +136,12 @@ typedef struct camera_t
 	//vec3_t local_position;			/* this will be useful only when there's a scenegraph... */
 	vec3_t world_position;
 	//node_t *assigned_node;
-	float zoom; 
+	float zoom;
 	//float exposure;
 	float fov_y;
 	int width;
 	int height;
-	
+
 	float x_shift;
 	float y_shift;
 

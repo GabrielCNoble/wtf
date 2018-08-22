@@ -25,7 +25,7 @@
 
 #include "bsp_common.h"
 #include "bsp.h"
-#include "bsp_file.h"
+//#include "bsp_file.h"
 
 #include "engine.h"
 #include "c_memory.h"
@@ -113,16 +113,16 @@ extern struct stack_list_t ent_entity_aabbs;
 extern struct stack_list_t ent_world_transforms;
 
 
-
+#include "l_globals.h"
 
 /* from l_main.c */
-extern int l_light_count;
-extern int l_light_list_cursor;
-extern light_params_t *l_light_params;
-extern light_position_t *l_light_positions;
-extern unsigned int l_light_cache_uniform_buffer;
-extern unsigned int l_cluster_texture;
-extern cluster_t *l_clusters;
+//extern int l_light_count;
+//extern int l_light_list_cursor;
+//extern light_params_t *l_light_params;
+//extern light_position_t *l_light_positions;
+//extern unsigned int l_light_cache_uniform_buffer;
+//extern unsigned int l_cluster_texture;
+//extern cluster_t *l_clusters;
 
 /* from camera.c */
 extern camera_t *cameras;
@@ -388,8 +388,8 @@ void world_MarkLightsOnLeaves()
 			leaf_index = light_leaf - w_world_leaves;
 			w_leaf_lights[leaf_index].lights[int_index] |= 1 << bit_index;
 
-			radius = LIGHT_RADIUS(parms->radius);
-			energy = LIGHT_ENERGY(parms->energy);
+			radius = UNPACK_LIGHT_RADIUS(parms->radius);
+			energy = UNPACK_LIGHT_ENERGY(parms->energy);
 			radius *= radius;
 
 
@@ -406,7 +406,7 @@ void world_MarkLightsOnLeaves()
 
 			#ifdef BLODDY_SSE
 
-			asm
+			asm volatile
 			(
 				"movups xmm0, [%[light_pos4]]\n"
 				"movups xmm3, [%[sign]]\n"
@@ -428,7 +428,7 @@ void world_MarkLightsOnLeaves()
 					//s = _rdtsc();
 
 					#ifdef BLODDY_SSE
-					asm
+					asm volatile
 					(
 						"movups xmm1, [%[leaf_pos4]]\n"
 						"movups xmm2, [%[leaf_extents4]]\n"
@@ -510,7 +510,7 @@ void world_MarkLightsOnLeaves()
 			continue;*/
 
 			//_do_box:
-			//light_VisibleTriangles(i);
+			world_VisibleLightTriangles(i);
 
 			#undef BLODDY_SSE
 
@@ -899,8 +899,8 @@ void world_LightBounds()
 	//camera_t *active_camera = view;
 	vec4_t light_origin;
 
-	view_clusters_t *view_clusters;
-	view_light_t *view_light;
+//	view_clusters_t *view_clusters;
+//	view_light_t *view_light;
 	mat4_t mt;
 
 	vec2_t ac;
@@ -979,7 +979,7 @@ void world_LightBounds()
 		//mat4_t_vec4_t_mult(&view_data->view_matrix, &light_origin);
 		mat4_t_vec4_t_mult(&active_camera->view_data.view_matrix, &light_origin);
 
-		light_radius = LIGHT_RADIUS(params->radius);
+		light_radius = UNPACK_LIGHT_RADIUS(params->radius);
 
 		d = light_origin.x * light_origin.x + light_origin.y * light_origin.y + light_origin.z * light_origin.z;
 
@@ -1170,10 +1170,10 @@ void world_LightBounds()
 
 
 
-		renderer_Draw2dLine(vec2(x_min, y_max), vec2(x_min, y_min), vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
-		renderer_Draw2dLine(vec2(x_min, y_min), vec2(x_max, y_min), vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
-		renderer_Draw2dLine(vec2(x_max, y_min), vec2(x_max, y_max), vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
-		renderer_Draw2dLine(vec2(x_max, y_max), vec2(x_min, y_max), vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
+		//renderer_Draw2dLine(vec2(x_min, y_max), vec2(x_min, y_min), vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
+		//renderer_Draw2dLine(vec2(x_min, y_min), vec2(x_max, y_min), vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
+		//renderer_Draw2dLine(vec2(x_max, y_min), vec2(x_max, y_max), vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
+		//renderer_Draw2dLine(vec2(x_max, y_max), vec2(x_min, y_max), vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
 
 
 
@@ -2592,15 +2592,23 @@ void world_UploadVisibleLights()
 
 	struct gpu_light_t *lights;
 
-	if(!l_light_cache_uniform_buffer)
+	if(!l_light_uniform_buffer)
 		return;
 
 
 	R_DBG_PUSH_FUNCTION_NAME();
 
 
+	float proj_param_a;
+	float proj_param_b;
+
+
+
+	proj_param_a = l_shadow_map_projection_matrix.floats[2][2];
+	proj_param_b = l_shadow_map_projection_matrix.floats[3][2];
+
 	active_camera = camera_GetActiveCamera();
-	glBindBuffer(GL_UNIFORM_BUFFER, l_light_cache_uniform_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, l_light_uniform_buffer);
 	//lights = w_light_buffer;
 
 	//view_lights = view_data->view_lights;
@@ -2609,6 +2617,9 @@ void world_UploadVisibleLights()
 	{
 		//light_index = view_lights[i].light_index;
 		light_index = w_visible_lights[i];
+
+		light_AllocShadowMap(light_index);
+
 		pos = &l_light_positions[light_index];
 		parms = &l_light_params[light_index];
 
@@ -2624,15 +2635,32 @@ void world_UploadVisibleLights()
 		w_light_buffer[i].position_radius.y = light_position.y;
 		w_light_buffer[i].position_radius.z = light_position.z;
 
-		w_light_buffer[i].position_radius.w = LIGHT_RADIUS(parms->radius);
+		w_light_buffer[i].position_radius.w = UNPACK_LIGHT_RADIUS(parms->radius);
 
 		w_light_buffer[i].color_energy.r = (float)parms->r / 255.0;
 		w_light_buffer[i].color_energy.g = (float)parms->g / 255.0;
 		w_light_buffer[i].color_energy.b = (float)parms->b / 255.0;
-		w_light_buffer[i].color_energy.a = LIGHT_ENERGY(parms->energy);
+		w_light_buffer[i].color_energy.a = UNPACK_LIGHT_ENERGY(parms->energy);
 
-		w_light_buffer[i].x_y = (parms->y << 16) | parms->x;
+//		w_light_buffer[i].x_y = (parms->y << 16) | parms->x;
 		w_light_buffer[i].bm_flags = parms->bm_flags & (~LIGHT_GENERATE_SHADOWS);
+
+		w_light_buffer[i].proj_param_a = proj_param_a;
+		w_light_buffer[i].proj_param_b = proj_param_b;
+		w_light_buffer[i].shadow_map = parms->shadow_map;
+
+		if(parms->bm_flags & LIGHT_UPLOAD_INDICES)
+		{
+			if(parms->indices_handle.alloc_index == INVALID_GPU_ALLOC_INDEX)
+			{
+                parms->indices_handle = gpu_AllocIndexesAlign(sizeof(int) * 1024 * 3, sizeof(int));
+				parms->indices_start = gpu_GetAllocStart(parms->indices_handle) / sizeof(int);
+			}
+
+            gpu_WriteNonMapped(parms->indices_handle, 0, parms->visible_triangles.elements, sizeof(int) * parms->visible_triangles.element_count);
+
+            parms->bm_flags &= ~LIGHT_UPLOAD_INDICES;
+		}
 	}
 
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS, w_light_buffer);
@@ -2679,11 +2707,11 @@ void world_UploadVisibleLights()
 		cluster_y_end = parms->cluster.y1;
 		cluster_z_end = parms->cluster.z1;
 
-		for(z = cluster_z_start; z <= cluster_z_end && z < CLUSTER_LAYERS; z++)
+		for(z = cluster_z_start; z <= cluster_z_end; z++)
 		{
-			for(y = cluster_y_start; y <= cluster_y_end && y < CLUSTER_ROWS; y++)
+			for(y = cluster_y_start; y <= cluster_y_end; y++)
 			{
-				for(x = cluster_x_start; x <= cluster_x_end && x < CLUSTERS_PER_ROW; x++)
+				for(x = cluster_x_start; x <= cluster_x_end; x++)
 				{
 					cluster_index = CLUSTER_OFFSET(x, y, z);
 					l_clusters[cluster_index].light_indexes_bm |= 1 << i;
@@ -2815,9 +2843,6 @@ void world_VisibleLights()
 		}
 	}
 
-
-
-
 	world_UploadVisibleLights();
 
 /*	for(i = 0; i < visible_light_count; i++)
@@ -2830,9 +2855,8 @@ void world_VisibleLights()
 
 }
 
-void world_VisibleLightTriangles()
+void world_VisibleLightTriangles(int light_index)
 {
-	#if 0
 	int slot_index;
 	int i;
 	int c;
@@ -2844,24 +2868,32 @@ void world_VisibleLightTriangles()
 	float dist;
 	light_params_t *parms;
 	light_position_t *pos;
-	bsp_striangle_t *visible_triangles;
-	int *visible_tris;
+//	bsp_striangle_t *visible_triangles;
+//	bsp_striangle_t *leaf_triangles;
+//	int *visible_tris;
 	vertex_t *first_vertex;
 	vec3_t v;
 	vec3_t p;
 
-	vec3_t box_max = {-9999999999.9, -9999999999.9, -9999999999.9};
-	vec3_t box_min = {9999999999.9, 9999999999.9, 9999999999.9};
+	struct list_t *visible_triangles;
+	int *visible_triangle_indices;
 
-	vec3_t close_max = {-9999999999.9, -9999999999.9, -9999999999.9};
-	vec3_t close_min = {9999999999.9, 9999999999.9, 9999999999.9};
+	//int light_index;
+
+	//vec3_t box_max = {-9999999999.9, -9999999999.9, -9999999999.9};
+	//vec3_t box_min = {9999999999.9, 9999999999.9, 9999999999.9};
+
+	//vec3_t close_max = {-9999999999.9, -9999999999.9, -9999999999.9};
+	//vec3_t close_min = {9999999999.9, 9999999999.9, 9999999999.9};
 
 
 	bsp_dleaf_t *leaf;
 
-	if(!world_leaves)
+	if(!w_world_leaves)
 		return;
 
+
+	int frustums;
 
 
 	if(light_index >= 0 && light_index <= l_light_list_cursor)
@@ -2872,30 +2904,34 @@ void world_VisibleLightTriangles()
 			pos = &l_light_positions[light_index];
 			leaf = (bsp_dleaf_t *)parms->leaf;
 
+			//parms->visible_triangles.element_count = 0;
+
+			visible_triangles = &parms->visible_triangles;
+			visible_triangle_indices = (int *)visible_triangles->elements;
+
+			visible_triangles->element_count = 0;
+
 			if(leaf)
 			{
-				radius = LIGHT_RADIUS(parms->radius);
+				radius = UNPACK_LIGHT_RADIUS(parms->radius);
 				sqrd_radius = radius * radius;
 
 				//printf("update visible triangles\n");
 
-				parms->visible_triangle_count = 0;
-				parms->bm_flags |= LIGHT_NEEDS_REUPLOAD;
-				slot_index = light_index * MAX_TRIANGLES_PER_LIGHT;
-				visible_triangles = &l_light_visible_triangles[slot_index];
+				//parms->visible_triangle_count = 0;
+				parms->bm_flags |= LIGHT_UPLOAD_INDICES | LIGHT_UPDATE_SHADOW_MAP;
 
-				for(r = 0; r < world_leaves_count; r++)
+				for(r = 0; r < w_world_leaves_count; r++)
 				{
-					if(leaf_lights[r].lights[light_index >> 5] & (1 << (light_index % 32)))
+					if(w_leaf_lights[r].lights[light_index >> 5] & (1 << (light_index % 32)))
 					{
-						leaf = &world_leaves[r];
+						leaf = &w_world_leaves[r];
 
 						c = leaf->tris_count;
 
-						for(i = 0; i < c && i < MAX_TRIANGLES_PER_LIGHT; i++)
+						for(i = 0; i < c; i++)
 						{
-							first_vertex = &world_vertices[leaf->tris[i].first_vertex];
-							//first_vertex = &world_vertices[TRIS_FIRST_VERTEX(leaf->tris[i])];
+							first_vertex = &w_world_vertices[leaf->tris[i].first_vertex];
 
 							for(j = 0; j < 3; j++)
 							{
@@ -2907,9 +2943,22 @@ void world_VisibleLightTriangles()
 
 								if(dist < sqrd_radius)
 								{
-									*visible_triangles = leaf->tris[i];
-									visible_triangles++;
-									parms->visible_triangle_count++;
+
+                                    if(visible_triangles->element_count >= visible_triangles->max_elements)
+									{
+                                        list_resize(visible_triangles, visible_triangles->max_elements + 128);
+                                        visible_triangle_indices = (int *)visible_triangles->elements;
+									}
+
+									visible_triangle_indices[visible_triangles->element_count] = w_world_start + leaf->tris[i].first_vertex;
+									visible_triangles->element_count++;
+
+									visible_triangle_indices[visible_triangles->element_count] = w_world_start + leaf->tris[i].first_vertex + 1;
+									visible_triangles->element_count++;
+
+									visible_triangle_indices[visible_triangles->element_count] = w_world_start + leaf->tris[i].first_vertex + 2;
+									visible_triangles->element_count++;
+
 									break;
 								}
 
@@ -2918,11 +2967,13 @@ void world_VisibleLightTriangles()
 					}
 				}
 
+
+
 			}
+
+			//printf("%d triangles\n", visible_triangles->element_count);
 		}
 	}
-
-	#endif
 }
 
 
@@ -2930,7 +2981,6 @@ void world_VisibleLeaves()
 {
 	camera_t *active_camera = camera_GetActiveCamera();
 	w_visible_leaves = bsp_PotentiallyVisibleLeaves(&w_visible_leaves_count, active_camera->world_position);
-
 }
 
 
@@ -3287,7 +3337,7 @@ void world_WorldArrayVarValue(char *name, void *value, int index, int set)
         	if(set)
 			{
 				/* if index is out of bounds, resize the var to avoid the user having to explicitly do it... */
-				world_var = world_AddWorldArrayVar(name, world_var->element_size, (index + 3) & (~3));
+				world_var = world_AddWorldArrayVar(name, world_var->element_size, (index + 32 + 3) & (~3));
 			}
 			else
 			{

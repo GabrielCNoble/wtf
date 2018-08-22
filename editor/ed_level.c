@@ -388,6 +388,10 @@ void editor_LevelEditorInit()
 	sound_LoadSound("explode4.wav", "explosion1");
 	sound_LoadSound("explode5.wav", "explosion2");
 
+	//sound_LoadSound("pokey.ogg", "pokey");
+	sound_LoadSound("pokey_intro.ogg", "pokey_intro");
+	sound_LoadSound("pokey_loop.ogg", "pokey_loop");
+
 	//sound_PlaySound(sound, vec3_t_c(0.0, 0.0, 0.0), 1.0, 0);
 
     /*sine = sound_GenerateSineWave("sine", 5.0, 240.0);
@@ -691,6 +695,10 @@ void editor_LevelEditorSet3dCursorPosition(float mouse_x, float mouse_y)
 
 void editor_LevelEditorUpdate3dHandlePosition()
 {
+
+	level_editor_3d_handle_position = editor_GetCenterOfSelections(&level_editor_pick_list);
+
+	#if 0
 	int i;
 
 	level_editor_3d_handle_position.x = 0.0;
@@ -698,6 +706,11 @@ void editor_LevelEditorUpdate3dHandlePosition()
 	level_editor_3d_handle_position.z = 0.0;
 
 	struct waypoint_t *waypoint;
+	struct entity_t *entity;
+	struct entity_handle_t entity_handle;
+
+	struct entity_transform_t *world_transform;
+	//vec3_t entity_position;
 
 
 	//waypoints = (struct waypoint_t *)nav_waypoints.elements;
@@ -727,11 +740,19 @@ void editor_LevelEditorUpdate3dHandlePosition()
 //				level_editor_3d_handle_position.z += spawn_points[level_editor_pick_list.records[i].index0].position.z;
 			break;
 
-			/*case PICK_ENTITY:
-				level_editor_3d_handle_position.x += ent_entities[level_editor_pick_list.records[i].index0].position.x;
-				level_editor_3d_handle_position.y += ent_entities[level_editor_pick_list.records[i].index0].position.y;
-				level_editor_3d_handle_position.z += ent_entities[level_editor_pick_list.records[i].index0].position.z;
-			break;	*/
+			case PICK_ENTITY:
+
+				entity_handle.entity_index = level_editor_pick_list.records[i].index0;
+				entity_handle.def = 0;
+
+				entity = entity_GetEntityPointerHandle(entity_handle);
+
+				world_transform = entity_GetWorldTransformPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+
+				level_editor_3d_handle_position.x += world_transform->transform.floats[3][0];
+				level_editor_3d_handle_position.y += world_transform->transform.floats[3][1];
+				level_editor_3d_handle_position.z += world_transform->transform.floats[3][2];
+			break;
 
 			case PICK_PORTAL:
 				level_editor_3d_handle_position.x += ptl_portals[level_editor_pick_list.records[i].index0].position.x;
@@ -754,6 +775,8 @@ void editor_LevelEditorUpdate3dHandlePosition()
 	level_editor_3d_handle_position.x /= (float)level_editor_pick_list.record_count;
 	level_editor_3d_handle_position.y /= (float)level_editor_pick_list.record_count;
 	level_editor_3d_handle_position.z /= (float)level_editor_pick_list.record_count;
+
+	#endif
 }
 
 void editor_LevelEditorSet3dHandleTransformMode(int mode)
@@ -977,6 +1000,8 @@ void editor_LevelEditorEdit(float delta_time)
 					}
 				}
 			}
+
+			amount *= 0.5;
 
 			if(level_editor_editing_mode == EDITING_MODE_OBJECT)
 			{
@@ -1495,7 +1520,7 @@ void editor_LevelEditorCopyLevelData()
 
 void editor_LevelEditorClearLevelData()
 {
-	if(level_editor_has_copied_data)
+	if(level_editor_has_copied_data && (!level_editor_need_to_copy_data))
 	{
 		brushes = NULL;
 		last_brush = NULL;
@@ -1536,7 +1561,7 @@ void editor_LevelEditorRestoreLevelData()
 
 	void *read_buffer;
 
-	if(level_editor_has_copied_data)
+	if(level_editor_has_copied_data && (!level_editor_need_to_copy_data))
 	{
 
 		brushes = level_editor_brushes;

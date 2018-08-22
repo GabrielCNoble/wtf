@@ -1267,7 +1267,7 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 
 		//out_vertice_count = vertice_count;
 
-		#if 1
+		#if 0
 
 		for(i = 0; i < batch_count; i++)
 		{
@@ -1412,7 +1412,7 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 		out_params->out_vertices = vertices;
 		out_params->out_vertices_count = vertice_count;
 
-		#if 1
+		#if 0
 		m = in_params->in_vertices_count;
 
 		for(i = 0; i < in_params->in_vertices_count && m; i++)

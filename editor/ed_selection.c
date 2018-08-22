@@ -44,7 +44,7 @@ extern portal_t *ptl_portals;
 
 
 /* from entity.c */
-extern int ent_entity_list_cursor;
+//extern int ent_entity_list_cursor;
 extern struct stack_list_t ent_entities[2];
 
 
@@ -136,10 +136,15 @@ void editor_DisablePicking()
 ===============================================================
 */
 
+/* may be enough, or may not... */
+struct entity_handle_t entity_stack[8192];
+
 pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 {
 	int i;
 	int c;
+	int j;
+	int k;
 	//int j;
 	//int k;
 	//int x;
@@ -162,6 +167,22 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	vec3_t up_vector;
 	vec3_t center;
 
+
+	struct entity_t *entities;
+	struct entity_t *entity;
+	struct transform_component_t *transform_component;
+	struct transform_component_t *other_transform;
+	struct model_component_t *model_component;
+	struct entity_transform_t *entity_transform;
+	vec3_t entity_box_extents;
+	vec3_t entity_box_scale;
+	struct model_t *entity_model;
+	//entity_transform_t entity_transform;
+
+	int cur_top = -1;
+	int next_top = -1;
+
+
 	//int lshift;
 
 	//int start;
@@ -171,6 +192,9 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 
 	//renderer_PushFunctionName("editor_PickObject");
 	R_DBG_PUSH_FUNCTION_NAME();
+
+	//vec3_t box[8];
+
 
 
 	camera_t *active_camera = camera_GetActiveCamera();
@@ -209,31 +233,114 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 		i++;
 	}
 
-//	c = ent_entity_list_cursor;
+
+	entities = (struct entity_t *)ent_entities[0].elements;
+	c = ent_entities[0].element_count;
 
 	value = PICK_ENTITY;
 	renderer_SetNamedUniform1f("pick_type", *(float *)&value);
 
-	//for(i = 0; i < c; i++)
+	for(i = 0; i < c; i++)
 	{
-		/*if(ent_entities[i].flags & ENTITY_INVALID)
-			continue;
+		entity = entities + i;
 
-		if(ent_entities[i].flags & ENTITY_INVISIBLE)
+		if(entity->flags & ENTITY_FLAG_INVALID)
+		{
 			continue;
+		}
+
+		transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+
+        if(entity_GetComponentPointer(transform_component->parent))
+		{
+			/* not the top of a hierarchy... */
+			continue;
+		}
 
 		value = i + 1;
 		renderer_SetNamedUniform1f("pick_index", *(float *)&value);
 
-		model = model_GetModelPointerIndex(ent_entities[i].model_index);
-		mesh = model->mesh;
-		mat4_t_compose(&transform, &ent_entities[i].orientation, ent_entities[i].position);
-		mat4_t_scale_axis_aligned(&transform, ent_entities[i].scale);
+		next_top = 0;
+		entity_stack[next_top].def = 0;
+		entity_stack[next_top].entity_index = i;
 
-		renderer_SetModelMatrix(&transform);
-		renderer_DrawVerts(GL_TRIANGLES, mesh->vert_count, 4, sizeof(vertex_t), mesh->vertices);*/
+		j = 0;
+
+		do
+		{
+			cur_top = next_top;
+
+            for(; j <= cur_top; j++)
+			{
+				entity = entity_GetEntityPointerHandle(entity_stack[j]);
+
+				if(entity)
+				{
+					/* draw it... */
+
+					model_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_MODEL]);
+
+					if(!model_component)
+					{
+						entity_box_extents.x = 0.25;
+						entity_box_extents.y = 0.25;
+						entity_box_extents.z = 0.25;
+					}
+					else
+					{
+						entity_model = model_GetModelPointerIndex(model_component->model_index);
+                        entity_box_extents = entity_model->aabb_max;
+					}
+
+					transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+					entity_transform = entity_GetWorldTransformPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+
+					transform = entity_transform->transform;
+
+					transform.floats[0][0] *= entity_box_extents.x;
+					transform.floats[0][1] *= entity_box_extents.x;
+					transform.floats[0][2] *= entity_box_extents.x;
+
+					transform.floats[1][0] *= entity_box_extents.y;
+					transform.floats[1][1] *= entity_box_extents.y;
+					transform.floats[1][2] *= entity_box_extents.y;
+
+					transform.floats[2][0] *= entity_box_extents.z;
+					transform.floats[2][1] *= entity_box_extents.z;
+					transform.floats[2][2] *= entity_box_extents.z;
+
+					//entity_box_scale.x = transform_component->scale.x * entity_box_extents.x;
+					//entity_box_scale.y = transform_component->scale.y * entity_box_extents.y;
+					//entity_box_scale.z = transform_component->scale.z * entity_box_extents.z;
+
+					//mat4_t_compose2(&transform, &transform_component->orientation, transform_component->position, entity_box_scale);
+
+                    renderer_SetModelMatrix(&transform);
+
+					renderer_DrawBox();
+
+
+
+					for(k = 0; k < transform_component->children_count; k++)
+					{
+						/* add whatever child entities it may have... */
+						other_transform = entity_GetComponentPointer(transform_component->child_transforms[k]);
+
+						if(other_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
+						{
+                            next_top++;
+							entity_stack[next_top] = other_transform->base.entity;
+						}
+					}
+
+				}
+			}
+
+		}
+		while(cur_top != next_top);
 	}
 
+	renderer_SetModelMatrix(NULL);
 
 	c = l_light_list_cursor;
 	glPointSize(24.0);
@@ -304,65 +411,10 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 		value = i + 1;
 		renderer_SetNamedUniform1f("pick_index", *(float *)&value);
 
-		renderer_Begin(GL_QUADS);
+		mat4_t_compose2(&transform, NULL, waypoint->position, vec3_t_c(0.2, 0.2, 0.2));
 
-		renderer_Vertex3f(waypoint->position.x - 0.2, waypoint->position.y + 0.2, waypoint->position.z - 0.2);
-		renderer_Vertex3f(waypoint->position.x - 0.2, waypoint->position.y - 0.2, waypoint->position.z - 0.2);
-		renderer_Vertex3f(waypoint->position.x + 0.2, waypoint->position.y - 0.2, waypoint->position.z - 0.2);
-		renderer_Vertex3f(waypoint->position.x + 0.2, waypoint->position.y + 0.2, waypoint->position.z - 0.2);
-
-		renderer_Vertex3f(waypoint->position.x - 0.2, waypoint->position.y + 0.2, waypoint->position.z + 0.2);
-		renderer_Vertex3f(waypoint->position.x - 0.2, waypoint->position.y - 0.2, waypoint->position.z + 0.2);
-		renderer_Vertex3f(waypoint->position.x + 0.2, waypoint->position.y - 0.2, waypoint->position.z + 0.2);
-		renderer_Vertex3f(waypoint->position.x + 0.2, waypoint->position.y + 0.2, waypoint->position.z + 0.2);
-
-
-
-		renderer_Vertex3f(waypoint->position.x - 0.2, waypoint->position.y + 0.2, waypoint->position.z - 0.2);
-		renderer_Vertex3f(waypoint->position.x - 0.2, waypoint->position.y - 0.2, waypoint->position.z - 0.2);
-		renderer_Vertex3f(waypoint->position.x - 0.2, waypoint->position.y - 0.2, waypoint->position.z + 0.2);
-		renderer_Vertex3f(waypoint->position.x - 0.2, waypoint->position.y + 0.2, waypoint->position.z + 0.2);
-
-		renderer_Vertex3f(waypoint->position.x + 0.2, waypoint->position.y + 0.2, waypoint->position.z - 0.2);
-		renderer_Vertex3f(waypoint->position.x + 0.2, waypoint->position.y - 0.2, waypoint->position.z - 0.2);
-		renderer_Vertex3f(waypoint->position.x + 0.2, waypoint->position.y - 0.2, waypoint->position.z + 0.2);
-		renderer_Vertex3f(waypoint->position.x + 0.2, waypoint->position.y + 0.2, waypoint->position.z + 0.2);
-
-
-
-		renderer_Vertex3f(waypoint->position.x - 0.2, waypoint->position.y + 0.2, waypoint->position.z - 0.2);
-		renderer_Vertex3f(waypoint->position.x - 0.2, waypoint->position.y + 0.2, waypoint->position.z + 0.2);
-		renderer_Vertex3f(waypoint->position.x + 0.2, waypoint->position.y + 0.2, waypoint->position.z + 0.2);
-		renderer_Vertex3f(waypoint->position.x + 0.2, waypoint->position.y + 0.2, waypoint->position.z - 0.2);
-
-		renderer_Vertex3f(waypoint->position.x - 0.2, waypoint->position.y - 0.2, waypoint->position.z - 0.2);
-		renderer_Vertex3f(waypoint->position.x - 0.2, waypoint->position.y - 0.2, waypoint->position.z + 0.2);
-		renderer_Vertex3f(waypoint->position.x + 0.2, waypoint->position.y - 0.2, waypoint->position.z + 0.2);
-		renderer_Vertex3f(waypoint->position.x + 0.2, waypoint->position.y - 0.2, waypoint->position.z - 0.2);
-
-		renderer_End();
-
-		/*portal = &ptl_portals[i];
-
-		right_vector.x = portal->orientation.floats[0][0] * portal->extents.x;
-		right_vector.y = portal->orientation.floats[1][0] * portal->extents.x;
-		right_vector.z = portal->orientation.floats[2][0] * portal->extents.x;
-
-		up_vector.x = portal->orientation.floats[0][1] * portal->extents.y;
-		up_vector.y = portal->orientation.floats[1][1] * portal->extents.y;
-		up_vector.z = portal->orientation.floats[2][1] * portal->extents.y;
-
-		center = portal->position;
-
-		value = i + 1;
-		renderer_SetNamedUniform1f("pick_index", *(float *)&value);
-
-		renderer_Begin(GL_QUADS);
-		renderer_Vertex3f(center.x - right_vector.x + up_vector.x, center.y - right_vector.y + up_vector.y, center.z - right_vector.z + up_vector.z);
-		renderer_Vertex3f(center.x - right_vector.x - up_vector.x, center.y - right_vector.y - up_vector.y, center.z - right_vector.z - up_vector.z);
-		renderer_Vertex3f(center.x + right_vector.x - up_vector.x, center.y + right_vector.y - up_vector.y, center.z + right_vector.z - up_vector.z);
-		renderer_Vertex3f(center.x + right_vector.x + up_vector.x, center.y + right_vector.y + up_vector.y, center.z + right_vector.z + up_vector.z);
-		renderer_End();*/
+		renderer_SetModelMatrix(&transform);
+		renderer_DrawBox();
 	}
 
 
@@ -401,6 +453,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 		case PICK_PORTAL:
 		case PICK_WAYPOINT:
 			record.index0 = pick_sample[1] - 1;
+			printf("pick!\n");
 		break;
 	}
 
@@ -739,7 +792,7 @@ float editor_GetMouseOffsetFrom3dHandle(float mouse_x, float mouse_y, vec3_t han
 		}
 	}
 
-	return amount;
+	return amount * 0.9;
 }
 
 
@@ -871,6 +924,7 @@ void editor_TranslateSelections(pick_list_t *pick_list, vec3_t direction, float 
 	vec3_t v;
 	pick_record_t *records = pick_list->records;
 	struct collision_shape_t *collision_shapes = NULL;
+	struct entity_handle_t entity_handle;
 	brush_t *brush;
 	bsp_polygon_t *polygon;
 	c = pick_list->record_count;
@@ -922,7 +976,11 @@ void editor_TranslateSelections(pick_list_t *pick_list, vec3_t direction, float 
 			break;
 
 			case PICK_ENTITY:
-				entity_TranslateEntity(records[i].index0, direction, amount);
+
+				entity_handle.def = 0;
+				entity_handle.entity_index = records[i].index0;
+
+				entity_TranslateEntity(entity_handle, direction, amount);
 			break;
 
 			case PICK_PORTAL:
@@ -1129,7 +1187,7 @@ void editor_CopySelections(pick_list_t *pick_list)
 			case PICK_LIGHT:
 				light_pos = &l_light_positions[records[i].index0];
 				light_parms = &l_light_params[records[i].index0];
-				new_index = light_CreateLight("copy_light", &light_pos->orientation, light_pos->position, vec3_t_c((float)light_parms->r / 255.0, (float)light_parms->g / 255.0, (float)light_parms->b / 255.0), (float)(LIGHT_ENERGY(light_parms->energy)), (float)(LIGHT_RADIUS(light_parms->radius)), light_parms->bm_flags);
+				new_index = light_CreateLight("copy_light", &light_pos->orientation, light_pos->position, vec3_t_c((float)light_parms->r / 255.0, (float)light_parms->g / 255.0, (float)light_parms->b / 255.0), (float)(UNPACK_LIGHT_ENERGY(light_parms->energy)), (float)(UNPACK_LIGHT_RADIUS(light_parms->radius)), light_parms->bm_flags);
 				records[i].index0 = new_index;
 			break;
 
@@ -1146,6 +1204,8 @@ void editor_DestroySelection(pick_list_t *pick_list)
 	int i;
 	int c;
 	pick_record_t *records;
+
+	struct entity_handle_t entity_handle;
 
 	if(!pick_list->record_count)
 		return;
@@ -1171,12 +1231,101 @@ void editor_DestroySelection(pick_list_t *pick_list)
 			break;
 
 			case PICK_ENTITY:
+				entity_handle.entity_index = records[i].index0;
+				entity_handle.def = 0;
+
+				entity_RemoveEntity(entity_handle);
 				//entity_DestroyEntityIndex(records[i].index0);
 			break;
 		}
 	}
 
 	pick_list->record_count = 0;
+}
+
+vec3_t editor_GetCenterOfSelections(pick_list_t *pick_list)
+{
+	int i;
+
+	vec3_t center;
+
+	center.x = 0.0;
+	center.y = 0.0;
+	center.z = 0.0;
+
+	struct waypoint_t *waypoint;
+	struct entity_t *entity;
+	struct entity_handle_t entity_handle;
+
+	struct entity_transform_t *world_transform;
+	//vec3_t entity_position;
+
+
+	//waypoints = (struct waypoint_t *)nav_waypoints.elements;
+
+	brush_t *brush;
+
+	for(i = 0; i < pick_list->record_count; i++)
+	{
+		switch(pick_list->records[i].type)
+		{
+			case PICK_LIGHT:
+				center.x += l_light_positions[pick_list->records[i].index0].position.x;
+				center.y += l_light_positions[pick_list->records[i].index0].position.y;
+				center.z += l_light_positions[pick_list->records[i].index0].position.z;
+			break;
+
+			case PICK_BRUSH:
+				brush = (brush_t *)pick_list->records[i].pointer;
+				center.x += brush->position.x;
+				center.y += brush->position.y;
+				center.z += brush->position.z;
+			break;
+
+			case PICK_SPAWN_POINT:
+//				level_editor_3d_handle_position.x += spawn_points[level_editor_pick_list.records[i].index0].position.x;
+	//			level_editor_3d_handle_position.y += spawn_points[level_editor_pick_list.records[i].index0].position.y;
+//				level_editor_3d_handle_position.z += spawn_points[level_editor_pick_list.records[i].index0].position.z;
+			break;
+
+			case PICK_ENTITY:
+
+				entity_handle.entity_index = pick_list->records[i].index0;
+				entity_handle.def = 0;
+
+				entity = entity_GetEntityPointerHandle(entity_handle);
+
+				world_transform = entity_GetWorldTransformPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+
+				center.x += world_transform->transform.floats[3][0];
+				center.y += world_transform->transform.floats[3][1];
+				center.z += world_transform->transform.floats[3][2];
+			break;
+
+			case PICK_PORTAL:
+				center.x += ptl_portals[pick_list->records[i].index0].position.x;
+				center.y += ptl_portals[pick_list->records[i].index0].position.y;
+				center.z += ptl_portals[pick_list->records[i].index0].position.z;
+			break;
+
+			case PICK_WAYPOINT:
+
+				waypoint = navigation_GetWaypointPointer(pick_list->records[i].index0);
+
+				center.x += waypoint->position.x;
+				center.y += waypoint->position.y;
+				center.z += waypoint->position.z;
+			break;
+		}
+
+	}
+
+	center.x /= (float)pick_list->record_count;
+	center.y /= (float)pick_list->record_count;
+	center.z /= (float)pick_list->record_count;
+
+
+	return center;
 }
 
 

@@ -11,6 +11,7 @@
 #include "..\..\common\portal.h"
 #include "..\..\common\navigation.h"
 #include "..\..\common\containers\stack_list.h"
+#include "..\..\common\material.h"
 #include "..\brush.h"
 
 /* from editor.c */

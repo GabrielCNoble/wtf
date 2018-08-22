@@ -145,7 +145,7 @@ void main()
 		fire_timer++;
 	}
 
-	if((input_GetMouseStatus() & MOUSE_LEFT_BUTTON_CLICKED) != 0 && fire_timer >= 3)
+	if((input_GetMouseStatus() & MOUSE_LEFT_BUTTON_CLICKED) != 0 && fire_timer >= 5)
 	{
 		fire_timer = 0;
 
@@ -175,7 +175,7 @@ void main()
 
 		orientation.identity();
 
-		entity_handle_t bullet_instance = entity_SpawnEntity(orientation, spawn_position, vec3_t(0.9, 0.9, 0.9), bullet_def, "bullet");
+		entity_handle_t bullet_instance = entity_SpawnEntity(orientation, spawn_position, vec3_t(0.18, 0.18, 0.18), bullet_def, "bullet");
 
 		entity_SetEntityVelocity(bullet_instance, direction * 40.0);
 

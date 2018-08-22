@@ -55,6 +55,10 @@ enum ENTITY_FLAGS
 	ENTITY_FLAG_EXECUTED_DIE_FUNCTION = 1 << 5,
 
 	ENTITY_FLAG_NOT_INITIALIZED = 1 << 6,
+
+
+	ENTITY_FLAG_STATIC = 1 << 7,
+
 	ENTITY_FLAG_SERIALIZED = 1 << 27,
 	ENTITY_FLAG_MODIFIED = 1 << 28,					/* to allow serialization of entities that were modified after being spawned... */
 	ENTITY_FLAG_ON_DISK = 1 << 29
@@ -171,6 +175,11 @@ struct entity_transform_t
 ==============================================================
 ==============================================================
 */
+
+enum PHYSICS_COMPONENT_FLAGS
+{
+	PHYSICS_COMPONENT_FLAG_STATIC = 1,
+};
 
 struct physics_component_t
 {

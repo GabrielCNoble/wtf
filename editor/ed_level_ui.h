@@ -31,6 +31,8 @@ void editor_LevelEditorBrushOptionsMenu();
 
 void editor_LevelEditorBrushUVMenu();
 
+void editor_LevelEditorEntityOptionsMenu();
+
 void editor_LevelEditorWorldMenu();
 
 void editor_LevelEditorSnapValueMenu();

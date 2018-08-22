@@ -974,6 +974,8 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	collider->flags = COLLIDER_FLAG_UPDATE_RIGID_BODY;
 	collider->def = def;
 	collider->max_walk_speed = def->max_walk_speed;
+	collider->contact_record_count = 0;
+	collider->max_contact_records = 32;
 
 	collider_transform.setIdentity();
 	collider_transform.setOrigin(btVector3(position.x, position.y, position.z));
@@ -1264,6 +1266,69 @@ void physics_SetColliderVelocity(struct collider_handle_t collider, vec3_t veloc
 	}
 }
 
+void physics_SetColliderMass(struct collider_handle_t collider, float mass)
+{
+    struct collider_t *collider_ptr;
+    btRigidBody *rigid_body;
+    btCollisionShape *collision_shape;
+
+    btVector3 inertia_tensor;
+
+
+    collider_ptr = physics_GetColliderPointerHandle(collider);
+
+    if(collider_ptr)
+	{
+
+		collider_ptr->flags &= ~COLLIDER_FLAG_STATIC;
+
+		if(mass <= 0.0)
+		{
+			if(collider.type != COLLIDER_TYPE_RIGID_BODY_COLLIDER)
+			{
+				mass = 0.1;
+			}
+			else
+			{
+				mass = 0.0;
+				collider_ptr->flags |= COLLIDER_FLAG_STATIC;
+			}
+		}
+
+        rigid_body = (btRigidBody *)collider_ptr->rigid_body;
+
+        collision_shape = rigid_body->getCollisionShape();
+
+        collision_shape->calculateLocalInertia(mass, inertia_tensor);
+
+        rigid_body->setMassProps(mass, inertia_tensor);
+	}
+}
+
+void physics_SetColliderStatic(struct collider_handle_t collider, int set)
+{
+    struct collider_t *collider_ptr;
+
+    if(collider.type != COLLIDER_TYPE_RIGID_BODY_COLLIDER)
+	{
+		return;
+	}
+
+    collider_ptr = physics_GetColliderPointerHandle(collider);
+
+    if(collider_ptr)
+	{
+        if(set)
+		{
+			physics_SetColliderMass(collider, 0.0);
+		}
+		else
+		{
+			physics_SetColliderMass(collider, collider_ptr->def->mass);
+		}
+	}
+}
+
 void physics_ApplyCentralForce(struct collider_handle_t collider, vec3_t force)
 {
 	struct collider_t *collider_ptr;
@@ -1293,6 +1358,8 @@ void physics_ApplyCentralImpulse(struct collider_handle_t collider, vec3_t impul
 		rigid_body->applyCentralImpulse(btVector3(impulse.x, impulse.y, impulse.z));
 	}
 }
+
+
 
 
 /*
@@ -1355,6 +1422,7 @@ void physics_UpdateColliders()
 			}
 
 			rigid_body->setWorldTransform(rigid_body_transform);
+			//rigid_body->getMotionState()->setWorldTransform(rigid_body_transform);
 			rigid_body->setLinearVelocity(btVector3(collider->linear_velocity.x, collider->linear_velocity.y, collider->linear_velocity.z));
 			//rigid_body->setAngularVelocity(btVector3(0.0, 0.0, 0.0));
 			rigid_body->activate(true);
@@ -1629,7 +1697,9 @@ void physics_PostUpdateColliders()
 
 			collider_rigid_body = (btRigidBody *)collider->rigid_body;
 
-			collider_rigid_body->getMotionState()->getWorldTransform(collider_rigid_body_transform);
+			//collider_rigid_body->getMotionState()->getWorldTransform(collider_rigid_body_transform);
+
+			collider_rigid_body_transform = collider_rigid_body->getWorldTransform();
 
 			collider_rigid_body_position = collider_rigid_body_transform.getOrigin();
 			collider_rigid_body_orientation = collider_rigid_body_transform.getBasis();

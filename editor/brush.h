@@ -10,7 +10,7 @@
 #include "model.h"
 #include "world.h"
 #include "bsp_common.h"
-#include "bsp_file.h"
+//#include "bsp_file.h"
 //#include "bsp_cmp.h"
 
 

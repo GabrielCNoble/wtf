@@ -104,7 +104,7 @@ extern struct stack_list_t ent_entities;
 //mat4_t l_shadow_map_projection_matrix;
 
 #define MAX_VISIBLE_LIGHTS 32
-#define MAX_SHADOW_MAP_RES 1024
+#define MAX_SHADOW_MAP_RES 512
 
 //int visible_light_count;
 //int visible_lights[MAX_WORLD_LIGHTS];
@@ -118,21 +118,22 @@ extern struct stack_list_t ent_entities;
 //ks_chunk_t *alloc_chunks;
 
 //int l_allocd_shadow_map_count = 0;
-static int max_shadow_maps = 0;
-shadow_map_t *l_shadow_maps = NULL;
+//static int max_shadow_maps = 0;
+int l_used_shadow_maps = 0;
+struct shadow_map_t *l_shadow_maps = NULL;
 
 
-SDL_Thread *cluster_thread0;
-SDL_Thread *cluster_thread1;
+//SDL_Thread *cluster_thread0;
+//SDL_Thread *cluster_thread1;
 
-SDL_mutex *cluster_thread0_in_lock;
-SDL_mutex *cluster_thread1_in_lock;
+//SDL_mutex *cluster_thread0_in_lock;
+//SDL_mutex *cluster_thread1_in_lock;
 
-SDL_mutex *cluster_thread0_out_lock;
-SDL_mutex *cluster_thread1_out_lock;
+//SDL_mutex *cluster_thread0_out_lock;
+//SDL_mutex *cluster_thread1_out_lock;
 
-int free_shadow_map_x;
-int free_shadow_map_y;
+//int free_shadow_map_x;
+//int free_shadow_map_y;
 
 int light_Init()
 {
@@ -157,12 +158,24 @@ int light_Init()
 	l_light_params = memory_Malloc(sizeof(light_params_t) * l_light_list_size);
 	l_light_names = memory_Malloc(sizeof(char *) * l_light_list_size);
 	l_free_position_stack = memory_Malloc(sizeof(int ) * l_light_list_size);
-	l_light_visible_triangles = memory_Malloc(sizeof(bsp_striangle_t) * l_light_list_size * MAX_TRIANGLES_PER_LIGHT);
+	//l_light_visible_triangles = memory_Malloc(sizeof(bsp_striangle_t) * l_light_list_size * MAX_TRIANGLES_PER_LIGHT);
+
+
+	l_shadow_maps = memory_Calloc(MAX_VISIBLE_LIGHTS, sizeof(struct shadow_map_t));
 	l_clusters = memory_Malloc(sizeof(cluster_t) * CLUSTERS_PER_ROW * CLUSTER_ROWS * CLUSTER_LAYERS);
 
 	for(i = 0; i < l_light_list_size; i++)
 	{
 		l_light_names[i] = memory_Malloc(LIGHT_MAX_NAME_LEN);
+
+		l_light_params[i].visible_triangles = list_create(sizeof(int), 128, NULL);
+
+		//l_light_params[i].triangle_indices[0] = list_create(sizeof(int), 128, NULL);
+		//l_light_params[i].triangle_indices[1] = list_create(sizeof(int), 128, NULL);
+		//l_light_params[i].triangle_indices[2] = list_create(sizeof(int), 128, NULL);
+		//l_light_params[i].triangle_indices[3] = list_create(sizeof(int), 128, NULL);
+		//l_light_params[i].triangle_indices[4] = list_create(sizeof(int), 128, NULL);
+		//l_light_params[i].triangle_indices[5] = list_create(sizeof(int), 128, NULL);
 		/*l_light_params[i].view_cluster_list_size = 16;
 		l_light_params[i].view_cluster_list_cursor = 0;
 		l_light_params[i].view_clusters = memory_Malloc(sizeof(unsigned int) * l_light_params[i].view_cluster_list_size, "light_Init");*/
@@ -247,8 +260,8 @@ int light_Init()
 	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAX_LEVEL, 4);
-	glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_DEPTH_COMPONENT16, MAX_SHADOW_MAP_RES, MAX_SHADOW_MAP_RES, 8 * 6, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAX_LEVEL, 0);
+	glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_DEPTH_COMPONENT32F, MAX_SHADOW_MAP_RES, MAX_SHADOW_MAP_RES, MAX_VISIBLE_LIGHTS * 6, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
 
 	if(glGetError() == GL_OUT_OF_MEMORY)
@@ -258,12 +271,12 @@ int light_Init()
 	}
 
 
-	glGenBuffers(1, &l_light_cache_uniform_buffer);
-	glBindBuffer(GL_UNIFORM_BUFFER, l_light_cache_uniform_buffer);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_light_t) * LIGHT_CACHE_SIZE, NULL, GL_DYNAMIC_DRAW);
+	glGenBuffers(1, &l_light_uniform_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, l_light_uniform_buffer);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_light_t) * LIGHT_UNIFORM_BUFFER_SIZE, NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-	l_gpu_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * LIGHT_CACHE_SIZE);
+	l_gpu_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * LIGHT_UNIFORM_BUFFER_SIZE);
 
 
 	//printf("wow:: %x\n", glGetError());
@@ -310,7 +323,7 @@ int light_Init()
 
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);*/
 
-	light_InitCache();
+	//light_InitCache();
 
 
 	//model_GenerateIcoSphere(1.0, 1, &stencil_light_mesh, &stencil_light_mesh_vert_count);
@@ -396,11 +409,19 @@ void light_Finish()
 {
 	int i;
 
-	light_FinishCache();
+	//light_FinishCache();
 
 	for(i = 0; i < l_light_list_size; i++)
 	{
 		memory_Free(l_light_names[i]);
+
+		list_destroy(&l_light_params[i].visible_triangles);
+		//list_destroy(&l_light_params[i].triangle_indices[0]);
+		//list_destroy(&l_light_params[i].triangle_indices[1]);
+		//list_destroy(&l_light_params[i].triangle_indices[2]);
+		//list_destroy(&l_light_params[i].triangle_indices[3]);
+		//list_destroy(&l_light_params[i].triangle_indices[4]);
+		//list_destroy(&l_light_params[i].triangle_indices[5]);
 		//memory_Free(l_light_params[i].view_clusters);
 	}
 
@@ -408,7 +429,7 @@ void light_Finish()
 	memory_Free(l_light_positions);
 	memory_Free(l_light_params);
 	memory_Free(l_free_position_stack);
-	memory_Free(l_light_visible_triangles);
+	//memory_Free(l_light_visible_triangles);
 
 	//free(free_chunks);
 	//free(alloc_chunks);
@@ -420,7 +441,7 @@ void light_Finish()
 	//memory_Free(light_cache_index_buffer_base);
 	//free(clusters);
 
-	glDeleteBuffers(1, &l_light_cache_uniform_buffer);
+	glDeleteBuffers(1, &l_light_uniform_buffer);
 	glDeleteTextures(1, &l_shared_shadow_map);
 	//glDeleteTextures(1, &light_indexes_texture);
 }
@@ -502,23 +523,26 @@ int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t c
 	light_param->r = 0xff * color.r;
 	light_param->g = 0xff * color.g;
 	light_param->b = 0xff * color.b;
-	light_param->cache = -1;
+	//light_param->cache = -1;
+	light_param->shadow_map = -1;
 	light_param->bm_flags = (LIGHT_MOVED | bm_flags) & (~LIGHT_INVALID);
 
-	if(!(bm_flags & LIGHT_GENERATE_SHADOWS))
-	{
-		light_param->x = free_shadow_map_x;
-		light_param->y = free_shadow_map_y;
-	}
+	light_param->indices_handle = INVALID_GPU_ALLOC_HANDLE;
+
+	//if(!(bm_flags & LIGHT_GENERATE_SHADOWS))
+	//{
+	//	light_param->x = free_shadow_map_x;
+	//	light_param->y = free_shadow_map_y;
+	//}
 
 	light_param->leaf = NULL;
 	light_param->shadow_map = -1;
-	light_param->box_max.x = -999999999999.9;
-	light_param->box_max.y = -999999999999.9;
-	light_param->box_max.z = -999999999999.9;
-	light_param->box_min.x = 999999999999.9;
-	light_param->box_min.y = 999999999999.9;
-	light_param->box_min.z = 999999999999.9;
+//	light_param->box_max.x = -999999999999.9;
+//	light_param->box_max.y = -999999999999.9;
+//	light_param->box_max.z = -999999999999.9;
+//	light_param->box_min.x = 999999999999.9;
+//	light_param->box_min.y = 999999999999.9;
+//	light_param->box_min.z = 999999999999.9;
 
 	//light_param->view_cluster_list_cursor = 0;
 
@@ -576,7 +600,7 @@ int light_DestroyLightIndex(int light_index)
 		{
 			/* drop the light from the cache if it's
 			cached... */
-			light_DropLight(light_index);
+			//light_DropLight(light_index);
 
 			l_light_params[light_index].bm_flags |= LIGHT_INVALID;
 
@@ -1648,6 +1672,17 @@ int cur_light_index = -1;
 void light_AllocShadowMap(int light_index)
 {
 	light_params_t *parms;
+	light_params_t *other;
+
+	struct shadow_map_t *shadow_map;
+
+	int shadow_map_index;
+
+	int shadow_maps;
+
+	int oldest_index;
+	int oldest_time = 0;
+	int cur_time;
 
 	if(l_allocd_shadow_map_count >= MAX_VISIBLE_LIGHTS)
 		return;
@@ -1660,29 +1695,69 @@ void light_AllocShadowMap(int light_index)
 		{
 			/* only lights that can generate shadows may have
 			shadow maps allocated to them... */
-			if(parms->bm_flags & LIGHT_GENERATE_SHADOWS)
-			{
+			//if(parms->bm_flags & LIGHT_GENERATE_SHADOWS)
+			//{
 
-				if(parms->shadow_map > -1)
+			if(parms->shadow_map > -1)
+			{
+				shadow_map = l_shadow_maps + parms->shadow_map;
+				shadow_map->last_touched_frame = r_frame;
+				return;
+			}
+
+			shadow_maps = l_used_shadow_maps;
+
+			shadow_map_index = 0;
+            while(shadow_map_index < MAX_VISIBLE_LIGHTS)
+			{
+				if(!(shadow_maps & 1))
 				{
-				//	printf("light already has a shadow map!\n");
-					return;
+					break;
 				}
 
+				cur_time = r_frame - l_shadow_maps[shadow_map_index].last_touched_frame;
 
-				parms->shadow_map = l_allocd_shadow_map_count;
+				if(cur_time > oldest_time)
+				{
+					oldest_time = cur_time;
+					oldest_index = shadow_map_index;
+				}
 
-				parms->bm_flags |= LIGHT_UPDATE_SHADOW_MAP;
+				shadow_map_index++;
+			}
 
-				l_shadow_maps[l_allocd_shadow_map_count].light_index = light_index;
+			if(shadow_map_index >= MAX_VISIBLE_LIGHTS)
+			{
+				if(oldest_time > 1)
+				{
+					shadow_map = l_shadow_maps + oldest_index;
+					other = l_light_params + shadow_map->light_index;
+					other->shadow_map = -1;
+					shadow_map_index = oldest_index;
+				}
+			}
 
-				parms->x = l_shadow_maps[l_allocd_shadow_map_count].x;
-				parms->y = l_shadow_maps[l_allocd_shadow_map_count].y;
 
-				l_allocd_shadow_map_count++;
+
+			parms->shadow_map = shadow_map_index;
+			parms->bm_flags |= LIGHT_UPDATE_SHADOW_MAP;
+
+			shadow_map = l_shadow_maps + shadow_map_index;
+			shadow_map->light_index = light_index;
+			shadow_map->last_touched_frame = r_frame;
+
+			l_used_shadow_maps |= 1 << shadow_map_index;
+
+
+			//l_shadow_maps[l_allocd_shadow_map_count].light_index = light_index;
+
+				//parms->x = l_shadow_maps[l_allocd_shadow_map_count].x;
+				//parms->y = l_shadow_maps[l_allocd_shadow_map_count].y;
+
+			//l_allocd_shadow_map_count++;
 
 			//	printf("shadow map %d allocd!\n", parms->shadow_map);
-			}
+			//}
 
 		}
 
@@ -1694,46 +1769,22 @@ void light_FreeShadowMap(int light_index)
 {
 	light_params_t *parms;
 	int shadow_map_index;
-	shadow_map_t shadow_map;
+	struct shadow_map_t shadow_map;
 	if(light_index >= 0 && light_index < l_light_list_cursor)
 	{
 		parms = &l_light_params[light_index];
 
 		if(!(parms->bm_flags & LIGHT_INVALID))
 		{
-			/* don't check if the light cast shadows here, as
-			we can make a light stop generating shadows while it's
-			visible. Doing so allow the engine to free it's shadow
-			map once the light gets dropped from the cache. Of course,
-			it means we trust the shadow map index to be valid. */
-			shadow_map_index = parms->shadow_map;
-
-			if(l_shadow_maps[shadow_map_index].light_index > -1)
+			if(parms->shadow_map > -1)
 			{
+				shadow_map_index = parms->shadow_map;
+
 				parms->shadow_map = -1;
-				l_shadow_maps[shadow_map_index].light_index = -1;
 
-				if(shadow_map_index < l_allocd_shadow_map_count - 1)
-				{
-					parms = &l_light_params[l_shadow_maps[l_allocd_shadow_map_count - 1].light_index];
-
-					parms->shadow_map = shadow_map_index;
-
-					shadow_map = l_shadow_maps[shadow_map_index];
-					l_shadow_maps[shadow_map_index] = l_shadow_maps[l_allocd_shadow_map_count - 1];
-					l_shadow_maps[l_allocd_shadow_map_count - 1] = shadow_map;
-
-				}
-
-				l_allocd_shadow_map_count--;
-
-			//	printf("shadow map %d freed!\n", shadow_map_index);
-
+				l_used_shadow_maps &= ~(1 << shadow_map_index);
 			}
-
-
 		}
-
 	}
 }
 
@@ -1830,8 +1881,8 @@ void light_SerializeLights(void **buffer, int *buffer_size)
 		record->color.g = (float)l_light_params[i].g / 255.0;
 		record->color.b = (float)l_light_params[i].b / 255.0;
 
-		record->energy = LIGHT_ENERGY(l_light_params[i].energy);
-		record->radius = LIGHT_RADIUS(l_light_params[i].radius);
+		record->energy = UNPACK_LIGHT_ENERGY(l_light_params[i].energy);
+		record->radius = UNPACK_LIGHT_RADIUS(l_light_params[i].radius);
 
 		strcpy(record->name, l_light_names[i]);
 	}

@@ -292,6 +292,7 @@ struct component_handle_t entity_AllocComponent(int component_type, int alloc_fo
 			case COMPONENT_TYPE_PHYSICS:
                 physics_component = (struct physics_component_t *)component;
                 physics_component->max_entity_contact_count = 32;
+                physics_component->entity_contact_count = 0;
             break;
 
             /*case COMPONENT_TYPE_NAVIGATION:
@@ -1487,6 +1488,12 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 					if(def_physics_component->collider.collider_def)
 					{
 						collider_handle = physics_CreateCollider(orientation, position, scale, def_physics_component->collider.collider_def, 0);
+
+						if(def_physics_component->flags & PHYSICS_COMPONENT_FLAG_STATIC)
+						{
+                            physics_SetColliderStatic(collider_handle, 1);
+						}
+
 						entity_SetCollider(handle, &collider_handle);
 					}
 				break;
@@ -1591,6 +1598,8 @@ void entity_MarkForRemoval(struct entity_handle_t entity)
 	{
 		entity_ptr->flags |= ENTITY_FLAG_MARKED_INVALID;
 
+
+
 		/*script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
 
 		if(script_component)
@@ -1603,11 +1612,16 @@ void entity_MarkForRemoval(struct entity_handle_t entity)
 			}
 		}*/
 
-		if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type != COMPONENT_TYPE_NONE)
-		{
-			script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
-			script_ExecuteScriptImediate(script_component->script, script_component);
-		}
+		//if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type == COMPONENT_TYPE_NONE)
+		//{
+			/* no script component present, so just remove the
+			entity right away... */
+
+        //    entity_RemoveEntity(entity);
+
+			//script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
+			//script_ExecuteScriptImediate(script_component->script, script_component);
+		//}
 	}
 }
 
@@ -1636,14 +1650,14 @@ void entity_RemoveEntity(struct entity_handle_t entity)
 	if(entity_ptr)
 	{
 
-		entity_ptr->flags |= ENTITY_FLAG_MARKED_INVALID;
+		//entity_ptr->flags |= ENTITY_FLAG_MARKED_INVALID;
 
-		//if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type != COMPONENT_TYPE_NONE)
-		//{
-		//	script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
+		if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type != COMPONENT_TYPE_NONE)
+		{
+			script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
 
-		//	script_ExecuteScriptImediate(script_component->script, script_component);
-		//}
+			script_ExecuteScriptImediate(script_component->script, script_component);
+		}
 
 		transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
@@ -1702,6 +1716,35 @@ void entity_RemoveAllEntities()
 		if(entity_GetEntityPointerHandle(handle))
 		{
 			entity_RemoveEntity(handle);
+		}
+	}
+}
+
+
+void entity_RemoveMarkedEntities()
+{
+	struct entity_t *entity;
+	struct entity_handle_t handle;
+
+	int i;
+	int c;
+
+	handle.def = 0;
+
+	c = ent_entities[0].element_count;
+
+	for(i = 0; i < c; i++)
+	{
+		handle.entity_index = i;
+
+		entity = entity_GetEntityPointerHandle(handle);
+
+		if(entity)
+		{
+			if(entity->flags & ENTITY_FLAG_MARKED_INVALID)
+			{
+				entity_RemoveEntity(handle);
+			}
 		}
 	}
 }
@@ -2049,39 +2092,39 @@ struct entity_source_file_t *entity_GetSourceFile(struct entity_handle_t entity)
 }
 
 
-void entity_TranslateEntity(int entity_index, vec3_t direction, float amount)
+void entity_TranslateEntity(struct entity_handle_t entity, vec3_t direction, float amount)
 {
-	/*struct entity_t *entity;
-	struct controller_component_t *controller;
-	struct transform_component_t *transform;
-	collider_t *collider;
-	if(entity_index >= 0 && entity_index < ent_entity_list_cursor)
-	{
-		entity = &ent_entities[entity_index];
+	struct entity_t *entity_ptr;
 
-		transform = entity_GetComponentPointer(entity->components[COMPONENT_INDEX_TRANSFORM]);
+	//struct controller_component_t *controller;
+	struct physics_component_t *physics_component;
+	struct transform_component_t *transform;
+//	struct collider_t *collider;
+
+	if(entity.def)
+	{
+		return;
+	}
+
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+
+	if(entity_ptr)
+	{
+		transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
 		transform->position.x += direction.x * amount;
 		transform->position.y += direction.y * amount;
 		transform->position.z += direction.z * amount;
 
-		transform->flags |= ENTITY_HAS_MOVED;
+		transform->flags |= ENTITY_FLAG_HAS_MOVED;
 
-		if(entity->components[COMPONENT_INDEX_CONTROLLER].type != COMPONENT_TYPE_NONE)
+		physics_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
+
+		if(physics_component)
 		{
-			controller = entity_GetComponentPointer(entity->components[COMPONENT_INDEX_CONTROLLER]);
-
-			if(!(controller->flags & COMPONENT_FLAG_DEACTIVATED))
-			{
-				if(controller->collider.collider_index >= 0)
-				{
-					physics_SetColliderPosition(controller->collider.collider_index, transform->position);
-				}
-			}
+			physics_SetColliderPosition(physics_component->collider.collider_handle, transform->position);
 		}
-
-	}*/
-
+	}
 }
 
 void entity_RotateEntity(int entity_index, vec3_t axis, float amount)
@@ -2466,24 +2509,6 @@ void entity_UpdateScriptComponents()
 
 	if(engine_state & ENGINE_PLAYING)
 	{
-	//	if(engine_GetEngineState() & ENGINE_JUST_RESUMED)
-	//	{
-	//		for(i = 0; i < c; i++)
-	//		{
-	//			script_component = (struct script_component_t *)list->elements + i;
-
-	//			if(script_component->base.flags & COMPONENT_FLAG_INVALID)
-	//			{
-	//				continue;
-	//			}
-
-	//			entity = entity_GetEntityPointerHandle(script_component->base.entity);
-	//			entity->spawn_time = r_frame - 1;
-	//			script_ExecuteScriptImediate((struct script_t *)script_component->script, script_component);
-	//		}
-	//	}
-	//	else
-	//	{
 		for(i = 0; i < c; i++)
 		{
 			script_component = (struct script_component_t *)list->elements + i;
@@ -2494,8 +2519,9 @@ void entity_UpdateScriptComponents()
 			}
 			script_ExecuteScriptImediate((struct script_t *)script_component->script, script_component);
 		}
-	//	}
 	}
+
+	entity_RemoveMarkedEntities();
 }
 
 void entity_UpdatePhysicsComponents()
@@ -2878,33 +2904,6 @@ void entity_UpdateCameraComponents()
 	}
 }
 
-void entity_ClearMarkedEntities()
-{
-	struct entity_t *entity;
-	struct entity_handle_t handle;
-
-	int i;
-	int c;
-
-	handle.def = 0;
-
-	c = ent_entities[0].element_count;
-
-	for(i = 0; i < c; i++)
-	{
-		handle.entity_index = i;
-
-		entity = entity_GetEntityPointerHandle(handle);
-
-		if(entity)
-		{
-			if((entity->flags & ENTITY_FLAG_MARKED_INVALID) && (entity->flags & ENTITY_FLAG_EXECUTED_DIE_FUNCTION))
-			{
-				entity_RemoveEntity(handle);
-			}
-		}
-	}
-}
 
 void entity_UpdateEntities()
 {
@@ -2959,7 +2958,7 @@ int entity_LineOfSightToEntity(struct entity_handle_t from, struct entity_handle
 ==============================================================
 */
 
-struct entity_handle_t ent_current_entity;
+//struct entity_handle_t ent_current_entity;
 
 struct entity_handle_t entity_handles[1024];
 struct script_array_t script_array;
@@ -2985,10 +2984,18 @@ void *entity_SetupScriptDataCallback(struct script_t *script, void *script_contr
 	script_component = (struct script_component_t *)script_controller;
 
 
+	/*if(script_GetContextStackTop() < MAX_SCRIPT_CONTEXTS - 2)
+	{
+		printf("entity_SetupScriptDataCallback: reentrant scripts not supported yet!\n");
+	}*/
+
 	//collided_entities = entity_script->collided_array;
 
-	ent_current_entity = script_component->base.entity;
-	ent = entity_GetEntityPointerHandle(ent_current_entity);
+	//ent_current_entity = script_component->base.entity;
+
+	script_SetCurrentInvocationData(&script_component->base.entity, sizeof(struct entity_handle_t));
+
+	ent = entity_GetEntityPointerHandle(script_component->base.entity);
 
 	physics_component = entity_GetComponentPointer(ent->components[COMPONENT_TYPE_PHYSICS]);
 
@@ -3068,7 +3075,7 @@ void *entity_SetupScriptDataCallback(struct script_t *script, void *script_contr
 		script_QueueEntryPoint(entity_script->script.main_entry_point);
 	}
 
-	script_component->flags &= ~SCRIPT_CONTROLLER_FLAG_FIRST_RUN;
+	//script_component->flags &= ~SCRIPT_CONTROLLER_FLAG_FIRST_RUN;
 	return entry_point;
 }
 

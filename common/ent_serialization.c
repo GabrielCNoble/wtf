@@ -136,6 +136,9 @@ void entity_WriteComponent(void **buffer, struct component_t *component, int nes
 					strcpy(component_record->component.physics_component.collider_def_name, physics_component->collider.collider_def->name);
 					entity_WriteCollider(buffer, physics_component->collider.collider_def);
 				}
+
+				component_record->component.physics_component.flags = physics_component->flags;
+
 			break;
 
 			case COMPONENT_TYPE_SCRIPT:
@@ -307,6 +310,7 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t parent_entity, s
 				collider_def = physics_GetColliderDefPointer(component_record->component.physics_component.collider_def_name);
 				transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 				physics_component->collider.collider_handle = physics_CreateCollider(&transform_component->orientation, transform_component->position, transform_component->scale, collider_def, 0);
+				physics_component->flags = component_record->component.physics_component.flags;
 			}
 
 		break;
@@ -366,6 +370,7 @@ void entity_WriteProp(void **buffer, struct entity_prop_t *prop)
 		in += sizeof(struct entity_prop_record_t);
 
 		memset(prop_record, 0, sizeof(struct entity_prop_record_t));
+		strcpy(prop_record->tag, entity_prop_record_tag);
 		strcpy(prop_record->name, prop->name);
 
 		prop_record->size = prop->size;
@@ -608,8 +613,6 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 
 		}
 
-		entity_ptr->flags |= ENTITY_FLAG_SERIALIZED;
-
 		/* write record start... */
 		ent_record_start = (struct entity_record_start_t *)out;
 		out += sizeof(struct entity_record_start_t);
@@ -619,6 +622,8 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 		memset(ent_record_start, 0, sizeof(struct entity_record_start_t));
 		strcpy(ent_record_start->tag, entity_record_start_tag);
 		strcpy(ent_record_start->name, entity_ptr->name);
+
+		ent_record_start->entity_flags = entity_ptr->flags;
 
 		transform_component = entity_GetComponentPointer(referencing_transform);
 
@@ -672,6 +677,9 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 		}
 		else
 		{
+
+			entity_ptr->flags |= ENTITY_FLAG_SERIALIZED;
+
 			/* Always write props, regardless of the entity having been modified or not... */
 			for(i = 0; i < entity_ptr->prop_count; i++)
 			{

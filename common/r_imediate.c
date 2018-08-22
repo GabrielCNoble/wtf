@@ -336,25 +336,25 @@ void renderer_Rectf(double x0, double y0, double x1, double y1)
 
 		r_imediate_verts[r_imediate_verts_count].x = x0;
 		r_imediate_verts[r_imediate_verts_count].y = y1;
-		r_imediate_verts[r_imediate_verts_count].z = 0.5;
+		r_imediate_verts[r_imediate_verts_count].z = 0.0f;
 		r_imediate_verts[r_imediate_verts_count].w = 1.0f;
 		r_imediate_verts_count++;
 
 		r_imediate_verts[r_imediate_verts_count].x = x0;
 		r_imediate_verts[r_imediate_verts_count].y = y0;
-		r_imediate_verts[r_imediate_verts_count].z = 0.5;
+		r_imediate_verts[r_imediate_verts_count].z = 0.0f;
 		r_imediate_verts[r_imediate_verts_count].w = 1.0f;
 		r_imediate_verts_count++;
 
 		r_imediate_verts[r_imediate_verts_count].x = x1;
 		r_imediate_verts[r_imediate_verts_count].y = y0;
-		r_imediate_verts[r_imediate_verts_count].z = 0.5;
+		r_imediate_verts[r_imediate_verts_count].z = 0.0f;
 		r_imediate_verts[r_imediate_verts_count].w = 1.0f;
 		r_imediate_verts_count++;
 
 		r_imediate_verts[r_imediate_verts_count].x = x1;
 		r_imediate_verts[r_imediate_verts_count].y = y1;
-		r_imediate_verts[r_imediate_verts_count].z = 0.5;
+		r_imediate_verts[r_imediate_verts_count].z = 0.0f;
 		r_imediate_verts[r_imediate_verts_count].w = 1.0f;
 		r_imediate_verts_count++;
 

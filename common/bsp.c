@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include <assert.h>
- 
+
 #include "GL\glew.h"
 
 #include "bsp.h"
@@ -13,18 +14,26 @@
 #include "shader.h"
 #include "l_main.h"
 #include "input.h"
-#include "memory.h"
+#include "c_memory.h"
 
 /* from world.c */
 extern int w_world_vertices_count;
 extern vertex_t *w_world_vertices;
+
 extern int w_world_nodes_count;
 extern bsp_pnode_t *w_world_nodes;
+
 extern int w_world_leaves_count;
 extern bsp_dleaf_t *w_world_leaves;
-extern int w_world_triangle_group_count;
-extern triangle_group_t *w_world_triangle_groups;
-extern unsigned int *w_index_buffer;
+
+extern int w_world_batch_count;
+extern struct batch_t *w_world_batches;
+
+extern int w_world_index_count;
+
+//extern int w_world_triangle_group_count;
+//extern triangle_group_t *w_world_triangle_groups;
+//extern unsigned int *w_index_buffer;
 //extern unsigned int w_world_element_buffer;
 extern int w_world_handle;
 
@@ -76,13 +85,13 @@ void bsp_Finish()
 
 void bsp_LoadFile(char *file_name)
 {
-	
+
 }
 
 
 void bsp_DeleteBsp()
 {
-		
+
 }
 
 /*
@@ -93,19 +102,19 @@ bsp_ClipVelocityToPlane
 void bsp_ClipVelocityToPlane(vec3_t normal, vec3_t velocity, vec3_t *new_velocity, float overbounce)
 {
 	float l;
-	
+
 	l = dot3(normal, velocity) * overbounce;
-	
+
 	normal.x *= l;
-	normal.y *= l; 
+	normal.y *= l;
 	normal.z *= l;
-	
+
 	new_velocity->x = velocity.x - normal.x;
 	new_velocity->y = velocity.y - normal.y;
 	new_velocity->z = velocity.z - normal.z;
-	
+
 	//printf("[%f %f %f]     [%f %f %f]\n", velocity.x, velocity.y, velocity.z, normal.x, normal.y, normal.z);
-	
+
 }
 
 
@@ -117,7 +126,7 @@ bsp_HullForEntity
 */
 bsp_pnode_t *bsp_HullForEntity(vec3_t mins, vec3_t max)
 {
-	
+
 }
 
 
@@ -131,11 +140,11 @@ int bsp_SolidPoint(bsp_pnode_t *node, vec3_t point)
 	vec3_t v;
 	float d;
 	int child_index;
-	
+
 	while(node->child[0] > BSP_EMPTY_LEAF && node->child[0] < BSP_SOLID_LEAF)
 	{
 		d = dot3(node->normal, point) - node->dist;
-		
+
 		if(d >= 0.0)
 		{
 			child_index = 0;
@@ -146,9 +155,9 @@ int bsp_SolidPoint(bsp_pnode_t *node, vec3_t point)
 		}
 		node += node->child[child_index];
 	}
-	
+
 	return node->child[0];
-	
+
 }
 
 
@@ -165,20 +174,20 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 	#if 0
 	float d0;
 	float d1;
-	
+
 	float frac;
 	float frac2;
 	float midf;
 	float midf2;
-	
+
 	int near_index;
-	
+
 	vec3_t v;
 	vec3_t mid;
 	vec3_t mid2;
-	
+
 	bsp_dleaf_t *leaf;
-		
+
 	if(node->child[0] == BSP_EMPTY_LEAF || node->child[0] == BSP_SOLID_LEAF)
 	{
 		if(node->child[0] == BSP_EMPTY_LEAF)
@@ -187,69 +196,69 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 		}
 		else
 		{
-			/* we reached a solid leaf, which means this 
+			/* we reached a solid leaf, which means this
 			is the start point, and we're inside solid world... */
 			trace->bm_flags |= TRACE_START_SOLID;
 		}
-		
+
 		return 1;
 	}
-	
+
 	else
 	{
 		d0 = dot3(*start, node->normal) - node->dist;
 		d1 = dot3(*end, node->normal) - node->dist;
-		
-		
+
+
 		if(d0 >= 0.0 && d1 >= 0.0)
 		{
-			return bsp_RecursiveFirstHit(node + node->child[0], start, end, t0, t1, trace); 
+			return bsp_RecursiveFirstHit(node + node->child[0], start, end, t0, t1, trace);
 		}
 		else if(d0 < 0.0 && d1 < 0.0)
 		{
-			return bsp_RecursiveFirstHit(node + node->child[1], start, end, t0, t1, trace); 
+			return bsp_RecursiveFirstHit(node + node->child[1], start, end, t0, t1, trace);
 		}
-		
-		
+
+
 		if(d0 < 0.0)
 		{
 			/* nudge the intersection away from the plane... */
 			frac = (d0 + DIST_EPSILON) / (d0 - d1);
 			near_index = 1;
-			
+
 		}
 		else
 		{
-			frac = (d0 - DIST_EPSILON) / (d0 - d1);	
+			frac = (d0 - DIST_EPSILON) / (d0 - d1);
 			near_index = 0;
 		}
-		
-		
+
+
 		if(frac > 1.0) frac = 1.0;
 		else if(frac < 0.0) frac = 0.0;
-		
-		
+
+
 		midf = t0 + (t1 - t0) * frac;
 		mid.x = start->x + (end->x - start->x) * frac;
 		mid.y = start->y + (end->y - start->y) * frac;
 		mid.z = start->z + (end->z - start->z) * frac;
-				
-		if(!bsp_RecursiveFirstHit(node + node->child[near_index], start, &mid, t0, midf, trace))	
+
+		if(!bsp_RecursiveFirstHit(node + node->child[near_index], start, &mid, t0, midf, trace))
 		{
 			return 0;
 		}
-		
+
 		/* test to see whether the mid point would fall in solid space in case we were
 		to thread down. If not, then the second half of the segment lies in empty space,
 		and can further straddle other planes. If it falls in solid space, it means
 		that frac is the nearest intersection, and we're done. */
-		
+
 		/* thank you John :) */
 		if(bsp_SolidPoint(node + node->child[near_index ^ 1], mid) != BSP_SOLID_LEAF)
 		{
-			return bsp_RecursiveFirstHit(node + node->child[near_index ^ 1], &mid, end, midf, t1, trace);	
+			return bsp_RecursiveFirstHit(node + node->child[near_index ^ 1], &mid, end, midf, t1, trace);
 		}
-		
+
 		/*if(!near_index)
 		{
 			trace->dist = d0;
@@ -262,41 +271,41 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 			trace->normal.y = -node->normal.y;
 			trace->normal.z = -node->normal.z;
 		}*/
-		
+
 		trace->dist = d0;
 		trace->normal = node->normal;
 		trace->position = mid;
 		trace->frac = midf;
-		
+
 		/*if(d0 < DIST_EPSILON)
 		{
 			printf("fuck...\n");
 		}*/
-		
+
 		//if(d0 < DIST_EPSILON)
 		//{
 		//	trace->position = *start;
 		//	trace->frac = 0.0;
 		//}
-		
-		
+
+
 		if(bsp_SolidPoint(collision_nodes, mid) == BSP_SOLID_LEAF)
 		{
 			trace->bm_flags |= TRACE_MID_SOLID;
 		//	editor_StopPIE();
 		//	//assert(0);
-			
+
 			//printf("oh shit... %f... ", d0);
 		}
-		
+
 		//printf("[%f %f %f]\n", trace->normal.x, trace->normal.y, trace->normal.z);
-		
-		
+
+
 		//frac = trace->frac;
-		
+
 		/*while(bsp_SolidPoint(collision_nodes, mid) == BSP_SOLID_LEAF)
 		{
-			
+
 			frac -= 0.1;
 			if(frac < 0.0)
 			{
@@ -304,28 +313,28 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 				trace->bm_flags |= TRACE_MID_SOLID;
 				break;
 			}
-				
-			
+
+
 			midf = t0 + (t1 - t0) * frac;
 			mid.x = start->x + (end->x - start->x) * frac;
 			mid.y = start->y + (end->y - start->y) * frac;
 			mid.z = start->z + (end->z - start->z) * frac;
-			
+
 		}*/
-		
+
 		//trace->position = mid;
 		//trace->frac = midf;
-		
+
 		//assert(bsp_SolidPoint(collision_nodes, mid) != BSP_SOLID_LEAF);
-		
+
 		/* return zero to avoid any further computation to be done
 		by previous recursion calls... */
 		return 0;
-		
+
 	}
-	
+
 	#endif
-	
+
 }
 
 
@@ -337,7 +346,7 @@ bsp_FirstHit
 int bsp_FirstHit(bsp_pnode_t *bsp, vec3_t start, vec3_t end, trace_t *trace)
 {
 	trace->frac = 1.0;
-	trace->bm_flags = TRACE_ALL_SOLID;	
+	trace->bm_flags = TRACE_ALL_SOLID;
 
 	return bsp_RecursiveFirstHit(bsp, &start, &end, 0, 1, trace);
 }
@@ -358,81 +367,81 @@ int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace)
 	vec3_t end;
 	vec3_t v;
 	trace_t tr;
-	
+
 	int s;
 	int e;
-	
+
 	float frac;
 	float step_height;
-	
+
 	start = trace->position;
-	
-	
+
+
 	/* move forward an itsy-bitsy... */
 	start.x -= trace->normal.x * 0.05;
 	start.z -= trace->normal.z * 0.05;
-	
-	
+
+
 	/* kick the end-point STEP_HEIGHT up... */
 	end.x = start.x;
 	end.y = start.y + STEP_HEIGHT;
 	end.z = start.z;
-		
+
 	s = bsp_SolidPoint(collision_nodes, start);
 	e = bsp_SolidPoint(collision_nodes, end);
-	
+
 	//printf("%d %d\n", s, e);
-	
-	
+
+
 	if(s == BSP_SOLID_LEAF)
 	{
 		/* both endpoints lie in
 		solid space, so the step
-		is too high to climb 
+		is too high to climb
 		(or it could be a wall)... */
 		if(e == BSP_SOLID_LEAF)
 			return 0;
-		
+
 		/* trace downwards to find out the height of the
-		step... */	
+		step... */
 		bsp_FirstHit(collision_nodes, end, start, &tr);
-		
+
 		#if 1
-	
+
 		frac = tr.frac;
 		step_height = (end.y - start.y) * (1.0 - frac);
-		//v = tr.position;	
-		
+		//v = tr.position;
+
 		v = *position;
 		v.y += step_height;
-		
+
 		/* see if we can step up from our current position... */
 		bsp_FirstHit(collision_nodes, *position, v, &tr);
-			
+
 		/* we'll bump our heads, so don't
 		step up... */
 		if(tr.frac < 1.0)
-			return 0;		
-			
+			return 0;
+
 		/* step up... */
-		position->y = start.y + step_height; 
-			
-		/* ...and forward... */			
+		position->y = start.y + step_height;
+
+		/* ...and forward... */
 		position->x = start.x;
 		position->z = start.z;
-			
+
 		/* dampen the speed when stepping up... */
 		velocity->x *= 0.5;
 		velocity->z *= 0.5;
-		
+
 		return 1;
-	
-		#endif	
+
+		#endif
 	}
-	
-	
+
+
 	#endif
-	
+
 	return 0;
 }
 
@@ -441,33 +450,33 @@ int bsp_TryStepDown(vec3_t *position, vec3_t *velocity, trace_t *trace)
 {
 	#if 0
 	vec3_t end;
-	
+
 	end = *position;
 	end.y -= STEP_HEIGHT * 2.0;
 	trace_t tr;
-	
-	
+
+
 	bsp_FirstHit(collision_nodes, *position, end, &tr);
-	
+
 	//printf("%f\n", tr.frac);
-	
+
 	if(tr.frac > 0.0)
 	{
 		if(position->x == tr.position.x && position->y == tr.position.y && position->z == tr.position.z)
 			return 0;
-		
+
 		//printf("[%f %f %f]\n")
-		
+
 		*position = tr.position;
-		
-		return 1;	
+
+		return 1;
 	}
-	
-	
+
+
 	return 0;
-	
+
 	#endif
-	
+
 }
 
 
@@ -484,42 +493,42 @@ void bsp_Move(vec3_t *position, vec3_t *velocity)
 	#if 0
 	int i;
 	int c;
-	
+
 	trace_t trace;
-	
+
 	vec3_t end;
 	vec3_t new_velocity = *velocity;
-	
+
 	//end.x = position->x + velocity.x;
 	//end.y = position->y + velocity.y;
 	//end.z = position->z + velocity.z;
-	
+
 	//static int b_break = 0;
-	
+
 	if(collision_nodes)
-	{	
+	{
 		end.x = position->x + velocity->x;
 		end.y = position->y + velocity->y;
 		end.z = position->z + velocity->z;
-		
+
 		for(i = 0; i < BUMP_COUNT; i++)
 		{
-			
+
 			/* still enough to ignore any movement... */
-			if(fabs(new_velocity.x) < SPEED_THRESHOLD && 
+			if(fabs(new_velocity.x) < SPEED_THRESHOLD &&
 			   fabs(new_velocity.y) < SPEED_THRESHOLD &&
 			   fabs(new_velocity.z) < SPEED_THRESHOLD)
 			{
 				break;
 			}
-			
+
 			end.x = position->x + new_velocity.x;
 			end.y = position->y + new_velocity.y;
 			end.z = position->z + new_velocity.z;
-			
-			
+
+
 			bsp_FirstHit(collision_nodes, *position, end, &trace);
-			
+
 			/* covered whole distance, bail out... */
 			if(trace.frac == 1.0)
 			{
@@ -527,11 +536,11 @@ void bsp_Move(vec3_t *position, vec3_t *velocity)
 			}
 			else
 			{
-				
+
 				position->x += new_velocity.x * trace.frac;
 				position->y += new_velocity.y * trace.frac;
 				position->z += new_velocity.z * trace.frac;
-				
+
 				#if 1
 				/* hit a vertical-ish surface, test to see whether it's a step or a wall... */
 				if(trace.normal.y < 0.2 && trace.normal.y > -0.2)
@@ -539,64 +548,64 @@ void bsp_Move(vec3_t *position, vec3_t *velocity)
 
 					if(bsp_TryStepUp(position, &new_velocity, &trace))
 					{
-						
+
 						/* if step-up was successful, do not clip the speed... */
-						
-						/* TODO: maybe it's a good idea to dampen the speed on 
+
+						/* TODO: maybe it's a good idea to dampen the speed on
 						staircases a little to avoid the player skyrocketing when walking one
 						up... */
 						continue;
 					}
 				}
-				
-				#endif 
-				
-				
+
+				#endif
+
+
 				/* horizontal-ish surface (floor or slope)... */
 				bsp_ClipVelocityToPlane(trace.normal, new_velocity, &new_velocity, 1.0);
-				
+
 			}
-			
+
 		}
-		
+
 	//	printf(">>>>>>>>>end bsp_Move()\n");
 	}
-	
+
 	/*if(b_break)
 	{
 		printf("breakpoint!\n");
-		
+
 		printf("breakpoint!\n");
 	}*/
-	
-	
-	
+
+
+
 	*velocity = new_velocity;
-	
-	
+
+
 	position->x += velocity->x;
 	position->y += velocity->y;
 	position->z += velocity->z;
-	
+
 	#endif
-	
+
 }
 
 
 bsp_dleaf_t *bsp_GetCurrentLeaf(bsp_pnode_t *node, vec3_t position)
 {
-	
+
 	float d;
 	int node_index;
 	int leaf_index;
-	
+
 	if(!node)
 		return NULL;
-		
+
 	while(node->child[0] > BSP_EMPTY_LEAF && node->child[0] < BSP_SOLID_LEAF)
 	{
 		d = dot3(node->normal, position) - node->dist;
-		
+
 		if(d >= 0.0)
 		{
 			node_index = 0;
@@ -605,16 +614,16 @@ bsp_dleaf_t *bsp_GetCurrentLeaf(bsp_pnode_t *node, vec3_t position)
 		{
 			node_index = 1;
 		}
-		
-		node += node->child[node_index];	
+
+		node += node->child[node_index];
 	}
-	
+
 	if(node->child[0] == BSP_EMPTY_LEAF)
 	{
-		leaf_index = *(int *)&node->dist;	
+		leaf_index = *(int *)&node->dist;
 		return &w_world_leaves[leaf_index];
 	}
-	
+
 	return NULL;
 }
 
@@ -628,23 +637,23 @@ bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t position)
 	int i;
 	int leaf_index;
 	int l = 0;
-	
+
 	bsp_pnode_t *node = &w_world_nodes[0];
 	bsp_dleaf_t *cur_leaf = NULL;
 	bsp_dleaf_t *leaf;
 	int potentially_visible_vert_count = 0;
 	int leaf_vert_count = 0;
-	
+
 	float d;
 	int node_index;
-	
+
 	if(!node)
 		return NULL;
-			
+
 	while(node->child[0] > BSP_EMPTY_LEAF && node->child[0] < BSP_SOLID_LEAF)
 	{
 		d = dot3(node->normal, position) - node->dist;
-		
+
 		if(d >= 0.0)
 		{
 			node_index = 0;
@@ -653,72 +662,295 @@ bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t position)
 		{
 			node_index = 1;
 		}
-		
-		node += node->child[node_index];	
+
+		node += node->child[node_index];
 	}
-	
+
 	if(node->child[0] == BSP_EMPTY_LEAF)
 	{
-		leaf_index = *(int *)&node->dist;	
-		cur_leaf =  &w_world_leaves[leaf_index];		
+		leaf_index = *(int *)&node->dist;
+		cur_leaf =  &w_world_leaves[leaf_index];
 		potentially_visible_leaves[l++] = cur_leaf;
-		
+
 		for(i = 0; i < w_world_leaves_count && i < MAX_VISIBLE_LEAVES; i++)
 		{
-			if(!cur_leaf->pvs) 
+			if(!cur_leaf->pvs)
 				break;
-			
-			/* this avoids the occasion where the current leaf is marked on its own 
-			pvs (which happens when the pvs thread is calculating visibility to a 
+
+			/* this avoids the occasion where the current leaf is marked on its own
+			pvs (which happens when the pvs thread is calculating visibility to a
 			leaf that 'sees' the current leaf, and ends marking it on its own pvs
 			to avoid infinte recursion), which ends up adding it twice for rendering, thus
 			causing severe memory corruption problems. */
 			if(i == leaf_index)
 				continue;
-			
-				
-				
+
+
+			//if(!cur_leaf->pvs[i >> 3])
+			//{
+            //    i += cur_leaf->pvs[(i >> 3) + 1] << 3 - 1;
+			//	continue;
+			//}
+
+
 			if(cur_leaf->pvs[i >> 3] & (1 << (i % 8)))
-			{				
+			{
 				potentially_visible_vert_count += leaf_vert_count;
 				potentially_visible_leaves[l++] = &w_world_leaves[i];
 			}
 		}
-		
+
 		*leaf_count = l;
-		potentially_visible_leaves_count = l;		
+		potentially_visible_leaves_count = l;
 		return &potentially_visible_leaves[0];
 	}
-	
-	
-	
+
+
+
 //	printf("nope!\n");
 	potentially_visible_leaves_count = 0;
 	*leaf_count = 0;
-	
+
 	return NULL;
-	 
+
+}
+
+unsigned char *bsp_CompressPvs(unsigned char *uncompressed_pvs, int uncompressed_pvs_size, int *compressed_pvs_size)
+{
+    unsigned char *compressed_pvs;
+    unsigned char *out_compressed;
+    int compressed_size;
+    int i;
+    int j;
+
+    int compressed_index;
+    int zero_count;
+
+    compressed_pvs = memory_Calloc(1, uncompressed_pvs_size);
+
+	for(i = 0, compressed_index = 0; i < uncompressed_pvs_size; i++)
+	{
+		if(!uncompressed_pvs[i])
+		{
+			compressed_pvs[compressed_index] = uncompressed_pvs[i];
+
+			compressed_index++;
+			//i++;
+
+			//while(!uncompressed_pvs[i])
+			do
+			{
+				i++;
+				compressed_pvs[compressed_index]++;
+			}
+			while(!uncompressed_pvs[i]);
+
+			compressed_index++;
+
+			i--;
+		}
+		else
+		{
+            compressed_pvs[compressed_index] = uncompressed_pvs[i];
+            compressed_index++;
+		}
+	}
+
+	out_compressed = memory_Calloc(compressed_index, 1);
+	memcpy(out_compressed, compressed_pvs, compressed_index);
+	memory_Free(compressed_pvs);
+
+	return out_compressed;
 }
 
 void bsp_AddIndexes(int leaf_index)
 {
 	bsp_dleaf_t *leaf;
-	
+
 	if(w_world_leaves)
 	{
 		leaf = w_world_leaves + leaf_index;
-		
-		
-		
-		
+
+
+
+
 	}
-	
+
 }
 
 void bsp_RemoveIndexes(int leaf_index)
 {
-	
+
 }
+
+
+/*
+===============================================
+===============================================
+===============================================
+*/
+
+
+char bsp_section_start_tag[] = "[bsp section start]";
+
+struct bsp_section_start_t
+{
+    char tag[(sizeof(bsp_section_start_tag) + 3) &(~3)];
+};
+
+
+
+
+
+char bsp_section_end_tag[] = "[bsp section end]";
+
+struct bsp_section_end_t
+{
+	char tag[(sizeof(bsp_section_end_tag) + 3) &(~3)];
+};
+
+
+
+
+
+char bsp_record_start_tag[] = "[bsp record start]";
+
+struct bsp_record_start_t
+{
+    char tag[(sizeof(bsp_record_start_tag) + 3) & (~3)];
+
+    int leaf_count;
+    int node_count;
+    int vertice_count;
+    int batch_count;
+};
+
+
+
+
+
+char bsp_batch_record_tag[] = "[bsp batch record]";
+
+struct bsp_batch_record_t
+{
+    char tag[(sizeof(bsp_batch_record_tag) + 3) & (~3)];
+    char material_name[PATH_MAX];
+    int indice_count;
+    int indices[1];
+};
+
+
+
+
+
+char bsp_leaf_record_tag[] = "[bsp leaf record]";
+
+struct bsp_leaf_record_t
+{
+	char tag[(sizeof(bsp_leaf_record_tag) + 3) & (~3)];
+	int triangle_count;
+
+	bsp_striangle_t triangles[1];
+};
+
+
+
+
+
+char bsp_record_end_tag[] = "[bsp record end]";
+
+struct bsp_record_end_t
+{
+    char tag[(sizeof(bsp_record_end_tag) + 3) & (~3)];
+};
+
+
+
+void bsp_SerializeBsp(void **buffer, int *buffer_size)
+{
+	struct bsp_section_start_t *section_start;
+	struct bsp_section_end_t *section_end;
+
+
+	struct bsp_record_start_t *record_start;
+	struct bsp_record_end_t *record_end;
+
+
+	char *out_buffer = NULL;
+	char *out;
+	int out_buffer_size = 0;
+
+
+    void *entity_buffer = NULL;
+    int entity_buffer_size = 0;
+
+    void *waypoint_buffer = NULL;
+    int waypoint_buffer_size = 0;
+
+    void *light_buffer = NULL;
+    int light_buffer_size = 0;
+
+    out_buffer_size = sizeof(struct bsp_section_start_t) + sizeof(struct bsp_section_end_t);
+
+
+
+    entity_SerializeEntities(&entity_buffer, &entity_buffer_size, 1);
+    light_SerializeLights(&light_buffer, &light_buffer_size);
+    navigation_SerializeWaypoints(&waypoint_buffer, &waypoint_buffer_size);
+
+	out_buffer_size += entity_buffer_size + light_buffer_size + waypoint_buffer_size;
+
+	out_buffer_size += sizeof(struct bsp_record_start_t) + sizeof(struct bsp_record_end_t) +
+					   sizeof(struct bsp_batch_record_t) * w_world_batch_count +
+					   sizeof(struct bsp_leaf_record_t) * w_world_leaves_count +
+					   sizeof(bsp_pnode_t) * w_world_nodes_count +
+					   sizeof(struct vertex_t) * w_world_vertices_count +
+					   sizeof(int) * w_world_index_count;
+
+	out_buffer = memory_Calloc(1, out_buffer_size);
+
+    *buffer = out_buffer;
+	*buffer_size = out_buffer_size;
+
+	out = out_buffer;
+
+    if(w_world_leaves)
+	{
+		record_start = (struct bsp_record_start_t *)out;
+		out += sizeof(struct bsp_record_start_t);
+
+		strcpy(record_start->tag, bsp_record_start_tag);
+
+        record_start->leaf_count = w_world_leaves_count;
+        record_start->vertice_count = w_world_vertices_count;
+        record_start->node_count = w_world_nodes_count;
+        record_start->batch_count = w_world_batch_count;
+
+
+
+
+
+
+
+        record_end = (struct bsp_record_end_t *)out;
+        out += sizeof(struct bsp_record_end_t);
+
+        strcpy(record_end->tag, bsp_record_end_tag);
+	}
+
+
+
+
+
+
+
+}
+
+void bsp_DeserializeBsp(void **buffer)
+{
+
+}
+
 
 #ifdef __cplusplus
 }

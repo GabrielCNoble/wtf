@@ -8,6 +8,7 @@
 #include "..\..\common\portal.h"
 #include "..\..\common\navigation.h"
 #include "..\..\common\material.h"
+#include "..\..\common\entity.h"
 #include "..\common\r_main.h"
 #include "..\common\r_gl.h"
 #include "..\common\r_shader.h"
@@ -40,9 +41,12 @@ vec2_t ed_level_editor_light_options_menu_pos;
 int ed_level_editor_waypoint_options_menu_open = 0;
 vec2_t ed_level_editor_waypoint_options_menu_pos;
 
+int ed_level_editor_entity_options_menu_open = 0;
+
 int ed_level_editor_brush_options_menu_open = 0;
 int ed_level_editor_brush_uv_menu_open = 0;
 int ed_level_editor_brush_face_option_open = 0;
+
 vec2_t ed_level_editor_brush_options_menu_pos;
 vec2_t ed_level_editor_brush_uv_menu_pos;
 vec2_t ed_level_editor_brush_uv_window_size = {500.0, 500.0};
@@ -254,6 +258,7 @@ void editor_LevelEditorMenuWindow()
 	ed_level_editor_menu_window_open = 0;
 	ed_level_editor_light_options_menu_open = 0;
 	ed_level_editor_brush_options_menu_open = 0;
+	ed_level_editor_entity_options_menu_open = 0;
 
 	pick_record_t *pick;
 
@@ -269,6 +274,10 @@ void editor_LevelEditorMenuWindow()
 
 			case PICK_BRUSH:
 				ed_level_editor_brush_options_menu_open = 1;
+			break;
+
+			case PICK_ENTITY:
+				ed_level_editor_entity_options_menu_open = 1;
 			break;
 		}
 
@@ -295,6 +304,7 @@ void editor_LevelEditorMenuWindow()
 
 		editor_LevelEditorBrushOptionsMenu();
 		editor_LevelEditorLightOptionsMenu();
+		editor_LevelEditorEntityOptionsMenu();
 
 
 		gui_ImGuiEnd();
@@ -773,6 +783,74 @@ void editor_LevelEditorBrushUVMenu()
 		ed_level_editor_edit_uvs_direction = 3;
 
 		editor_ClearSelection(&level_editor_brush_face_uv_pick_list);
+	}
+}
+
+void editor_LevelEditorEntityOptionsMenu()
+{
+
+	struct entity_t *entity;
+	struct entity_handle_t entity_handle;
+	struct transform_component_t *transform_component;
+	struct physics_component_t *physics_component;
+
+	struct collider_t *collider;
+
+	char static_collider;
+
+	if(ed_level_editor_entity_options_menu_open)
+	{
+		entity_handle.def = 0;
+		entity_handle.entity_index = level_editor_pick_list.records[level_editor_pick_list.record_count - 1].index0;
+
+
+		entity = entity_GetEntityPointerHandle(entity_handle);
+
+		if(entity)
+		{
+			transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+            gui_ImGuiText("Instance name: %s", transform_component->instance_name);
+
+
+            physics_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_PHYSICS]);
+
+            if(physics_component)
+			{
+				collider = physics_GetColliderPointerHandle(physics_component->collider.collider_handle);
+
+				if(collider)
+				{
+					if(collider->flags & COLLIDER_FLAG_STATIC)
+					{
+                        static_collider = 1;
+					}
+					else
+					{
+						static_collider = 0;
+					}
+
+
+					gui_ImGuiCheckbox("Static", &static_collider);
+
+
+                    if(static_collider)
+					{
+						if(!(collider->flags & COLLIDER_FLAG_STATIC))
+						{
+							physics_SetColliderStatic(physics_component->collider.collider_handle, 1);
+						}
+					}
+					else
+					{
+						if(collider->flags & COLLIDER_FLAG_STATIC)
+						{
+							physics_SetColliderStatic(physics_component->collider.collider_handle, 0);
+						}
+					}
+
+				}
+			}
+		}
 	}
 }
 

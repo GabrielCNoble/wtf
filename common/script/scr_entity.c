@@ -12,7 +12,7 @@ extern "C"
 
 /* this allows hiding the current entity's reference
 at the cost of not allowing concurrent scripts... */
-extern struct entity_handle_t ent_current_entity;
+//extern struct entity_handle_t ent_current_entity;
 
 extern struct component_fields_t COMPONENT_FIELDS[COMPONENT_TYPE_LAST];
 
@@ -33,7 +33,11 @@ void entity_ScriptMove(vec3_t *direction)
 	struct physics_component_t *physics_component;
 	struct entity_t *entity_ptr;
 
-	entity_ptr = entity_GetEntityPointerHandle(ent_current_entity);
+	struct entity_handle_t current_entity;
+
+	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	entity_ptr = entity_GetEntityPointerHandle(current_entity);
 
 	script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
 
@@ -77,7 +81,11 @@ void entity_ScriptJump(float jump_force)
 	struct physics_component_t *physics_component;
 	struct entity_t *entity_ptr;
 
-	entity_ptr = entity_GetEntityPointerHandle(ent_current_entity);
+	struct entity_handle_t current_entity;
+
+	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	entity_ptr = entity_GetEntityPointerHandle(current_entity);
 
 	script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
 
@@ -100,7 +108,11 @@ void entity_ScriptJump(float jump_force)
 
 void entity_ScriptDie()
 {
-	entity_MarkForRemoval(ent_current_entity);
+	struct entity_handle_t current_entity;
+
+	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	entity_MarkForRemoval(current_entity);
 }
 
 void entity_ScriptDIEYOUMOTHERFUCKER()
@@ -116,7 +128,11 @@ void entity_ScriptDIEYOUMOTHERFUCKER()
 
 void *entity_ScriptGetPosition(int local)
 {
-	return entity_ScriptGetEntityPosition(ent_current_entity, local);
+	struct entity_handle_t current_entity;
+
+	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	return entity_ScriptGetEntityPosition(current_entity, local);
 }
 
 void *entity_ScriptGetEntityPosition(struct entity_handle_t entity, int local)
@@ -158,7 +174,11 @@ void *entity_ScriptGetEntityPosition(struct entity_handle_t entity, int local)
 
 void *entity_ScriptGetOrientation(int local)
 {
-	return entity_ScriptGetEntityOrientation(ent_current_entity, local);
+	struct entity_handle_t current_entity;
+
+	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	return entity_ScriptGetEntityOrientation(current_entity, local);
 }
 
 void *entity_ScriptGetEntityOrientation(struct entity_handle_t entity, int local)
@@ -199,7 +219,11 @@ void *entity_ScriptGetEntityOrientation(struct entity_handle_t entity, int local
 
 void *entity_ScriptGetForwardVector(int local)
 {
-	return entity_ScriptGetEntityForwardVector(ent_current_entity, local);
+	struct entity_handle_t current_entity;
+
+    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	return entity_ScriptGetEntityForwardVector(current_entity, local);
 }
 
 void *entity_ScriptGetEntityForwardVector(struct entity_handle_t entity, int local)
@@ -245,8 +269,11 @@ void entity_ScriptRotate(vec3_t *axis, float angle, int set)
 {
 	struct entity_t *entity;
 	struct transform_component_t *transform;
+	struct entity_handle_t current_entity;
 
-	entity = entity_GetEntityPointerHandle(ent_current_entity);
+	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	entity = entity_GetEntityPointerHandle(current_entity);
 	transform = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
 
 	set = set && 1;
@@ -272,15 +299,22 @@ void entity_ScriptRotateEntity(struct entity_handle_t entity, vec3_t *axis, floa
 int entity_ScriptGetLife()
 {
 	struct entity_t *entity;
+	struct entity_handle_t current_entity;
 
-	entity = entity_GetEntityPointerHandle(ent_current_entity);
+	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	entity = entity_GetEntityPointerHandle(current_entity);
 
 	return r_frame - entity->spawn_time;
 }
 
 struct entity_handle_t entity_ScriptGetCurrentEntity()
 {
-	return ent_current_entity;
+	struct entity_handle_t current_entity;
+
+	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	return current_entity;
 }
 
 int entity_ScriptIsEntityValid(struct entity_handle_t entity)
@@ -298,7 +332,11 @@ int entity_ScriptIsEntityValid(struct entity_handle_t entity)
 
 struct component_handle_t entity_ScriptGetComponent(int component_index)
 {
-	return entity_ScriptGetEntityComponent(ent_current_entity, component_index);
+	struct entity_handle_t current_entity;
+
+	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	return entity_ScriptGetEntityComponent(current_entity, component_index);
 }
 
 struct component_handle_t entity_ScriptGetEntityComponent(struct entity_handle_t entity, int component_index)
@@ -332,7 +370,11 @@ struct entity_handle_t entity_ScriptGetEntity(struct script_string_t *name, int 
 
 struct entity_handle_t entity_ScriptGetChildEntity(struct script_string_t *entity)
 {
-	return entity_ScriptGetEntityChildEntity(ent_current_entity, entity);
+	struct entity_handle_t current_entity;
+
+    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	return entity_ScriptGetEntityChildEntity(current_entity, entity);
 }
 
 struct entity_handle_t entity_ScriptGetEntityChildEntity(struct entity_handle_t parent_entity, struct script_string_t *entity)
@@ -352,6 +394,7 @@ struct entity_handle_t entity_ScriptGetEntityDef(struct script_string_t *def_nam
 struct entity_handle_t entity_ScriptSpawnEntity(mat3_t *orientation, vec3_t *position, vec3_t *scale, struct entity_handle_t def, struct script_string_t *name)
 {
 	char *entity_name = script_string_GetRawString(name);
+
 	return entity_SpawnEntity(orientation, *position, *scale, def, entity_name);
 }
 
@@ -611,7 +654,11 @@ void entity_ScriptSetCameraPosition(vec3_t *position)
 	struct camera_component_t *camera_component;
 	struct transform_component_t *transform_component;
 
-	entity = entity_GetEntityPointerHandle(ent_current_entity);
+	struct entity_handle_t current_entity;
+
+    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	entity = entity_GetEntityPointerHandle(current_entity);
 
 	camera_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_CAMERA]);
 
@@ -647,10 +694,14 @@ void entity_ScriptSetCameraAsActive(struct component_handle_t camera)
 
 void entity_ScriptFindPath(vec3_t *to)
 {
-	entity_FindPath(ent_current_entity, *to);
+	struct entity_handle_t current_entity;
+
+    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	entity_FindPath(current_entity, *to);
 }
 
-vec3_t *entity_ScriptGetWaypointDirection()
+int entity_ScriptGetWaypointDirection(vec3_t *direction)
 {
 	struct entity_t *entity_ptr;
 	struct waypoint_t *waypoints;
@@ -661,9 +712,15 @@ vec3_t *entity_ScriptGetWaypointDirection()
 	struct entity_transform_t *world_transform;
 	vec3_t d = {0.0, 0.0, 0.0};
 
+	struct entity_handle_t current_entity;
+
+    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
 	float l;
 
-	entity_ptr = entity_GetEntityPointerHandle(ent_current_entity);
+	int valid_route = 0;
+
+	entity_ptr = entity_GetEntityPointerHandle(current_entity);
 
 	navigation_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_NAVIGATION]);
 	world_transform = entity_GetWorldTransformPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
@@ -690,17 +747,23 @@ vec3_t *entity_ScriptGetWaypointDirection()
                 d.y /= l;
                 d.z /= l;
 
-                if(l < 1.5)
+                if(l < 1.9)
                 {
                     entity_ScriptAdvanceWaypoint();
                 }
+
+                valid_route = 1;
             }
 
 		}
 	}
 
-	vec3_ret = d;
-	return &vec3_ret;
+	*direction = d;
+
+	return valid_route;
+
+	//vec3_ret = d;
+	//return &vec3_ret;
 }
 
 void entity_ScriptAdvanceWaypoint()
@@ -708,7 +771,11 @@ void entity_ScriptAdvanceWaypoint()
 	struct entity_t *entity;
 	struct navigation_component_t *navigation_component;
 
-	entity = entity_GetEntityPointerHandle(ent_current_entity);
+	struct entity_handle_t current_entity;
+
+    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	entity = entity_GetEntityPointerHandle(current_entity);
 	navigation_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_NAVIGATION]);
 
 	if(navigation_component->route.elements && navigation_component->route.element_count)
@@ -722,11 +789,19 @@ void entity_ScriptAdvanceWaypoint()
 
 int entity_ScriptLineOfSightToEntity(struct entity_handle_t entity)
 {
-	return entity_LineOfSightToEntity(ent_current_entity, entity);
+	struct entity_handle_t current_entity;
+
+    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
+	return entity_LineOfSightToEntity(current_entity, entity);
 }
 
 void entity_ScriptPrint(struct script_string_t *script_string)
 {
+	struct entity_handle_t current_entity;
+
+    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+
 	printf(script_string_GetRawString(script_string));
 }
 

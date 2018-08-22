@@ -407,6 +407,12 @@ void memory_CheckCorrupted()
 			//		log_LogMessage(LOG_MESSAGE_ERROR, "memory_CheckCorrupted: alloc at 0x%x: header guard bytes are corrupt!", header);
 					#endif
 				#endif
+
+				#ifdef KEEP_CALLER_NAME
+				printf("memory_CheckCorrupted: alloc at 0x%x (%s): header guard bytes are corrupt!\n", header, header->caller);
+				#else
+				print("memory_CheckCorrupted: alloc at 0x%x: header guard bytes are corrupt!", header);
+				#endif
 			}
 
 			if(corrupt & 2)
@@ -417,6 +423,12 @@ void memory_CheckCorrupted()
 					#else
 			//		log_LogMessage(LOG_MESSAGE_ERROR, "memory_CheckCorrupted: alloc at 0x%x: tail guard bytes are corrupt!", header);
 					#endif
+				#endif
+
+				#ifdef KEEP_CALLER_NAME
+				printf("memory_CheckCorrupted: alloc at 0x%x (%s): tail guard bytes are corrupt!\n", header, header->caller);
+				#else
+				print("memory_CheckCorrupted: alloc at 0x%x: tail guard bytes are corrupt!", header);
 				#endif
 			}
 

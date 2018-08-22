@@ -1,5 +1,7 @@
 #include "scr_sound.h"
 
+#include "path.h"
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -11,9 +13,32 @@ struct sound_handle_t sound_ScriptGetSound(struct script_string_t *name)
     return sound_GetSound(sound_name);
 }
 
-void sound_ScriptPlaySound(struct sound_handle_t sound, vec3_t *position, float gain, int loop)
+int sound_ScriptPlaySound(struct sound_handle_t sound, vec3_t *position, float gain, int loop)
 {
-	sound_PlaySound(sound, *position, gain, loop);
+	return sound_PlaySound(sound, *position, gain, loop);
+}
+
+void sound_ScriptPauseSound(int sound_source)
+{
+	sound_PauseSound(sound_source);
+}
+
+void sound_ScriptStopSound(int sound_source)
+{
+	sound_StopSound(sound_source);
+}
+
+int sound_ScriptIsSourcePlaying(int sound_source)
+{
+	return sound_IsSourcePlaying(sound_source);
+}
+
+
+
+void sound_ScriptLoadSound(struct script_string_t *name)
+{
+    char *sound_name = script_string_GetRawString(name);
+    sound_LoadSound(sound_name, path_GetNameNoExt(sound_name));
 }
 
 void sound_ScriptPauseAllSounds()

@@ -155,6 +155,8 @@ void sound_ResumeSound(int sound_source);
 
 void sound_StopSound(int sound_source);
 
+int sound_IsSourcePlaying(int sound_source);
+
 void sound_ResumeAllSounds();
 
 void sound_PauseAllSounds();

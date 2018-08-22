@@ -85,7 +85,7 @@ void world_VisibleEntities();
 
 void world_VisibleLights();
 
-void world_VisibleLightTriangles();
+void world_VisibleLightTriangles(int light_index);
 
 void world_VisibleLeaves();
 

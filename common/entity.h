@@ -147,6 +147,8 @@ void entity_RemoveEntity(struct entity_handle_t entity);
 
 void entity_RemoveAllEntities();
 
+void entity_RemoveMarkedEntities();
+
 void entity_ResetEntitySpawnTimes();
 
 struct entity_t *entity_GetEntityPointer(char *name, int get_def);
@@ -172,7 +174,7 @@ struct entity_source_file_t *entity_GetSourceFile(struct entity_handle_t entity)
 ==============================================================
 */
 
-void entity_TranslateEntity(int entity_index, vec3_t direction, float amount);
+void entity_TranslateEntity(struct entity_handle_t entity, vec3_t direction, float amount);
 
 void entity_RotateEntity(int entity_index, vec3_t axis, float amount);
 
@@ -203,8 +205,6 @@ void entity_UpdatePhysicsComponents();
 void entity_UpdateTransformComponents();
 
 void entity_UpdateCameraComponents();
-
-void entity_ClearMarkedEntities();
 
 void entity_UpdateEntities();
 

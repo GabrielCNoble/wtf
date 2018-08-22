@@ -39,6 +39,13 @@ bsp_dleaf_t *bsp_GetCurrentLeaf(bsp_pnode_t *node, vec3_t position);
 
 bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t position);
 
+unsigned char *bsp_CompressPvs(unsigned char *uncompressed_pvs, int uncompressed_pvs_size, int *compressed_pvs_size);
+
+
+void bsp_SerializeBsp(void **buffer, int *buffer_size);
+
+void bsp_DeserializeBsp(void **buffer);
+
 
 #ifdef __cplusplus
 extern "C"

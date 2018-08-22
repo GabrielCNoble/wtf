@@ -9,14 +9,14 @@ struct list_t
 	int element_count;
 	int max_elements;
 	void *elements;
-	
-	void (*dispose_callback)(void *element);
+
+	//void (*dispose_callback)(void *element);
 };
 
 #ifdef __cplusplus
 extern "C"
 {
-#endif 
+#endif
 
 struct list_t list_create(int element_size, int max_elements, void (*dispose_callback)(void *element));
 
@@ -34,6 +34,6 @@ void list_resize(struct list_t *list, int new_size);
 
 #ifdef __cplusplus
 }
-#endif 
+#endif
 
 #endif

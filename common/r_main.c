@@ -389,7 +389,7 @@ int renderer_Init(int width, int height, int init_mode)
 
 	renderer_InitImediateDrawing();
 	renderer_InitDebug();
-	renderer_VerboseDebugOutput(1);
+	renderer_VerboseDebugOutput(0);
 
 	//renderer_Debug(1, 1);
 
@@ -706,7 +706,16 @@ void renderer_UpdateMatrices()
 	renderer_SetDefaultUniformMatrix4fv(UNIFORM_model_matrix, &r_model_matrix.floats[0][0]);
 	renderer_SetDefaultUniformMatrix4fv(UNIFORM_model_view_matrix, &r_model_view_matrix.floats[0][0]);
 	renderer_SetDefaultUniformMatrix4fv(UNIFORM_model_view_projection_matrix, &r_model_view_projection_matrix.floats[0][0]);
-	renderer_SetDefaultUniformMatrix4fv(UNIFORM_projection_matrix, &r_projection_matrix.floats[0][0]);
+
+	if(r_view_matrix_changed)
+	{
+		renderer_SetDefaultUniformMatrix4fv(UNIFORM_view_matrix, &r_view_matrix.floats[0][0]);
+	}
+
+	if(r_projection_matrix_changed)
+	{
+		renderer_SetDefaultUniformMatrix4fv(UNIFORM_projection_matrix, &r_projection_matrix.floats[0][0]);
+	}
 
 	r_view_matrix_changed = 0;
 	r_projection_matrix_changed = 0;
@@ -1763,6 +1772,7 @@ void renderer_SetViewData(view_data_t *view_data)
 
 void renderer_SetViewLightData(view_data_t *view_data)
 {
+	#if 0
 	int i;
 	int c;
 	int light_index;
@@ -1830,7 +1840,7 @@ void renderer_SetViewLightData(view_data_t *view_data)
 		lights[i].color_energy.b = (float)parms->b / 255.0;
 		lights[i].color_energy.a = LIGHT_ENERGY(parms->energy);
 
-		lights[i].x_y = (parms->y << 16) | parms->x;
+		//lights[i].x_y = (parms->y << 16) | parms->x;
 		lights[i].bm_flags = parms->bm_flags & (~LIGHT_GENERATE_SHADOWS);
 	}
 
@@ -1894,10 +1904,13 @@ void renderer_SetViewLightData(view_data_t *view_data)
 
 
 	R_DBG_POP_FUNCTION_NAME();
+
+	#endif
 }
 
 void renderer_SetViewDrawCommands(view_data_t *view_data)
 {
+	#if 0
 	int i;
 	int c;
 	int group_index = 0;
@@ -1960,6 +1973,8 @@ void renderer_SetViewDrawCommands(view_data_t *view_data)
 		group->draw_cmds[group->draw_cmds_count] = view_draw_commands[i];
 		group->draw_cmds_count++;
 	}
+
+	#endif
 }
 
 
@@ -2064,18 +2079,16 @@ void renderer_DrawFrame()
 	float e;
 
 
-	//light_BindCache();
-
-
-	/*if(r_draw_shadow_maps)
-	{
-		renderer_DrawShadowMaps();
-	}*/
-
-	renderer_BindColorbuffer(1, 0);
-
 	gpu_BindGpuHeap();
 	light_BindCache();
+
+	//if(r_draw_shadow_maps)
+	{
+		renderer_DrawShadowMaps();
+	}
+
+
+	renderer_BindColorbuffer(1, 0);
 
 	if(r_z_prepass)
 	{
@@ -2287,6 +2300,9 @@ void renderer_DrawWorld()
 		renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
 		renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
 		renderer_SetDefaultUniform1i(UNIFORM_r_frame, r_frame);
+		renderer_SetDefaultUniform1i(UNIFORM_texture_cube_array_sampler0, 5);
+
+		renderer_BindTextureTexUnit(GL_TEXTURE5, GL_TEXTURE_CUBE_MAP_ARRAY, l_shadow_maps_array);
 		//renderer_SetUniform4fv(UNIFORM_active_camera_position, &active_camera->world_position.floats[0]);
 	}
 
@@ -2431,6 +2447,8 @@ void renderer_DrawOpaque()
 	else
 	{
 		renderer_SetShader(r_forward_pass_shader);
+		renderer_SetDefaultUniform1i(UNIFORM_texture_cube_array_sampler0, 5);
+		renderer_BindTextureTexUnit(GL_TEXTURE5, GL_TEXTURE_CUBE_MAP_ARRAY, l_shadow_maps_array);
 	}
 
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &(((struct compact_vertex_t *)0)->position));
@@ -2457,250 +2475,100 @@ void renderer_DrawTranslucent()
 void renderer_DrawShadowMaps()
 {
 	camera_t *active_camera = camera_GetActiveCamera();
-	triangle_group_t *triangle_group;
-	material_t *material;
+	//triangle_group_t *triangle_group;
 	light_position_t *pos;
 	light_params_t *parms;
-	int i;
 	//int c = brush_count;
 	mat4_t mvm;
 
+	int i;
 	int j;
-	int k;
 	int light_index;
 
-	int l;
-	int m;
 
-	int *next;
-	int start;
-	int cache_index;
+
+	//int cache_index;
 	int shadow_map_index;
 
-	int x;
-	int y;
+	//if(!w_world_leaves)
+	//	return;
 
-	int start_x;
-	int start_y;
-
-	float s;
-	float e;
-
-	int *r;
-
-	float color[] = {1.0, 1.0, 1.0, 1.0};
-
-	if(!w_world_leaves)
-		return;
-
-
-	/*#ifdef QUERY_STAGE
-	renderer_BeginTimeElapsedQuery();
-	#endif*/
-
-
-	//gpu_BindGpuHeap();
-	//shader_UseShader(shadow_pass_shader);
-
-	//s = engine_GetDeltaTime();
+	R_DBG_PUSH_FUNCTION_NAME();
 
 	renderer_SetShader(r_shadow_pass_shader);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->position);
+	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->position);
 
-
-	/*e = engine_GetDeltaTime();
-
-
-	printf("[1: %f] ", e - s);
-
-
-	s = e;*/
-
-	//shader_SetCurrentShaderUniform1i(UNIFORM_LIGHT_COUNT, visible_light_count);
-	//shader_SetCurrentShaderUniform1i(UNIFORM_TEXTURE_FLAGS, 0);
-
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadMatrixf(&l_shadow_map_projection_matrix.floats[0][0]);
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
-
-	/*e = engine_GetDeltaTime();
-
-	printf("[2: %f] ", e - s);
-
-
-	s = e;*/
-
-	//while(glGetError() != GL_NO_ERROR);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, l_shadow_map_frame_buffer);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-
-
-/*	e = engine_GetDeltaTime();
-
-	printf("[3: %f] ", e - s);
-
-	s = e;*/
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, l_light_cache_shadow_element_buffer);
-
-	glClearColor(LIGHT_MAX_RADIUS, LIGHT_MAX_RADIUS, LIGHT_MAX_RADIUS, LIGHT_MAX_RADIUS);
-
-	/*e = engine_GetDeltaTime();
-
-
-	printf("[4: %f] ", e - s);
-
-	s = e;*/
-
-	k = w_visible_lights_count;
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	//glPolygonOffset(0.0, 0.0);
 	//glCullFace(GL_FRONT);
-	glEnable(GL_SCISSOR_TEST);
-	glDepthMask(GL_FALSE);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_ONE, GL_ONE);
-	glBlendEquation(GL_MIN);
-	/*
-	e = engine_GetDeltaTime();
-
-	printf("[5: %f]\n", e - s);*/
-
-	//glEnable(GL_POLYGON_OFFSET_FILL);
-	//glPolygonOffset(1.0, 2.0);
 
 
+	renderer_SetProjectionMatrix(&l_shadow_map_projection_matrix);
+	renderer_SetModelMatrix(NULL);
 
-	//printf(">>%x\n", glGetError());
-	while(glGetError() != GL_NO_ERROR);
-	for(j = 0; j < k; j++)
+	glDepthMask(GL_TRUE);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, l_shadow_map_frame_buffer);
+	glDrawBuffer(GL_NONE);
+	glViewport(0, 0, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
+
+
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+
+	for(j = 0; j < w_visible_lights_count; j++)
 	{
 		light_index = w_visible_lights[j];
 		pos = &l_light_positions[light_index];
 		parms = &l_light_params[light_index];
 
-		if(!(parms->bm_flags & LIGHT_GENERATE_SHADOWS))
-			continue;
+		//if(!(parms->bm_flags & LIGHT_GENERATE_SHADOWS))
+		//continue;
 
 		if(!(parms->bm_flags & LIGHT_UPDATE_SHADOW_MAP))
 			continue;
 
-		if(parms->bm_flags & LIGHT_DROPPED_SHADOW)
-			continue;
+		//if(parms->bm_flags & LIGHT_DROPPED_SHADOW)
+		//	continue;
 
 		parms->bm_flags &= ~LIGHT_UPDATE_SHADOW_MAP;
 
-
-//		light_SetLight(light_index);
-		cache_index = l_light_params[light_index].cache;
-		start = l_light_cache[cache_index].offset * MAX_INDEXES_PER_FRUSTUM * 6;
-		next = l_light_cache_frustum_counts + l_light_cache[cache_index].offset * 6;
-		//shadow_map_index = light_cache[cache_index].offset;
-
-		start_x = parms->x;
-		start_y = parms->y;
+		shadow_map_index = l_light_params[light_index].shadow_map;
 
 		for(i = 0; i < 6; i++)
 		{
-			mvm = l_shadow_map_mats[i];
+			glFramebufferTextureLayer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, l_shadow_maps_array, 0, shadow_map_index * 6 + i);
+			glClear(GL_DEPTH_BUFFER_BIT);
 
-			mvm.floats[3][0] = mvm.floats[0][0] * (-pos->position.x) + mvm.floats[1][0] * (-pos->position.y) + mvm.floats[2][0] * (-pos->position.z);
-			mvm.floats[3][1] = mvm.floats[0][1] * (-pos->position.x) + mvm.floats[1][1] * (-pos->position.y) + mvm.floats[2][1] * (-pos->position.z);
-			mvm.floats[3][2] = mvm.floats[0][2] * (-pos->position.x) + mvm.floats[1][2] * (-pos->position.y) + mvm.floats[2][2] * (-pos->position.z);
-			mvm.floats[3][3] = 1.0;
-
-
-			switch(i)
+			if(w_world_leaves)
 			{
-				/* +X */
-				case 0:
-					x = start_x;
-					y = start_y;
-				break;
+				mvm = l_shadow_map_mats[i];
 
-				/* -X */
-				case 1:
-					x = start_x;
-					y = start_y + SHADOW_MAP_RESOLUTION;
-				break;
+				mvm.floats[3][0] = mvm.floats[0][0] * (-pos->position.x) + mvm.floats[1][0] * (-pos->position.y) + mvm.floats[2][0] * (-pos->position.z);
+				mvm.floats[3][1] = mvm.floats[0][1] * (-pos->position.x) + mvm.floats[1][1] * (-pos->position.y) + mvm.floats[2][1] * (-pos->position.z);
+				mvm.floats[3][2] = mvm.floats[0][2] * (-pos->position.x) + mvm.floats[1][2] * (-pos->position.y) + mvm.floats[2][2] * (-pos->position.z);
+				mvm.floats[3][3] = 1.0;
 
-				/* +Y */
-				case 2:
-					x = start_x + SHADOW_MAP_RESOLUTION;
-					y = start_y;
-				break;
+				renderer_SetViewMatrix(&mvm);
+				renderer_UpdateMatrices();
 
-				/* -Y */
-				case 3:
-					x = start_x + SHADOW_MAP_RESOLUTION;
-					y = start_y + SHADOW_MAP_RESOLUTION;
-				break;
+				glCullFace(GL_FRONT);
+				glPolygonOffset(-2.0, 0.0);
+				renderer_DrawElements(GL_TRIANGLES, parms->visible_triangles.element_count, GL_UNSIGNED_INT, (void *)(sizeof(int) * parms->indices_start));
 
-				/* +Z */
-				case 4:
-					x = start_x + SHADOW_MAP_RESOLUTION * 2;
-					y = start_y;
-				break;
-
-				/* -Z */
-				case 5:
-					x = start_x + SHADOW_MAP_RESOLUTION * 2;
-					y = start_y + SHADOW_MAP_RESOLUTION;
-				break;
+				glCullFace(GL_BACK);
+				glPolygonOffset(2.0, 0.0);
+				renderer_DrawElements(GL_TRIANGLES, parms->visible_triangles.element_count, GL_UNSIGNED_INT, (void *)(sizeof(int) * parms->indices_start));
 			}
-
-			//while(glGetError() != GL_NO_ERROR);
-			//printf("1:%x\n", glGetError());
-            glViewport(x, y, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
-			//printf("2:%x\n", glGetError());
-			glScissor(x, y, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
-			//printf("3:%x\n", glGetError());
-			glLoadMatrixf(&mvm.floats[0][0]);
-			//printf("4:%x\n", glGetError());
-
-
-			glClear(GL_COLOR_BUFFER_BIT);
-
-			glDrawElements(GL_TRIANGLES, next[i], GL_UNSIGNED_INT, (void *)(start * sizeof(int)));
-			start += MAX_INDEXES_PER_FRUSTUM;
-			//printf("5:%x\n", glGetError());
-
-
 		}
 	}
 
+	glViewport(0, 0, r_width, r_height);
 
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	glDisable(GL_POLYGON_OFFSET_FILL);
+	glCullFace(GL_BACK);
 
-	glClearColor(0.0, 0.0, 0.0, 0.0);
-
-
-	glDisable(GL_BLEND);
-	glDisable(GL_SCISSOR_TEST);
-	glEnable(GL_DEPTH_TEST);
-	glBlendEquation(GL_FUNC_ADD);
-	//glCullFace(GL_BACK);
-
-	glDepthMask(GL_TRUE);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	glDrawBuffer(GL_BACK);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-	glViewport(0, 0, r_window_width, r_window_height);
-
-	glMatrixMode(GL_PROJECTION);
-	glPopMatrix();
-	glMatrixMode(GL_MODELVIEW);
-	glPopMatrix();
-
-
-	//renderer_BindBackbuffer();
-/*
-	#ifdef QUERY_STAGES
-	renderer_EndTimeElapsedQuery(RENDERER_DRAW_SHADOW_MAPS_STAGE);
-	#endif*/
-
+	R_DBG_POP_FUNCTION_NAME();
 }
 
 
@@ -2769,6 +2637,7 @@ void renderer_DrawParticles()
 
 void renderer_DrawGUI()
 {
+	#if 0
 	widget_t *w;
 	widget_t *selected;
 
@@ -3523,6 +3392,8 @@ void renderer_DrawGUI()
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_SCISSOR_TEST);
+
+	#endif
 
 
 

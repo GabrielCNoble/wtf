@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "angelscript.h"
 
@@ -23,6 +24,7 @@ struct script_array_t *script_array_Constructor(void *type_info)
 	array->type_info = type_info;
 	array->element_size = element_size;
 	array->element_count = 0;
+	array->max_elements = 0;
 	array->buffer = NULL;
 
     script_array_AddRef(array);
@@ -41,7 +43,7 @@ struct script_array_t *script_array_Constructor_Sized(void *type_info, int size)
 	{
 		array->element_count = 0;
 		array->max_elements = size;
-		array->buffer = memory_Malloc(array->element_size * array->element_count);
+		array->buffer = memory_Malloc(array->element_size * array->max_elements);
 	}
 
 	return array;
@@ -58,17 +60,17 @@ void script_array_Destructor(void *this_pointer)
 
 	if(!array->extern_array)
 	{
+		if(type_info)
+		{
+			//type_info->Release();
+		}
+
 		if((!array->extern_buffer) && array->buffer)
 		{
 			memory_Free(array->buffer);
 		}
 
 		memory_Free(array);
-	}
-
-	if(type_info)
-	{
-		type_info->Release();
 	}
 }
 
@@ -80,11 +82,16 @@ void script_array_AddRef(void *this_pointer)
 	array = (struct script_array_t *)this_pointer;
 	type_info = (asITypeInfo *)array->type_info;
 
-	array->ref_count++;
-
-	if(type_info)
+	if(!array->extern_array)
 	{
-		type_info->AddRef();
+		array->ref_count++;
+
+		assert(array->ref_count < 1000000);
+
+		if(type_info)
+		{
+			//type_info->AddRef();
+		}
 	}
 }
 
@@ -96,21 +103,19 @@ void script_array_Release(void *this_pointer)
 	array = (struct script_array_t *)this_pointer;
 	type_info = (asITypeInfo *)array->type_info;
 
-	if(array->ref_count)
+	if(!array->extern_array)
 	{
-		array->ref_count--;
+		assert(array->ref_count < 1000000);
 
-		//if(type_info)
-		//{
-			//if(!type_info->Release())
-			//{
-		if(!array->ref_count)
+		if(array->ref_count)
 		{
-			script_array_Destructor(this_pointer);
-		}
+			array->ref_count--;
 
-			//}
-		//}
+			if(!array->ref_count)
+			{
+				script_array_Destructor(this_pointer);
+			}
+		}
 	}
 }
 
@@ -141,7 +146,7 @@ void *script_array_OpAssign(void *this_pointer, void *other)
 	/* not sure why this is needed here, but avoids the
 	script engine calling the array destructor after it
 	was destroyed... */
-    script_array_AddRef(this_array);
+    //script_array_AddRef(this_array);
 
 	return this_pointer;
 }

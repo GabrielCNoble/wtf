@@ -466,7 +466,7 @@ struct waypoint_t **navigation_FindPath(int *waypoint_count, vec3_t from, vec3_t
 	/* find the path backwards, so the list can
 	be constructed in the right direction by
 	following the parent pointers... */
-	start_point = navigation_GetClosestWaypoint(to, 1);
+	start_point = navigation_GetClosestWaypoint(to, 0);
 	end_point = navigation_GetClosestWaypoint(from, 0);
 
 	nav_open_list_cursor = 0;
@@ -487,6 +487,7 @@ struct waypoint_t **navigation_FindPath(int *waypoint_count, vec3_t from, vec3_t
 	start_point->h_cost = dot3(v, v);
 
 	nav_open_list[nav_open_list_cursor] = start_point;
+	start_point->open_list_index = 0;
 	nav_open_list_cursor++;
 
 	waypoints = (struct waypoint_t *)nav_waypoints.elements;
@@ -519,6 +520,7 @@ struct waypoint_t **navigation_FindPath(int *waypoint_count, vec3_t from, vec3_t
 		if(current_index < nav_open_list_cursor - 1)
 		{
 			nav_open_list[current_index] = nav_open_list[nav_open_list_cursor - 1];
+			nav_open_list[current_index]->open_list_index = current_index;
 		}
 		nav_open_list_cursor--;
 
@@ -558,12 +560,12 @@ struct waypoint_t **navigation_FindPath(int *waypoint_count, vec3_t from, vec3_t
 				nav_closed_list[nav_closed_list_cursor] = current;
 				nav_closed_list_cursor++;
 
-				if(current->position.x != to.x || current->position.y != to.y || current->position.z != to.z)
-				{
-					nav_temp_end_waypoint.position = to;
-					nav_closed_list[nav_closed_list_cursor] = &nav_temp_end_waypoint;
-					nav_closed_list_cursor++;
-				}
+				//if(current->position.x != to.x || current->position.y != to.y || current->position.z != to.z)
+				//{
+				//	nav_temp_end_waypoint.position = to;
+				//	nav_closed_list[nav_closed_list_cursor] = &nav_temp_end_waypoint;
+				//	nav_closed_list_cursor++;
+				//}
 			}
 
 			*waypoint_count = nav_closed_list_cursor;

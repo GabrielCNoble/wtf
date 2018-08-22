@@ -779,6 +779,11 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 
 				gui_ImGuiText("Type: Rigid body collider");
 
+				if(gui_ImGuiDragFloat("Mass", &collider_def->mass, 0.01, 0.0, 100.0, "%.03f", 1.0))
+				{
+					ed_entity_editor_update_preview_entity = 1;
+				}
+
 				for(i = 0; i < collider_def->collision_shape_count; i++)
 				{
 					collision_shape = collider_def->collision_shape + i;

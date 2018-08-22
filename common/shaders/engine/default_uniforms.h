@@ -7,62 +7,64 @@
 
 #ifdef MASSACRE_FRAGMENT_SHADER
 
-	#define LIGHT_CACHE_SIZE 32
+	#define LIGHT_UNIFORM_BUFFER_SIZE 32
 
-	#define SHADOW_MAP_RESOLUTION 512		
+	#define SHADOW_MAP_RESOLUTION 512
 	#define SHARED_SHADOW_MAP_HEIGHT 8192
 	#define SHARED_SHADOW_MAP_WIDTH 8192
 	#define SHADOW_MAP_WIDTH 0.0625
 	#define SHADOW_MAP_HEIGHT 0.0833333333333333
-	
-	
+
+
 	#define LIGHT_CACHED 1
 	#define LIGHT_MOVED (1 << 1)
 	#define LIGHT_NEEDS_REUPLOAD (1 << 2)
 	#define LIGHT_GENERATE_SHADOWS (1 << 3)
 	#define LIGHT_INVALID (1 << 4)
-	
+
 	#define CLUSTERS_PER_ROW 32
 	#define CLUSTER_ROWS 16
 	#define CLUSTER_LAYERS 24
-	
-	
+
+
 	#define MATERIAL_USE_DIFFUSE_TEXTURE (1<<1)
 	#define MATERIAL_USE_NORMAL_TEXTURE (1<<2)
 	#define MATERIAL_USE_HEIGHT_TEXTURE (1<<3)
 	#define MATERIAL_USE_ROUGHNESS_TEXTURE (1<<4)
 	#define MATERIAL_USE_METALNESS_TEXTURE (1<<5)
-		
+
 	#define MATERIAL_INVERT_NORMAL_X (1<<6)
 	#define MATERIAL_INVERT_NORMAL_Y (1<<7)
 	#define MATERIAL_USE_CUSTOM_SHADER (1<<8)
 	#define MATERIAL_TRANSLUCENT (1<<9)
-	
-	
+
+
 	struct light_params_fields
 	{
 		vec4 forward_axis;
 		vec4 position_radius;
 		vec4 color_energy;
 		int bm_flags;
-		unsigned int x_y;
-		int align0;
-		int align1;
+		float proj_param_a;
+		float proj_param_b;
+		int shadow_map;
 	};
-	
-	
-	
+
+
+
 	layout(std140) uniform light_params_uniform_block
 	{
-		light_params_fields light_params[LIGHT_CACHE_SIZE];
+		light_params_fields light_params[LIGHT_UNIFORM_BUFFER_SIZE];
 	};
-	
+
 	uniform sampler2D UNIFORM_texture_sampler0;
 	uniform sampler2D UNIFORM_texture_sampler1;
 	uniform sampler2D UNIFORM_texture_sampler2;
 	uniform samplerCube UNIFORM_texture_cube_sampler0;
 	uniform sampler2DArray UNIFORM_texture_array_sampler0;
-	
+
+	uniform samplerCubeArray UNIFORM_texture_cube_array_sampler0;
+
 	uniform int UNIFORM_r_bloom_radius;
 	uniform unsigned int UNIFORM_material_flags;
 	uniform usampler3D UNIFORM_cluster_texture;
@@ -79,6 +81,7 @@ uniform mat4 UNIFORM_projection_matrix;
 uniform mat4 UNIFORM_model_view_projection_matrix;
 uniform mat4 UNIFORM_view_projection_matrix;
 uniform mat4 UNIFORM_model_matrix;
+uniform mat4 UNIFORM_view_matrix;
 uniform mat4 UNIFORM_model_view_matrix;
 
 

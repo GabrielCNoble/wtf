@@ -366,8 +366,8 @@ void editor_EntityEditorUpdateCamera()
 
 	entity_editor_light.position->position = entity_editor_camera->world_position;
 	entity_editor_light.params->bm_flags |= LIGHT_MOVED;
-	entity_editor_light.params->radius = SET_LIGHT_RADIUS(entity_editor_camera_distance);
-	entity_editor_light.params->energy = SET_LIGHT_ENERGY((entity_editor_camera_distance * entity_editor_camera_distance + 10.0));
+	entity_editor_light.params->radius = PACK_LIGHT_RADIUS(entity_editor_camera_distance);
+	entity_editor_light.params->energy = PACK_LIGHT_ENERGY((entity_editor_camera_distance * entity_editor_camera_distance + 10.0));
 
 	//printf("%d\n", entity_editor_light.params->energy);
 

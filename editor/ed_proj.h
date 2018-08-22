@@ -7,7 +7,7 @@
 #include "matrix.h"
 #include "camera.h"
 #include "brush.h"
-#include "bsp_file.h"
+//#include "bsp_file.h"
 
 #define PROJ_EXT ".wtf"
 #define PROJ_VERSION 0
@@ -15,24 +15,24 @@
 /************************************************
 
 	structure of the project file (.wtf)...
-	
+
 	proj_header (proj_header_t)
-	
-	
+
+
 	material0 (material_lump_t)
 	diffuse_texture_name (if present)
 	normal_texture_name (if present)
-	
-	
+
+
 	material1 (material_lump_t)
 	diffuse_texture_name (if present)
 	normal_texture_name (if present)
 	.
 	.
 	.
-	
-	
-	
+
+
+
 	brush0 (brush_lump_t)
 	brush0_triangle_group0_material_name
 	brush0_triangle_group0_vertex_count
@@ -40,8 +40,8 @@
 	brush0_triangle_group1_material_name
 	brush0_triangle_group1_vertex_count
 	brush0_triangle_group1_vertices
-	
-	
+
+
 	brush1 (brush_lump_t)
 	brush1_triangle_group0_material_name
 	brush1_triangle_group0_vertex_count
@@ -52,26 +52,26 @@
 	.
 	.
 	.
-	
-	
+
+
 	light0 (light_lump_t)
 	light1 (light_lump_t)
 	.
 	.
 	.
-	
-	
+
+
 	camera0 (camera_lump_t)
 	camera1 (camera_lump_t)
 	.
 	.
 	.
-	
-	
-	
-	
-	
-		
+
+
+
+
+
+
 
 
 *************************************************/
@@ -93,7 +93,7 @@ enum PROJ_FILE_TAGS
 	MODEL_RECORD,
 };
 
-static char *proj_file_tags_str[] = 
+static char *proj_file_tags_str[] =
 {
 	"[polygon record]",
 	"[brush record]",
@@ -120,8 +120,8 @@ typedef struct
 	uint32_t wtf1;
 	uint32_t version;
 	uint32_t field_count;
-	
-	
+
+
 	uint32_t brush_count;
 	uint32_t light_count;
 	uint32_t camera_count;
@@ -133,7 +133,7 @@ typedef struct
 	uint32_t entity_count;
 	uint32_t sound_emitter_count;
 	uint32_t particle_emitter_count;
-	
+
 	/* reserved for future use... */
 	/* NOTE: yeah, this should do... */
 	uint32_t reserved0;
@@ -152,7 +152,7 @@ typedef struct
 	uint32_t reserved13;
 	uint32_t reserved14;
 	uint32_t reserved15;
-	
+
 }proj_header_t;
 
 /*
@@ -179,7 +179,7 @@ typedef struct
 ===================================================================
 */
 
-typedef struct
+/*typedef struct
 {
 	mat3_t orientation;
 	vec3_t position;
@@ -187,7 +187,7 @@ typedef struct
 	float width;
 	float height;
 	char name[MAX_NAME_LEN];
-}camera_record_t;
+}camera_record_t;*/
 
 /*
 ===================================================================
@@ -219,7 +219,7 @@ void editor_DirtyProject();
 void editor_CleanProject();
 
 char *editor_GetFullPathToProjectFileFolder();
- 
+
 #endif
 
 

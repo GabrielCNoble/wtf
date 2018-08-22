@@ -60,7 +60,8 @@ struct entity_record_start_t
 	char tag[(sizeof(entity_record_start_tag) + 3) & (~3)];
 	char name[ENTITY_NAME_MAX_LEN];
 	char def_name[ENTITY_NAME_MAX_LEN];
-	int flags;
+	short flags;
+	short entity_flags;
 	unsigned int data_skip_offset;
 };
 
@@ -130,6 +131,7 @@ struct component_record_t
 		struct
 		{
 			char collider_def_name[COLLIDER_DEF_NAME_MAX_LEN];
+			int flags;
 		}physics_component;
 
 		struct

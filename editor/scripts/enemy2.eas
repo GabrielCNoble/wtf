@@ -36,9 +36,12 @@ void main()
 
 	if(entity_GetEntityProp1i(current_entity, "state") == 1)
 	{
-		/* chasing player... */
+		/* player is in sight, so head directly towards them... */
+
 		player_position = entity_GetEntityPosition(player_entity, 0);
 		current_position = entity_GetPosition(0);
+
+		entity_SetEntityProp3f(current_entity, "player pos", player_position);
 
 		direction = player_position - current_position;
 
@@ -49,14 +52,29 @@ void main()
 
 		if(entity_GetEntityProp1i(current_entity, "state") == 2)
 		{
-            /* calculate route */
-			player_position = entity_GetEntityPosition(player_entity, 0);
+            /* player got out of sight. Find the route to where the player
+            was last seen... */
+
+			player_position = entity_GetEntityProp3f(current_entity, "player pos");
 			entity_FindPath(player_position);
             entity_SetEntityProp1i(current_entity, "state", 0);
 		}
 
-		direction = entity_GetWaypointDirection();
+		if(entity_GetWaypointDirection(direction) == 0)
+		{
+			/* end of route and no player in sight, so we'll
+			spoil the player position to the enemy... */
+
+			player_position = entity_GetEntityPosition(player_entity, 0);
+			entity_SetEntityProp3f(current_entity, "player pos", player_position);
+
+			/* and make the entity calculate a route to this new position... */
+			entity_SetEntityProp1i(current_entity, "state", 2);
+
+		}
 	}
+
+	//script_Print("current state: " + entity_GetEntityProp1i(current_entity, "state") + "\n");
 
     direction.y = 0.0;
 
@@ -77,10 +95,10 @@ void main()
 	}
 
 
-	if(entity_GetLife() >= 1800)
+	/*if(entity_GetLife() >= 1800)
 	{
 		entity_Die();
-	}
+	}*/
 
 
 }
@@ -93,8 +111,10 @@ void OnSpawn()
     entity_AddEntityProp1i(current_entity, "enemy");
     entity_SetEntityProp1i(current_entity, "enemy", -1);
 
+    entity_AddEntityProp3f(current_entity, "player pos");
+
     entity_AddEntityProp1i(current_entity, "state");
-    entity_SetEntityProp1i(current_entity, "state", 2);
+    entity_SetEntityProp1i(current_entity, "state", 0);
 }
 
 void OnDie()
@@ -103,6 +123,10 @@ void OnDie()
 	entity_handle_t current_entity = entity_GetCurrentEntity();
 	vec3_t position = entity_GetEntityPosition(current_entity, 0);
 	particle_SpawnParticleSystem(position, particle_system_def);
+
+	entity_RemoveEntityProp(current_entity, "enemy");
+	entity_RemoveEntityProp(current_entity, "state");
+	entity_RemoveEntityProp(current_entity, "player pos");
 
 	int sound_index;
 
@@ -126,7 +150,7 @@ void OnDie()
 	}
 
 	//sound_handle_t explosion_sound = sound_GetSound("explosion");
-	sound_PlaySound(explosion_sound, position, 10.0, 0);
+	sound_PlaySound(explosion_sound, position, 1.5, 0);
 
 	//script_Print("DIE!\n");
 }

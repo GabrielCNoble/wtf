@@ -53,9 +53,8 @@ void stack_list_resize(struct stack_list_t *stack_list, int increment)
 
    	memory_Free(stack_list->free_stack);
 	stack_list->free_stack = memory_Calloc(stack_list->max_elements + increment, sizeof(int));
-
 	elements = memory_Calloc(stack_list->max_elements + increment, stack_list->element_size);
-	//memmove(elements, stack_list->elements, stack_list->element_size * stack_list->max_elements);
+
 	memcpy(elements, stack_list->elements, stack_list->element_size * stack_list->max_elements);
 
 	memory_Free(stack_list->elements);
@@ -99,11 +98,11 @@ int stack_list_add(struct stack_list_t *stack_list, void *data)
 
 void stack_list_remove(struct stack_list_t *stack_list, int index)
 {
-    if(stack_list->free_stack_top < stack_list->max_elements - 1)
-	{
-		stack_list->free_stack_top++;
-		stack_list->free_stack[stack_list->free_stack_top] = index;
-	}
+    //if(stack_list->free_stack_top < stack_list->max_elements - 1)
+	//{
+	stack_list->free_stack_top++;
+	stack_list->free_stack[stack_list->free_stack_top] = index;
+	//}
 }
 
 void *stack_list_get(struct stack_list_t *stack_list, int index)

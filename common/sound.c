@@ -146,11 +146,11 @@ void sound_Finish()
 {
 	int i;
 
-	sound_EmitSoundCommand(SOUND_COMMAND_TYPE_STOP_BACKEND, -1);
+	//sound_EmitSoundCommand(SOUND_COMMAND_TYPE_STOP_BACKEND, -1);
 
-	SDL_WaitThread(snd_sound_thread, NULL);
+	//SDL_WaitThread(snd_sound_thread, NULL);
 
-	alcDestroyContext(sound_context);
+	/*alcDestroyContext(sound_context);
 	alcCloseDevice(sound_device);
 
 	for(i = 0; i < MAX_SOUND_SOURCES; i++)
@@ -160,7 +160,7 @@ void sound_Finish()
 
 	stack_list_destroy(&snd_sounds);
 	memory_Free(snd_sound_commands);
-	memory_Free(snd_sound_sources);
+	memory_Free(snd_sound_sources);*/
 }
 
 struct sound_handle_t sound_CreateEmptySound(char *name)
@@ -704,6 +704,20 @@ void sound_StopSound(int sound_source)
 	}
 }
 
+int sound_IsSourcePlaying(int sound_source)
+{
+    struct sound_source_t *source;
+	int flags;
+
+    source = sound_GetSoundSourcePointer(sound_source);
+
+    if(source)
+	{
+		flags = source->flags;
+		return (flags & SOURCE_FLAG_PLAYING) && 1;
+	}
+}
+
 void sound_ResumeAllSounds()
 {
 
@@ -781,10 +795,12 @@ int sound_SoundBackend(void *param)
                     snd_active_sound_sources_count++;
 
                     alSourcei(sound_source->source_handle, AL_BUFFER, sound_source->params.al_sound_buffer);
+                    alSourcef(sound_source->source_handle, AL_GAIN, sound_source->params.gain);
 
 				case SOUND_COMMAND_TYPE_RESUME_SOUND:
-					alSourcePlay(sound_source->source_handle);
 					alSourcei(sound_source->source_handle, AL_LOOPING, (sound_source->flags & SOURCE_FLAG_LOOP ? AL_TRUE : AL_FALSE));
+
+					alSourcePlay(sound_source->source_handle);
 					sound_source->flags = SOURCE_FLAG_PLAYING | SOURCE_FLAG_ASSIGNED;
 				break;
 

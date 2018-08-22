@@ -41,7 +41,7 @@ asIScriptEngine *scr_virtual_machine = NULL;
 int scr_max_contexts = 0;
 int scr_contexts_stack_top = -1;
 asIScriptContext **scr_contexts_stack = NULL;
-
+struct script_invocation_data_t *scr_invocation_data;
 
 
 struct script_t *scr_scripts = NULL;
@@ -102,9 +102,10 @@ int script_Init()
 
 	script_RegisterTypesAndFunctions();
 
-	scr_max_contexts = 128;
+	scr_max_contexts = MAX_SCRIPT_CONTEXTS;
 
 	scr_contexts_stack = (asIScriptContext **)memory_Malloc(sizeof(asIScriptContext *) * scr_max_contexts);
+	scr_invocation_data = (struct script_invocation_data_t *)memory_Malloc(sizeof(struct script_invocation_data_t ) * scr_max_contexts);
 
 	for(i = 0; i < scr_max_contexts; i++)
 	{
@@ -131,6 +132,7 @@ void script_Finish()
 
 	scr_virtual_machine->ShutDownAndRelease();
 	memory_Free(scr_contexts_stack);
+	memory_Free(scr_invocation_data);
 }
 
 void script_ScriptPrint(struct script_string_t *fmt)
@@ -447,7 +449,7 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Jump(float jump_force)", asFUNCTION(entity_ScriptJump), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Move(vec3_t &in direction)", asFUNCTION(entity_ScriptMove), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_FindPath(vec3_t &in to)", asFUNCTION(entity_ScriptFindPath), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("vec3_t &entity_GetWaypointDirection()", asFUNCTION(entity_ScriptGetWaypointDirection), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("int entity_GetWaypointDirection(vec3_t &out direction)", asFUNCTION(entity_ScriptGetWaypointDirection), asCALL_CDECL);
 
 
 
@@ -566,7 +568,10 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterObjectType("sound_handle_t", sizeof(struct sound_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
 
 	scr_virtual_machine->RegisterGlobalFunction("sound_handle_t sound_GetSound(string &in name)", asFUNCTION(sound_ScriptGetSound), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void sound_PlaySound(sound_handle_t sound, vec3_t &in position, float gain, int loop)", asFUNCTION(sound_ScriptPlaySound), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("int sound_PlaySound(sound_handle_t sound, vec3_t &in position, float gain, int loop)", asFUNCTION(sound_ScriptPlaySound), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void sound_PauseSound(int sound_source)", asFUNCTION(sound_ScriptPauseSound), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void sound_StopSound(int sound_source)", asFUNCTION(sound_ScriptStopSound), asCALL_CDECL);
+    scr_virtual_machine->RegisterGlobalFunction("int sound_IsSourcePlaying(int sound_source)", asFUNCTION(sound_ScriptIsSourcePlaying), asCALL_CDECL);
 
 
 }
@@ -1102,6 +1107,28 @@ int script_GetTypeSize(void *type_info)
 	return element_size;
 }
 
+int script_GetContextStackTop()
+{
+    return scr_contexts_stack_top;
+}
+
+void script_SetCurrentInvocationData(void *data, int size)
+{
+	if(data)
+	{
+		memcpy(&scr_invocation_data[scr_contexts_stack_top + 1].data, data, size);
+	}
+}
+
+void *script_GetCurrentInvocationDataPointer()
+{
+	return &scr_invocation_data[scr_contexts_stack_top + 1].data;
+}
+
+void script_GetCurrentInvocationData(void *data, int size)
+{
+    memcpy(data, &scr_invocation_data[scr_contexts_stack_top + 1].data, size);
+}
 
 #ifdef __cplusplus
 }

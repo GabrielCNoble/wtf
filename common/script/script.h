@@ -73,6 +73,14 @@ int script_GetScriptTypeSize(int type);
 
 int script_GetTypeSize(void *type_info);
 
+int script_GetContextStackTop();
+
+void script_SetCurrentInvocationData(void *data, int size);
+
+void *script_GetCurrentInvocationDataPointer();
+
+void script_GetCurrentInvocationData(void *data, int size);
+
 
 #ifdef __cplusplus
 }

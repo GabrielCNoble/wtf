@@ -83,12 +83,6 @@
 		<Unit filename="../common/bsp_common.h">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../common/bsp_file.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/bsp_file.h">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="../common/c_memory.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -107,10 +101,18 @@
 		<Unit filename="../common/camera_types.h">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../common/containers/alloc_list.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/containers/alloc_list.h" />
 		<Unit filename="../common/containers/list.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/containers/list.h" />
+		<Unit filename="../common/containers/multi_list.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/containers/multi_list.h" />
 		<Unit filename="../common/containers/stack.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -144,12 +146,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/event.h" />
-		<Unit filename="../common/file.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/file.h">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="../common/font.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -376,17 +372,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/r_shader.h" />
-		<Unit filename="../common/r_text.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/r_text.h">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="../common/resource.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/resource.h" />
-		<Unit filename="../common/scr_typeof.h" />
 		<Unit filename="../common/script/scr_common.h" />
 		<Unit filename="../common/script/scr_entity.c">
 			<Option compilerVar="CC" />
@@ -435,7 +424,6 @@
 		<Unit filename="../common/script/script_types/scr_types.h" />
 		<Unit filename="../common/script/script_types/scriptstdstring.cpp" />
 		<Unit filename="../common/script/script_types/scriptstdstring.h" />
-		<Unit filename="../common/scriptarray.cpp" />
 		<Unit filename="../common/scriptarray.h" />
 		<Unit filename="../common/shader.c">
 			<Option compilerVar="CC" />

@@ -5,7 +5,7 @@
 #include "material.h"
 #include "vector.h"
 #include "c_memory.h"
-#include "bsp_file.h"
+//#include "bsp_file.h"
 #include "texture.h"
 
 

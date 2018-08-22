@@ -16,7 +16,7 @@ struct list_t list_create(int element_size, int max_elements, void (*dispose_cal
 	list.element_size = element_size;
 	list.element_count = 0;
 	list.max_elements = max_elements;
-	list.dispose_callback = dispose_callback;
+//	list.dispose_callback = dispose_callback;
 
 	list.elements = memory_Calloc(list.max_elements, list.element_size);
 
@@ -27,13 +27,13 @@ void list_destroy(struct list_t *list)
 {
 	int i;
 
-	if(list->dispose_callback)
-	{
-		for(i = 0; i < list->element_count; i++)
-		{
-			list->dispose_callback((char *)list->elements + list->element_size * i);
-		}
-	}
+//	if(list->dispose_callback)
+//	{
+//		for(i = 0; i < list->element_count; i++)
+//		{
+//			list->dispose_callback((char *)list->elements + list->element_size * i);
+//		}
+//	}
 
 	memory_Free(list->elements);
 }

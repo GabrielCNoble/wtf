@@ -12,7 +12,17 @@ extern "C"
 
 struct sound_handle_t sound_ScriptGetSound(struct script_string_t *name);
 
-void sound_ScriptPlaySound(struct sound_handle_t sound, vec3_t *position, float gain, int loop);
+int sound_ScriptPlaySound(struct sound_handle_t sound, vec3_t *position, float gain, int loop);
+
+void sound_ScriptPauseSound(int sound_source);
+
+void sound_ScriptStopSound(int sound_source);
+
+int sound_ScriptIsSourcePlaying(int sound_source);
+
+
+
+void sound_ScriptLoadSound(struct script_string_t *name);
 
 void sound_ScriptPauseAllSounds();
 

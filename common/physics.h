@@ -108,9 +108,15 @@ void physics_SetColliderScale(struct collider_handle_t collider, vec3_t scale);
 
 void physics_SetColliderVelocity(struct collider_handle_t collider, vec3_t velocity);
 
+void physics_SetColliderMass(struct collider_handle_t collider, float mass);
+
+void physics_SetColliderStatic(struct collider_handle_t collider, int set);
+
 void physics_ApplyCentralForce(struct collider_handle_t collider, vec3_t force);
 
 void physics_ApplyCentralImpulse(struct collider_handle_t collider, vec3_t impulse);
+
+
 
 
 

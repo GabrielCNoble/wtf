@@ -1,0 +1,76 @@
+[bsp section start]
+
+
+[bsp record start]
+-leaf count
+-node count
+-vertice count
+-batch count
+
+[bsp batch record]
+-material name
+-indice count
+-indices
+
+[bsp batch record]
+-material name
+-indice count
+-indices
+
+[bsp batch record]
+-material name
+-indice count
+-indices
+
+.
+.
+.
+
+[bsp leaf]
+-center
+-extents
+-triangle count
+-triangles
+-pvs
+
+[bsp leaf]
+-center
+-extents
+-triangle count
+-triangles
+-pvs
+
+[bsp leaf]
+-center
+-extents
+-triangle count
+-triangles
+-pvs
+
+.
+.
+.
+
+
+[bsp node]
+-normal
+-dist
+-child
+
+[bsp node]
+-normal
+-dist
+-child
+
+[bsp node]
+-normal
+-dist
+-child
+
+.
+.
+.
+
+[bsp record end]
+
+[bsp section end]

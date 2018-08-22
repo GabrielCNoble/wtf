@@ -2,104 +2,9 @@
 <CodeBlocks_layout_file>
 	<FileVersion major="1" minor="0" />
 	<ActiveTarget name="default" />
-	<File name="..\common\script\script_types\scr_types.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\common\r_main.h" open="1" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="1129" topLine="23" />
-		</Cursor>
-	</File>
-	<File name="..\common\r_common.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="2113" topLine="99" />
-		</Cursor>
-	</File>
-	<File name="..\common\world.h" open="1" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1259" topLine="57" />
-		</Cursor>
-	</File>
-	<File name="..\common\gui_imgui.h" open="0" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="9006" topLine="301" />
-		</Cursor>
-	</File>
-	<File name="brush.h" open="1" top="0" tabpos="34" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="5195" topLine="204" />
-		</Cursor>
-	</File>
-	<File name="..\common\imgui\imgui.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="263349" topLine="5214" />
-		</Cursor>
-	</File>
-	<File name="..\common\r_gl.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="214" topLine="15" />
-		</Cursor>
-	</File>
-	<File name="bsp_cmp.h" open="1" top="0" tabpos="37" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1554" topLine="70" />
-		</Cursor>
-	</File>
-	<File name="..\common\l_main.h" open="1" top="0" tabpos="25" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3309" topLine="156" />
-		</Cursor>
-	</File>
-	<File name="..\common\imgui\imgui_draw.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="301" topLine="129" />
-		</Cursor>
-	</File>
-	<File name="..\common\shader.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="25379" topLine="869" />
-		</Cursor>
-	</File>
-	<File name="..\common\ent_common.h" open="1" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="352" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\r_main.h" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="3" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="5027" topLine="144" />
-		</Cursor>
-	</File>
-	<File name="ed_entity.c" open="0" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="23817" topLine="790" />
-		</Cursor>
-	</File>
-	<File name="..\common\material.h" open="0" top="0" tabpos="18" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3300" topLine="148" />
-		</Cursor>
-	</File>
-	<File name="..\common\containers\stack_list.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="962" topLine="12" />
-		</Cursor>
-	</File>
-	<File name="..\common\engine.h" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1025" topLine="27" />
-		</Cursor>
-	</File>
-	<File name="ed_entity_draw.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="4851" topLine="170" />
-		</Cursor>
-	</File>
-	<File name="..\common\model.h" open="0" top="0" tabpos="17" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="4473" topLine="216" />
-		</Cursor>
-	</File>
-	<File name="ed_entity_ui.c" open="0" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="25029" topLine="901" />
+			<Cursor1 position="5165" topLine="150" />
 		</Cursor>
 	</File>
 	<File name="..\common\mpk_read.c" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
@@ -107,454 +12,9 @@
 			<Cursor1 position="2651" topLine="88" />
 		</Cursor>
 	</File>
-	<File name="..\common\gmath\half_float.h" open="0" top="0" tabpos="31" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="73" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\bsp.c" open="0" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1565" topLine="69" />
-		</Cursor>
-	</File>
-	<File name="..\common\resource.h" open="0" top="0" tabpos="19" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="590" topLine="4" />
-		</Cursor>
-	</File>
-	<File name="..\common\mpk_write.c" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="36296" topLine="1408" />
-		</Cursor>
-	</File>
-	<File name="..\common\containers\stack_list.inl" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1398" topLine="26" />
-		</Cursor>
-	</File>
-	<File name="ed_level.h" open="1" top="0" tabpos="30" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3462" topLine="83" />
-		</Cursor>
-	</File>
-	<File name="..\common\nav_common.h" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="761" topLine="3" />
-		</Cursor>
-	</File>
-	<File name="..\common\gmath\matrix.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="314" topLine="465" />
-		</Cursor>
-	</File>
-	<File name="..\common\script\scr_entity.h" open="0" top="0" tabpos="19" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="5134" topLine="150" />
-		</Cursor>
-	</File>
-	<File name="ed_level_draw.h" open="0" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="3" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="188" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\navigation.h" open="0" top="0" tabpos="17" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1210" topLine="21" />
-		</Cursor>
-	</File>
-	<File name="..\common\gmath\matrix.inl" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="371" topLine="48" />
-		</Cursor>
-	</File>
-	<File name="..\common\containers\stack.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="154" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\script\scr_math.h" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="481" topLine="9" />
-		</Cursor>
-	</File>
-	<File name="ed_level_ui.h" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="254" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\particle.h" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3863" topLine="128" />
-		</Cursor>
-	</File>
-	<File name="..\common\entity.inl" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="449" topLine="6" />
-		</Cursor>
-	</File>
-	<File name="..\common\path.h" open="0" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="820" topLine="24" />
-		</Cursor>
-	</File>
-	<File name="..\common\script\scr_sound.h" open="0" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="254" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\phy_character.h" open="1" top="0" tabpos="17" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="72" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\script\scr_world.h" open="0" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="582" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\phy_projectile.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="619" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\sound.c" open="1" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="3" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="292" topLine="15" />
-		</Cursor>
-	</File>
-	<File name="..\common\gmath\vector.c" open="1" top="0" tabpos="22" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="5795" topLine="273" />
-		</Cursor>
-	</File>
-	<File name="..\common\ent_serialization.h" open="1" top="0" tabpos="29" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1485" topLine="34" />
-		</Cursor>
-	</File>
-	<File name="..\common\script\script.h" open="0" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1954" topLine="32" />
-		</Cursor>
-	</File>
-	<File name="ed_ui_explorer.h" open="0" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="2421" topLine="100" />
-		</Cursor>
-	</File>
-	<File name="..\common\physics.c" open="1" top="0" tabpos="20" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="37971" topLine="1584" />
-		</Cursor>
-	</File>
-	<File name="..\common\tex_common.h" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="580" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\font.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="4242" topLine="220" />
-		</Cursor>
-	</File>
-	<File name="..\common\script\script_types\scr_array.h" open="0" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="129" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\tex_ptx.h" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="150" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\gpu.h" open="1" top="0" tabpos="23" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="677" topLine="18" />
-		</Cursor>
-	</File>
-	<File name="..\common\entity.h" open="1" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="8112" topLine="217" />
-		</Cursor>
-	</File>
-	<File name="..\common\texture.h" open="0" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="958" topLine="33" />
-		</Cursor>
-	</File>
-	<File name="..\common\gui.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1856" topLine="90" />
-		</Cursor>
-	</File>
-	<File name="..\common\animation.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="26" topLine="0" />
-		</Cursor>
-	</File>
 	<File name="main.c" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="61" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\world.c" open="1" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="28137" topLine="1147" />
-		</Cursor>
-	</File>
-	<File name="..\common\gui_imgui.c" open="0" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="15252" topLine="626" />
-		</Cursor>
-	</File>
-	<File name="..\common\ent_serialization.c" open="1" top="0" tabpos="32" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="27518" topLine="827" />
-		</Cursor>
-	</File>
-	<File name="pvs.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="74012" topLine="3423" />
-		</Cursor>
-	</File>
-	<File name="..\common\r_debug.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="22616" topLine="859" />
-		</Cursor>
-	</File>
-	<File name="brush.c" open="1" top="0" tabpos="35" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="44901" topLine="1949" />
-		</Cursor>
-	</File>
-	<File name="..\common\l_common.h" open="1" top="0" tabpos="26" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="748" topLine="6" />
-		</Cursor>
-	</File>
-	<File name="..\common\containers\list.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="408" topLine="2" />
-		</Cursor>
-	</File>
-	<File name="..\common\r_gl.c" open="0" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="3" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="4718" topLine="160" />
-		</Cursor>
-	</File>
-	<File name="bsp_cmp.c" open="1" top="1" tabpos="36" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="54347" topLine="2589" />
-		</Cursor>
-	</File>
-	<File name="..\common\l_main.c" open="1" top="0" tabpos="27" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="17817" topLine="594" />
-		</Cursor>
-	</File>
-	<File name="..\common\imgui\imgui.h" open="0" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="56157" topLine="465" />
-		</Cursor>
-	</File>
-	<File name="..\common\r_imediate.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1499" topLine="42" />
-		</Cursor>
-	</File>
-	<File name="..\common\gmath\fixed.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="103" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\r_main.c" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="59591" topLine="2267" />
-		</Cursor>
-	</File>
-	<File name="..\common\material.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="24052" topLine="1003" />
-		</Cursor>
-	</File>
-	<File name="..\common\engine.c" open="1" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="4169" topLine="208" />
-		</Cursor>
-	</File>
-	<File name="..\common\entity.c" open="1" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="90137" topLine="3155" />
-		</Cursor>
-	</File>
-	<File name="..\common\shd_pprc.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="16144" topLine="859" />
-		</Cursor>
-	</File>
-	<File name="..\common\r_shader.c" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="11246" topLine="551" />
-		</Cursor>
-	</File>
-	<File name="ed_entity.h" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="2632" topLine="45" />
-		</Cursor>
-	</File>
-	<File name="..\common\model.c" open="0" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="27897" topLine="1040" />
-		</Cursor>
-	</File>
-	<File name="..\common\containers\stack.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="83" topLine="21" />
-		</Cursor>
-	</File>
-	<File name="..\common\mpk_file.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="911" topLine="6" />
-		</Cursor>
-	</File>
-	<File name="..\common\gmath\half_float.c" open="0" top="0" tabpos="32" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="833" topLine="75" />
-		</Cursor>
-	</File>
-	<File name="..\common\resource.c" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1420" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="ed_entity_ui.h" open="0" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="321" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\mpk_read.h" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="25" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\containers\stack_list.c" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="2150" topLine="33" />
-		</Cursor>
-	</File>
-	<File name="ed_level.c" open="1" top="0" tabpos="31" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="50116" topLine="1682" />
-		</Cursor>
-	</File>
-	<File name="..\common\mpk_write.h" open="0" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="3" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1248" topLine="11" />
-		</Cursor>
-	</File>
-	<File name="..\common\c_memory.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="7424" topLine="348" />
-		</Cursor>
-	</File>
-	<File name="..\common\script\scr_entity.c" open="1" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="16162" topLine="570" />
-		</Cursor>
-	</File>
-	<File name="ed_level_draw.c" open="1" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3308" topLine="162" />
-		</Cursor>
-	</File>
-	<File name="..\common\navigation.c" open="0" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="9763" topLine="446" />
-		</Cursor>
-	</File>
-	<File name="..\common\c_memory.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="800" topLine="4" />
-		</Cursor>
-	</File>
-	<File name="..\common\script\scr_math.c" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="716" topLine="18" />
-		</Cursor>
-	</File>
-	<File name="ed_level_ui.c" open="0" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="20482" topLine="765" />
-		</Cursor>
-	</File>
-	<File name="..\common\particle.c" open="1" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="14725" topLine="539" />
-		</Cursor>
-	</File>
-	<File name="..\common\event.h" open="1" top="0" tabpos="28" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="0" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\common\path.c" open="0" top="0" tabpos="17" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3104" topLine="132" />
-		</Cursor>
-	</File>
-	<File name="..\common\script\scr_sound.c" open="0" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="489" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="ed_selection.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="8027" topLine="372" />
-		</Cursor>
-	</File>
-	<File name="..\common\phy_character.c" open="1" top="0" tabpos="18" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="12249" topLine="406" />
-		</Cursor>
-	</File>
-	<File name="..\common\soil\stb_image_aug.h" open="0" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="9346" topLine="190" />
-		</Cursor>
-	</File>
-	<File name="..\common\script\scr_world.c" open="0" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3054" topLine="118" />
-		</Cursor>
-	</File>
-	<File name="ed_ui.c" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="859" topLine="56" />
-		</Cursor>
-	</File>
-	<File name="..\common\phy_common.h" open="1" top="0" tabpos="21" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3405" topLine="161" />
-		</Cursor>
-	</File>
-	<File name="..\common\camera.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="2187" topLine="90" />
-		</Cursor>
-	</File>
-	<File name="..\common\script\script.c" open="0" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="46260" topLine="942" />
-		</Cursor>
-	</File>
-	<File name="ed_ui_explorer.c" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="17368" topLine="570" />
-		</Cursor>
-	</File>
-	<File name="..\common\sound.h" open="1" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="3" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3366" topLine="131" />
 		</Cursor>
 	</File>
 	<File name="..\common\gmath\vector.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -562,19 +22,89 @@
 			<Cursor1 position="2229" topLine="95" />
 		</Cursor>
 	</File>
-	<File name="..\common\script\script_types\scr_array.c" open="0" top="0" tabpos="17" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\common\entity.inl" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="2589" topLine="112" />
+			<Cursor1 position="449" topLine="6" />
 		</Cursor>
 	</File>
-	<File name="editor.c" open="0" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\common\mpk_write.c" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="22595" topLine="812" />
+			<Cursor1 position="36296" topLine="1408" />
 		</Cursor>
 	</File>
-	<File name="..\common\physics.h" open="1" top="0" tabpos="19" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+	<File name="..\common\resource.h" open="0" top="0" tabpos="19" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="4571" topLine="105" />
+			<Cursor1 position="590" topLine="4" />
+		</Cursor>
+	</File>
+	<File name="pvs.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="74012" topLine="3423" />
+		</Cursor>
+	</File>
+	<File name="..\common\gpu.c" open="1" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="18510" topLine="767" />
+		</Cursor>
+	</File>
+	<File name="brush.c" open="0" top="0" tabpos="35" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="44901" topLine="1949" />
+		</Cursor>
+	</File>
+	<File name="..\common\soil\stb_image_aug.h" open="0" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="9346" topLine="190" />
+		</Cursor>
+	</File>
+	<File name="..\common\script\scr_entity.c" open="1" top="0" tabpos="35" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="18900" topLine="662" />
+		</Cursor>
+	</File>
+	<File name="bsp_cmp.c" open="1" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="8631" topLine="374" />
+		</Cursor>
+	</File>
+	<File name="..\common\font.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="4242" topLine="220" />
+		</Cursor>
+	</File>
+	<File name="..\common\script\scr_math.c" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="716" topLine="18" />
+		</Cursor>
+	</File>
+	<File name="..\common\nav_common.h" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="761" topLine="3" />
+		</Cursor>
+	</File>
+	<File name="..\common\containers\alloc_list.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="329" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\sound.h" open="1" top="0" tabpos="32" split="0" active="1" splitpos="0" zoom_1="3" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="3214" topLine="120" />
+		</Cursor>
+	</File>
+	<File name="..\common\navigation.h" open="0" top="0" tabpos="17" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1210" topLine="21" />
+		</Cursor>
+	</File>
+	<File name="..\common\gui_imgui.h" open="0" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="9006" topLine="301" />
+		</Cursor>
+	</File>
+	<File name="..\common\event.h" open="0" top="0" tabpos="28" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="0" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="..\common\tex_ptx.c" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="3" zoom_2="0">
@@ -582,14 +112,29 @@
 			<Cursor1 position="106" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="..\common\gpu.c" open="1" top="0" tabpos="24" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+	<File name="..\common\script\scr_sound.c" open="1" top="0" tabpos="29" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="1672" topLine="47" />
+			<Cursor1 position="706" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="..\common\player.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\common\particle.h" open="0" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="5439" topLine="212" />
+			<Cursor1 position="3863" topLine="128" />
+		</Cursor>
+	</File>
+	<File name="..\common\imgui\imgui.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="263349" topLine="5214" />
+		</Cursor>
+	</File>
+	<File name="ed_entity.h" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="2632" topLine="45" />
+		</Cursor>
+	</File>
+	<File name="..\common\containers\alloc_list.c" open="0" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="830" topLine="2" />
 		</Cursor>
 	</File>
 	<File name="..\common\texture.c" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
@@ -597,9 +142,469 @@
 			<Cursor1 position="9496" topLine="376" />
 		</Cursor>
 	</File>
+	<File name="..\common\script\scr_world.c" open="0" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="852" topLine="30" />
+		</Cursor>
+	</File>
+	<File name="..\common\path.h" open="0" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="820" topLine="24" />
+		</Cursor>
+	</File>
+	<File name="..\common\imgui\imgui_draw.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="301" topLine="129" />
+		</Cursor>
+	</File>
+	<File name="..\common\w_common.h" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="219" topLine="1" />
+		</Cursor>
+	</File>
+	<File name="..\common\script\script.c" open="1" top="0" tabpos="33" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="26476" topLine="437" />
+		</Cursor>
+	</File>
+	<File name="..\common\phy_character.h" open="0" top="0" tabpos="17" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="72" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="ed_entity_ui.h" open="0" top="0" tabpos="25" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="417" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\gmath\fixed.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="103" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\world.h" open="1" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1932" topLine="81" />
+		</Cursor>
+	</File>
+	<File name="..\common\script\script_types\scr_array.c" open="1" top="0" tabpos="25" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="3598" topLine="147" />
+		</Cursor>
+	</File>
+	<File name="..\common\phy_projectile.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="619" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="ed_level.c" open="1" top="0" tabpos="27" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="14172" topLine="360" />
+		</Cursor>
+	</File>
+	<File name="..\common\containers\stack.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="154" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\physics.c" open="0" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="36793" topLine="1402" />
+		</Cursor>
+	</File>
+	<File name="ed_level_draw.c" open="0" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="8604" topLine="309" />
+		</Cursor>
+	</File>
+	<File name="..\common\ent_common.h" open="0" top="0" tabpos="23" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1341" topLine="171" />
+		</Cursor>
+	</File>
 	<File name="..\common\script\script_types\scr_typeof.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="319" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="ed_level_ui.c" open="0" top="0" tabpos="22" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="21267" topLine="805" />
+		</Cursor>
+	</File>
+	<File name="..\common\gmath\half_float.h" open="0" top="0" tabpos="31" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="73" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\bsp.c" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="14107" topLine="695" />
+		</Cursor>
+	</File>
+	<File name="..\common\l_cache.c" open="0" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="11607" topLine="455" />
+		</Cursor>
+	</File>
+	<File name="..\common\script\script_types\scr_types.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1129" topLine="23" />
+		</Cursor>
+	</File>
+	<File name="..\common\containers\stack.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="83" topLine="21" />
+		</Cursor>
+	</File>
+	<File name="..\common\l_common.h" open="1" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="5182" topLine="174" />
+		</Cursor>
+	</File>
+	<File name="ed_selection.c" open="0" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="5782" topLine="310" />
+		</Cursor>
+	</File>
+	<File name="..\common\gmath\matrix.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="24864" topLine="857" />
+		</Cursor>
+	</File>
+	<File name="..\common\c_memory.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="7498" topLine="393" />
+		</Cursor>
+	</File>
+	<File name="..\common\l_main.c" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="8493" topLine="234" />
+		</Cursor>
+	</File>
+	<File name="..\common\r_debug.c" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="7652" topLine="336" />
+		</Cursor>
+	</File>
+	<File name="ed_ui.c" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="859" topLine="56" />
+		</Cursor>
+	</File>
+	<File name="..\common\gmath\matrix.inl" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="371" topLine="48" />
+		</Cursor>
+	</File>
+	<File name="..\common\containers\multi_list.c" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1662" topLine="40" />
+		</Cursor>
+	</File>
+	<File name="..\common\shader.h" open="1" top="0" tabpos="21" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="58" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\r_gl.c" open="1" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="3" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="7716" topLine="327" />
+		</Cursor>
+	</File>
+	<File name="ed_ui_explorer.c" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="17368" topLine="570" />
+		</Cursor>
+	</File>
+	<File name="..\common\engine.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1025" topLine="27" />
+		</Cursor>
+	</File>
+	<File name="..\common\material.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="293" topLine="42" />
+		</Cursor>
+	</File>
+	<File name="..\common\shd_pprc.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="16144" topLine="859" />
+		</Cursor>
+	</File>
+	<File name="..\common\r_imediate.c" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="8596" topLine="375" />
+		</Cursor>
+	</File>
+	<File name="editor.c" open="0" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="22595" topLine="812" />
+		</Cursor>
+	</File>
+	<File name="..\common\ent_serialization.h" open="0" top="0" tabpos="24" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="5303" topLine="228" />
+		</Cursor>
+	</File>
+	<File name="..\common\model.c" open="0" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="28386" topLine="1040" />
+		</Cursor>
+	</File>
+	<File name="..\common\r_main.c" open="1" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="68778" topLine="2525" />
+		</Cursor>
+	</File>
+	<File name="..\common\containers\list.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="258" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\mpk_file.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="911" topLine="6" />
+		</Cursor>
+	</File>
+	<File name="..\common\r_shader.c" open="1" top="0" tabpos="24" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="4584" topLine="209" />
+		</Cursor>
+	</File>
+	<File name="..\common\gmath\vector.c" open="1" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="5386" topLine="273" />
+		</Cursor>
+	</File>
+	<File name="..\common\containers\stack_list.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="962" topLine="12" />
+		</Cursor>
+	</File>
+	<File name="..\common\mpk_read.h" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="25" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\resource.c" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="322" topLine="15" />
+		</Cursor>
+	</File>
+	<File name="..\common\gmath\vector_types.h" open="1" top="0" tabpos="17" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1139" topLine="114" />
+		</Cursor>
+	</File>
+	<File name="..\common\mpk_write.h" open="0" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="3" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1248" topLine="11" />
+		</Cursor>
+	</File>
+	<File name="..\common\entity.h" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="4584" topLine="111" />
+		</Cursor>
+	</File>
+	<File name="..\common\gpu.h" open="0" top="0" tabpos="23" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="677" topLine="18" />
+		</Cursor>
+	</File>
+	<File name="brush.h" open="0" top="0" tabpos="34" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="205" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\engine.c" open="1" top="0" tabpos="23" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="5758" topLine="256" />
+		</Cursor>
+	</File>
+	<File name="..\common\script\scr_entity.h" open="1" top="0" tabpos="36" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="5673" topLine="153" />
+		</Cursor>
+	</File>
+	<File name="..\common\gui.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1856" topLine="90" />
+		</Cursor>
+	</File>
+	<File name="bsp_cmp.h" open="1" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="3913" topLine="228" />
+		</Cursor>
+	</File>
+	<File name="..\common\animation.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="26" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\sound.c" open="1" top="0" tabpos="31" split="0" active="1" splitpos="0" zoom_1="3" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="17680" topLine="776" />
+		</Cursor>
+	</File>
+	<File name="..\common\script\scr_math.h" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="481" topLine="9" />
+		</Cursor>
+	</File>
+	<File name="..\common\navigation.c" open="1" top="0" tabpos="37" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="10208" topLine="473" />
+		</Cursor>
+	</File>
+	<File name="..\common\gui_imgui.c" open="0" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="15252" topLine="626" />
+		</Cursor>
+	</File>
+	<File name="..\common\containers\stack_list.c" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="2494" topLine="71" />
+		</Cursor>
+	</File>
+	<File name="..\common\tex_common.h" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="580" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\particle.c" open="0" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="14725" topLine="575" />
+		</Cursor>
+	</File>
+	<File name="ed_entity.c" open="0" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="12320" topLine="351" />
+		</Cursor>
+	</File>
+	<File name="..\common\containers\list.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1917" topLine="66" />
+		</Cursor>
+	</File>
+	<File name="..\common\tex_ptx.h" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="150" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\script\scr_sound.h" open="1" top="0" tabpos="30" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="476" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\path.c" open="0" top="0" tabpos="17" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="3104" topLine="132" />
+		</Cursor>
+	</File>
+	<File name="..\common\imgui\imgui.h" open="0" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="56157" topLine="465" />
+		</Cursor>
+	</File>
+	<File name="ed_entity_draw.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="4851" topLine="170" />
+		</Cursor>
+	</File>
+	<File name="..\common\camera_types.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="2500" topLine="54" />
+		</Cursor>
+	</File>
+	<File name="..\common\texture.h" open="0" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="958" topLine="33" />
+		</Cursor>
+	</File>
+	<File name="..\common\script\scr_world.h" open="0" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="582" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\phy_character.c" open="0" top="0" tabpos="18" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="12249" topLine="406" />
+		</Cursor>
+	</File>
+	<File name="ed_entity_ui.c" open="0" top="0" tabpos="26" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="21101" topLine="773" />
+		</Cursor>
+	</File>
+	<File name="..\common\world.c" open="1" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="67217" topLine="2627" />
+		</Cursor>
+	</File>
+	<File name="..\common\script\script.h" open="0" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1698" topLine="32" />
+		</Cursor>
+	</File>
+	<File name="..\common\phy_common.h" open="0" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1993" topLine="92" />
+		</Cursor>
+	</File>
+	<File name="..\common\containers\stack_list.inl" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1398" topLine="26" />
+		</Cursor>
+	</File>
+	<File name="..\common\script\script_types\scr_array.h" open="0" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="129" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="ed_level.h" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="3226" topLine="83" />
+		</Cursor>
+	</File>
+	<File name="..\common\bsp.h" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="906" topLine="4" />
+		</Cursor>
+	</File>
+	<File name="..\common\physics.h" open="0" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="4292" topLine="102" />
+		</Cursor>
+	</File>
+	<File name="ed_level_draw.h" open="0" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="3" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="188" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\gmath\half_float.c" open="0" top="0" tabpos="32" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="2325" topLine="22" />
+		</Cursor>
+	</File>
+	<File name="..\common\bsp_common.h" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="856" topLine="95" />
+		</Cursor>
+	</File>
+	<File name="..\common\player.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="5439" topLine="212" />
+		</Cursor>
+	</File>
+	<File name="ed_level_ui.h" open="0" top="0" tabpos="21" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="692" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\containers\multi_list.h" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="515" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="..\common\portal.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
@@ -607,9 +612,74 @@
 			<Cursor1 position="11289" topLine="374" />
 		</Cursor>
 	</File>
-	<File name="..\common\w_common.h" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+	<File name="..\common\camera.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="219" topLine="1" />
+			<Cursor1 position="2187" topLine="90" />
+		</Cursor>
+	</File>
+	<File name="..\common\l_globals.h" open="1" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1175" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\r_common.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="2113" topLine="99" />
+		</Cursor>
+	</File>
+	<File name="ed_selection.h" open="0" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="497" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\common\l_main.h" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="470" topLine="15" />
+		</Cursor>
+	</File>
+	<File name="..\common\shader.c" open="1" top="0" tabpos="20" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="2646" topLine="63" />
+		</Cursor>
+	</File>
+	<File name="..\common\ent_serialization.c" open="0" top="0" tabpos="18" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="11795" topLine="352" />
+		</Cursor>
+	</File>
+	<File name="..\common\shd_common.h" open="1" top="0" tabpos="22" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="610" topLine="6" />
+		</Cursor>
+	</File>
+	<File name="..\common\r_gl.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="214" topLine="15" />
+		</Cursor>
+	</File>
+	<File name="ed_ui_explorer.h" open="0" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="2421" topLine="100" />
+		</Cursor>
+	</File>
+	<File name="..\common\c_memory.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="800" topLine="4" />
+		</Cursor>
+	</File>
+	<File name="..\common\material.h" open="0" top="0" tabpos="18" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="4093" topLine="163" />
+		</Cursor>
+	</File>
+	<File name="..\common\entity.c" open="0" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="36394" topLine="1342" />
+		</Cursor>
+	</File>
+	<File name="..\common\model.h" open="0" top="0" tabpos="17" split="0" active="1" splitpos="0" zoom_1="2" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="285" topLine="10" />
 		</Cursor>
 	</File>
 </CodeBlocks_layout_file>
