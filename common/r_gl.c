@@ -70,6 +70,11 @@ static int depth_states_stack_top = -1;
 ======================================================
 */
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 
 void renderer_PushStates(GLenum cap)
 {
@@ -878,6 +883,10 @@ char *renderer_GetGLEnumString(GLenum name)
 	}
 }
 
+
+#ifdef __cplusplus
+}
+#endif
 
 
 

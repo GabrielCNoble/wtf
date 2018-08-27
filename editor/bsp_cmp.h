@@ -185,6 +185,7 @@ typedef struct bsp_leaf_t
 	int *src_leaf_markers;
 
 	unsigned char *pvs;
+	//unsigned char *temp_pvs;
 
 	#endif
 
@@ -308,7 +309,7 @@ bsp_polygon_t *bsp_ClipBrushes2(brush_t *brush_list, int brush_list_count);
 
 
 
-void bsp_TriangulateLeafPolygons(bsp_node_t *node);
+void bsp_TriangulateLeafPolygons(bsp_node_t *node, int *triangle_count);
 
 void bsp_BuildTriangleGroups(bsp_node_t *root, struct batch_t **groups, int *count);
 
@@ -316,7 +317,7 @@ void bsp_RemoveExterior(bsp_node_t *bsp);
 
 void bsp_AllocPvsForLeaves(bsp_node_t *bsp);
 
-void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, bsp_pnode_t **lnodes, int *lnode_count, bsp_dleaf_t **lleaves, int *lleaves_count, struct batch_t *groups, int tri_group_count, int create_leaves);
+void bsp_LinearizeBsp(struct bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, struct bsp_pnode_t **lnodes, int *lnode_count, struct bsp_dleaf_t **lleaves, int *lleaves_count, struct batch_t *groups, int tri_group_count, int create_leaves);
 
 bsp_edge_t *bsp_BuildBevelEdges(bsp_polygon_t *brush_polygons);
 

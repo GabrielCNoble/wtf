@@ -5,6 +5,10 @@
 #include "SDL2/SDL_syswm.h"
 #include "texture.h"
 
+#include "r_gl.h"
+
+#include "path.h"
+
 
 #ifdef __cplusplus
 extern "C++"
@@ -74,6 +78,7 @@ void gui_ImGuiFinish()
 void gui_ImGuiNewFrame()
 {
 	ImGui::NewFrame();
+	ImGuiIO &io = ImGui::GetIO();
 }
 
 void gui_ImGuiRender()
@@ -86,6 +91,43 @@ void gui_ImGuiRender()
 ===========================================================
 ===========================================================
 */
+
+void gui_ImGuiAddFontFromFileTTF(const char *file_name, float size_pixels)
+{
+	unsigned int font_texture;
+
+	unsigned char *font_tex_pixels;
+
+	const char *file_path;
+
+	int font_tex_width;
+	int font_tex_height;
+
+	ImGuiIO &io = ImGui::GetIO();
+
+	file_path = (const char *)path_GetPathToFile((char *)file_name);
+
+	if(file_path)
+	{
+		//io.Fonts->Clear();
+
+		io.Fonts->AddFontFromFileTTF(file_path, size_pixels);
+		font_texture = (unsigned int )io.Fonts->TexID;
+
+		glDeleteTextures(1, &font_texture);
+		font_texture = renderer_GenGLTexture(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
+
+		io.Fonts->GetTexDataAsRGBA32(&font_tex_pixels, &font_tex_width, &font_tex_height);
+
+		glBindTexture(GL_TEXTURE_2D, font_texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, font_tex_width, font_tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, font_tex_pixels);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		io.Fonts->TexID = (void *)font_texture;
+
+//		io.FontDefault = NULL;
+	}
+}
 
 
 int gui_ImGuiBegin(const char *name, char *open, int flags)
@@ -199,6 +241,28 @@ void gui_ImGuiSetNextWindowBgAlpha(float alpha)
 ===========================================================
 ===========================================================
 */
+
+void gui_ImGuiPushFont(void *font)
+{
+	ImGui::PushFont((ImFont *)font);
+}
+
+void gui_ImGuiPopFont()
+{
+	ImGui::PopFont();
+}
+
+void *gui_ImGuiGetFontIndex(int font_index)
+{
+    ImGuiIO &io = ImGui::GetIO();
+
+    if(font_index >= 0 && font_index < io.Fonts->Fonts.Size)
+	{
+		return io.Fonts->Fonts[font_index];
+	}
+
+    return NULL;
+}
 
 void gui_ImGuiPushStyleColor(int gui_color, vec4_t color)
 {

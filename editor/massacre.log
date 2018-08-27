@@ -1,9 +1,0 @@
-NOTIFY: ENGINE START
-Window resolution: 1366 x 768
-GLSL version: 4.60 NVIDIA
-OpenGL version: 4.6.0 NVIDIA 391.35
-Vendor: NVIDIA Corporation
-Renderer: GeForce GT 630/PCIe/SSE2
-NOTIFY: Massacre engine started properly!
-NOTIFY: Massacre engine finished properly!
-NOTIFY: ENGINE FINISH

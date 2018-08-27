@@ -1,0 +1,275 @@
+
+
+entity_handle_t entity;
+
+entity_handle_t entity_def;
+
+int jump_timer = 0;
+
+float pitch = 0.0;
+float yaw = 0.0;
+
+
+int spawn_timer = 0;
+
+int fire_timer = 10;
+int gun = 0;
+
+void main()
+{
+	component_handle_t camera_transform;
+	entity_handle_t camera_entity;
+	entity_handle_t current_entity;
+
+	vec3_t direction;
+	mat3_t orientation;
+	mat3_t pitch_matrix;
+	vec3_t weapon_offset;
+	vec3_t weapon_position;
+	vec2_t mouse_delta;
+
+	float mouse_dx;
+	float mouse_dy;
+	int move = 0;
+	int i;
+
+	direction[0] = 0.0;
+	direction[1] = 0.0;
+	direction[2] = 0.0;
+
+	if((input_GetKeyStatus(SDL_SCANCODE_W) & KEY_PRESSED) == KEY_PRESSED)
+	{
+		direction.x += 35.0;
+		move = 1;
+	}
+
+	if((input_GetKeyStatus(SDL_SCANCODE_S) & KEY_PRESSED) == KEY_PRESSED)
+	{
+		direction.x -= 35.0;
+		move = 1;
+	}
+
+	if((input_GetKeyStatus(SDL_SCANCODE_A) & KEY_PRESSED) == KEY_PRESSED)
+	{
+		direction.z -= 35.0;
+		move = 1;
+	}
+
+	if((input_GetKeyStatus(SDL_SCANCODE_D) & KEY_PRESSED) == KEY_PRESSED)
+	{
+		direction.z += 35.0;
+		move = 1;
+	}
+
+	mouse_delta = input_GetMouseDelta();
+
+	pitch += mouse_delta.y;
+
+	if(pitch > 0.5) pitch = 0.5;
+	else if(pitch < -0.5) pitch = -0.5;
+
+	yaw += mouse_delta.x;
+
+	mat3_t_rotate(pitch_matrix, vec3_t(0.0, 1.0, 0.0), -0.5, 1);
+	mat3_t_rotate(pitch_matrix, vec3_t(0.0, 0.0, 1.0), pitch, 0);
+
+	current_entity = entity_GetCurrentEntity();
+
+	camera_entity = entity_GetChildEntity("camera entity");
+
+	camera_transform = entity_GetEntityComponent(camera_entity, COMPONENT_TYPE_TRANSFORM);
+	entity_SetComponentValue33f(camera_transform, "orientation", pitch_matrix);
+
+	entity_Rotate(vec3_t(0.0, 1.0, 0.0), -yaw, 1);
+
+	orientation = entity_GetOrientation(0);
+	direction = orientation * direction;
+
+	entity_Move(direction);
+
+	component_handle_t weapon_transform;
+	entity_handle_t right_gun = entity_GetEntityChildEntity(camera_entity, "right gun");
+	entity_handle_t left_gun = entity_GetEntityChildEntity(camera_entity, "left gun");
+
+	weapon_transform = entity_GetEntityComponent(right_gun, COMPONENT_TYPE_TRANSFORM);
+	weapon_offset = entity_GetEntityProp3f(right_gun, "weapon offset");
+	weapon_position = entity_GetEntityProp3f(right_gun, "weapon pos");
+	weapon_offset.x *= 0.9;
+	weapon_offset.y *= 0.9;
+	weapon_offset.x -= mouse_delta.x * 0.3;
+	weapon_offset.y -= mouse_delta.y * 0.3;
+	weapon_position.x += weapon_offset.x;
+	weapon_position.y += weapon_offset.y;
+	entity_SetEntityProp3f(right_gun, "weapon offset", weapon_offset);
+	entity_SetComponentValue3f(weapon_transform, "position", weapon_position);
+
+	weapon_transform = entity_GetEntityComponent(left_gun, COMPONENT_TYPE_TRANSFORM);
+	weapon_position = entity_GetEntityProp3f(left_gun, "weapon pos");
+	weapon_position.x += weapon_offset.x;
+	weapon_position.y += weapon_offset.y;
+	entity_SetEntityProp3f(left_gun, "weapon offset", weapon_offset);
+	entity_SetComponentValue3f(weapon_transform, "position", weapon_position);
+
+	if(entity_GetEntityProp1i(current_entity, "damage counter") != 0)
+	{
+		entity_DecEntityProp1i(current_entity, "damage counter");
+	}
+
+
+	if((input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED) == KEY_JUST_PRESSED)
+	{
+		entity_Jump(4.5);
+	}
+
+
+	if(fire_timer < 10)
+	{
+		fire_timer++;
+	}
+
+	if((input_GetMouseStatus() & MOUSE_LEFT_BUTTON_CLICKED) != 0 && fire_timer >= 5)
+	{
+		fire_timer = 0;
+
+		entity_handle_t bullet_def = entity_GetEntityDef("bullet");
+		entity_handle_t spawn_entity;
+
+		switch(gun)
+		{
+			case 0:
+				gun = 1;
+				spawn_entity = entity_GetEntityChildEntity(right_gun, "spawn entity");
+			break;
+
+			case 1:
+				gun = 0;
+				spawn_entity = entity_GetEntityChildEntity(left_gun, "spawn entity");
+			break;
+		}
+
+
+
+		vec3_t spawn_position = entity_GetEntityPosition(spawn_entity, 0);
+
+		direction = vec3_t(0.0, 0.0, -1.0);
+		direction = pitch_matrix * direction;
+		direction = orientation * direction;
+
+		orientation.identity();
+
+		entity_handle_t bullet_instance = entity_SpawnEntity(orientation, spawn_position, vec3_t(0.18, 0.18, 0.18), bullet_def, "bullet");
+
+		entity_SetEntityVelocity(bullet_instance, direction * 40.0);
+
+	}
+}
+
+void OnSpawn()
+{
+	component_handle_t component;
+	mat3_t camera_orientation;
+	camera_orientation.identity();
+	vec3_t prop_value;
+
+	int i;
+
+	entity_handle_t body_entity;
+	entity_handle_t camera_entity;
+	entity_handle_t weapon_entity;
+
+
+	body_entity = entity_GetCurrentEntity();
+
+	entity_AddEntityProp1i(body_entity, "player");
+	entity_AddEntityProp1i(body_entity, "life");
+	entity_AddEntityProp1i(body_entity, "damage counter");
+	entity_AddEntityProp1i(body_entity, "score");
+
+	entity_SetEntityProp1i(body_entity, "life", 100);
+	entity_SetEntityProp1i(body_entity, "damage counter", 0);
+	entity_SetEntityProp1i(body_entity, "score", 0);
+
+	camera_entity = entity_GetChildEntity("camera entity");
+
+	component = entity_GetEntityComponent(camera_entity, COMPONENT_TYPE_TRANSFORM);
+	entity_SetComponentValue3f(component, "position", vec3_t(0.1, 0.35, 0.0));
+	mat3_t_rotate(camera_orientation, vec3_t(0.0, 1.0, 0.0), -0.5, 1);
+	entity_SetComponentValue33f(component, "orientation", camera_orientation);
+
+	vec3_t weapon_pos;
+	entity_handle_t right_gun = entity_GetEntityChildEntity(camera_entity, "right gun");
+	entity_handle_t left_gun = entity_GetEntityChildEntity(camera_entity, "left gun");
+
+	entity_AddEntityProp3f(right_gun, "weapon offset");
+	entity_AddEntityProp3f(right_gun, "weapon pos");
+	component = entity_GetEntityComponent(right_gun, COMPONENT_TYPE_TRANSFORM);
+	entity_GetComponentValue3f(component, "position", weapon_pos);
+	entity_SetEntityProp3f(right_gun, "weapon offset", vec3_t(0.0, 0.0, 0.0));
+	entity_SetEntityProp3f(right_gun, "weapon pos", weapon_pos);
+
+
+	entity_AddEntityProp3f(left_gun, "weapon offset");
+	entity_AddEntityProp3f(left_gun, "weapon pos");
+	component = entity_GetEntityComponent(left_gun, COMPONENT_TYPE_TRANSFORM);
+	entity_GetComponentValue3f(component, "position", weapon_pos);
+	entity_SetEntityProp3f(left_gun, "weapon offset", vec3_t(0.0, 0.0, 0.0));
+	entity_SetEntityProp3f(left_gun, "weapon pos", weapon_pos);
+
+	component = entity_GetEntityComponent(camera_entity, COMPONENT_TYPE_CAMERA);
+
+	entity_SetCameraAsActive(component);
+
+	pitch = 0.0;
+
+}
+
+
+void OnDie()
+{
+	sound_handle_t die_sound;
+
+	die_sound = sound_GetSound("death");
+	sound_PlaySound(die_sound, entity_GetPosition(0), 10.0, 0);
+}
+
+void OnCollision(array<entity_contact_t> @contacts)
+{
+	int i;
+
+	int damage = 0;
+	entity_handle_t current_entity;
+
+	current_entity = entity_GetCurrentEntity();
+
+	for(i = 0; i < contacts.count; i++)
+	{
+		if(entity_IsEntityValid(contacts[i].entity) != 0)
+		{
+			if(entity_EntityHasProp(contacts[i].entity, "enemy") != 0)
+			{
+                damage = 1;
+			}
+			//entity_Print("contact with world!\n");
+		}
+	}
+
+	if(damage != 0)
+	{
+		if(entity_GetEntityProp1i(current_entity, "damage counter") <= 0)
+		{
+			damage = entity_GetEntityProp1i(current_entity, "life");
+			damage -= 5;
+			entity_SetEntityProp1i(current_entity, "life", damage);
+
+			entity_SetEntityProp1i(current_entity, "damage counter", 60);
+		}
+	}
+}
+
+/*void OnCollision(array<entity_handle_t> @collided_entities)
+{
+
+}*/
+
+
+

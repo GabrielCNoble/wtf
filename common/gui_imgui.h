@@ -42,6 +42,8 @@ void gui_ImGuiRender();
 ===========================================================
 */
 
+void gui_ImGuiAddFontFromFileTTF(const char *file_name, float size_pixels);
+
 int gui_ImGuiBegin(const char *name, char *open, int flags);
 
 void gui_ImGuiEnd();
@@ -100,6 +102,12 @@ void gui_ImGuiSetNextWindowBgAlpha(float alpha);
 ===========================================================
 ===========================================================
 */
+
+void gui_ImGuiPushFont(void *font);
+
+void gui_ImGuiPopFont();
+
+void *gui_ImGuiGetFontIndex(int font_index);
 
 void gui_ImGuiPushStyleColor(int gui_color, vec4_t color);
 

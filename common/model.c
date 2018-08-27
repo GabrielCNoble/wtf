@@ -185,6 +185,8 @@ int model_LoadModel(char *file_name, char *model_name)
 	struct batch_t *batches;
 	int indice_buffer_start;
 
+	char *file_path;
+
 	//struct c_vertex_t *compact_vertices;
 
 	struct compact_vertex_t *compact_vertices;
@@ -204,7 +206,9 @@ int model_LoadModel(char *file_name, char *model_name)
 
 	renderer_PushFunctionName("model_LoadModel");
 
-	if(mpk_read(file_name, &out_params))
+	file_path = path_GetPathToFile(file_name);
+
+	if(mpk_read(file_path, &out_params))
 	{
 		model_index = model_CreateEmptyModel(model_name);
 		model = model_GetModelPointerIndex(model_index);

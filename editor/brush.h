@@ -38,6 +38,7 @@ enum BRUSH_FLAGS
 	BRUSH_INVISIBLE = 1 << 4,
 	BRUSH_CLIP_POLYGONS = 1 << 5,
 	BRUSH_HAS_PREV_CLIPS = 1 << 6,
+	BRUSH_USE_WORLD_SPACE_TEX_COORDS = 1 << 7,
 };
 
 
@@ -83,7 +84,7 @@ typedef struct brush_t
 	struct batch_t *batches;
 
 
-	bsp_striangle_t *triangles;
+	struct bsp_striangle_t *triangles;
 	struct bsp_edge_t *edges;						/* necessary to manipulate individual faces... */
 
 
@@ -144,6 +145,8 @@ void brush_Finish();
 
 void brush_ProcessBrushes();
 
+void brush_UpdateAllBrushes();
+
 
 
 brush_t *brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short type, short b_subtractive);
@@ -159,7 +162,7 @@ void brush_AllocBaseVertices(brush_t *brush, int vert_count, vertex_t *vertices)
 
 void brush_AllocBasePolygons(brush_t *brush, int polygon_count);
 
-void brush_AddPolygonToBrush(brush_t *brush, vertex_t *polygon_vertices, vec3_t normal, int polygon_vertice_count, int material_index);
+void brush_AddPolygonToBrush(brush_t *brush, vertex_t *polygon_vertices, vec3_t normal, vec2_t tiling, int polygon_vertice_count, int material_index);
 
 void brush_LinkPolygonsToVertices(brush_t *brush);
 
@@ -219,7 +222,9 @@ void brush_SetAllInvisible();
 
 
 
-void brush_CheckIntersecting();
+void brush_ClipBrushes();
+
+void brush_UpdateTexCoords();
 
 int brush_CheckBrushIntersection(brush_t *a, brush_t *b);
 

@@ -41,23 +41,23 @@ typedef struct recursive_pvs_for_leaf_stack_t
 {
 	int out_valid_dst_portal_count;
 	int clipplane_count;
-	
+
 	bsp_portal_t valid_portals[MAX_VALID_PORTALS];
 	bsp_portal_t *out_valid_dst_portals[MAX_VALID_PORTALS];
 	bsp_clipplane_t clipplanes[MAX_CLIP_PLANES];
-	
+
 	bsp_leaf_t *dst_dst_leaf;
 	bsp_portal_t *dst_dst_portal;
-	
+
 	bsp_leaf_t *src_leaf;
 	bsp_leaf_t *dst_leaf;
-	
+
 	bsp_portal_t *src_portal;
 	bsp_polygon_t *src_portal_polygon;
-	
+
 	bsp_portal_t *dst_portal;
 	bsp_polygon_t *dst_portal_polygon;
-	
+
 }recursive_pvs_for_leaf_stack_t;
 
 
@@ -67,17 +67,17 @@ typedef struct pvs_for_leaf_stack_t
 	bsp_leaf_t *dst_leaf;
 	int in_dst_portal_count;
 	bsp_portal_t *in_dst_portals[MAX_VALID_PORTALS];
-	
+
 	recursive_pvs_for_leaf_stack_t *recursive_stack;
 	int recursive_stack_pointer;
 }pvs_for_leaf_stack_t;
 
 
-int bsp_ClassifyPortalVertex(bsp_pnode_t *node, vec3_t point);
+int bsp_ClassifyPortalVertex(struct bsp_pnode_t *node, vec3_t point);
 
-int bsp_ClassifyPortal(bsp_pnode_t *node, bsp_portal_t *portal);
+int bsp_ClassifyPortal(struct bsp_pnode_t *node, bsp_portal_t *portal);
 
-void bsp_SplitPortal(bsp_pnode_t *node, bsp_portal_t *portal, bsp_portal_t **front, bsp_portal_t **back);
+void bsp_SplitPortal(struct bsp_pnode_t *node, bsp_portal_t *portal, bsp_portal_t **front, bsp_portal_t **back);
 
 void bsp_BspBounds(bsp_node_t *bsp, vec3_t *maxs, vec3_t *mins);
 

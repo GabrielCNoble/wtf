@@ -21,11 +21,11 @@
 
 /* from world.c */
 extern int w_world_leaves_count;
-extern bsp_pnode_t *w_world_nodes;
-extern bsp_dleaf_t *w_world_leaves;
+extern struct bsp_pnode_t *w_world_nodes;
+extern struct bsp_dleaf_t *w_world_leaves;
 extern bsp_entities_t *w_leaf_entities;
 extern int w_visible_leaves_count;
-extern bsp_dleaf_t **w_visible_leaves;
+extern struct bsp_dleaf_t **w_visible_leaves;
 
 
 /* from model.c */
@@ -811,8 +811,11 @@ struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int
 
                 if(!navigation_component->route.elements)
                 {
-                    navigation_component->route = list_create(sizeof(struct waypoint_t *), 128, NULL);
+                    navigation_component->route = list_create(sizeof(struct waypoint_t *), 512, NULL);
                 }
+
+                navigation_component->route.element_count = 0;
+                navigation_component->current_waypoint = 0;
 
             break;
 		}
@@ -2193,6 +2196,8 @@ void entity_FindPath(struct entity_handle_t entity, vec3_t to)
 	struct waypoint_t *waypoint;
 	struct waypoint_t **route;
 	struct waypoint_t **component_route;
+
+	vec3_t from;
 	//struct waypoint_t *waypoint;
 	int route_length;
 	int i;
@@ -2204,7 +2209,12 @@ void entity_FindPath(struct entity_handle_t entity, vec3_t to)
 
 	if(navigation_component)
 	{
-		route = navigation_FindPath(&route_length, vec3_t_c(transform->transform.floats[3][0], transform->transform.floats[3][1], transform->transform.floats[3][2]), to);
+
+		from.x = transform->transform.floats[3][0];
+		from.y = transform->transform.floats[3][1];
+		from.z = transform->transform.floats[3][2];
+
+		route = navigation_FindPath(&route_length, from, to);
 
         navigation_component->route.element_count = 0;
 
@@ -2219,11 +2229,16 @@ void entity_FindPath(struct entity_handle_t entity, vec3_t to)
 
             component_route = (struct waypoint_t **)navigation_component->route.elements;
 
+			//printf("route starts at: [%f %f %f]\n", from.x, from.y, from.z);
+
             for(i = 0; i < route_length; i++)
             {
                 waypoint = route[i];
                 component_route[i] = waypoint;
+              //  printf(":[%f %f %f]\n", waypoint->position.x, waypoint->position.y, waypoint->position.z);
             }
+
+           // printf("route ends at: [%f %f %f]\n", to.x, to.y, to.z);
 
             //memcpy(navigation_component->route.elements, route, sizeof(struct waypoint_t *) * route_length);
 
@@ -2715,8 +2730,8 @@ void entity_UpdateTransformComponents()
 	//struct entity_aabb_t *aabb;
 	struct model_t *model;
 	//ent_entity_transform_cursor = 0;
-	bsp_dleaf_t *old_leaf;
-	bsp_dleaf_t *cur_leaf;
+	struct bsp_dleaf_t *old_leaf;
+	struct bsp_dleaf_t *cur_leaf;
 	struct collider_t *collider;
 	struct component_handle_t *top_transforms;
 	mat3_t rotation;

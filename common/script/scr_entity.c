@@ -747,7 +747,7 @@ int entity_ScriptGetWaypointDirection(vec3_t *direction)
                 d.y /= l;
                 d.z /= l;
 
-                if(l < 1.9)
+                if(l < 2.6)
                 {
                     entity_ScriptAdvanceWaypoint();
                 }

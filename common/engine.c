@@ -271,7 +271,7 @@ void engine_MainLoop()
 		capture_time += delta_time;
 
 
-
+/*
 		if(capture_time >= 1000.0)
 		{
 			accum_cpu_time /= captured_frames;
@@ -286,7 +286,7 @@ void engine_MainLoop()
 		else
 		{
 			captured_frames++;
-		}
+		}*/
 
 		engine_state &= ~(ENGINE_JUST_PAUSED | ENGINE_JUST_RESUMED);
 	}
@@ -364,10 +364,15 @@ void engine_UpdateDeltaTime()
 	start_delta = end_delta;
 }
 
-float engine_GetDeltaTime()
+float engine_GetCurrentDeltaTime()
 {
 	unsigned long long cur = SDL_GetPerformanceCounter();
 	return (float)((cur - start_delta) * 1000) / (float)performance_frequency;
+}
+
+float engine_GetDeltaTime()
+{
+	return delta_time;
 }
 
 

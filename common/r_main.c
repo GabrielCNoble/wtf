@@ -96,7 +96,7 @@ extern int w_world_start;
 extern int w_world_index_start;
 extern int w_world_vertices_count;
 extern int w_world_leaves_count;
-extern bsp_dleaf_t *w_world_leaves;
+extern struct bsp_dleaf_t *w_world_leaves;
 extern int w_visible_lights_count;
 extern unsigned short w_visible_lights[];
 

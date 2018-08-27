@@ -1,0 +1,250 @@
+
+array<entity_handle_t> spawn_points(512);
+array<entity_handle_t> alive_entities(512);
+
+int prev_alive_count;
+
+
+int pokey_intro_source;
+int pokey_loop_source;
+
+sound_handle_t pokey_intro;
+sound_handle_t pokey_loop;
+
+void OnMapEnter()
+{
+	array<entity_handle_t> world_entities;
+	int i;
+	int c;
+	int j;
+
+	world_AddWorldVar("respawn timer", typeof<int>());
+	world_AddWorldVar("wave index", typeof<int>());
+
+	world_SetWorldVarValue("respawn timer", 300);
+	world_SetWorldVarValue("wave index", 0);
+
+
+	alive_entities.Clear();
+	spawn_points.Clear();
+
+	pokey_intro = sound_GetSound("pokey_intro");
+	pokey_loop = sound_GetSound("pokey_loop");
+	//pokey_intro = sound_PlaySound(music, vec3_t(0.0, 0.0, 0.0), 5.0, 1);
+
+	pokey_intro_source = -1;
+	pokey_loop_source = -1;
+
+	//if(sound_IsSourcePlaying(pokey_intro) == 0)
+	//{
+
+	//}
+
+	//int spawn_point_count = 0;
+
+
+	//world_ClearWorldArrayVar("spawn points");
+
+
+
+	world_entities = world_GetEntities();
+	c = world_entities.count;
+
+	//spawn_points.Clear();
+
+	//world_ClearWorldArrayVar("spawn points");
+
+	for(i = 0; i < world_entities.count; i++)
+	{
+        if(entity_EntityHasProp(world_entities[i], "spawn point") != 0)
+		{
+			spawn_points.Append(world_entities[i]);
+			//world_AppendWorldArrayVarValue("spawn points", world_entities[i]);
+		}
+	}
+
+	//script_Print("enter map\n");
+
+}
+
+
+void OnMapUpdate()
+{
+	//script_Print(world_entities.count);
+	entity_handle_t entity;
+	int i;
+	int c;
+	int spawn_count;
+	int alive_entities_count = 0;
+	int spawn_point_count;
+	int spawn_point_index;
+
+	mat3_t entity_orientation;
+	vec3_t spawn_position;
+	entity_handle_t spawned;
+	entity_handle_t spawn_point;
+	entity_handle_t enemy_def;
+
+
+	int spawn_timer;
+	int wave_index;
+
+	int x;
+	int z;
+
+
+	if(pokey_intro_source < 0 && pokey_loop_source < 0)
+	{
+		pokey_intro_source = sound_PlaySound(pokey_intro, vec3_t(0.0, 0.0, 0.0), 8.0, 0);
+	}
+	else
+	{
+		if(pokey_loop_source < 0)
+		{
+			if(sound_IsSourcePlaying(pokey_intro_source) == 0)
+			{
+				pokey_intro_source = -1;
+				pokey_loop_source = sound_PlaySound(pokey_loop, vec3_t(0.0, 0.0, 0.0), 5.0, 1);
+			}
+		}
+	}
+
+	//spawn_point_count = world_GetWorldArrayVarLength("spawn points");
+	spawn_point_count = spawn_points.count;
+
+	if(spawn_point_count > 0)
+	{
+		world_GetWorldVarValue("respawn timer", spawn_timer);
+
+		if(spawn_timer > 0)
+		{
+			spawn_timer--;
+			world_SetWorldVarValue("respawn timer", spawn_timer);
+		}
+		else if(spawn_timer == 0)
+		{
+			spawn_timer = -1;
+			world_SetWorldVarValue("respawn timer", spawn_timer);
+
+			world_GetWorldVarValue("wave index", wave_index);
+
+			switch(wave_index)
+			{
+				case 0:
+					spawn_count = 10;
+				break;
+
+				case 1:
+					spawn_count = 50;
+				break;
+
+				case 2:
+					spawn_count = 75;
+				break;
+
+				default:
+					spawn_count = 100;
+				break;
+
+				//default:
+				//	spawn_count = 120;
+				//break;
+
+			}
+
+			script_Print("wave: " + wave_index + "\n");
+
+			//enumerate_spawn_points();
+
+			//world_ClearWorldArrayVar("alive entities");
+			alive_entities.Clear();
+			enemy_def = entity_GetEntity("enemy entity", 1);
+			entity_orientation.identity();
+
+			//script_Print("FUCK!\n");
+
+			for(i = 0; i < spawn_count; i++)
+			{
+				spawn_point_index = rand() % spawn_point_count;
+
+				//world_GetWorldArrayVarValue("spawn points", spawn_point_index, spawn_point);
+
+				spawn_point = spawn_points[spawn_point_index];
+				//
+
+				spawn_position = entity_GetEntityPosition(spawn_point, 0);
+
+				spawn_position.x += (randfloat() * 2.0 - 1.0) * 3.0;
+				//spawn_position.y += (randfloat() * 2.0 - 1.0) * 3.0;
+				//spawn_position.y += 10.0;
+				spawn_position.z += (randfloat() * 2.0 - 1.0) * 3.0;
+
+
+				//spawned = entity_SpawnEntity(entity_orientation, vec3_t(-5.0 + x, 3.0, (-z / 2) + z * 2), vec3_t(1.0, 1.0, 1.0), enemy_def, "enemy");
+				spawned = entity_SpawnEntity(entity_orientation, spawn_position, vec3_t(1.0, 1.0, 1.0), enemy_def, "enemy");
+				entity_SetEntityVelocity(spawned, vec3_t(0.0, 0.0, 0.0));
+				alive_entities.Append(spawned);
+				//world_AppendWorldArrayVarValue("alive entities", spawned);
+			}
+
+			prev_alive_count = spawn_count;
+		}
+		else if(spawn_timer < 0)
+		{
+			//c = world_GetWorldArrayVarLength("alive entities");
+			c = alive_entities.count;
+			alive_entities_count = 0;
+
+			//script_Print("Check alive\n");
+
+			for(i = 0; i < c; i++)
+			{
+				//world_GetWorldArrayVarValue("alive entities", i, spawned);
+
+				spawned = alive_entities[i];
+
+				if(entity_IsEntityValid(spawned) != 0)
+				{
+					if(entity_EntityHasProp(spawned, "enemy") != 0)
+					{
+						alive_entities_count++;
+					}
+				}
+
+			}
+
+			if(prev_alive_count > alive_entities_count)
+			{
+                entity_handle_t player = entity_GetEntity("player entity", 0);
+                int score;
+
+                score = entity_GetEntityProp1i(player, "score");
+                score += (prev_alive_count - alive_entities_count) * 50;
+                entity_SetEntityProp1i(player, "score", score);
+
+                prev_alive_count = alive_entities_count;
+			}
+
+
+			//script_Print("Alive entities: " + alive_entities_count + "\n");
+
+			if(alive_entities_count == 0)
+			{
+				world_SetWorldVarValue("respawn timer", 150);
+
+				world_GetWorldVarValue("wave index", wave_index);
+				wave_index++;
+				world_SetWorldVarValue("wave index", wave_index);
+
+				script_Print("No alive entities left\n");
+			}
+		}
+	}
+
+
+
+
+}
+
+
+

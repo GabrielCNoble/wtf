@@ -25,11 +25,11 @@
 
 
 /* from world.c */
-extern int world_nodes_count;
-extern bsp_pnode_t *world_nodes;
-extern bsp_polygon_t *node_polygons;			/* necessary to quickly build portals... */
-extern int world_leaves_count;
-extern bsp_dleaf_t *world_leaves;
+extern int w_world_nodes_count;
+extern struct bsp_pnode_t *w_world_nodes;
+extern bsp_polygon_t *w_node_polygons;			/* necessary to quickly build portals... */
+extern int w_world_leaves_count;
+extern struct bsp_dleaf_t *w_world_leaves;
 
 
 //timedout_leaf_t *timed_out_leaves = NULL;
@@ -99,7 +99,7 @@ void bsp_StopPvsTimer()
 }
 
 
-int bsp_ClassifyPortalVertex(bsp_pnode_t *node, vec3_t point)
+int bsp_ClassifyPortalVertex(struct bsp_pnode_t *node, vec3_t point)
 {
 	float d;
 
@@ -119,7 +119,7 @@ int bsp_ClassifyPortalVertex(bsp_pnode_t *node, vec3_t point)
 }
 
 
-int bsp_ClassifyPortal(bsp_pnode_t *node, bsp_portal_t *portal)
+int bsp_ClassifyPortal(struct bsp_pnode_t *node, bsp_portal_t *portal)
 {
 	bsp_polygon_t *p;
 	float d;
@@ -169,7 +169,7 @@ int bsp_ClassifyPortal(bsp_pnode_t *node, bsp_portal_t *portal)
 }
 
 
-void bsp_SplitPortal(bsp_pnode_t *node, bsp_portal_t *portal, bsp_portal_t **front, bsp_portal_t **back)
+void bsp_SplitPortal(struct bsp_pnode_t *node, bsp_portal_t *portal, bsp_portal_t **front, bsp_portal_t **back)
 {
 	vertex_t clip_vertex;
 
@@ -753,10 +753,10 @@ void bsp_RemoveBadPortals(bsp_portal_t **portals)
 		p->approx_area = w * h;
 
 		/* remove if too small... */
-		if(p->approx_area < 0.05)
-		{
-			goto _remove;
-		}
+	//	if(p->approx_area < 0.05)
+	//	{
+	//		goto _remove;
+	//	}
 
 		/* remove if one of the dimensions is zero... */
 		if(!w || !h)
@@ -781,14 +781,16 @@ void bsp_RemoveBadPortals(bsp_portal_t **portals)
 
 		/* NOTE: THIS can cause problems... */
 		/* NOTE: pesky crack portals... */
-		if((num / denum) < 0.001)
-		{
-			goto _remove;
-		}
+	//	if((num / denum) < 0.001)
+	//	{
+	//		goto _remove;
+	//	}
 
 		n = p;
 		p = p->next;
 	}
+
+	#if 0
 
 	p = *portals;
 	while(p)
@@ -848,6 +850,8 @@ void bsp_RemoveBadPortals(bsp_portal_t **portals)
 		p = p->next;
 
 	}
+
+	#endif
 
 }
 
@@ -1078,7 +1082,7 @@ void bsp_ClipPortalsToBounds(bsp_node_t *bsp, bsp_portal_t *portals)
 }
 
 
-void bsp_LinkPortalAndLeaves(bsp_dleaf_t *leaves, bsp_portal_t *portals)
+void bsp_LinkPortalAndLeaves(struct bsp_dleaf_t *leaves, bsp_portal_t *portals)
 {
 
 }
@@ -2055,14 +2059,14 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 	if(b_stop)
 		return -2;
 
-	if(bsp_DeltaTime() > time_out)
-		return -1;
+	//if(bsp_DeltaTime() > time_out)
+	//	return -1;
 
 	if(dst_leaf == src_leaf)
 		return 0;
 
 	src_leaf->pvs[dst_leaf->leaf_index >> 3] |= 1 << (dst_leaf->leaf_index % 8);
-	//dst_leaf->pvs[src_leaf->leaf_index >> 3] |= 1 << (src_leaf->leaf_index % 8);
+	dst_leaf->pvs[src_leaf->leaf_index >> 3] |= 1 << (src_leaf->leaf_index % 8);
 
 	//return;
 
@@ -2206,6 +2210,7 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 				switch(cls)
 				{
 					case POLYGON_FRONT | POLYGON_BACK:
+					case POLYGON_CONTAINED_FRONT | POLYGON_CONTAINED_BACK:
 
 						_add_plane0:
 
@@ -2279,6 +2284,7 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 				switch(cls)
 				{
 					case POLYGON_FRONT | POLYGON_BACK:
+					case POLYGON_CONTAINED_FRONT | POLYGON_CONTAINED_BACK:
 						_add_plane1:
 
 						clipplanes[clipplane_count].point = point;
@@ -2310,8 +2316,8 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 		}
 
 		/* skip this leaf if we recursed through it and didn't return yet... */
-		if(dst_dst_leaf->pvs[dst_dst_leaf->leaf_index >> 3] & (1 << (dst_dst_leaf->leaf_index % 8)))
-			continue;
+		//if(dst_dst_leaf->pvs[dst_dst_leaf->leaf_index >> 3] & (1 << (dst_dst_leaf->leaf_index % 8)))
+		//	continue;
 
 		dst_dst_leaf_portal_count = dst_dst_leaf->portal_count;
 
@@ -2348,16 +2354,16 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 
 			/* skip this portal if it leads to a leaf
 			we recursed through and didn't return from yet...  */
-			if(dst_dst_portal->leaf0 == dst_dst_leaf)
-				if(dst_dst_portal->leaf1->pvs[dst_dst_portal->leaf1->leaf_index >> 3] & (1 << (dst_dst_portal->leaf1->leaf_index % 8)))
-					continue;
+			//if(dst_dst_portal->leaf0 == dst_dst_leaf)
+			//	if(dst_dst_portal->leaf1->pvs[dst_dst_portal->leaf1->leaf_index >> 3] & (1 << (dst_dst_portal->leaf1->leaf_index % 8)))
+			//		continue;
 
 
 			/* skip this portal if it leads to a leaf
 			we recursed through and didn't return from yet... */
-			if(dst_dst_portal->leaf1 == dst_dst_leaf)
-				if(dst_dst_portal->leaf0->pvs[dst_dst_portal->leaf0->leaf_index >> 3] & (1 << (dst_dst_portal->leaf0->leaf_index % 8)))
-					continue;
+			//if(dst_dst_portal->leaf1 == dst_dst_leaf)
+			//	if(dst_dst_portal->leaf0->pvs[dst_dst_portal->leaf0->leaf_index >> 3] & (1 << (dst_dst_portal->leaf0->leaf_index % 8)))
+			//		continue;
 
 
 			/* skip this portal if it leads to the source leaf... */
@@ -2371,7 +2377,7 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 			of the source leaf... */
 
 			/* NOTE: THIS CODE IS FAILING!!!! */
-			dst_dst_portal_side = bsp_ClassifyPolygon(dst_dst_portal->portal_polygon, src_portal->portal_polygon->vertices[0].position, src_portal->portal_polygon->normal);
+			/*dst_dst_portal_side = bsp_ClassifyPolygon(dst_dst_portal->portal_polygon, src_portal->portal_polygon->vertices[0].position, src_portal->portal_polygon->normal);
 
 			if(dst_dst_portal_side == POLYGON_FRONT)
 			{
@@ -2396,7 +2402,7 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 			{
 				if(dst_leaf_side == POINT_BACK)
 					continue;
-			}
+			}*/
 
 
 			valid_portals[out_valid_dst_portal_count].leaf0 = dst_dst_portal->leaf0;
@@ -2829,6 +2835,11 @@ int bsp_PvsForLeaf(bsp_leaf_t *leaf, float time_out, int portal_index)
 
 	printf("ok! (%.02f s)\n", elapsed / 1000.0);
 
+	//w_world_leaves[leaf->leaf_index].pvs = leaf->pvs;
+
+	w_world_leaves[leaf->leaf_index].pvs = bsp_CompressPvs(leaf->pvs, (w_world_leaves_count >> 3), &w_world_leaves[leaf->leaf_index].pvs_lenght);
+
+
 	return -1;
 
 }
@@ -2872,29 +2883,29 @@ void bsp_PvsForLeaves(bsp_node_t *bsp, bsp_portal_t *portals)
 	//SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
 
 	//while(leaf = bsp_GetNextLeaf())
-	/*while(job =  bsp_GetNextJob())
-	{
+	//while(job =  bsp_GetNextJob())
+	//{
 
- 		i = bsp_PvsForLeaf(job->leaf, job->time_out, job->src_portal_index);
+ 	//	i = bsp_PvsForLeaf(job->leaf, job->time_out, job->src_portal_index);
 
-		if(i > -1)
-		{
-			job->src_portal_index = i;
-			printf("timed out after %.02fs and has been requeued...\n", job->time_out / 1000.0);
-			bsp_RequeueJob(job);
-		}
-		else
-		{
-			free(job);
-		}
+	//	if(i > -1)
+	//	{
+	//		job->src_portal_index = i;
+	//		printf("timed out after %.02fs and has been requeued...\n", job->time_out / 1000.0);
+	//		bsp_RequeueJob(job);
+	//	}
+	//	else
+	//	{
+	//		memory_Free(job);
+	//	}
 
-		if(b_stop)
-		{
-			printf("pvs calculation stopped!\n");
-			return;
-		}
+	//	if(b_stop)
+	//	{
+	//		printf("pvs calculation stopped!\n");
+	//		return;
+	//	}
 
-	}*/
+//	}
 
 	//SDL_SetThreadPriority(SDL_THREAD_PRIORITY_NORMAL);
 
@@ -2997,13 +3008,13 @@ void bsp_CalculatePvs(bsp_node_t *bsp)
 	//memory_CheckCorrupted();
 	bsp_GeneratePortals(bsp, &world_portals);
 	//memory_CheckCorrupted();
-	//bsp_BuildPvsJobList(bsp);
+	bsp_BuildPvsJobList(bsp);
 	bsp_PvsForLeaves(bsp, world_portals);
 
 	//printf("after bsp_PvsForLeaves...\n");
 	//log_LogMessage(LOG_MESSAGE_NOTIFY, "after bsp_PvsForLeaves...");
 	//memory_CheckCorrupted();
-	//bsp_DeletePvsJobList();
+	bsp_DeletePvsJobList();
 
 
 
@@ -3163,6 +3174,11 @@ void bsp_RequeueJob(pvs_job_t *job)
 	{
 		if(job->time_out < START_TIME_OUT)
 		{
+		//	if(job->time_out == SMALL_START_TIME_OUT)
+		//	{
+		//		job->time_out += 5000.0;
+		//	}
+
 			job->time_out += SMALL_TIME_OUT_INCREMENT;
 		}
 		else

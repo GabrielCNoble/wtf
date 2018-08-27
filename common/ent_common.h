@@ -373,7 +373,7 @@ struct entity_t
 	int ref_count;									/* how many times this entity (if a def) is being referenced from other entities... */
 
 
-	bsp_dleaf_t *leaf;
+	struct bsp_dleaf_t *leaf;
 	int flags;
 	int spawn_time;
 	char *name;

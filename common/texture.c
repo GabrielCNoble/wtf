@@ -63,7 +63,7 @@ int texture_Init()
 {
 	int x;
 	int y;
-	int layer_count = 2;
+	int layer_count = 1;
 	int layer_index;
 	int current_layer_offset;
 	int current_pixel_offset;
@@ -102,8 +102,11 @@ int texture_Init()
 
 	default_texture->bm_flags = 0;
 	default_texture->frame_count = 1;
-	default_texture->gl_handle = renderer_GenGLTexture(GL_TEXTURE_2D_ARRAY, GL_NEAREST, GL_NEAREST, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
-	default_texture->target = GL_TEXTURE_2D_ARRAY;
+	default_texture->gl_handle = renderer_GenGLTexture(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
+	default_texture->target = GL_TEXTURE_2D;
+
+	default_texture->texture_info = memory_Calloc(1, sizeof(struct texture_info_t));
+	default_texture_info = default_texture->texture_info;
 
 
 	for(layer_index = 0; layer_index < layer_count; layer_index++)
@@ -154,10 +157,23 @@ int texture_Init()
 
 
 
-	glBindTexture(GL_TEXTURE_2D_ARRAY, default_texture->gl_handle);
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, DEFAULT_TEXTURE_SIZE, DEFAULT_TEXTURE_SIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, default_texture_data);
-	glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, DEFAULT_TEXTURE_SIZE, DEFAULT_TEXTURE_SIZE, layer_count, 0, GL_RGBA, GL_UNSIGNED_BYTE, default_texture_data);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+	glBindTexture(GL_TEXTURE_2D, default_texture->gl_handle);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, DEFAULT_TEXTURE_SIZE, DEFAULT_TEXTURE_SIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, default_texture_data);
+	//glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, DEFAULT_TEXTURE_SIZE, DEFAULT_TEXTURE_SIZE, layer_count, 0, GL_RGBA, GL_UNSIGNED_BYTE, default_texture_data);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	default_texture_info->base_level = 0;
+	default_texture_info->max_level = 0;
+	default_texture_info->mag_filter = GL_NEAREST;
+	default_texture_info->min_filter = GL_NEAREST;
+	default_texture_info->width = DEFAULT_TEXTURE_SIZE;
+	default_texture_info->height = DEFAULT_TEXTURE_SIZE;
+	default_texture_info->name = "default";
+	default_texture_info->internal_format = GL_RGBA8;
+	default_texture_info->format = GL_RGBA;
+	default_texture_info->ref_count = 0;
+	default_texture_info->file_name = "default";
+	default_texture_info->full_path = "default";
 
 	memory_Free(default_texture_data);
 
@@ -265,9 +281,17 @@ int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 	}
 
 
+	full_path = path_GetPathToFile(file_name);
+
+	if(!full_path)
+	{
+		printf("texture_LoadTexture: couldn't find file for texture [%s]\n", name);
+		return -1;
+	}
+
 	if(!strcmp(path_GetFileExtension(file_name), "ptx"))
 	{
-		ptx_read(file_name, &data);
+		ptx_read(full_path, &data);
 
         if(data.pixels)
 		{
@@ -292,13 +316,6 @@ int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 	}
 	else
 	{
-
-		full_path = path_GetPathToFile(file_name);
-
-		if(!full_path)
-		{
-			printf("texture_LoadTexture: couldn't find file for texture [%s]\n", name);
-		}
 
 		tex_data = SOIL_load_image(full_path, &width, &height, &channels, SOIL_LOAD_AUTO);
 
@@ -440,7 +457,8 @@ int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 	/* keep the full path to the file to enable
 	the original file to be copied into the proper
 	folder if needed... */
-	info->file_name = memory_Strdup(full_path);
+	info->file_name = memory_Strdup(path_GetFileNameFromPath(file_name));
+	info->full_path = memory_Strdup(full_path);
 	info->format = format;
 	info->internal_format = internal_format;
 	info->width = width;
@@ -718,12 +736,25 @@ int texture_GetTexture(char *name)
 				{
 					return i - 1;
 				}
+
+				if(!strcmp(name, texture->texture_info->file_name))
+				{
+					return i - 1;
+				}
+
+				/* given that the full path will be unique to a file,
+				it's safe to use it as the ultimate "unambiguator"... */
+				if(!strcmp(name, texture->texture_info->full_path))
+				{
+					return i - 1;
+				}
 			}
 		}
 	}
 
 	return -1;
 }
+
 
 //char *texture_GetTextureName(int texture_index)
 //{

@@ -61,10 +61,10 @@ extern int w_world_vertices_count;
 extern vertex_t *w_world_vertices;
 
 extern int w_world_nodes_count;
-extern bsp_pnode_t *w_world_nodes;
+extern struct bsp_pnode_t *w_world_nodes;
 
 extern int w_world_leaves_count;
-extern bsp_dleaf_t *w_world_leaves;
+extern struct bsp_dleaf_t *w_world_leaves;
 
 extern int w_world_batch_count;
 extern struct batch_t *w_world_batches;
@@ -183,10 +183,10 @@ int level_editor_world_vertices_count = 0;
 vertex_t *level_editor_world_vertices = NULL;
 
 int level_editor_world_nodes_count = 0;
-bsp_pnode_t *level_editor_world_nodes = NULL;
+struct bsp_pnode_t *level_editor_world_nodes = NULL;
 
 int level_editor_world_leaves_count = 0;
-bsp_dleaf_t *level_editor_world_leaves = NULL;
+struct bsp_dleaf_t *level_editor_world_leaves = NULL;
 
 int level_editor_world_batch_count = 0;
 struct batch_t *level_editor_world_batches = NULL;
@@ -287,13 +287,15 @@ void editor_LevelEditorInit()
 	struct particle_system_script_t *script = particle_LoadParticleSystemScript("scripts/particle_system.as", "particle_system_test_script");
 	//struct script_t *particle_system_script = script_LoadScript("scripts/particle_system.as", "particle_system_test_script");
 
-	int texture = texture_LoadTexture("Branches0013_1_S.png", "cloud", 0);
+	//int texture = texture_LoadTexture("Branches0013_1_S.png", "cloud", 0);
 
 	int texture2 = texture_LoadTexture("explosion2.ptx", "explosion", 0);
 
 	int ps_def = particle_CreateParticleSystemDef("particle system", 1, 120, 1, 0, texture2, script);
 
-	particle_SpawnParticleSystem(vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), &r, ps_def);
+	//particle_SpawnParticleSystem(vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), &r, ps_def);
+
+    gui_ImGuiAddFontFromFileTTF("fixedsys.ttf", 32.0);
 
 	//struct entity_script_t *player_script = entity_LoadScript("scripts/player.as", "player");
 	//struct entity_script_t *enemy_script = entity_LoadScript("scripts/enemy.as", "enemy");
@@ -434,19 +436,17 @@ void editor_LevelEditorInit()
 
 
 
-	int diffuse_texture = texture_LoadTexture("textures/world/concrete_01_diffuse.png", "concrete_diffuse", 0);
-	int normal_texture = texture_LoadTexture("textures/world/concrete_01_normal.png", "concrete_normal", 0);
-	material_CreateMaterial("concrete", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, shader_GetShaderIndex("forward pass"), diffuse_texture, normal_texture);
+	//int diffuse_texture = texture_LoadTexture("textures/world/concrete_01_diffuse.png", "concrete_diffuse", 0);
+	//int normal_texture = texture_LoadTexture("textures/world/concrete_01_normal.png", "concrete_normal", 0);
+	//material_CreateMaterial("concrete", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, shader_GetShaderIndex("forward pass"), diffuse_texture, normal_texture);
 
+	//diffuse_texture = texture_LoadTexture("textures/world/oakfloor_basecolor.png", "oakfloor_diffuse", 0);
+	//normal_texture = texture_LoadTexture("textures/world/oakfloor_normal.png", "oakfloor_normal", 0);
+	//material_CreateMaterial("oakfloor", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, shader_GetShaderIndex("forward pass"), diffuse_texture, normal_texture);
 
-	diffuse_texture = texture_LoadTexture("textures/world/oakfloor_basecolor.png", "oakfloor_diffuse", 0);
-	normal_texture = texture_LoadTexture("textures/world/oakfloor_normal.png", "oakfloor_normal", 0);
-	material_CreateMaterial("oakfloor", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, shader_GetShaderIndex("forward pass"), diffuse_texture, normal_texture);
-
-
-	diffuse_texture = texture_LoadTexture("textures/world/tile_d.png", "tile_diffuse", 0);
-	normal_texture = texture_LoadTexture("textures/world/tile_n.png", "tile_normal", 0);
-	material_CreateMaterial("tile", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, shader_GetShaderIndex("forward pass"), diffuse_texture, normal_texture);
+	//diffuse_texture = texture_LoadTexture("textures/world/tile_d.png", "tile_diffuse", 0);
+	//normal_texture = texture_LoadTexture("textures/world/tile_n.png", "tile_normal", 0);
+	//material_CreateMaterial("tile", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, shader_GetShaderIndex("forward pass"), diffuse_texture, normal_texture);
 
 	//collider_def_t *projectile_def = physics_CreateProjectileColliderDef("projectile", 2.0, 1.0);
 
@@ -819,6 +819,12 @@ void editor_LevelEditorEdit(float delta_time)
 	vec4_t p;
 	vec4_t sp;
 	vec3_t direction;
+
+	struct entity_handle_t entity;
+	struct entity_t *entity_ptr;
+	struct entity_prop_t *life_prop;
+	int life;
+
 	int i;
 
 	int lshift;
@@ -1001,13 +1007,13 @@ void editor_LevelEditorEdit(float delta_time)
 				}
 			}
 
-			amount *= 0.5;
-
 			if(level_editor_editing_mode == EDITING_MODE_OBJECT)
 			{
 				switch(level_editor_3d_handle_transform_mode)
 				{
 					case ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION:
+						amount *= 0.5;
+
 						editor_LevelEditorTranslateSelections(direction, amount);
 					break;
 
@@ -1051,18 +1057,14 @@ void editor_LevelEditorEdit(float delta_time)
 			{
 				if(level_editor_editing_mode == EDITING_MODE_OBJECT)
 				{
-					//editor_LevelEditorOpenAddToWorldMenu(r_window_width * normalized_mouse_x * 0.5, r_window_height * normalized_mouse_y * 0.5);
 					editor_LevelEditorOpenAddToWorldMenu(mouse_x, r_window_height - mouse_y);
-					//editor_OpenAddToWorldMenu(r_window_width * normalized_mouse_x * 0.5, r_window_height * normalized_mouse_y * 0.5);
-
-					//gui_ImGuiSetNextWindowPos(vec2(mouse_x, mouse_y), ImCond_Once, vec2(0.0, 0.0));
-
 				}
 			}
 			else if(input_GetKeyStatus(SDL_SCANCODE_M) & KEY_JUST_PRESSED)
 			{
 				//editor_OpenMaterialWindow();
 				//editor_ToggleMaterialWindow();
+				editor_LevelEditorToggleMaterialsWindow();
 			}
 			else if(input_GetKeyStatus(SDL_SCANCODE_T) & KEY_JUST_PRESSED)
 			{
@@ -1079,6 +1081,10 @@ void editor_LevelEditorEdit(float delta_time)
 					editor_LevelEditorCopySelections();
 				}
 
+			}
+			else if(input_GetKeyStatus(SDL_SCANCODE_C) & KEY_JUST_PRESSED)
+			{
+				editor_LevelEditorToggleMapCompilerWindow();
 			}
 			else if(input_GetKeyStatus(SDL_SCANCODE_L) & KEY_JUST_PRESSED)
 			{
@@ -1152,6 +1158,32 @@ void editor_LevelEditorEdit(float delta_time)
 					}
 				}
 			}*/
+		}
+	}
+	else
+	{
+
+		//entity = entity_GetEntityPointer("player entity", 0);
+
+		entity = entity_GetEntityHandle("player entity", 0);
+		entity_ptr = entity_GetEntityPointerHandle(entity);
+
+        if(entity_ptr)
+		{
+
+			//life_prop = entity_GetPropPointer()
+
+			entity_GetProp(entity, "life", &life);
+
+			gui_ImGuiSetNextWindowPos(vec2(0.0, r_window_height - 60.0), ImGuiCond_Always, vec2(0.0, 0.0));
+			gui_ImGuiBegin("Life", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+
+			gui_ImGuiPushFont(gui_ImGuiGetFontIndex(1));
+
+			gui_ImGuiText("Life: %d", life);
+
+			gui_ImGuiPopFont();
+			gui_ImGuiEnd();
 		}
 	}
 
@@ -1651,14 +1683,17 @@ void editor_LevelEditorSerialize(void **buffer, int *buffer_size)
 	void *entity_buffer;
 	int entity_buffer_size;
 
+	void *material_buffer;
+	int material_buffer_size;
 
+	material_SerializeMaterials(&material_buffer, &material_buffer_size);
     brush_SerializeBrushes(&brush_buffer, &brush_buffer_size);
     navigation_SerializeWaypoints(&waypoint_buffer, &waypoint_buffer_size);
     light_SerializeLights(&light_buffer, &light_buffer_size);
     entity_SerializeEntities(&entity_buffer, &entity_buffer_size, 1);
 
 
-    out_size = brush_buffer_size + waypoint_buffer_size + light_buffer_size + entity_buffer_size + sizeof(struct level_editor_buffer_start_t) + sizeof(struct level_editor_buffer_end_t);
+    out_size = material_buffer_size + brush_buffer_size + waypoint_buffer_size + light_buffer_size + entity_buffer_size + sizeof(struct level_editor_buffer_start_t) + sizeof(struct level_editor_buffer_end_t);
     out = memory_Calloc(out_size, 1);
 
 	*buffer = out;
@@ -1669,6 +1704,12 @@ void editor_LevelEditorSerialize(void **buffer, int *buffer_size)
     out += sizeof(struct level_editor_buffer_start_t);
 
     strcpy(buffer_start->tag, level_editor_buffer_start_tag);
+
+    if(material_buffer_size)
+	{
+		memcpy(out, material_buffer, material_buffer_size);
+		out += material_buffer_size;
+	}
 
 	if(brush_buffer_size)
 	{
@@ -1708,6 +1749,7 @@ extern char waypoint_section_start_tag[];
 extern char brush_section_start_tag[];
 extern char light_section_start_tag[];
 
+
 void editor_LevelEditorDeserialize(void **buffer)
 {
 	char *in;
@@ -1724,6 +1766,10 @@ void editor_LevelEditorDeserialize(void **buffer)
 		{
 			buffer_start = (struct level_editor_buffer_start_t *)in;
 			in += sizeof(struct level_editor_buffer_start_t );
+		}
+		else if(!strcmp(in, material_section_start_tag))
+		{
+            material_DeserializeMaterials((void **)&in);
 		}
 		else if(!strcmp(in, waypoint_section_start_tag))
 		{
@@ -1804,6 +1850,20 @@ int editor_LevelEditorLoadLevel(char *path, char *file_name)
 	return 0;
 }
 
+
+
+void editor_LevelEditorNewLevel()
+{
+	world_Clear();
+	brush_DestroyAllBrushes();
+
+    level_editor_has_copied_data = 1;
+    level_editor_need_to_copy_data = 0;
+
+    editor_LevelEditorClearLevelData();
+
+    level_editor_has_copied_data = 0;
+}
 
 
 

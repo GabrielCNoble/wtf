@@ -1485,8 +1485,8 @@ void physics_PostUpdateColliders()
 
 	struct contact_record_t *contact_records;
 
-	btRigidBody *body0;
-	btRigidBody *body1;
+	btCollisionObject *body0;
+	btCollisionObject *body1;
 
 	struct collider_t *collider0;
 	struct collider_t *collider1;
@@ -1541,8 +1541,8 @@ void physics_PostUpdateColliders()
 		{
 			persistent_manifold = persistent_manifolds[i];
 
-			body0 = (btRigidBody *)persistent_manifold->getBody0();
-			body1 = (btRigidBody *)persistent_manifold->getBody1();
+			body0 = (btCollisionObject *)persistent_manifold->getBody0();
+			body1 = (btCollisionObject *)persistent_manifold->getBody1();
 
 			handle0 = body0->getUserIndex();
 			handle1 = body1->getUserIndex();
@@ -1695,63 +1695,62 @@ void physics_PostUpdateColliders()
 			//	continue;
 			//}
 
-			collider_rigid_body = (btRigidBody *)collider->rigid_body;
-
-			//collider_rigid_body->getMotionState()->getWorldTransform(collider_rigid_body_transform);
-
-			collider_rigid_body_transform = collider_rigid_body->getWorldTransform();
-
-			collider_rigid_body_position = collider_rigid_body_transform.getOrigin();
-			collider_rigid_body_orientation = collider_rigid_body_transform.getBasis();
-			collider_rigid_body_linear_velocity = collider_rigid_body->getLinearVelocity();
-
-			if(collider->type == COLLIDER_TYPE_CHARACTER_COLLIDER)
+			if(collider->type != COLLIDER_TYPE_TRIGGER_COLLIDER)
 			{
-				if(collider->character_collider_flags & CHARACTER_COLLIDER_FLAG_STEPPING_UP)
+				collider_rigid_body = (btRigidBody *)collider->rigid_body;
+
+				//collider_rigid_body->getMotionState()->getWorldTransform(collider_rigid_body_transform);
+
+				collider_rigid_body_transform = collider_rigid_body->getWorldTransform();
+
+				collider_rigid_body_position = collider_rigid_body_transform.getOrigin();
+				collider_rigid_body_orientation = collider_rigid_body_transform.getBasis();
+				collider_rigid_body_linear_velocity = collider_rigid_body->getLinearVelocity();
+
+				if(collider->type == COLLIDER_TYPE_CHARACTER_COLLIDER)
 				{
-					step_delta = collider_rigid_body_position[1] - collider->position.y;
-
-					if(step_delta < 0.01)
+					if(collider->character_collider_flags & CHARACTER_COLLIDER_FLAG_STEPPING_UP)
 					{
-						collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_STEPPING_UP;
-					}
+						step_delta = collider_rigid_body_position[1] - collider->position.y;
 
-					collider->position.y += step_delta * 0.1;
+						if(step_delta < 0.01)
+						{
+							collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_STEPPING_UP;
+						}
+
+						collider->position.y += step_delta * 0.1;
+					}
+					else
+					{
+						collider->position.y = collider_rigid_body_position[1];
+					}
 				}
 				else
 				{
 					collider->position.y = collider_rigid_body_position[1];
 				}
+
+				collider->position.x = collider_rigid_body_position[0];
+				collider->position.z = collider_rigid_body_position[2];
+
+				collider->linear_velocity.x = collider_rigid_body_linear_velocity[0];
+				collider->linear_velocity.y = collider_rigid_body_linear_velocity[1];
+				collider->linear_velocity.z = collider_rigid_body_linear_velocity[2];
+
+				collider->orientation.floats[0][0] = collider_rigid_body_orientation[0][0];
+				collider->orientation.floats[0][1] = collider_rigid_body_orientation[1][0];
+				collider->orientation.floats[0][2] = collider_rigid_body_orientation[2][0];
+
+				collider->orientation.floats[1][0] = collider_rigid_body_orientation[0][1];
+				collider->orientation.floats[1][1] = collider_rigid_body_orientation[1][1];
+				collider->orientation.floats[1][2] = collider_rigid_body_orientation[2][1];
+
+				collider->orientation.floats[2][0] = collider_rigid_body_orientation[0][2];
+				collider->orientation.floats[2][1] = collider_rigid_body_orientation[1][2];
+				collider->orientation.floats[2][2] = collider_rigid_body_orientation[2][2];
 			}
-			else
-			{
-				collider->position.y = collider_rigid_body_position[1];
-			}
-
-			collider->position.x = collider_rigid_body_position[0];
-			collider->position.z = collider_rigid_body_position[2];
-
-			collider->linear_velocity.x = collider_rigid_body_linear_velocity[0];
-			collider->linear_velocity.y = collider_rigid_body_linear_velocity[1];
-			collider->linear_velocity.z = collider_rigid_body_linear_velocity[2];
-
-			collider->orientation.floats[0][0] = collider_rigid_body_orientation[0][0];
-			collider->orientation.floats[0][1] = collider_rigid_body_orientation[1][0];
-			collider->orientation.floats[0][2] = collider_rigid_body_orientation[2][0];
-
-			collider->orientation.floats[1][0] = collider_rigid_body_orientation[0][1];
-			collider->orientation.floats[1][1] = collider_rigid_body_orientation[1][1];
-			collider->orientation.floats[1][2] = collider_rigid_body_orientation[2][1];
-
-			collider->orientation.floats[2][0] = collider_rigid_body_orientation[0][2];
-			collider->orientation.floats[2][1] = collider_rigid_body_orientation[1][2];
-			collider->orientation.floats[2][2] = collider_rigid_body_orientation[2][2];
 		}
 	}
-
-
-
-
 }
 
 

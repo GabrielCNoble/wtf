@@ -167,7 +167,7 @@ void editor_ProcessUI()
 		{
 			if(gui_ImGuiMenuItem("New...", NULL, NULL, 1))
 			{
-
+				editor_LevelEditorNewLevel();
 			}
 			if(gui_ImGuiMenuItem("Save...", NULL, NULL, 1))
 			{

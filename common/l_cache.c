@@ -29,10 +29,10 @@ extern int r_frame;
 
 /* from world.c */
 //extern int world_triangle_group_count;
-extern int world_batch_count;
-extern int world_start;
-extern vertex_t *world_vertices;
-extern bsp_dleaf_t *world_leaves;
+//extern int world_batch_count;
+//extern int world_start;
+//extern vertex_t *world_vertices;
+//extern struct bsp_dleaf_t *world_leaves;
 
 
 

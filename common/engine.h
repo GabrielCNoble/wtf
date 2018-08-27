@@ -73,6 +73,8 @@ int engine_GetEngineState();
 
 void engine_UpdateDeltaTime();
 
+float engine_GetCurrentDeltaTime();
+
 float engine_GetDeltaTime();
 
 void engine_BackTrace();

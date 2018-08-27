@@ -7,18 +7,18 @@
 #include "c_memory.h"
 //#include "bsp_file.h"
 #include "texture.h"
-
+#include "path.h"
 
 
 static int mat_material_list_size = 0;
-static int mat_material_list_cursor = 0;
+int mat_material_list_cursor = 0;
 int mat_material_count = 0;
 static int mat_free_position_stack_top = 0;
 static int *mat_free_position_stack = 0;
 static int mat_frame_count = 0;
 
 material_t *mat_materials = NULL;
-char **mat_material_names = NULL;
+//char **mat_material_names = NULL;
 
 int mat_material_name_record_count = 0;
 material_name_record_t *mat_material_name_records = NULL;
@@ -49,16 +49,16 @@ int material_Init()
 
 	mat_material_name_records = memory_Malloc(sizeof(material_name_record_t) * mat_material_list_size);
 	mat_materials = memory_Malloc(sizeof(material_t) * (mat_material_list_size + 1));
-	mat_material_names = memory_Malloc(sizeof(char **) * (mat_material_list_size + 1));
+	//mat_material_names = memory_Malloc(sizeof(char **) * (mat_material_list_size + 1));
 	mat_free_position_stack = memory_Malloc(sizeof(int) * mat_material_list_size);
 
 	default_material = mat_materials;
 
 	mat_materials++;
-	mat_material_names++;
+	//mat_material_names++;
 
-	mat_material_names[-1] = "default";
-	default_material_name = mat_material_names[-1];
+	//mat_material_names[-1] = "default";
+	//default_material_name = mat_material_names[-1];
 
 	default_material->r = 255;
 	default_material->g = 255;
@@ -78,6 +78,8 @@ int material_Init()
 	default_material->flags = 0;
 	default_material->draw_group = 0;
 
+	default_material->name = "default";
+
 
 	return 1;
 }
@@ -92,10 +94,10 @@ void material_Finish()
 	}
 
 	mat_materials--;
-	mat_material_names--;
+	//mat_material_names--;
 
 	memory_Free(mat_materials);
-	memory_Free(mat_material_names);
+	//memory_Free(mat_material_names);
 	memory_Free(mat_material_name_records);
 	memory_Free(mat_free_position_stack);
 }
@@ -346,7 +348,7 @@ int material_CreateMaterial(char *name, vec4_t base_color, float metalness, floa
 	}
 
 	material = &mat_materials[material_index];
-	material_name = &mat_material_names[material_index];
+	//material_name = &mat_material_names[material_index];
 	name = material_AddNameRecord(name);
 
 
@@ -465,8 +467,9 @@ int material_CreateMaterial(char *name, vec4_t base_color, float metalness, floa
 		material->flags |= MATERIAL_TRANSLUCENT;
 	}
 
+	material->name = memory_Strdup(name);
 
-	*material_name = memory_Strdup(name);
+	//*material_name = memory_Strdup(name);
 
 	mat_material_count++;
 	return material_index;
@@ -483,7 +486,7 @@ int material_MaterialIndex(char *material_name)
 		if(mat_materials[i].flags & MATERIAL_INVALID)
 			continue;
 
-		if(!strcmp(mat_material_names[i], material_name))
+		if(!strcmp(mat_materials[i].name, material_name))
 		{
 			return i;
 		}
@@ -502,7 +505,7 @@ int material_MaterialIndexRef(char *material_name)
 		if(mat_materials[i].flags & MATERIAL_INVALID)
 			continue;
 
-		if(!strcmp(mat_material_names[i], material_name))
+		if(!strcmp(mat_materials[i].name, material_name))
 		{
 			material_IncRefCount(i);
 			return i;
@@ -618,8 +621,8 @@ void material_DestroyMaterialIndex(int material_index)
 	{
 		if(!(mat_materials[material_index].flags & MATERIAL_INVALID))
 		{
-			material_RemoveNameRecord(mat_material_names[material_index]);
-			memory_Free(mat_material_names[material_index]);
+			material_RemoveNameRecord(mat_materials[material_index].name);
+			memory_Free(mat_materials[material_index].name);
 
 			material_OpRefCount(-1, mat_materials[material_index].ref_count);
 
@@ -641,20 +644,20 @@ int material_SetMaterialName(char *name, int material_index)
 
 	if(material_index >= 0 && material_index < mat_material_list_cursor)
 	{
-		if(mat_materials[material_index].flags & MATERIAL_INVALID)
+		if(!(mat_materials[material_index].flags & MATERIAL_INVALID))
 		{
-			return 0;
+			material_RemoveNameRecord(mat_materials[material_index].name);
+			memory_Free(mat_materials[material_index].name);
+			mat_materials[material_index].name = memory_Strdup(material_AddNameRecord(name));
+			return 1;
 		}
 	}
 
-	material_RemoveNameRecord(mat_material_names[material_index]);
-	memory_Free(mat_material_names[material_index]);
-	mat_material_names[material_index] = memory_Strdup(material_AddNameRecord(name));
-	return 1;
+	return 0;
 }
 
 
-char *material_GetMaterialName(int material_index)
+/*char *material_GetMaterialName(int material_index)
 {
 	if(material_index >= -1 && material_index < mat_material_list_cursor)
 	{
@@ -665,7 +668,7 @@ char *material_GetMaterialName(int material_index)
 
 		return mat_material_names[material_index];
 	}
-}
+}*/
 
 material_t *material_GetMaterialPointer(char *material_name)
 {
@@ -717,6 +720,13 @@ engine...
 
 ====================
 */
+
+
+
+
+
+
+
 void material_WriteMaterialRecord(material_t *material, char *material_name, void **buffer)
 {
 	#if 0
@@ -798,241 +808,177 @@ void material_WriteMaterialRecord(material_t *material, char *material_name, voi
 
 void material_SerializeMaterials(void **buffer, int *buffer_size)
 {
-	#if 0
 	int i;
-	material_section_header_t *header;
-	material_record_t *record;
+	struct material_section_start_t *section_start;
+	struct material_section_end_t *section_end;
+	struct material_record_t *record;
+	struct texture_t *texture;
 	char *out;
 	int size;
 	char *name;
 	int name_offset = 0;
 
-	size = sizeof(material_section_header_t) + sizeof(material_record_t) * mat_material_count;
-	out = memory_Malloc(size);
+	//size = sizeof(material_section_header_t) + sizeof(material_record_t) * mat_material_count;
+
+	size = sizeof(struct material_section_start_t) + sizeof(struct material_section_end_t) + sizeof(struct material_record_t) * mat_material_count;
+
+	out = memory_Calloc(1, size);
 
 	*buffer = out;
 	*buffer_size = size;
 
-	header = (material_section_header_t *)out;
-	out += sizeof(material_section_header_t );
+	section_start = (struct material_section_start_t *)out;
+	out += sizeof(struct material_section_start_t );
 
-	header->tag[0]  = '[';
-	header->tag[1]  = 'm';
-	header->tag[2]  = 'a';
-	header->tag[3]  = 't';
-	header->tag[4]  = 'e';
-	header->tag[5]  = 'r';
-	header->tag[6]  = 'i';
-	header->tag[7]  = 'a';
-	header->tag[8]  = 'l';
-	header->tag[9]  = '_';
-	header->tag[10] = 's';
-	header->tag[11] = 'e';
-	header->tag[12] = 'c';
-	header->tag[13] = 't';
-	header->tag[14] = 'i';
-	header->tag[15] = 'o';
-	header->tag[16] = 'n';
-	header->tag[17] = ']';
-	header->tag[18] = '\0';
-	header->tag[19] = '\0';
-	/* make sure we always stay 4 byte aligned... */
-
-	header->material_count = mat_material_count;
-	header->reserved0 = 0;
-	header->reserved1 = 0;
-	header->reserved2 = 0;
-	header->reserved3 = 0;
-	header->reserved4 = 0;
-	header->reserved5 = 0;
-	header->reserved6 = 0;
-	header->reserved7 = 0;
+	strcpy(section_start->tag, material_section_start_tag);
+	section_start->material_count = mat_material_count;
 
 	for(i = 0; i < mat_material_list_cursor; i++)
 	{
 		if(mat_materials[i].flags & MATERIAL_INVALID)
 			continue;
 
-		material_WriteMaterialRecord(&mat_materials[i], mat_material_names[i], (void **)&out);
+		record = (struct material_record_t *)out;
+		out += sizeof(struct material_record_t);
+
+		strcpy(record->tag, material_record_tag);
+
+		record->flags = mat_materials[i].flags;
+
+		record->base.r = (float)mat_materials[i].r / 255.0;
+		record->base.g = (float)mat_materials[i].g / 255.0;
+		record->base.b = (float)mat_materials[i].b / 255.0;
+		record->base.a = (float)mat_materials[i].a / 255.0;
+
+		record->roughness = (float)mat_materials[i].roughness / 255.0;
+		record->metalness = (float)mat_materials[i].metalness / 255.0;
+
+		strcpy(record->material_name, mat_materials[i].name);
+
+        if(record->flags & MATERIAL_USE_DIFFUSE_TEXTURE)
+		{
+			texture = texture_GetTexturePointer(mat_materials[i].diffuse_texture);
+
+			if(texture)
+			{
+				strcpy(record->diffuse_texture_name, texture->texture_info->file_name);
+			}
+		}
+
+		if(record->flags & MATERIAL_USE_NORMAL_TEXTURE)
+		{
+            texture = texture_GetTexturePointer(mat_materials[i].normal_texture);
+
+            if(texture)
+			{
+				strcpy(record->normal_texture_name, texture->texture_info->file_name);
+			}
+		}
+
+		if(record->flags & MATERIAL_USE_HEIGHT_TEXTURE)
+		{
+            texture = texture_GetTexturePointer(mat_materials[i].height_texture);
+
+			if(texture)
+			{
+                strcpy(record->height_texture_name, texture->texture_info->file_name);
+			}
+		}
+
+		if(record->flags & MATERIAL_USE_METALNESS_TEXTURE)
+		{
+            texture = texture_GetTexturePointer(mat_materials[i].metalness_texture);
+
+			if(texture)
+			{
+				strcpy(record->metalness_texture_name, texture->texture_info->file_name);
+			}
+		}
+
+		if(record->flags & MATERIAL_USE_ROUGHNESS_TEXTURE)
+		{
+            texture = texture_GetTexturePointer(mat_materials[i].roughness_texture);
+
+			if(texture)
+			{
+				strcpy(record->roughness_texture_name, texture->texture_info->file_name);
+			}
+		}
+
 	}
 
-	*buffer = out;
+	section_end = (struct material_section_end_t *)out;
+	out += sizeof(struct material_section_end_t);
 
-	#endif
+	strcpy(section_end->tag, material_section_end_tag);
 
+	//*buffer = out;
 }
 
-
-/*
-====================
-material_ReadMaterialRecord
-
-pretty much the same as
-material_WriteMaterialRecord...
-
-====================
-*/
-void material_ReadMaterialRecord(material_record_t *record, void **buffer)
-{
-
-	#if 0
-	material_record_t *in_record;
-	char *material_name;
-	char *texture_name;
-	char *in;
-
-	int i = 0;
-	int j = 0;
-
-	in = *buffer;
-	in_record = (material_record_t *)in;
-
-	record->base = in_record->base;
-	record->bm_flags = in_record->bm_flags;
-	record->roughness = in_record->roughness;
-	record->metalness = in_record->metalness;
-
-	record->reserved0 = 0;
-	record->reserved1 = 0;
-	record->reserved2 = 0;
-	record->reserved3 = 0;
-	record->reserved4 = 0;
-	record->reserved5 = 0;
-	record->reserved6 = 0;
-	record->reserved7 = 0;
-
-
-	for(j = 0; in_record->names[i] != '\0'; i++, j++)
-	{
-		record->separate_names.material_name[j] = in_record->names[i];
-	}
-	record->separate_names.material_name[j] = '\0';
-
-	if(in_record->bm_flags & MATERIAL_USE_DIFFUSE_TEXTURE)
-	{
-		for(j = 0; in_record->names[i] != '\0'; i++, j++)
-		{
-			record->separate_names.diffuse_texture_name[j] = in_record->names[i];
-		}
-		record->separate_names.diffuse_texture_name[j] = '\0';
-	}
-
-	if(in_record->bm_flags & MATERIAL_USE_NORMAL_TEXTURE)
-	{
-		for(j = 0; in_record->names[i] != '\0'; i++, j++)
-		{
-			record->separate_names.normal_texture_name[j] = in_record->names[i];
-		}
-		record->separate_names.normal_texture_name[j] = '\0';
-	}
-
-	if(in_record->bm_flags & MATERIAL_USE_HEIGHT_TEXTURE)
-	{
-		for(j = 0; in_record->names[i] != '\0'; i++, j++)
-		{
-			record->separate_names.height_texture_name[j] = in_record->names[i];
-		}
-		record->separate_names.height_texture_name[j] = '\0';
-	}
-
-	if(in_record->bm_flags & MATERIAL_USE_METALNESS_TEXTURE)
-	{
-		for(j = 0; in_record->names[i] != '\0'; i++, j++)
-		{
-			record->separate_names.metalness_texture_name[j] = in_record->names[i];
-		}
-		record->separate_names.metalness_texture_name[j] = '\0';
-	}
-
-	if(in_record->bm_flags & MATERIAL_USE_ROUGHNESS_TEXTURE)
-	{
-		for(j = 0; in_record->names[i] != '\0'; i++, j++)
-		{
-			record->separate_names.roughness_texture_name[j] = in_record->names[i];
-		}
-		record->separate_names.roughness_texture_name[j] = '\0';
-	}
-
-	in += sizeof(material_record_t) - (sizeof(material_record_t) - i);
-
-	*buffer = in;
-
-	#endif
-}
 
 void material_DeserializeMaterials(void **buffer)
 {
+	//material_section_header_t *header;
 
-	#if 0
-	material_section_header_t *header;
-	material_record_t record;
+	struct material_section_start_t *section_start;
+	struct material_section_end_t *section_end;
+	struct material_record_t *record;
 	char *in;
 	char *material_name;
 	char *name;
 	int i;
 	unsigned short diffuse_texture;
 	unsigned short normal_texture;
+	unsigned short height_texture;
+	unsigned short metalness_texture;
+	unsigned short roughness_texture;
 
 	in = *buffer;
 
-	header = (material_section_header_t *)in;
-	in += sizeof(material_section_header_t );
 
-
-	for(i = 0; i < header->material_count; i++)
+	while(1)
 	{
-		material_ReadMaterialRecord(&record, (void **)&in);
-		/*record = (material_record_t *)in;
-		in += sizeof(material_record_t) - 1;
-
-		diffuse_texture = -1;
-		normal_texture = -1;
-
-		material_name = record->names;
-		in += strlen(material_name) + 1;*/
-
-		if(record.bm_flags & MATERIAL_USE_DIFFUSE_TEXTURE)
+        if(!strcmp(in, material_section_start_tag))
 		{
-			//strcpy(name, in);
-			//in += strlen(name) + 1;
-			diffuse_texture = texture_GetTexture(record.separate_names.diffuse_texture_name);
+            section_start = (struct material_section_start_t *)in;
+            in += sizeof(struct material_section_start_t);
 		}
-
-		if(record.bm_flags & MATERIAL_USE_NORMAL_TEXTURE)
+		else if(!strcmp(in, material_section_end_tag))
 		{
-			//strcpy(name, in);
-			//in += strlen(name) + 1;
-			normal_texture = texture_GetTexture(record.separate_names.normal_texture_name);
+			section_end = (struct material_section_end_t *)in;
+            in += sizeof(struct material_section_end_t);
+            break;
 		}
-
-		if(record.bm_flags & MATERIAL_USE_HEIGHT_TEXTURE)
+		else if(!strcmp(in, material_record_tag))
 		{
-			//strcpy(name, in);
-			//in += strlen(name) + 1;
-			//normal_texture = texture_GetTexture(name);
-		}
+            record = (struct material_record_t *)in;
+			in += sizeof(struct material_record_t);
 
-		if(record.bm_flags & MATERIAL_USE_METALNESS_TEXTURE)
+			diffuse_texture = 0xffff;
+			normal_texture = 0xffff;
+			height_texture = 0xffff;
+			metalness_texture = 0xffff;
+			roughness_texture = 0xffff;
+
+            if(record->flags & MATERIAL_USE_DIFFUSE_TEXTURE)
+			{
+				diffuse_texture = texture_LoadTexture(record->diffuse_texture_name, path_GetFileNameFromPath(record->diffuse_texture_name), 0);
+			}
+
+			if(record->flags & MATERIAL_USE_NORMAL_TEXTURE)
+			{
+				normal_texture = texture_LoadTexture(record->normal_texture_name, path_GetFileNameFromPath(record->normal_texture_name), 0);
+			}
+
+			material_CreateMaterial(record->material_name, record->base, record->metalness, record->roughness, -1, diffuse_texture, normal_texture);
+		}
+		else
 		{
-			//strcpy(name, in);
-			//in += strlen(name) + 1;
-			//normal_texture = texture_GetTexture(name);
+			in++;
 		}
-
-		if(record.bm_flags & MATERIAL_USE_ROUGHNESS_TEXTURE)
-		{
-			//strcpy(name, in);
-			//in += strlen(name) + 1;
-			//normal_texture = texture_GetTexture(name);
-		}
-
-		material_CreateMaterial(record.separate_names.material_name, record.base, record.metalness, record.roughness, r_forward_pass_shader, diffuse_texture, normal_texture);
-
 	}
 
 	*buffer = in;
-
-	#endif
 }
 
 

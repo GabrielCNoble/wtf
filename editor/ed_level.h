@@ -116,6 +116,8 @@ int editor_LevelEditorSaveLevel(char *file_path, char *file_name, void **file_bu
 
 int editor_LevelEditorLoadLevel(char *path, char *file_name);
 
+void editor_LevelEditorNewLevel();
+
 
 
 

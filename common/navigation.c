@@ -417,6 +417,11 @@ struct waypoint_t *navigation_GetClosestWaypoint(vec3_t position, int ignore_wor
 
 	for(i = 0; i < c; i++)
 	{
+		if(waypoints[i].flags & WAYPOINT_FLAG_INVALID)
+		{
+			continue;
+		}
+
 		v.x = position.x - waypoints[i].position.x;
 		v.y = position.y - waypoints[i].position.y;
 		v.z = position.z - waypoints[i].position.z;
@@ -426,7 +431,7 @@ struct waypoint_t *navigation_GetClosestWaypoint(vec3_t position, int ignore_wor
 
 		if(d < lowest_d)
 		{
-			if((!physics_Raycast(waypoints[i].position, position, NULL, NULL, 1)) || ignore_world)
+			if(!physics_Raycast(waypoints[i].position, position, NULL, NULL, !ignore_world))
 			{
 				lowest_d = d;
 				closest = waypoints + i;

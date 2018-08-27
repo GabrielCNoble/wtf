@@ -168,8 +168,8 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 	char **mtllibs = NULL;
 
 	int material_records_cursor = 0;
-	material_record_t *material_records = NULL;
-	material_record_t *material_record = NULL;
+	struct material_record_t *material_records = NULL;
+	struct material_record_t *material_record = NULL;
 
 	int texture_record_cursor = 0;
 	texture_record_t *texture_records = NULL;
@@ -524,7 +524,7 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 
 	vertices = memory_Malloc(sizeof(vertex_t) * vertice_count);
 
-	material_records = memory_Malloc(referenced_material_cursor * sizeof(material_record_t));
+	material_records = memory_Malloc(referenced_material_cursor * sizeof(struct material_record_t));
 	material_records_cursor = -1;
 
 	file_buffer = NULL;
@@ -588,16 +588,17 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 
 						value_str[value_str_cursor] = '\0';
 
-						strcpy(material_records[material_records_cursor].separate_names.material_name, value_str);
-
-						for(i = 0; i < PATH_MAX; i++)
+						//strcpy(material_records[material_records_cursor].separate_names.material_name, value_str);
+						memset(&material_records[material_records_cursor], 0, sizeof(struct material_record_t));
+						strcpy(material_records[material_records_cursor].material_name, value_str);
+						/*for(i = 0; i < PATH_MAX; i++)
 						{
 							material_records[material_records_cursor].separate_names.diffuse_texture_name[i] = '\0';
 							material_records[material_records_cursor].separate_names.normal_texture_name[i] = '\0';
 							material_records[material_records_cursor].separate_names.height_texture_name[i] = '\0';
 							material_records[material_records_cursor].separate_names.roughness_texture_name[i] = '\0';
 							material_records[material_records_cursor].separate_names.metalness_texture_name[i] = '\0';
-						}
+						}*/
 					}
 				break;
 
@@ -749,7 +750,7 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 							}
 
 							value_str[value_str_cursor] = '\0';
-							strcpy(material_records[material_records_cursor].separate_names.diffuse_texture_name, value_str);
+							strcpy(material_records[material_records_cursor].diffuse_texture_name, value_str);
 						}
 						else if(file_buffer[cursor] == 'K' &&
 						        file_buffer[cursor + 1] == 'a')
@@ -787,7 +788,7 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 							}
 
 							value_str[value_str_cursor] = '\0';
-							strcpy(material_records[material_records_cursor].separate_names.normal_texture_name, value_str);
+							strcpy(material_records[material_records_cursor].normal_texture_name, value_str);
 						}
 
 					}
@@ -856,7 +857,7 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 			if(face_indexes[i].vertex_index > -1)
 			{
 				/* if this index belongs to a face that uses this material... */
-				if(!strcmp(face_indexes[i].material_name, material_records[j].separate_names.material_name))
+				if(!strcmp(face_indexes[i].material_name, material_records[j].material_name))
 				{
 					/* append it to the list of vertices */
 					vertices[batch->indice_start + batch->indice_count].position = positions[face_indexes[i].vertex_index];
@@ -892,18 +893,18 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 			if(j < material_records_cursor - 1)
 			{
 				c = material_records_cursor - 1;
-				strcpy(material_records[j].separate_names.material_name, material_records[c].separate_names.material_name);
-				strcpy(material_records[j].separate_names.diffuse_texture_name , material_records[c].separate_names.diffuse_texture_name);
-				strcpy(material_records[j].separate_names.normal_texture_name, material_records[c].separate_names.normal_texture_name);
-				strcpy(material_records[j].separate_names.height_texture_name, material_records[c].separate_names.height_texture_name);
-				strcpy(material_records[j].separate_names.roughness_texture_name, material_records[c].separate_names.roughness_texture_name);
-				strcpy(material_records[j].separate_names.metalness_texture_name, material_records[c].separate_names.metalness_texture_name);
+				strcpy(material_records[j].material_name, material_records[c].material_name);
+				strcpy(material_records[j].diffuse_texture_name , material_records[c].diffuse_texture_name);
+				strcpy(material_records[j].normal_texture_name, material_records[c].normal_texture_name);
+				strcpy(material_records[j].height_texture_name, material_records[c].height_texture_name);
+				strcpy(material_records[j].roughness_texture_name, material_records[c].roughness_texture_name);
+				strcpy(material_records[j].metalness_texture_name, material_records[c].metalness_texture_name);
 
 
 				material_records[j].base = material_records[c].base;
 				material_records[j].roughness = material_records[c].roughness;
 				material_records[j].metalness = material_records[c].metalness;
-				material_records[j].bm_flags = material_records[c].bm_flags;
+				material_records[j].flags = material_records[c].flags;
 			}
 
 			material_records_cursor--;
@@ -1093,7 +1094,7 @@ void mpk_index(struct input_params_t *params)
 	triangles = memory_Malloc(sizeof(struct mpk_triangle_t) * triangle_count);
 
 	triangle_count = 0;
-	
+
 	indices = memory_Malloc(sizeof(int) * vertice_count);
 
 	for(i = 0; i < batch_count; i++)
@@ -1119,8 +1120,8 @@ void mpk_index(struct input_params_t *params)
 		}
 	}
 
-	
-	
+
+
 /*	for(i = 0; i < vertice_count; i++)
 	{
 		indices[i] = i;
@@ -1284,16 +1285,16 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 						/* this vertices was markead as invalid, but it can't
 						be removed from the list yet given that might be triangles
 						that points to vertices further ahead of this one, and moving
-						them around would mess the indices the triangles keep into 
+						them around would mess the indices the triangles keep into
 						this list... */
 						rejected_vertices++;
 						continue;
 					}
-					
+
 					/*printf("[%f %f %f] -- [%f %f %f] -- [%f %f]\n", cur_vertex->position.x, cur_vertex->position.y, cur_vertex->position.z,
 																	cur_vertex->normal.x, cur_vertex->normal.y, cur_vertex->normal.z,
 																	cur_vertex->tex_coord.x, cur_vertex->tex_coord.y);*/
-					
+
 
 
 					for(test_vertex_index = cur_vertex_index + 1; test_vertex_index < batch->indice_count; test_vertex_index++)
@@ -1373,22 +1374,22 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
                                     if(triangle->verts[m] == test_vertex_index)
 									{
 										/* make this triangle use the current vertice... */
-										
+
 										/* once all the duplicate vertices get marked as so,
 										the list will be compacted, and the invalid vertices
 										will be removed.
-										
+
 										In order to have the triangles point only at valid vertices
 										we subtract from the current vertice we're testing how many
 										vertices were marked as invalid so far, so when the list
-										gets compacted, the triangles will be pointing at the 
+										gets compacted, the triangles will be pointing at the
 										correct vertices.
-							 			
+
 										In other words, cur_vertex_index points at the current
 										vertice we're testing, and cur_vertex_index - rejected_vertices
 										points at the last valid vertice so far... */
 										triangle->verts[m] = cur_vertex_index - rejected_vertices;
-										
+
 										//printf("change vertex %d for vertex %d\n", test_vertex_index, cur_vertex_index - rejected_vertices);
 
 										*(int *)&vertices[test_vertex_index].position.x = 0xffffffff;
@@ -1443,13 +1444,13 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 				out_params->out_indices_count++;
 			}
 		}
-	
+
 		for(i = 0; i < out_params->out_indices_count; i++)
 		{
 			printf("[%f %f %f]\n", vertices[out_params->out_indices[i]].position.x,
 								   vertices[out_params->out_indices[i]].position.y,
 								   vertices[out_params->out_indices[i]].position.z);
-		}	
+		}
 	}
 }
 
@@ -1463,7 +1464,7 @@ void mpk_convert(char *output_name, char *input_file)
 	vertex_t *vertices;
 	int vertice_count;
 
-	material_record_t *material_records;
+	struct material_record_t *material_records;
 	int material_record_count;
 
 	struct mpk_vertex_record_t *vertex_records;

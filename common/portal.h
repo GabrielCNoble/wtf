@@ -12,9 +12,9 @@ typedef struct
 	view_data_t view_data;
 	mat3_t orientation;
 	vec3_t position;
-	
+
 	vec4_t near_plane;
-	
+
 	int ref_portal_index;						/* to which portal this view refers to... */
 }portal_view_data_t;									/* a portal gets one of those added to itself whenever it gets seen by another view point... */
 
@@ -30,16 +30,16 @@ typedef struct
 typedef struct
 {
 	portal_recursive_view_data_t *portal_recursive_views;
-	
-	bsp_dleaf_t *leaf;
+
+	struct bsp_dleaf_t *leaf;
 	mat3_t orientation;
 	vec3_t position;
 	vec2_t extents;
 	short linked_portal;
 	short ignore;
-	
+
 	short max_recursion;
-	
+
 }portal_t;
 
 

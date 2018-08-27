@@ -63,7 +63,7 @@ void OnMapEnter()
 		}
 	}
 
-	script_Print("enter map\n");
+	//script_Print("enter map\n");
 
 }
 
@@ -93,7 +93,7 @@ void OnMapUpdate()
 	int z;
 
 
-	if(pokey_intro_source < 0 && pokey_loop_source < 0)
+	/*if(pokey_intro_source < 0 && pokey_loop_source < 0)
 	{
 		pokey_intro_source = sound_PlaySound(pokey_intro, vec3_t(0.0, 0.0, 0.0), 8.0, 0);
 	}
@@ -107,7 +107,7 @@ void OnMapUpdate()
 				pokey_loop_source = sound_PlaySound(pokey_loop, vec3_t(0.0, 0.0, 0.0), 5.0, 1);
 			}
 		}
-	}
+	}*/
 
 	//spawn_point_count = world_GetWorldArrayVarLength("spawn points");
 	spawn_point_count = spawn_points.count;

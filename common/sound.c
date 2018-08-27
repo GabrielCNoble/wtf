@@ -245,13 +245,20 @@ struct sound_handle_t sound_LoadSound(char *file_name, char *name)
 	{
 		file_path = path_GetPathToFile(file_name);
 
-		sound = loader(file_path);
-
-        sound_ptr = sound_GetSoundPointer(sound);
-
-        if(sound_ptr)
+		if(file_path)
 		{
-            sound_ptr->name = memory_Strdup(name);
+			sound = loader(file_path);
+
+			sound_ptr = sound_GetSoundPointer(sound);
+
+			if(sound_ptr)
+			{
+				sound_ptr->name = memory_Strdup(name);
+			}
+		}
+		else
+		{
+			printf("sound_LoadSound: couldn't find file [%s]\n", file_name);
 		}
 	}
 

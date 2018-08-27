@@ -41,13 +41,13 @@
 int w_world_vertices_count = 0;
 vertex_t *w_world_vertices = NULL;
 
+int w_world_triangle_count = 0;
+
 int w_world_nodes_count = 0;
-bsp_pnode_t *w_world_nodes = NULL;
-//int collision_nodes_count = 0;
-//bsp_pnode_t *collision_nodes = NULL;
+struct bsp_pnode_t *w_world_nodes = NULL;
 
 int w_world_leaves_count = 0;
-bsp_dleaf_t *w_world_leaves = NULL;
+struct bsp_dleaf_t *w_world_leaves = NULL;
 bsp_lights_t *w_leaf_lights = NULL;
 
 //int w_max_leaf_lights = 0;
@@ -65,7 +65,7 @@ bsp_entities_t *w_leaf_entities = NULL;
 //bsp_pnode_t *world_hull = NULL;
 
 int w_visible_leaves_count = 0;
-bsp_dleaf_t **w_visible_leaves = NULL;
+struct bsp_dleaf_t **w_visible_leaves = NULL;
 
 int w_visible_lights_count = 0;
 unsigned short w_visible_lights[MAX_WORLD_LIGHTS];
@@ -316,12 +316,14 @@ void world_MarkLightsOnLeaves()
 	float radius;
 	float dist;
 	static int sign[4] = {0x80000000, 0x80000000, 0x80000000, 0x80000000};
-	bsp_dleaf_t *light_leaf;
-	bsp_dleaf_t *leaf;
-	bsp_dleaf_t *lleaf;
+	struct bsp_dleaf_t *light_leaf;
+	struct bsp_dleaf_t *leaf;
+	struct bsp_dleaf_t *lleaf;
 	bsp_lights_t *lights;
 	light_position_t *pos;
 	light_params_t *parms;
+	struct bsp_dleaf_t **leaves;
+	int leaves_count;
 	unsigned long long s;
 	unsigned long long e;
 	vec3_t v;
@@ -334,7 +336,7 @@ void world_MarkLightsOnLeaves()
 	if(!w_world_leaves)
 		return;
 
-	for(i = 0; i < l_light_count; i++)
+	for(i = 0; i < l_light_list_cursor; i++)
 	{
 		if(l_light_params[i].bm_flags & LIGHT_INVALID)
 			continue;
@@ -361,37 +363,43 @@ void world_MarkLightsOnLeaves()
 			{
 				/* don't update anything if this light didn't
 				leave the leaf... */
-				if((bsp_dleaf_t *)parms->leaf != light_leaf)
+				if((struct bsp_dleaf_t *)parms->leaf != light_leaf)
 				{
-					leaf = (bsp_dleaf_t *)parms->leaf;
-					leaf_index = leaf - w_world_leaves;
-					w_leaf_lights[leaf_index].lights[int_index] &= ~(1 << bit_index);
+					//leaf = (bsp_dleaf_t *)parms->leaf;
+					//leaf_index = leaf - w_world_leaves;
+					//w_leaf_lights[leaf_index].lights[int_index] &= ~(1 << bit_index);
 
-					for(j = 0; j < w_world_leaves_count; j++)
+					leaves = bsp_DecompressPvs(parms->leaf, &leaves_count);
+
+					for(j = 0; j < leaves_count; j++)
 					{
-						r = 1 << (j % 8);
+						leaf_index = leaves[j] - w_world_leaves;
+						w_leaf_lights[leaf_index].lights[int_index] &= ~(1 << bit_index);
 
-						if(!leaf->pvs)
-							break;
+					//	r = 1 << (j % 8);
 
-						if(leaf->pvs[j >> 3] & r)
-						{
+					//	if(!leaf->pvs)
+					//		break;
+
+					//	if(leaf->pvs[j >> 3] & r)
+					//	{
 							//lleaf_index = 1 << (leaf->pvs[j >> 3] & r);
-							w_leaf_lights[j].lights[int_index] &= ~(1 << bit_index);
-						}
+					//		w_leaf_lights[j].lights[int_index] &= ~(1 << bit_index);
+					//	}
 					}
 				}
 			}
 
 			/* check to see which leaves from its current
 			leaf's pvs this light touch... */
-			leaf_index = light_leaf - w_world_leaves;
-			w_leaf_lights[leaf_index].lights[int_index] |= 1 << bit_index;
+			//leaf_index = light_leaf - w_world_leaves;
+			//w_leaf_lights[leaf_index].lights[int_index] |= 1 << bit_index;
 
 			radius = UNPACK_LIGHT_RADIUS(parms->radius);
 			energy = UNPACK_LIGHT_ENERGY(parms->energy);
 			radius *= radius;
 
+			leaves = bsp_DecompressPvs(light_leaf, &leaves_count);
 
 			light_pos4.x = pos->position.x;
 			light_pos4.y = pos->position.y;
@@ -417,86 +425,90 @@ void world_MarkLightsOnLeaves()
 			#endif
 
 
-			for(j = 0; j < w_world_leaves_count; j++)
+			for(j = 0; j < leaves_count; j++)
 			{
-				r = 1 << (j % 8);
+				//r = 1 << (j % 8);
 
-				if(light_leaf->pvs[j >> 3] & r)
+
+				leaf = leaves[j];
+				leaf_index = leaf - w_world_leaves;
+
+				//if(light_leaf->pvs[j >> 3] & r)
+				//{
+				//leaf = &w_world_leaves[j];
+
+				//s = _rdtsc();
+
+				#ifdef BLODDY_SSE
+				asm volatile
+				(
+					"movups xmm1, [%[leaf_pos4]]\n"
+					"movups xmm2, [%[leaf_extents4]]\n"
+
+					"movups xmm4, xmm2\n"					/* half extents... */
+					"orps xmm4, xmm3\n"						/* negate half extents... */
+
+					"movups xmm5, xmm0\n"					/* v = pos->position - leaf->center */
+					"subps xmm5, xmm1\n"					/* ================================ */
+
+					"minps xmm5, xmm2\n"					/* clamp v to the leaf's positive half-extents... */
+					"maxps xmm5, xmm4\n"					/* clamp v to the leaf's negative half-extents...*/
+
+					"addps xmm5, xmm1\n"					/* v += leaf->center */
+
+					"subps xmm5, xmm0\n"					/* v -= pos->position */
+					"movups [%[v4]], xmm5\n"				/* ================== */
+
+
+					:[v4] "=m" (v4) : [leaf_pos4] "rm" (leaf->center),
+					   				  [leaf_extents4] "rm" (leaf->extents)
+
+
+				);
+
+				#else
+
+				v4.x = pos->position.x - leaf->center.x;
+				v4.y = pos->position.y - leaf->center.y;
+				v4.z = pos->position.z - leaf->center.z;
+
+				if(v4.x > leaf->extents.x) v4.x = leaf->extents.x;
+				else if(v4.x < -leaf->extents.x) v4.x = -leaf->extents.x;
+
+				if(v4.y > leaf->extents.y) v4.y = leaf->extents.y;
+				else if(v4.y < -leaf->extents.y) v4.y = -leaf->extents.y;
+
+				if(v4.z > leaf->extents.x) v4.z = leaf->extents.z;
+				else if(v4.z < -leaf->extents.z) v4.z = -leaf->extents.z;
+
+
+				v4.x += leaf->center.x;
+				v4.y += leaf->center.y;
+				v4.z += leaf->center.z;
+
+				v4.x = pos->position.x - v4.x;
+				v4.y = pos->position.y - v4.y;
+				v4.z = pos->position.z - v4.z;
+
+				#endif
+
+				dist = dot3(v4.vec3, v4.vec3);
+
+
+				if(dist < radius)
 				{
-					leaf = &w_world_leaves[j];
-
-					//s = _rdtsc();
-
-					#ifdef BLODDY_SSE
-					asm volatile
-					(
-						"movups xmm1, [%[leaf_pos4]]\n"
-						"movups xmm2, [%[leaf_extents4]]\n"
-
-						"movups xmm4, xmm2\n"					/* half extents... */
-						"orps xmm4, xmm3\n"						/* negate half extents... */
-
-						"movups xmm5, xmm0\n"					/* v = pos->position - leaf->center */
-						"subps xmm5, xmm1\n"					/* ================================ */
-
-						"minps xmm5, xmm2\n"					/* clamp v to the leaf's positive half-extents... */
-						"maxps xmm5, xmm4\n"					/* clamp v to the leaf's negative half-extents...*/
-
-						"addps xmm5, xmm1\n"					/* v += leaf->center */
-
-						"subps xmm5, xmm0\n"					/* v -= pos->position */
-						"movups [%[v4]], xmm5\n"				/* ================== */
-
-
-						:[v4] "=m" (v4) : [leaf_pos4] "rm" (leaf->center),
-						   				  [leaf_extents4] "rm" (leaf->extents)
-
-
-					);
-
-					#else
-
-					v4.x = pos->position.x - leaf->center.x;
-					v4.y = pos->position.y - leaf->center.y;
-					v4.z = pos->position.z - leaf->center.z;
-
-					if(v4.x > leaf->extents.x) v4.x = leaf->extents.x;
-					else if(v4.x < -leaf->extents.x) v4.x = -leaf->extents.x;
-
-					if(v4.y > leaf->extents.y) v4.y = leaf->extents.y;
-					else if(v4.y < -leaf->extents.y) v4.y = -leaf->extents.y;
-
-					if(v4.z > leaf->extents.x) v4.z = leaf->extents.z;
-					else if(v4.z < -leaf->extents.z) v4.z = -leaf->extents.z;
-
-
-					v4.x += leaf->center.x;
-					v4.y += leaf->center.y;
-					v4.z += leaf->center.z;
-
-					v4.x = pos->position.x - v4.x;
-					v4.y = pos->position.y - v4.y;
-					v4.z = pos->position.z - v4.z;
-
-					#endif
-
-					dist = dot3(v4.vec3, v4.vec3);
-
-
-					if(dist < radius)
-					{
-						w_leaf_lights[j].lights[int_index] |= 1 << bit_index;
-					}
-					else
-					{
-						w_leaf_lights[j].lights[int_index] &= ~(1 << bit_index);
-					}
-
-
+					w_leaf_lights[leaf_index].lights[int_index] |= 1 << bit_index;
 				}
+				else
+				{
+					w_leaf_lights[leaf_index].lights[int_index] &= ~(1 << bit_index);
+				}
+
+
+				//}
 			}
 
-			parms->leaf = (bsp_dleaf_t *)light_leaf;
+			parms->leaf = (struct bsp_dleaf_t *)light_leaf;
 
 
 
@@ -2653,7 +2665,7 @@ void world_UploadVisibleLights()
 		{
 			if(parms->indices_handle.alloc_index == INVALID_GPU_ALLOC_INDEX)
 			{
-                parms->indices_handle = gpu_AllocIndexesAlign(sizeof(int) * 1024 * 3, sizeof(int));
+                parms->indices_handle = gpu_AllocIndexesAlign(sizeof(int) * 8192 * 3, sizeof(int));
 				parms->indices_start = gpu_GetAllocStart(parms->indices_handle) / sizeof(int);
 			}
 
@@ -2743,8 +2755,8 @@ void world_VisibleLights()
 	int int_index;
 	int bit_index;
 
-	bsp_dleaf_t *leaf;
-	bsp_dleaf_t *cur_leaf;
+	struct bsp_dleaf_t *leaf;
+	struct bsp_dleaf_t *cur_leaf;
 	camera_t *active_camera = camera_GetActiveCamera();
 	vec4_t light_origin;
 	vec3_t v;
@@ -2887,7 +2899,7 @@ void world_VisibleLightTriangles(int light_index)
 	//vec3_t close_min = {9999999999.9, 9999999999.9, 9999999999.9};
 
 
-	bsp_dleaf_t *leaf;
+	struct bsp_dleaf_t *leaf;
 
 	if(!w_world_leaves)
 		return;
@@ -2902,7 +2914,7 @@ void world_VisibleLightTriangles(int light_index)
 		{
 			parms = &l_light_params[light_index];
 			pos = &l_light_positions[light_index];
-			leaf = (bsp_dleaf_t *)parms->leaf;
+			leaf = (struct bsp_dleaf_t *)parms->leaf;
 
 			//parms->visible_triangles.element_count = 0;
 
@@ -3012,10 +3024,10 @@ void world_VisibleWorld()
 	float s;
 	float e;
 
-	bsp_dleaf_t *leaf;
+	struct bsp_dleaf_t *leaf;
 	//triangle_group_t *group;
 	struct batch_t *batch;
-	bsp_striangle_t *triangle;
+	struct bsp_striangle_t *triangle;
 	//bsp_dleaf_t **visible;
 	//int visible_count;
 	unsigned int *indexes;
@@ -3484,7 +3496,7 @@ void world_Update()
 	int c;
 	int k;
 
-	bsp_dleaf_t *leaf;
+	struct bsp_dleaf_t *leaf;
 
 	int total_batches = 0;
 	int cur_group_index;

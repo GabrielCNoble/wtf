@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
+#include "ent_serialization.h"
 
 #include "GL\glew.h"
 
@@ -15,16 +16,20 @@
 #include "l_main.h"
 #include "input.h"
 #include "c_memory.h"
+#include "path.h"
+#include "log.h"
 
 /* from world.c */
 extern int w_world_vertices_count;
 extern vertex_t *w_world_vertices;
 
+extern int w_world_triangle_count;
+
 extern int w_world_nodes_count;
-extern bsp_pnode_t *w_world_nodes;
+extern struct bsp_pnode_t *w_world_nodes;
 
 extern int w_world_leaves_count;
-extern bsp_dleaf_t *w_world_leaves;
+extern struct bsp_dleaf_t *w_world_leaves;
 
 extern int w_world_batch_count;
 extern struct batch_t *w_world_batches;
@@ -83,11 +88,6 @@ void bsp_Finish()
 	//bsp_DeleteBsp();
 }
 
-void bsp_LoadFile(char *file_name)
-{
-
-}
-
 
 void bsp_DeleteBsp()
 {
@@ -124,7 +124,7 @@ void bsp_ClipVelocityToPlane(vec3_t normal, vec3_t velocity, vec3_t *new_velocit
 bsp_HullForEntity
 ==============
 */
-bsp_pnode_t *bsp_HullForEntity(vec3_t mins, vec3_t max)
+struct bsp_pnode_t *bsp_HullForEntity(vec3_t mins, vec3_t max)
 {
 
 }
@@ -135,7 +135,7 @@ bsp_pnode_t *bsp_HullForEntity(vec3_t mins, vec3_t max)
 bsp_SolidPoint
 ==============
 */
-int bsp_SolidPoint(bsp_pnode_t *node, vec3_t point)
+int bsp_SolidPoint(struct bsp_pnode_t *node, vec3_t point)
 {
 	vec3_t v;
 	float d;
@@ -169,7 +169,7 @@ int bsp_SolidPoint(bsp_pnode_t *node, vec3_t point)
 bsp_RecursiveFirstHit
 ==============
 */
-int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t0, float t1, trace_t *trace)
+int bsp_RecursiveFirstHit(struct bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t0, float t1, trace_t *trace)
 {
 	#if 0
 	float d0;
@@ -343,7 +343,7 @@ int bsp_RecursiveFirstHit(bsp_pnode_t *node, vec3_t *start, vec3_t *end, float t
 bsp_FirstHit
 ==============
 */
-int bsp_FirstHit(bsp_pnode_t *bsp, vec3_t start, vec3_t end, trace_t *trace)
+int bsp_FirstHit(struct bsp_pnode_t *bsp, vec3_t start, vec3_t end, trace_t *trace)
 {
 	trace->frac = 1.0;
 	trace->bm_flags = TRACE_ALL_SOLID;
@@ -592,7 +592,7 @@ void bsp_Move(vec3_t *position, vec3_t *velocity)
 }
 
 
-bsp_dleaf_t *bsp_GetCurrentLeaf(bsp_pnode_t *node, vec3_t position)
+struct bsp_dleaf_t *bsp_GetCurrentLeaf(struct bsp_pnode_t *node, vec3_t position)
 {
 
 	float d;
@@ -627,22 +627,184 @@ bsp_dleaf_t *bsp_GetCurrentLeaf(bsp_pnode_t *node, vec3_t position)
 	return NULL;
 }
 
-#define MAX_VISIBLE_LEAVES 512
+//#define USE_COMPRESSED_PVS
 
-int potentially_visible_leaves_count;
-bsp_dleaf_t *potentially_visible_leaves[MAX_VISIBLE_LEAVES];
+unsigned char *bsp_CompressPvs(unsigned char *uncompressed_pvs, int uncompressed_pvs_size, int *compressed_pvs_size)
+{
+    unsigned char *compressed_pvs;
+    unsigned char *out_compressed;
+    int compressed_size;
+    int i;
+    int j;
 
-bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t position)
+    int compressed_index;
+    int zero_count;
+
+	/* twice the size, just to be safe... */
+    compressed_pvs = memory_Calloc(2, uncompressed_pvs_size);
+
+	for(i = 0, compressed_index = 0; i < uncompressed_pvs_size; i++)
+	{
+		#ifdef USE_COMPRESSED_PVS
+		if(!uncompressed_pvs[i])
+		{
+			/* found a zero byte, so now count how many zero bytes there are (including this),
+			and store the value in the byte after it... */
+
+			compressed_pvs[compressed_index] = 0;
+			compressed_index++;
+			compressed_pvs[compressed_index] = 1;
+
+			//do
+			//{
+
+			//	if(compressed_pvs[compressed_index] == 255)
+			//	{
+					/* hit the maximum storable value
+					for a byte... */
+            //        compressed_index += 2;
+			//	}
+
+			//	compressed_pvs[compressed_index]++;
+
+			//	i++;
+			//}
+			//while(!uncompressed_pvs[i]);
+
+			compressed_index++;
+
+			//i--;
+		}
+		else
+		#endif
+
+		{
+			/* non-zero bytes gets copied as is... */
+            compressed_pvs[compressed_index] = uncompressed_pvs[i];
+            compressed_index++;
+		}
+	}
+
+	out_compressed = memory_Calloc(compressed_index, 1);
+	memcpy(out_compressed, compressed_pvs, compressed_index);
+	memory_Free(compressed_pvs);
+
+	if(compressed_pvs_size)
+	{
+		*compressed_pvs_size = compressed_index;
+	}
+
+	return out_compressed;
+}
+
+
+struct bsp_dleaf_t **bsp_DecompressPvs(struct bsp_dleaf_t *leaf, int *leaves_count)
+{
+	int leaf_index;
+	int byte_index;
+	int i;
+
+	int pvs_offset = 0;
+
+
+	#define MAX_VISIBLE_LEAVES 512
+
+	static int potentially_visible_leaves_count;
+	static struct bsp_dleaf_t *potentially_visible_leaves[MAX_VISIBLE_LEAVES];
+
+
+	leaf_index = leaf - w_world_leaves;
+
+	potentially_visible_leaves_count = 0;
+	potentially_visible_leaves[potentially_visible_leaves_count] = leaf;
+	potentially_visible_leaves_count++;
+
+	//if(!leaf->pvs)
+	//{
+		//return NULL;
+	//}
+
+	if(leaf->pvs)
+	{
+		for(i = 0; i < w_world_leaves_count /*&& potentially_visible_leaves_count < MAX_VISIBLE_LEAVES*/; i++)
+		{
+
+			/* this avoids the occasion where the current leaf is marked on its own
+			pvs (which happens when the pvs thread is calculating visibility to a
+			leaf that 'sees' the current leaf, and ends marking it on its own pvs
+			to avoid infinte recursion), which ends up adding it twice for rendering, thus
+			causing severe memory corruption problems. */
+			if(i == leaf_index)
+				continue;
+
+			byte_index = (i >> 3) + pvs_offset;
+
+			#ifdef USE_COMPRESSED_PVS
+
+			if(!leaf->pvs[byte_index])
+			{
+				/* each byte fits eight leaves, so for each byte skipped
+				the counter gets incremented by eight... */
+				i += ((int)leaf->pvs[byte_index + 1]) << 3;
+
+
+
+				/* The byte count in the pvs is a multiple of the leaves
+				count, with each byte holding eight leaves.
+
+				So, byte 0 holds leaves 0 to 7, byte 1 holds 8 to 15, and
+				so on.
+
+				Every zero byte incurs an overhead of an additional
+				byte to keep the byte skip count. This extra byte offsets
+				all other bytes in the pvs after it.
+
+				This offsetting generates problems because the counter of
+				this loop will end up indexing the wrong byte, which won't
+				contain the right leaves.
+
+                To solve this we also offset the index of the byte we're
+                accessing by how many extra bytes we encountered so far.
+
+                This problem cannot be solved while compressing the pvs
+                by accounting for the extra byte because if the extra byte
+                were to be added to the counter of this loop, this would
+                make it stop before reaching the real end of the pvs. In
+                other words the extra byte would be considered to contain
+                actual leaf indexes... */
+				pvs_offset++;
+
+				continue;
+			}
+
+			#endif
+
+			if(leaf->pvs[byte_index] & (1 << (i % 8)))
+			{
+				potentially_visible_leaves[potentially_visible_leaves_count] = &w_world_leaves[i];
+				potentially_visible_leaves_count++;
+			}
+		}
+	}
+
+	*leaves_count = potentially_visible_leaves_count;
+
+	return &potentially_visible_leaves[0];
+}
+
+struct bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t position)
 {
 	int i;
 	int leaf_index;
-	int l = 0;
+	//int l = 0;
 
-	bsp_pnode_t *node = &w_world_nodes[0];
-	bsp_dleaf_t *cur_leaf = NULL;
-	bsp_dleaf_t *leaf;
-	int potentially_visible_vert_count = 0;
-	int leaf_vert_count = 0;
+	struct bsp_pnode_t *node = &w_world_nodes[0];
+	struct bsp_dleaf_t *cur_leaf = NULL;
+	struct bsp_dleaf_t *leaf;
+
+	struct bsp_dleaf_t **pvs_leaves = NULL;
+	//int potentially_visible_vert_count = 0;
+	//int leaf_vert_count = 0;
 
 	float d;
 	int node_index;
@@ -666,106 +828,22 @@ bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t position)
 		node += node->child[node_index];
 	}
 
+	*leaf_count = 0;
+
 	if(node->child[0] == BSP_EMPTY_LEAF)
 	{
 		leaf_index = *(int *)&node->dist;
 		cur_leaf =  &w_world_leaves[leaf_index];
-		potentially_visible_leaves[l++] = cur_leaf;
-
-		for(i = 0; i < w_world_leaves_count && i < MAX_VISIBLE_LEAVES; i++)
-		{
-			if(!cur_leaf->pvs)
-				break;
-
-			/* this avoids the occasion where the current leaf is marked on its own
-			pvs (which happens when the pvs thread is calculating visibility to a
-			leaf that 'sees' the current leaf, and ends marking it on its own pvs
-			to avoid infinte recursion), which ends up adding it twice for rendering, thus
-			causing severe memory corruption problems. */
-			if(i == leaf_index)
-				continue;
-
-
-			//if(!cur_leaf->pvs[i >> 3])
-			//{
-            //    i += cur_leaf->pvs[(i >> 3) + 1] << 3 - 1;
-			//	continue;
-			//}
-
-
-			if(cur_leaf->pvs[i >> 3] & (1 << (i % 8)))
-			{
-				potentially_visible_vert_count += leaf_vert_count;
-				potentially_visible_leaves[l++] = &w_world_leaves[i];
-			}
-		}
-
-		*leaf_count = l;
-		potentially_visible_leaves_count = l;
-		return &potentially_visible_leaves[0];
+		pvs_leaves = bsp_DecompressPvs(cur_leaf, leaf_count);
 	}
 
-
-
-//	printf("nope!\n");
-	potentially_visible_leaves_count = 0;
-	*leaf_count = 0;
-
-	return NULL;
-
+	return pvs_leaves;
 }
 
-unsigned char *bsp_CompressPvs(unsigned char *uncompressed_pvs, int uncompressed_pvs_size, int *compressed_pvs_size)
-{
-    unsigned char *compressed_pvs;
-    unsigned char *out_compressed;
-    int compressed_size;
-    int i;
-    int j;
-
-    int compressed_index;
-    int zero_count;
-
-    compressed_pvs = memory_Calloc(1, uncompressed_pvs_size);
-
-	for(i = 0, compressed_index = 0; i < uncompressed_pvs_size; i++)
-	{
-		if(!uncompressed_pvs[i])
-		{
-			compressed_pvs[compressed_index] = uncompressed_pvs[i];
-
-			compressed_index++;
-			//i++;
-
-			//while(!uncompressed_pvs[i])
-			do
-			{
-				i++;
-				compressed_pvs[compressed_index]++;
-			}
-			while(!uncompressed_pvs[i]);
-
-			compressed_index++;
-
-			i--;
-		}
-		else
-		{
-            compressed_pvs[compressed_index] = uncompressed_pvs[i];
-            compressed_index++;
-		}
-	}
-
-	out_compressed = memory_Calloc(compressed_index, 1);
-	memcpy(out_compressed, compressed_pvs, compressed_index);
-	memory_Free(compressed_pvs);
-
-	return out_compressed;
-}
 
 void bsp_AddIndexes(int leaf_index)
 {
-	bsp_dleaf_t *leaf;
+	struct bsp_dleaf_t *leaf;
 
 	if(w_world_leaves)
 	{
@@ -822,6 +900,7 @@ struct bsp_record_start_t
     int leaf_count;
     int node_count;
     int vertice_count;
+    int triangle_count;
     int batch_count;
 };
 
@@ -835,11 +914,9 @@ struct bsp_batch_record_t
 {
     char tag[(sizeof(bsp_batch_record_tag) + 3) & (~3)];
     char material_name[PATH_MAX];
-    int indice_count;
-    int indices[1];
+    int count;
+    int start;
 };
-
-
 
 
 
@@ -848,12 +925,52 @@ char bsp_leaf_record_tag[] = "[bsp leaf record]";
 struct bsp_leaf_record_t
 {
 	char tag[(sizeof(bsp_leaf_record_tag) + 3) & (~3)];
-	int triangle_count;
-
-	bsp_striangle_t triangles[1];
+	int leaf_count;
+	struct bsp_dleaf_t leaves[1];
 };
 
 
+
+char bsp_node_record_tag[] = "[bsp node record]";
+
+struct bsp_node_record_t
+{
+	char tag[(sizeof(bsp_node_record_tag) + 3) & (~3)];
+	int node_count;
+	struct bsp_pnode_t nodes[1];
+};
+
+
+
+char bsp_triangle_record_tag[] = "[bsp triangle record]";
+
+struct bsp_triangle_record_t
+{
+	char tag[(sizeof(bsp_triangle_record_tag) + 3) & (~3)];
+	int triangle_count;
+	struct bsp_striangle_t triangles[1];
+};
+
+
+
+char bsp_pvs_record_tag[] = "[bsp pvs record]";
+
+struct bsp_pvs_record_t
+{
+	char tag[(sizeof(bsp_pvs_record_tag) + 3) & (~3)];
+	int byte_count;
+	unsigned char pvs[1];
+};
+
+
+
+char bsp_vertice_record_tag[] = "[bsp vertice record]";
+
+struct bsp_vertice_record_t
+{
+	char tag[ (sizeof(bsp_vertice_record_tag) + 3) & (~3)];
+	vertex_t vertices[1];
+};
 
 
 
@@ -865,15 +982,31 @@ struct bsp_record_end_t
 };
 
 
-
 void bsp_SerializeBsp(void **buffer, int *buffer_size)
 {
 	struct bsp_section_start_t *section_start;
 	struct bsp_section_end_t *section_end;
 
+	struct bsp_leaf_record_t *leaf_record;
+	struct bsp_node_record_t *node_record;
+
+	struct bsp_batch_record_t *batch_record;
+	struct bsp_triangle_record_t *triangle_record;
+	struct bsp_pvs_record_t *pvs_record;
+	struct bsp_vertice_record_t *vertice_record;
+
+	//FILE *debug_file;
+    //debug_file = fopen("serialize_out.txt", "w");
+
+	material_t *material;
 
 	struct bsp_record_start_t *record_start;
 	struct bsp_record_end_t *record_end;
+
+	int i;
+	int j;
+	int triangle_count;
+	int pvs_byte_count;
 
 
 	char *out_buffer = NULL;
@@ -890,22 +1023,54 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
     void *light_buffer = NULL;
     int light_buffer_size = 0;
 
-    out_buffer_size = sizeof(struct bsp_section_start_t) + sizeof(struct bsp_section_end_t);
+    void *material_buffer = NULL;
+    int material_buffer_size = 0;
 
+    out_buffer_size = sizeof(struct bsp_section_start_t) + sizeof(struct bsp_section_end_t);
 
 
     entity_SerializeEntities(&entity_buffer, &entity_buffer_size, 1);
     light_SerializeLights(&light_buffer, &light_buffer_size);
     navigation_SerializeWaypoints(&waypoint_buffer, &waypoint_buffer_size);
+    material_SerializeMaterials(&material_buffer, &material_buffer_size);
 
-	out_buffer_size += entity_buffer_size + light_buffer_size + waypoint_buffer_size;
+	out_buffer_size += entity_buffer_size + light_buffer_size + waypoint_buffer_size + material_buffer_size;
 
-	out_buffer_size += sizeof(struct bsp_record_start_t) + sizeof(struct bsp_record_end_t) +
-					   sizeof(struct bsp_batch_record_t) * w_world_batch_count +
-					   sizeof(struct bsp_leaf_record_t) * w_world_leaves_count +
-					   sizeof(bsp_pnode_t) * w_world_nodes_count +
-					   sizeof(struct vertex_t) * w_world_vertices_count +
-					   sizeof(int) * w_world_index_count;
+
+	if(w_world_leaves)
+	{
+
+		pvs_byte_count = 0;
+
+		for(i = 0; i < w_world_leaves_count; i++)
+		{
+			pvs_byte_count += w_world_leaves[i].pvs_lenght;
+		}
+
+
+		out_buffer_size += sizeof(struct bsp_record_start_t) + sizeof(struct bsp_record_end_t) +
+
+
+						   sizeof(struct bsp_batch_record_t) * w_world_batch_count +
+
+							/* bsp_leaf_record_t already has space for a single leaf, so that's why we take one leaf away here... */
+					       sizeof(struct bsp_leaf_record_t) + sizeof(struct bsp_dleaf_t) * (w_world_leaves_count - 1) +
+
+					       /* bsp_node_record_t already has space for a single node, so that's why we take one node away here... */
+					       sizeof(struct bsp_node_record_t) + sizeof(struct bsp_pnode_t) * (w_world_nodes_count - 1) +
+
+					       /* bsp_triangle_record_t already has space for a single triangle, so that's why we take one triangle away here... */
+						   sizeof(struct bsp_triangle_record_t) + sizeof(struct bsp_striangle_t) * (w_world_triangle_count - 1) +
+
+						   /* bsp_vertice_record_t already has space for a single vertice, so that's why we take one vertice away here... */
+					       sizeof(struct bsp_vertice_record_t) + sizeof(struct vertex_t) * (w_world_vertices_count - 1) +
+
+							/* bsp_pvs_record_t already has space for a single byte, so that's why we take one byte away here... */
+					       sizeof(struct bsp_pvs_record_t) + pvs_byte_count - 1;
+	}
+
+
+
 
 	out_buffer = memory_Calloc(1, out_buffer_size);
 
@@ -913,6 +1078,38 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
 	*buffer_size = out_buffer_size;
 
 	out = out_buffer;
+
+	section_start = (struct bsp_section_start_t *)out;
+	out += sizeof(struct bsp_section_start_t);
+
+	strcpy(section_start->tag, bsp_section_start_tag);
+
+
+	if(material_buffer)
+	{
+        memcpy(out, material_buffer, material_buffer_size);
+		out += material_buffer_size;
+	}
+
+    if(light_buffer)
+	{
+		memcpy(out, light_buffer, light_buffer_size);
+		out += light_buffer_size;
+	}
+
+	if(waypoint_buffer)
+	{
+		memcpy(out, waypoint_buffer, waypoint_buffer_size);
+		out += waypoint_buffer_size;
+	}
+
+    if(entity_buffer)
+	{
+		memcpy(out, entity_buffer, entity_buffer_size);
+		out += entity_buffer_size;
+	}
+
+
 
     if(w_world_leaves)
 	{
@@ -925,13 +1122,117 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
         record_start->vertice_count = w_world_vertices_count;
         record_start->node_count = w_world_nodes_count;
         record_start->batch_count = w_world_batch_count;
+        record_start->triangle_count = w_world_triangle_count;
+
+
+        /* write vertices... */
+		vertice_record = (struct bsp_vertice_record_t *)out;
+		out += sizeof(struct bsp_vertice_record_t) + sizeof(vertex_t) * (w_world_vertices_count - 1);
+		strcpy(vertice_record->tag, bsp_vertice_record_tag);
+
+		for(i = 0; i < w_world_vertices_count; i++)
+		{
+			vertice_record->vertices[i] = w_world_vertices[i];
+		}
+
+
+		/* write batches... */
+        for(i = 0; i < w_world_batch_count; i++)
+		{
+			batch_record = (struct bsp_batch_record_t *)out;
+			out += sizeof(struct bsp_batch_record_t );
+
+			strcpy(batch_record->tag, bsp_batch_record_tag);
+			batch_record->count = w_world_batches[i].next;
+			batch_record->start = w_world_batches[i].start;
+
+			material = material_GetMaterialPointerIndex(w_world_batches[i].material_index);
+			strcpy(batch_record->material_name, material->name);
+		}
+
+
+		log_LogMessage(LOG_MESSAGE_NOTIFY, "batches\n");
+
+		for(i = 0; i < w_world_batch_count; i++)
+		{
+			log_LogMessage(LOG_MESSAGE_NOTIFY, "start: %d; count: %d; material: %d\n", w_world_batches[i].start, w_world_batches[i].next, w_world_batches[i].material_index);
+		}
+
+		/* write nodes... */
+		node_record = (struct bsp_node_record_t *)out;
+		out += sizeof(struct bsp_node_record_t) + sizeof(struct bsp_pnode_t) * (w_world_nodes_count - 1);
+		strcpy(node_record->tag, bsp_node_record_tag);
+
+		for(i = 0; i < w_world_nodes_count; i++)
+		{
+            node_record->nodes[i] = w_world_nodes[i];
+		}
 
 
 
+		/* write leaves... */
+		leaf_record = (struct bsp_leaf_record_t *)out;
+		out += sizeof(struct bsp_leaf_record_t) + sizeof(struct bsp_dleaf_t ) * (w_world_leaves_count - 1);
+		strcpy(leaf_record->tag, bsp_leaf_record_tag);
+
+		for(i = 0; i < w_world_leaves_count; i++)
+		{
+            leaf_record->leaves[i] = w_world_leaves[i];
+		}
 
 
+		/* write triangles... */
+		triangle_record = (struct bsp_triangle_record_t *)out;
+		out += sizeof(struct bsp_triangle_record_t ) + sizeof(struct bsp_striangle_t ) * (w_world_triangle_count - 1);
+		strcpy(triangle_record->tag, bsp_triangle_record_tag);
 
+		triangle_count = 0;
 
+		for(i = 0; i < w_world_leaves_count; i++)
+		{
+			/* store in each leaf the offset into the triangle list... */
+			leaf_record->leaves[i].tris = (struct bsp_striangle_t *)triangle_count;
+			leaf_record->leaves[i].tris_count = w_world_leaves[i].tris_count;
+
+			for(j = 0; j < w_world_leaves[i].tris_count; j++)
+			{
+                //triangle_record->triangles[triangle_count] = w_world_leaves[i].tris[j];
+                triangle_record->triangles[triangle_count].first_vertex = w_world_leaves[i].tris[j].first_vertex;
+                triangle_record->triangles[triangle_count].batch = w_world_leaves[i].tris[j].batch;
+				triangle_count++;
+			}
+		}
+
+		/* write pvs... */
+        pvs_record = (struct bsp_pvs_record_t *)out;
+        out += sizeof(struct bsp_pvs_record_t) + pvs_byte_count - 1;
+        strcpy(pvs_record->tag, bsp_pvs_record_tag);
+
+        pvs_record->byte_count = pvs_byte_count;
+
+        pvs_byte_count = 0;
+
+        for(i = 0; i < w_world_leaves_count; i++)
+		{
+			/* store in each leaf the offset into the pvs byte list... */
+            leaf_record->leaves[i].pvs = (unsigned char *)pvs_byte_count;
+            leaf_record->leaves[i].pvs_lenght = w_world_leaves[i].pvs_lenght;
+
+			//printf("leaf %d:\n", i);
+
+			//log_LogMessage(LOG_MESSAGE_NOTIFY, "serialize leaf %d pvs:\n", i);
+
+			for(j = 0; j < w_world_leaves[i].pvs_lenght; j++)
+			{
+			//	printf("%d ", w_world_leaves[i].pvs[j]);
+				//log_LogMessage(LOG_MESSAGE_NOTIFY, "%d ", w_world_leaves[i].pvs[j]);
+                pvs_record->pvs[pvs_byte_count] = w_world_leaves[i].pvs[j];
+				pvs_byte_count++;
+			}
+			//log_LogMessage(LOG_MESSAGE_NOTIFY, "\n");
+		}
+
+		/* write end of the record... */
         record_end = (struct bsp_record_end_t *)out;
         out += sizeof(struct bsp_record_end_t);
 
@@ -939,15 +1240,273 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
 	}
 
 
+	section_end = (struct bsp_section_end_t *)out;
+	out += sizeof(struct bsp_section_end_t);
 
-
-
-
-
+	strcpy(section_end->tag, bsp_section_end_tag);
 }
+
+
+
+//extern char material_section_start_tag[];
+extern char light_section_start_tag[];
+extern char waypoint_section_start_tag[];
+//extern char entity_section_start_tag[];
+
 
 void bsp_DeserializeBsp(void **buffer)
 {
+	struct bsp_section_start_t *section_start;
+	struct bsp_section_end_t *section_end;
+
+	struct bsp_record_start_t *record_start;
+	struct bsp_record_end_t *record_end;
+
+	struct bsp_batch_record_t *batch_records;
+	struct bsp_node_record_t *node_record;
+	struct bsp_leaf_record_t *leaf_record;
+	struct bsp_triangle_record_t *triangle_record;
+	struct bsp_pvs_record_t *pvs_record;
+	struct bsp_vertice_record_t *vertice_record;
+
+	char *in;
+
+	int i;
+	int j;
+
+	in = *buffer;
+
+
+    while(1)
+	{
+		if(!strcmp(in, bsp_section_start_tag))
+		{
+            section_start = (struct bsp_section_start_t *)in;
+			in += sizeof(struct bsp_section_start_t );
+		}
+		else if(!strcmp(in, bsp_section_end_tag))
+		{
+            section_end = (struct bsp_section_end_t *)in;
+			in += sizeof(struct bsp_section_end_t );
+			break;
+		}
+		else if(!strcmp(in, light_section_start_tag))
+		{
+            light_DeserializeLights((void **)&in);
+		}
+		else if(!strcmp(in, entity_section_start_tag))
+		{
+            entity_DeserializeEntities((void **)&in, 1);
+		}
+		else if(!strcmp(in, waypoint_section_start_tag))
+		{
+            navigation_DeserializeWaypoints((void **)&in);
+		}
+		else if(!strcmp(in, material_section_start_tag))
+		{
+            material_DeserializeMaterials((void **)&in);
+		}
+		else if(!strcmp(in, bsp_record_start_tag))
+		{
+			record_start = (struct bsp_record_start_t *)in;
+			in += sizeof(struct bsp_record_start_t );
+
+
+
+			/* read vertices... */
+			vertice_record = (struct bsp_vertice_record_t *)in;
+			in += sizeof(struct bsp_vertice_record_t ) + sizeof(vertex_t) * (record_start->vertice_count - 1);
+
+			w_world_vertices_count = record_start->vertice_count;
+			w_world_vertices = memory_Calloc(w_world_vertices_count, sizeof(vertex_t));
+
+			for(i = 0; i < w_world_vertices_count; i++)
+			{
+				w_world_vertices[i] = vertice_record->vertices[i];
+			}
+
+
+
+			/* read batches... */
+            while(strcmp(in, bsp_batch_record_tag))i++;
+
+			batch_records = (struct bsp_batch_record_t *)in;
+			in += sizeof(struct bsp_batch_record_t ) * record_start->batch_count;
+
+			w_world_batches = memory_Calloc(record_start->batch_count, sizeof(struct batch_t));
+			w_world_batch_count = record_start->batch_count;
+
+
+			for(i = 0; i < record_start->batch_count; i++)
+			{
+                w_world_batches[i].next = batch_records[i].count;
+                w_world_batches[i].start = batch_records[i].start;
+                w_world_batches[i].material_index = material_MaterialIndex(batch_records[i].material_name);
+
+                //if(i)
+				//{
+				//	w_world_batches[i].start = w_world_batches[i - 1].start + w_world_batches[i - 1].next;
+				//}
+			}
+
+			log_LogMessage(LOG_MESSAGE_NOTIFY, "deserialize batches\n");
+
+			for(i = 0; i < w_world_batch_count; i++)
+			{
+				log_LogMessage(LOG_MESSAGE_NOTIFY, "start: %d; count: %d; material: %d\n", w_world_batches[i].start, w_world_batches[i].next, w_world_batches[i].material_index);
+			}
+
+
+
+			/* read nodes... */
+			while(strcmp(in, bsp_node_record_tag))i++;
+
+			node_record = (struct bsp_node_record_t *)in;
+			in += sizeof(struct bsp_node_record_t) + sizeof(struct bsp_pnode_t) * (record_start->node_count - 1);
+
+			w_world_nodes = memory_Calloc(record_start->node_count, sizeof(struct bsp_pnode_t));
+			w_world_nodes_count = record_start->node_count;
+
+			for(i = 0; i < w_world_nodes_count; i++)
+			{
+				w_world_nodes[i] = node_record->nodes[i];
+			}
+
+
+
+			/* read leaves... */
+			while(strcmp(in, bsp_leaf_record_tag))i++;
+
+			leaf_record = (struct bsp_leaf_record_t *)in;
+			in += sizeof(struct bsp_leaf_record_t) + sizeof(struct bsp_dleaf_t) * (record_start->leaf_count - 1);
+
+			w_world_leaves = memory_Calloc(record_start->leaf_count, sizeof(struct bsp_dleaf_t));
+			w_world_leaves_count = record_start->leaf_count;
+
+			for(i = 0; i < w_world_leaves_count; i++)
+			{
+                w_world_leaves[i] = leaf_record->leaves[i];
+			}
+
+
+
+
+			/* read triangles... */
+			while(strcmp(in, bsp_triangle_record_tag))i++;
+
+			triangle_record = (struct bsp_triangle_record_t *)in;
+			in += sizeof(struct bsp_triangle_record_t) + sizeof(struct bsp_striangle_t ) * (record_start->triangle_count - 1);
+
+			w_world_triangle_count = record_start->triangle_count;
+
+			for(i = 0; i < w_world_leaves_count; i++)
+			{
+                w_world_leaves[i].tris = memory_Calloc(leaf_record->leaves[i].tris_count, sizeof(struct bsp_striangle_t));
+                w_world_leaves[i].tris_count = leaf_record->leaves[i].tris_count;
+
+                for(j = 0; j < leaf_record->leaves[i].tris_count; j++)
+				{
+                    w_world_leaves[i].tris[j].first_vertex = (triangle_record->triangles + (int)leaf_record->leaves[i].tris + j)->first_vertex;
+					w_world_leaves[i].tris[j].batch = (triangle_record->triangles + (int)leaf_record->leaves[i].tris + j)->batch;
+				}
+
+				//memcpy(w_world_leaves[i].tris, triangle_record->triangles + (int)leaf_record->leaves[i].tris, sizeof(struct bsp_striangle_t) * w_world_leaves[i].tris_count);
+			}
+
+
+
+			/* read pvs... */
+			while(strcmp(in, bsp_pvs_record_tag))i++;
+
+			pvs_record =  (struct bsp_pvs_record_t *)in;
+			in += sizeof(struct bsp_pvs_record_t ) + pvs_record->byte_count - 1;
+
+			for(i = 0; i < w_world_leaves_count; i++)
+			{
+				w_world_leaves[i].pvs_lenght = leaf_record->leaves[i].pvs_lenght;
+                w_world_leaves[i].pvs = memory_Calloc(w_world_leaves[i].pvs_lenght, 1);
+
+				//log_LogMessage(LOG_MESSAGE_NOTIFY, "deserialize leaf %d pvs:\n", i);
+
+                for(j = 0; j < w_world_leaves[i].pvs_lenght; j++)
+				{
+					w_world_leaves[i].pvs[j] = *(pvs_record->pvs + (int)leaf_record->leaves[i].pvs + j);
+					//log_LogMessage(LOG_MESSAGE_NOTIFY, "%d ", w_world_leaves[i].pvs[j]);
+				}
+
+				//log_LogMessage(LOG_MESSAGE_NOTIFY, "\n");
+
+                //memcpy(w_world_leaves[i].pvs, pvs_record->pvs + (int)leaf_record->leaves[i].pvs, w_world_leaves[i].pvs_lenght);
+			}
+
+			while(strcmp(in, bsp_record_end_tag))i++;
+
+			record_end = (struct bsp_record_end_t *)in;
+			in += sizeof(struct bsp_record_end_t);
+
+
+			world_Update();
+
+
+
+		}
+		else if(!strcmp(in, bsp_record_end_tag))
+		{
+			record_end = (struct bsp_record_end_t *)in;
+			in += sizeof(struct bsp_record_end_t);
+		}
+		else
+		{
+			in++;
+		}
+	}
+
+	*buffer = in;
+
+}
+
+
+void bsp_SaveBsp(char *output_name)
+{
+	void *file_buffer;
+	int file_buffer_size;
+	FILE *file;
+
+	char *file_name;
+
+    bsp_SerializeBsp(&file_buffer, &file_buffer_size);
+
+    file_name = path_AddExtToName(output_name, "bsp");
+
+    file = fopen(file_name, "wb");
+    fwrite(file_buffer, file_buffer_size, 1, file);
+    fclose(file);
+}
+
+void bsp_LoadBsp(char *file_name)
+{
+    void *file_buffer;
+    void *read_buffer;
+    unsigned long file_buffer_size;
+    FILE *file;
+
+    char *file_path;
+    file = path_TryOpenFile(file_name);
+
+    if(file)
+	{
+		file_buffer_size = path_GetFileSize(file);
+
+		file_buffer = memory_Calloc(1, file_buffer_size);
+		fread(file_buffer, file_buffer_size, 1, file);
+		fclose(file);
+
+		read_buffer = file_buffer;
+
+		bsp_DeserializeBsp(&read_buffer);
+
+		memory_Free(file_buffer);
+	}
 
 }
 

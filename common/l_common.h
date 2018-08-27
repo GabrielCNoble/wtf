@@ -20,7 +20,7 @@
 #define MAX_TRIANGLES_PER_LIGHT (MAX_INDEXES_PER_FRUSTUM*2)
 
 
-#define SHADOW_MAP_RESOLUTION 512		/* fixed size shadow maps for all lights... */
+#define SHADOW_MAP_RESOLUTION 1024		/* fixed size shadow maps for all lights... */
 #define SHARED_SHADOW_MAP_HEIGHT 8192
 #define SHARED_SHADOW_MAP_WIDTH 8192
 
@@ -119,7 +119,7 @@ typedef struct
 
 typedef struct
 {
-	bsp_dleaf_t *leaf;							/* in which leaf this light is in (updated every time it moves)... */
+	struct bsp_dleaf_t *leaf;							/* in which leaf this light is in (updated every time it moves)... */
 	//vec3_t box_max;								/* this box is calculated when the visible triangles are determined. As long as
 													//the light remains inside this box, no update is needed...*/
 	//vec3_t box_min;

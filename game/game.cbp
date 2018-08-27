@@ -2,12 +2,12 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="wtf_editor" />
+		<Option title="game" />
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="default">
-				<Option output="wtf_editor" prefix_auto="1" extension_auto="1" />
+				<Option output="game" prefix_auto="1" extension_auto="1" />
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
@@ -37,6 +37,7 @@
 			<Add directory='&quot;level editor&quot;' />
 			<Add directory='&quot;entity editor&quot;' />
 			<Add directory='&quot;material editor&quot;' />
+			<Add directory="../common/vorbis/include" />
 		</Compiler>
 		<Linker>
 			<Add option="-m32" />
@@ -53,6 +54,9 @@
 			<Add library="BulletDynamics" />
 			<Add library="BulletCollision" />
 			<Add library="LinearMath" />
+			<Add library="vorbisfile" />
+			<Add library="vorbis" />
+			<Add library="ogg" />
 			<Add directory="../common/SDL/lib/mingw" />
 			<Add directory="../common/OPENAL/Win32" />
 			<Add directory="../common/GLEW/lib" />
@@ -64,6 +68,7 @@
 			<Add directory="../common/ozz/options" />
 			<Add directory="../common/ozz/animation/runtime" />
 			<Add directory="../common/ozz/animation/offline" />
+			<Add directory="../common/vorbis/lib" />
 		</Linker>
 		<Unit filename="../common/animation.c">
 			<Option compilerVar="CPP" />
@@ -76,12 +81,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/bsp_common.h">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/bsp_file.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/bsp_file.h">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/c_memory.c">
@@ -102,10 +101,18 @@
 		<Unit filename="../common/camera_types.h">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../common/containers/alloc_list.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/containers/alloc_list.h" />
 		<Unit filename="../common/containers/list.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/containers/list.h" />
+		<Unit filename="../common/containers/multi_list.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/containers/multi_list.h" />
 		<Unit filename="../common/containers/stack.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -139,12 +146,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/event.h" />
-		<Unit filename="../common/file.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/file.h">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="../common/font.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -371,17 +372,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/r_shader.h" />
-		<Unit filename="../common/r_text.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/r_text.h">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="../common/resource.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/resource.h" />
-		<Unit filename="../common/scr_typeof.h" />
 		<Unit filename="../common/script/scr_common.h" />
 		<Unit filename="../common/script/scr_entity.c">
 			<Option compilerVar="CC" />
@@ -395,6 +389,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/script/scr_particle.h" />
+		<Unit filename="../common/script/scr_sound.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/script/scr_sound.h" />
 		<Unit filename="../common/script/scr_world.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -426,7 +424,6 @@
 		<Unit filename="../common/script/script_types/scr_types.h" />
 		<Unit filename="../common/script/script_types/scriptstdstring.cpp" />
 		<Unit filename="../common/script/script_types/scriptstdstring.h" />
-		<Unit filename="../common/scriptarray.cpp" />
 		<Unit filename="../common/scriptarray.h" />
 		<Unit filename="../common/shader.c">
 			<Option compilerVar="CC" />
@@ -493,6 +490,10 @@
 		<Unit filename="../common/world.h">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="game.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="game.h" />
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
 		</Unit>

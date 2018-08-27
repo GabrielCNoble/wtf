@@ -453,7 +453,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 		case PICK_PORTAL:
 		case PICK_WAYPOINT:
 			record.index0 = pick_sample[1] - 1;
-			printf("pick!\n");
+			//printf("pick!\n");
 		break;
 	}
 
@@ -1228,6 +1228,10 @@ void editor_DestroySelection(pick_list_t *pick_list)
 
 			case PICK_SPAWN_POINT:
 //				player_DestroySpawnPoint(records[i].index0);
+			break;
+
+			case PICK_WAYPOINT:
+				navigation_DestroyWaypoint(records[i].index0);
 			break;
 
 			case PICK_ENTITY:

@@ -73,12 +73,12 @@ extern int r_height;
 extern int r_frame;
 
 /* from world.c */
-extern bsp_pnode_t *w_world_nodes;
-extern bsp_dleaf_t *w_world_leaves;
+extern struct bsp_pnode_t *w_world_nodes;
+extern struct bsp_dleaf_t *w_world_leaves;
 extern int w_world_leaves_count;
 extern bsp_lights_t *w_leaf_lights;
 extern int w_visible_leaves_count;
-extern bsp_dleaf_t **w_visible_leaves;
+extern struct bsp_dleaf_t **w_visible_leaves;
 extern int w_world_vertices_count;
 extern vertex_t *w_world_vertices;
 
@@ -104,7 +104,7 @@ extern struct stack_list_t ent_entities;
 //mat4_t l_shadow_map_projection_matrix;
 
 #define MAX_VISIBLE_LIGHTS 32
-#define MAX_SHADOW_MAP_RES 512
+//#define MAX_SHADOW_MAP_RES 1024
 
 //int visible_light_count;
 //int visible_lights[MAX_WORLD_LIGHTS];
@@ -119,7 +119,7 @@ extern struct stack_list_t ent_entities;
 
 //int l_allocd_shadow_map_count = 0;
 //static int max_shadow_maps = 0;
-int l_used_shadow_maps = 0;
+unsigned int l_used_shadow_maps = 0;
 struct shadow_map_t *l_shadow_maps = NULL;
 
 
@@ -168,7 +168,7 @@ int light_Init()
 	{
 		l_light_names[i] = memory_Malloc(LIGHT_MAX_NAME_LEN);
 
-		l_light_params[i].visible_triangles = list_create(sizeof(int), 128, NULL);
+		l_light_params[i].visible_triangles = list_create(sizeof(int), 4096, NULL);
 
 		//l_light_params[i].triangle_indices[0] = list_create(sizeof(int), 128, NULL);
 		//l_light_params[i].triangle_indices[1] = list_create(sizeof(int), 128, NULL);
@@ -183,7 +183,7 @@ int light_Init()
 
 
 
-	CreatePerspectiveMatrix(&l_shadow_map_projection_matrix, (45.17578125 * 3.14159265) / 180.0, 1.0, 0.1, LIGHT_MAX_RADIUS, 0.0, 0.0, NULL);
+	CreatePerspectiveMatrix(&l_shadow_map_projection_matrix, (45.17578125 * 3.14159265) / 180.0, 1.0, 0.1, LIGHT_MAX_RADIUS * 10.0, 0.0, 0.0, NULL);
 
 	//visible_light_list_size = MAX_LIGHTS;
 	//visible_light_count = 0;
@@ -261,7 +261,7 @@ int light_Init()
 	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_DEPTH_COMPONENT32F, MAX_SHADOW_MAP_RES, MAX_SHADOW_MAP_RES, MAX_VISIBLE_LIGHTS * 6, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_DEPTH_COMPONENT32F, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION, MAX_VISIBLE_LIGHTS * 6, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
 
 	if(glGetError() == GL_OUT_OF_MEMORY)
@@ -525,7 +525,9 @@ int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t c
 	light_param->b = 0xff * color.b;
 	//light_param->cache = -1;
 	light_param->shadow_map = -1;
-	light_param->bm_flags = (LIGHT_MOVED | bm_flags) & (~LIGHT_INVALID);
+	//light_param->bm_flags = (LIGHT_MOVED | bm_flags) & (~LIGHT_INVALID);
+
+	light_param->bm_flags = LIGHT_MOVED;
 
 	light_param->indices_handle = INVALID_GPU_ALLOC_HANDLE;
 
@@ -589,7 +591,7 @@ int light_DestroyLight(char *name)
 
 int light_DestroyLightIndex(int light_index)
 {
-	bsp_dleaf_t *leaf;
+	struct bsp_dleaf_t *leaf;
 	int i;
 	int leaf_index;
 	int int_index;
@@ -602,6 +604,8 @@ int light_DestroyLightIndex(int light_index)
 			cached... */
 			//light_DropLight(light_index);
 
+			light_FreeShadowMap(light_index);
+
 			l_light_params[light_index].bm_flags |= LIGHT_INVALID;
 
 			l_free_position_stack_top++;
@@ -609,7 +613,7 @@ int light_DestroyLightIndex(int light_index)
 
 			if(l_light_params[light_index].leaf)
 			{
-				leaf = (bsp_dleaf_t *)l_light_params[light_index].leaf;
+				leaf = (struct bsp_dleaf_t *)l_light_params[light_index].leaf;
 
 				leaf_index = leaf - w_world_leaves;
 
@@ -1589,13 +1593,24 @@ void light_VisibleTriangles(int light_index)
 void light_ClearLightLeaves()
 {
 	int i;
-	bsp_dleaf_t *leaf;
+	int j;
+
+
+	struct bsp_dleaf_t *leaf;
 	int leaf_index;
 	for(i = 0; i < l_light_list_cursor; i++)
 	{
-		l_light_params[i].leaf = NULL;
-		l_light_params[i].bm_flags |= LIGHT_MOVED | LIGHT_UPDATE_SHADOW_MAP;
+		//l_light_params[i].leaf = NULL;
+		l_light_params[i].bm_flags |= LIGHT_MOVED;
 	}
+
+	/*for(i = 0; i < w_world_leaves_count; i++)
+	{
+        for(j = 0; j < MAX_WORLD_LIGHTS >> 5; j++)
+		{
+			w_leaf_lights[i].lights[j] = 0;
+		}
+	}*/
 }
 
 void light_EntitiesOnLights()
@@ -1678,7 +1693,7 @@ void light_AllocShadowMap(int light_index)
 
 	int shadow_map_index;
 
-	int shadow_maps;
+	unsigned int shadow_maps;
 
 	int oldest_index;
 	int oldest_time = 0;
@@ -1722,6 +1737,8 @@ void light_AllocShadowMap(int light_index)
 					oldest_time = cur_time;
 					oldest_index = shadow_map_index;
 				}
+
+				shadow_maps >>= 1;
 
 				shadow_map_index++;
 			}

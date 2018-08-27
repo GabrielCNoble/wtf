@@ -17,26 +17,27 @@
 
 
 	/* from brush.c */
-	extern int brush_list_size;
-	extern int brush_count;
-	extern brush_t *brushes;
-	extern int expanded_brush_count;
-	extern brush_t *expanded_brushes;
+	//extern int brush_list_size;
+	//extern int brush_count;
+	//extern brush_t *brushes;
+	//extern int expanded_brush_count;
+	//extern brush_t *expanded_brushes;
 
-	bsp_polygon_t *expanded_polygons = NULL;
+	//bsp_polygon_t *expanded_polygons = NULL;
 
 	/* from light.c */
 	extern int visible_light_count;
 
 	/* from brush.c */
-	extern vec3_t cube_bmodel_collision_verts[];
-	extern vec3_t cube_bmodel_collision_normals[];
+	//extern vec3_t cube_bmodel_collision_verts[];
+	//extern vec3_t cube_bmodel_collision_normals[];
 
 	/* from world.c */
 	bsp_node_t *world_bsp = NULL;
 	bsp_node_t *collision_bsp = NULL;
 	extern int w_world_vertices_count;
 	extern vertex_t *w_world_vertices;
+	extern int w_world_triangle_count;
 	extern unsigned int w_max_visible_indexes;
 	extern unsigned int w_max_visible_batches;
 	//extern int world_triangle_group_count;
@@ -44,14 +45,14 @@
 	extern int w_world_batch_count;
 	extern struct batch_t *w_world_batches;
 	extern int w_world_nodes_count;
-	extern bsp_pnode_t *w_world_nodes;
+	extern struct bsp_pnode_t *w_world_nodes;
 	//extern int collision_nodes_count;
 	//extern bsp_pnode_t *collision_nodes;
 	//extern bsp_polygon_t *node_polygons;			/* necessary to quickly build portals... */
 	extern int w_world_leaves_count;
-	extern bsp_dleaf_t *w_world_leaves;
+	extern struct bsp_dleaf_t *w_world_leaves;
 	extern int visited_leaves_count;
-	extern bsp_dleaf_t *visited_leaves;
+	extern struct bsp_dleaf_t *visited_leaves;
 
 	bsp_polygon_t *node_polygons = NULL;			/* necessary to quickly build portals... */
 
@@ -481,6 +482,7 @@ bsp_polygon_t *bsp_DeepCopyPolygon(bsp_polygon_t *src)
 		#endif
 
 		p->normal = src->normal;
+		p->tiling = src->tiling;
 		p->brush_index = src->brush_index;
 		p->b_used = src->b_used;
 		//p->next = src->next;
@@ -495,6 +497,7 @@ bsp_polygon_t *bsp_DeepCopyPolygon(bsp_polygon_t *src)
 
 		p->material_index = src->material_index;
 		p->triangle_group = src->triangle_group;
+
 
 		for(i = 0; i < p->vert_count; i++)
 		{
@@ -526,6 +529,7 @@ bsp_polygon_t *bsp_DeepCopyPolygons(bsp_polygon_t *src)
 		r->brush_index = src->brush_index;
 		r->b_used = src->b_used;
 		r->normal = src->normal;
+		r->tiling = src->tiling;
 		r->vert_count = src->vert_count;
 
 		#ifndef USE_MEMORY_MALLOC
@@ -2119,6 +2123,7 @@ bsp_polygon_t *bsp_DeepCopyPolygonsContiguous(bsp_polygon_t *src)
 		out[i].b_used = r->b_used;
 		out[i].material_index = r->material_index;
 		out[i].normal = r->normal;
+		out[i].tiling = r->tiling;
 		out[i].vert_count = r->vert_count;
 		out[i].triangle_group = r->triangle_group;
 
@@ -3257,7 +3262,7 @@ bsp_polygon_t *bsp_ClipBrushes2(brush_t *brush_list, int brush_list_count)
 }
 
 
-void bsp_TriangulateLeafPolygons(bsp_node_t *node)
+void bsp_TriangulateLeafPolygons(bsp_node_t *node, int *triangle_count)
 {
 
 	bsp_polygon_t *polygon = NULL;
@@ -3267,9 +3272,19 @@ void bsp_TriangulateLeafPolygons(bsp_node_t *node)
 
 	vertex_t *vertices = NULL;
 	int vertice_count = 0;
-	int triangle_count = 0;
+	int tris_count = 0;
 
 	int i;
+
+
+	static int level = -1;
+
+	level++;
+
+	if(!level)
+	{
+		*triangle_count = 0;
+	}
 
 
 
@@ -3309,7 +3324,7 @@ void bsp_TriangulateLeafPolygons(bsp_node_t *node)
 					triangle->next = triangles;
 					triangles = triangle;
 
-					triangle_count++;
+					tris_count++;
 
 				}
 				polygon = polygon->next;
@@ -3317,16 +3332,20 @@ void bsp_TriangulateLeafPolygons(bsp_node_t *node)
 
 
 			leaf->triangles = triangles;
-			leaf->triangle_count = triangle_count;
+			leaf->triangle_count = tris_count;
+
+			*triangle_count += tris_count;
 
 
 		}
 	}
 	else
 	{
-		bsp_TriangulateLeafPolygons(node->front);
-		bsp_TriangulateLeafPolygons(node->back);
+		bsp_TriangulateLeafPolygons(node->front, triangle_count);
+		bsp_TriangulateLeafPolygons(node->back, triangle_count);
 	}
+
+	level--;
 
 
 }
@@ -3462,11 +3481,11 @@ bsp_RecursiveLinearizeBsp
 
 //#define LEAK_FOR_FUN
 
-void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_count, bsp_pnode_t *lnodes, int *lnode_count, bsp_dleaf_t *lleaves, int *lleaves_count, struct batch_t *groups, int tri_group_count, int create_leaves, int pvs_size, int *debug_vertex_count)
+void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_count, struct bsp_pnode_t *lnodes, int *lnode_count, struct bsp_dleaf_t *lleaves, int *lleaves_count, struct batch_t *groups, int tri_group_count, int create_leaves, int pvs_size, int *debug_vertex_count)
 {
 	bsp_leaf_t *leaf;
-	bsp_pnode_t *pnode;
-	bsp_dleaf_t *dleaf;
+	struct bsp_pnode_t *pnode;
+	struct bsp_dleaf_t *dleaf;
 
 	bsp_triangle_t *triangle;
 	bsp_triangle_t *next_triangle;
@@ -3531,16 +3550,20 @@ void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_
 			#ifndef USE_MEMORY_MALLOC
 			dleaf->tris = malloc(sizeof(bsp_striangle_t ) * dleaf->tris_count);
 			#else
-			dleaf->tris = memory_Malloc(sizeof(bsp_striangle_t ) * dleaf->tris_count);
+			dleaf->tris = memory_Malloc(sizeof(struct bsp_striangle_t ) * dleaf->tris_count);
 			#endif
 			//dleaf->pvs = leaf->pvs;
 
 			#ifndef USE_MEMORY_MALLOC
-			dleaf->pvs = calloc(pvs_size, 1);
+			leaf->pvs = calloc(pvs_size, 1);
 			#else
-			dleaf->pvs = memory_Calloc(pvs_size, 1);
+			leaf->pvs = memory_Calloc(pvs_size, 1);
 			#endif
-			leaf->pvs = dleaf->pvs;
+
+
+			dleaf->pvs = NULL;
+
+			//leaf->pvs = dleaf->pvs;
 
 			/* this is causing a crash... find out why... */
 			/*for(i = 0; i < pvs_size; i++)
@@ -3719,7 +3742,7 @@ void bsp_AllocPvsForLeaves(bsp_node_t *bsp)
 bsp_LinearizeBsp
 ==============
 */
-void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, bsp_pnode_t **lnodes, int *lnode_count, bsp_dleaf_t **lleaves, int *lleaves_count, struct batch_t *groups, int tri_group_count, int create_leaves)
+void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, struct bsp_pnode_t **lnodes, int *lnode_count, struct bsp_dleaf_t **lleaves, int *lleaves_count, struct batch_t *groups, int tri_group_count, int create_leaves)
 {
 
 	int i;
@@ -3729,8 +3752,8 @@ void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, b
 
 	bsp_polygon_t *polygons = NULL;
 	bsp_polygon_t *polygon = NULL;
-	bsp_pnode_t *nodes = NULL;
-	bsp_dleaf_t *leaves = NULL;
+	struct bsp_pnode_t *nodes = NULL;
+	struct bsp_dleaf_t *leaves = NULL;
 	vertex_t *v;
 	int debug_vertex_count = 0;
 
@@ -3754,7 +3777,7 @@ void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, b
 	#ifndef USE_MEMORY_MALLOC
 	nodes = malloc(sizeof(bsp_pnode_t) * n);
 	#else
-	nodes = memory_Malloc(sizeof(bsp_pnode_t) * n);
+	nodes = memory_Malloc(sizeof(struct bsp_pnode_t) * n);
 	#endif
 
 	if(lleaves)
@@ -3762,7 +3785,7 @@ void bsp_LinearizeBsp(bsp_node_t *bsp, vertex_t **vertices, int *vertex_count, b
 		#ifndef USE_MEMORY_MALLOC
 		leaves = malloc(sizeof(bsp_dleaf_t) * l);
 		#else
-		leaves = memory_Malloc(sizeof(bsp_dleaf_t) * l);
+		leaves = memory_Malloc(sizeof(struct bsp_dleaf_t) * l);
 		#endif
 		pvs_size = 4 + (l >> 3);
 	}
@@ -4204,7 +4227,7 @@ void bsp_CompileBsp(int remove_outside)
 	int i;
 	int c;
 	int j;
-	int k = brush_count;
+//	int k = brush_count;
 	int triangle_group_count = 0;
 	bsp_polygon_t *polygons = NULL;
 	bsp_polygon_t *r;
@@ -4253,7 +4276,7 @@ void bsp_CompileBsp(int remove_outside)
 
 
 	//printf("bsp_CompileBsp: bsp_TriangulateLeafPolygons... ");
-	bsp_TriangulateLeafPolygons(world_bsp);
+	bsp_TriangulateLeafPolygons(world_bsp, &w_world_triangle_count);
 	//printf("done\n");
 
 

@@ -1,0 +1,46 @@
+
+
+
+void main()
+{
+	if(entity_GetLife() > 300)
+	{
+		entity_Die();
+	}
+}
+
+void OnSpawn()
+{
+	entity_handle_t current_entity = entity_GetCurrentEntity();
+	entity_AddEntityProp1i(current_entity, "bullet");
+}
+
+void OnDie()
+{
+
+}
+
+void OnCollision(array<entity_contact_t> @contacts)
+{
+	int i;
+
+	int should_die = 0;
+
+	for(i = 0; i < contacts.count; i++)
+	{
+		if(entity_IsEntityValid(contacts[i].entity) != 0)
+		{
+			if(entity_EntityHasProp(contacts[i].entity, "enemy") != 0)
+			{
+				should_die = 1;
+			}
+		}
+
+	}
+
+	if(should_die != 0)
+	{
+		entity_Die();
+	}
+
+}

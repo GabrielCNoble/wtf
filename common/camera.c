@@ -37,6 +37,11 @@ static unsigned int camera_indexes[2048];
 
 extern int r_window_width;
 extern int r_window_height;
+extern int r_width;
+extern int r_height;
+
+char default_camera_name[] = "default camera";
+camera_t default_camera;
 
 #define CLUSTER_WIDTH 32
 
@@ -62,6 +67,22 @@ int camera_Init()
 	{
 		camera_indexes[i] = 0;
 	}
+
+
+	default_camera.bm_flags = 0;
+	default_camera.fov_y = 0.68;
+	default_camera.width = r_window_width;
+	default_camera.height = r_window_height;
+
+	default_camera.name = default_camera_name;
+	default_camera.world_position = vec3_t_c(0.0, 0.0, 0.0);
+	default_camera.world_orientation = mat3_t_id();
+	default_camera.zoom = 1.0;
+
+	CreatePerspectiveMatrix(&default_camera.view_data.projection_matrix, 0.68, (float)r_window_width / (float)r_window_height, 0.01, 500.0, 0.0, 0.0, &default_camera.frustum);
+
+
+	camera_SetCamera(NULL);
 	//camera_list = malloc(sizeof(camera_t ) * camera_list_size);
 
 	/* space for name strings are prealocated... */
@@ -341,6 +362,13 @@ void camera_SetCamera(camera_t *camera)
 		//glLoadMatrixf(&camera->projection_matrix.floats[0][0]);
 		//glMatrixMode(GL_MODELVIEW);
 	}
+	else
+	{
+        active_camera = &default_camera;
+		r_active_view = &default_camera;
+
+		camera_Activate(&default_camera);
+	}
 }
 
 void camera_SetMainViewCamera(camera_t *camera)
@@ -548,6 +576,11 @@ camera_t *camera_GetCamera(char *name)
 {
 	camera_t *c;
 	c = cameras;
+
+	if(!strcmp(name, default_camera_name))
+	{
+		return &default_camera;
+	}
 
 	while(c)
 	{

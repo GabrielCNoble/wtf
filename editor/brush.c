@@ -151,6 +151,9 @@ brush_t *brushes = NULL;
 brush_t *last_brush = NULL;
 int unique_brush_index = 0;
 
+struct brush_t *last_updated_brush = NULL;
+struct brush_t *last_updated_against = NULL;
+int check_intersection = 2;
 
 void brush_Init()
 {
@@ -161,6 +164,8 @@ void brush_Init()
 	//free_position_stack = memory_Malloc(sizeof(int) * brush_list_size, "brush_Init");
 
 	glGenBuffers(1, &element_buffer);
+
+	check_intersection = 2;
 }
 
 void brush_Finish()
@@ -180,7 +185,16 @@ void brush_Finish()
 void brush_ProcessBrushes()
 {
 	int i;
-	brush_CheckIntersecting();
+
+	brush_UpdateTexCoords();
+	brush_ClipBrushes();
+}
+
+void brush_UpdateAllBrushes()
+{
+	last_updated_brush = NULL;
+	last_updated_against = NULL;
+	check_intersection = 1;
 }
 
 brush_t *brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short type, short b_subtractive)
@@ -245,7 +259,7 @@ brush_t *brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, s
 
 			for(i = 0; i < 6; i++)
 			{
-				brush_AddPolygonToBrush(brush, NULL, cube_bmodel_normals[i], 4, -1);
+				brush_AddPolygonToBrush(brush, NULL, cube_bmodel_normals[i], vec2(1.0, 1.0), 4, -1);
 			}
 
 			brush_LinkPolygonsToVertices(brush);
@@ -341,6 +355,11 @@ brush_t *brush_CreateEmptyBrush()
 		brush->prev = last_brush;
 	}
 	last_brush = brush;
+
+
+	check_intersection = 1;
+	last_updated_against = NULL;
+	last_updated_brush = NULL;
 
 	brush_count++;
 
@@ -573,7 +592,7 @@ void brush_AllocBasePolygons(brush_t *brush, int polygon_count)
 }
 
 
-void brush_AddPolygonToBrush(brush_t *brush, vertex_t *polygon_vertices, vec3_t normal, int polygon_vertice_count, int material_index)
+void brush_AddPolygonToBrush(brush_t *brush, vertex_t *polygon_vertices, vec3_t normal, vec2_t tiling, int polygon_vertice_count, int material_index)
 {
 	int i;
 	bsp_polygon_t *polygon;
@@ -608,6 +627,7 @@ void brush_AddPolygonToBrush(brush_t *brush, vertex_t *polygon_vertices, vec3_t 
 		polygon->material_index = material_index;
 		polygon->vert_count = polygon_vertice_count;
 		polygon->normal = normal;
+		polygon->tiling = tiling;
 
 		brush->base_polygons_count++;
 	}
@@ -738,7 +758,7 @@ brush_t *brush_CopyBrush(brush_t *src)
 
 	for(i = 0; i < src->base_polygons_count; i++)
 	{
-		brush_AddPolygonToBrush(brush, NULL, src->base_polygons[i].normal, src->base_polygons[i].vert_count, src->base_polygons[i].material_index);
+		brush_AddPolygonToBrush(brush, NULL, src->base_polygons[i].normal, src->base_polygons[i].tiling, src->base_polygons[i].vert_count, src->base_polygons[i].material_index);
 	}
 
 
@@ -792,7 +812,6 @@ void brush_DestroyBrush(brush_t *brush)
 
 	if(brush->type != BRUSH_BOUNDS)
 	{
-
 		bsp_DeleteSolidBsp(brush->brush_bsp, 0);
 
 		//if(brush->triangle_groups)
@@ -828,6 +847,21 @@ void brush_DestroyBrush(brush_t *brush)
 		intersection_record = next_intersection_record;
 	}
 
+	/*if(brush == last_updated_brush)
+	{
+		last_updated_brush = brush->next;
+		check_intersection = 1;
+	}
+
+	if(brush == last_updated_against)
+	{
+		last_updated_against = brush->next;
+		check_intersection = 1;
+	}*/
+
+	last_updated_brush = NULL;
+	last_updated_against = NULL;
+	check_intersection = 1;
 
 	if(brush == brushes)
 	{
@@ -873,14 +907,14 @@ void brush_DestroyAllBrushes()
 {
 	int i;
 
-
-	/*for(i = 0; i < brush_count; i++)
+	while(brushes)
 	{
-		brush_DestroyBrush(&brushes[i]);
-	}*/
+		last_brush = brushes->next;
+		brush_DestroyBrush(brushes);
+		brushes = last_brush;
+	}
 
 	brush_count = 0;
-	//free_position_stack_top = -1;
 }
 
 
@@ -1827,7 +1861,7 @@ void brush_SetAllInvisible()
 
 
 
-void brush_CheckIntersecting()
+void brush_ClipBrushes()
 {
 	int i;
 	int j;
@@ -1840,231 +1874,501 @@ void brush_CheckIntersecting()
 	brush_t *brush2;
 	intersection_record_t *record;
 
-	brush = brushes;
+	int updated_brush_count = 0;
+	int updated_against_count = 0;
 
-	while(brush)
+	#define INTESECTION_CHECK_COUNT 6
+	#define CLIP_COUNT 4
+
+
+	if(last_updated_brush)
+	{
+		brush = last_updated_brush;
+	}
+	else
+	{
+		brush = brushes;
+	}
+
+
+	//if(!last_updated_brush)
+	if(check_intersection)
 	{
 
-		if(brush->bm_flags & BRUSH_SUBTRACTIVE)
+        /*if(last_updated_brush)
 		{
-			/* subtractive brushes won't have their polygons clipped.
-			They just clip other brushes polygons... */
-			brush = brush->next;
-			continue;
+			brush = last_updated_brush;
 		}
-
-
-		if(brush->bm_flags & BRUSH_MOVED)
+		else
 		{
+			brush = brushes;
+		}*/
+
+
+		while(brush)
+		{
+
+			//if(brush->bm_flags & BRUSH_SUBTRACTIVE)
+			//{
+				/* subtractive brushes won't have their polygons clipped.
+				They just clip other brushes polygons... */
+			//	brush = brush->next;
+			//	continue;
+			//}
 
 			/* this brush has moved, so we need to check
 			all other brushes in the world, regardless
 			if they also have moved or not... */
 
-			brush2 = brushes;
-			while(brush2)
+			if(last_updated_against)
 			{
-				if(brush2 == brush)
-				{
-					brush2 = brush2->next;
-					continue;
-				}
-
-				if(brush_CheckBrushIntersection(brush, brush2))
-				{
-					brush_AddIntersectionRecord(brush, brush2);
-				}
-				else
-				{
-					brush_RemoveIntersectionRecord(brush, brush2, 0);
-				}
-
-				brush2 = brush2->next;
-			}
-		}
-		else
-		{
-			/* this brush didn't move since last time we checked... */
-
-			brush2 = brushes;
-			while(brush2)
-			{
-
-				if(brush2 == brush)
-				{
-					brush2 = brush2->next;
-					continue;
-				}
-
-				/* ... so we can avoid a rather costly intersection
-				test if the brush we're checking against also didn't
-				move... */
-				if(!(brush2->bm_flags & BRUSH_MOVED))
-				{
-					brush2 = brush2->next;
-					continue;
-				}
-
-				if(brush_CheckBrushIntersection(brush, brush2))
-				{
-					brush_AddIntersectionRecord(brush, brush2);
-				}
-				else
-				{
-					brush_RemoveIntersectionRecord(brush, brush2, 0);
-				}
-
-				brush2 = brush2->next;
-			}
-		}
-
-		brush = brush->next;
-	}
-
-	brush = brushes;
-	while(brush)
-	{
-
-		if(!(brush->bm_flags & BRUSH_CLIP_POLYGONS))
-		{
-			/* this brush didn't touch any other brush this check, so
-			skip it... */
-			brush = brush->next;
-			continue;
-		}
-
-
-		if(brush->bm_flags & BRUSH_SUBTRACTIVE)
-		{
-			/* this brush is marked as subtractive,
-			so we won't clip its polygons, but always
-			alias its base polygons... */
-			goto _is_subtractive_brush;
-		}
-
-
-		first_clip = 1;
-
-		record = brush->intersection_records;
-
-		while(record)
-		{
-			brush2 = record->intersecting_brush;
-			if(first_clip)
-			{
-				if(brush->bm_flags & BRUSH_HAS_PREV_CLIPS)
-				{
-					/* this brush was touching another brush last time
-					we checked, which means its clipped polygons are
-					not an alias from its base polygons, and so we
-					need to get rid of them here to avoid leaks... */
-					bsp_DeletePolygonsContiguous(brush->clipped_polygons);
-				}
-
-
-				/* we're going to clip those polygons, so aliasing them is not enough... */
-				brush->clipped_polygons = bsp_DeepCopyPolygonsContiguous(brush->base_polygons);
-			}
-
-			if(brush2->bm_flags & BRUSH_SUBTRACTIVE)
-			{
-				brush->clipped_polygons = bsp_ClipContiguousPolygonsToBsp(CSG_OP_SUBTRACTION, brush2->brush_bsp, brush->brush_bsp, brush->clipped_polygons, brush2->base_polygons, 0);
+				brush2 = last_updated_against;
 			}
 			else
 			{
-				brush->clipped_polygons = bsp_ClipContiguousPolygonsToBsp(CSG_OP_UNION, brush2->brush_bsp, NULL, brush->clipped_polygons, NULL, 0);
+				brush2 = brushes;
 			}
 
-			first_clip = 0;
 
-			/* this brush is inside another brush... */
-			if(!brush->clipped_polygons)
+			if(brush->bm_flags & BRUSH_MOVED)
+			{
+				while(brush2)
+				{
+					if(brush2 == brush)
+					{
+						brush2 = brush2->next;
+						continue;
+					}
+
+					if(brush_CheckBrushIntersection(brush, brush2))
+					{
+						brush_AddIntersectionRecord(brush, brush2);
+					}
+					else
+					{
+						brush_RemoveIntersectionRecord(brush, brush2, 0);
+					}
+
+					brush2 = brush2->next;
+
+
+					updated_against_count++;
+
+					if(updated_against_count >= INTESECTION_CHECK_COUNT && check_intersection < 2)
+					{
+						break;
+					}
+
+				}
+			}
+			else
+			{
+				/* this brush didn't move since last time we checked... */
+
+				//brush2 = brushes;
+				while(brush2)
+				{
+
+					if(brush2 == brush)
+					{
+						brush2 = brush2->next;
+						continue;
+					}
+
+					/* ... so we can avoid a rather costly intersection
+					test if the brush we're checking against also didn't
+					move... */
+					if(!(brush2->bm_flags & BRUSH_MOVED))
+					{
+						brush2 = brush2->next;
+						continue;
+					}
+
+					if(brush_CheckBrushIntersection(brush, brush2))
+					{
+						brush_AddIntersectionRecord(brush, brush2);
+					}
+					else
+					{
+						brush_RemoveIntersectionRecord(brush, brush2, 0);
+					}
+
+					brush2 = brush2->next;
+
+					updated_against_count++;
+
+					if(updated_against_count >= INTESECTION_CHECK_COUNT && check_intersection < 2)
+					{
+						break;
+					}
+				}
+			}
+
+
+			last_updated_against = brush2;
+
+			if(last_updated_against)
+			{
+                break;
+			}
+
+			brush = brush->next;
+
+			updated_brush_count++;
+
+			if(updated_brush_count >= INTESECTION_CHECK_COUNT && check_intersection < 2)
 			{
 				break;
 			}
-
-			record = record->next;
 		}
 
+		last_updated_brush = brush;
 
-		if(first_clip)
+
+		if(!last_updated_brush)
 		{
-			/* this brush didn't intersect any other brush... */
+			check_intersection = 0;
+		}
 
-			if(brush->bm_flags & BRUSH_HAS_PREV_CLIPS)
+	}
+
+	else
+	{
+		while(brush)
+		{
+
+			if(!(brush->bm_flags & BRUSH_CLIP_POLYGONS))
 			{
-				/* this brush was touching another brush last time
-				we checked, which means it's clipped polygons are
-				not an alias from its base polygons, and so we
-				need to get rid of them here to avoid leaks... */
-
-				bsp_DeletePolygonsContiguous(brush->clipped_polygons);
+				/* this brush didn't touch any other brush this check, so
+				skip it... */
+				brush = brush->next;
+				continue;
 			}
 
-			_is_subtractive_brush:
 
-			/* this brush is not touching any other brush, so suffices to
-			just alias its base polygons... */
-			brush->clipped_polygons = brush->base_polygons;
-			brush->bm_flags &= ~BRUSH_HAS_PREV_CLIPS;
-		}
-		else
-		{
-			if(brush->clipped_polygons)
+			if(brush->bm_flags & BRUSH_SUBTRACTIVE)
 			{
-				/* this brush is touching someone else,
-				so we flag its clipped polygons as not
-				an alias from the base polygons, so they
-				get properly freed next time we check... */
+				/* this brush is marked as subtractive,
+				so we won't clip its polygons, but always
+				alias its base polygons... */
+				goto _is_subtractive_brush;
+			}
 
-				brush->bm_flags |= BRUSH_HAS_PREV_CLIPS;
+
+			first_clip = 1;
+
+			record = brush->intersection_records;
+
+			while(record)
+			{
+				brush2 = record->intersecting_brush;
+				if(first_clip)
+				{
+					if(brush->bm_flags & BRUSH_HAS_PREV_CLIPS)
+					{
+						/* this brush was touching another brush last time
+						we checked, which means its clipped polygons are
+						not an alias from its base polygons, and so we
+						need to get rid of them here to avoid leaks... */
+						bsp_DeletePolygonsContiguous(brush->clipped_polygons);
+					}
+
+
+					/* we're going to clip those polygons, so aliasing them is not enough... */
+					brush->clipped_polygons = bsp_DeepCopyPolygonsContiguous(brush->base_polygons);
+				}
+
+				if(brush2->bm_flags & BRUSH_SUBTRACTIVE)
+				{
+					brush->clipped_polygons = bsp_ClipContiguousPolygonsToBsp(CSG_OP_SUBTRACTION, brush2->brush_bsp, brush->brush_bsp, brush->clipped_polygons, brush2->base_polygons, 0);
+				}
+				else
+				{
+					brush->clipped_polygons = bsp_ClipContiguousPolygonsToBsp(CSG_OP_UNION, brush2->brush_bsp, NULL, brush->clipped_polygons, NULL, 0);
+				}
+
+				first_clip = 0;
+
+				/* this brush is inside another brush... */
+				if(!brush->clipped_polygons)
+				{
+					break;
+				}
+
+				record = record->next;
+			}
+
+
+			if(first_clip)
+			{
+				/* this brush didn't intersect any other brush... */
+
+				if(brush->bm_flags & BRUSH_HAS_PREV_CLIPS)
+				{
+					/* this brush was touching another brush last time
+					we checked, which means it's clipped polygons are
+					not an alias from its base polygons, and so we
+					need to get rid of them here to avoid leaks... */
+
+					bsp_DeletePolygonsContiguous(brush->clipped_polygons);
+				}
+
+				_is_subtractive_brush:
+
+				/* this brush is not touching any other brush, so suffices to
+				just alias its base polygons... */
+				brush->clipped_polygons = brush->base_polygons;
+				brush->bm_flags &= ~BRUSH_HAS_PREV_CLIPS;
 			}
 			else
 			{
-				/* this brush is inside another, so it doesn't
-				have any polygons to be freed next time we
-				check... */
-				brush->bm_flags &= ~BRUSH_HAS_PREV_CLIPS;
+				if(brush->clipped_polygons)
+				{
+					/* this brush is touching someone else,
+					so we flag its clipped polygons as not
+					an alias from the base polygons, so they
+					get properly freed next time we check... */
+
+					brush->bm_flags |= BRUSH_HAS_PREV_CLIPS;
+				}
+				else
+				{
+					/* this brush is inside another, so it doesn't
+					have any polygons to be freed next time we
+					check... */
+					brush->bm_flags &= ~BRUSH_HAS_PREV_CLIPS;
+				}
+
 			}
 
-		}
+			brush->clipped_polygons_vert_count = 0;
+			brush->clipped_polygon_count = 0;
 
-		brush->clipped_polygons_vert_count = 0;
-		brush->clipped_polygon_count = 0;
-
-		if(brush->clipped_polygons_indexes)
-		{
-			memory_Free(brush->clipped_polygons_indexes);
-			brush->clipped_polygons_indexes = NULL;
-			brush->clipped_polygons_index_count = 0;
-		}
-
-		if(brush->clipped_polygons)
-		{
-			brush->clipped_polygons_vertices = brush->clipped_polygons[0].vertices;
-			polygon = brush->clipped_polygons;
-
-			while(polygon)
+			if(brush->clipped_polygons_indexes)
 			{
-				brush->clipped_polygon_count++;
-				brush->clipped_polygons_vert_count += polygon->vert_count;
-				polygon = polygon->next;
+				memory_Free(brush->clipped_polygons_indexes);
+				brush->clipped_polygons_indexes = NULL;
+				brush->clipped_polygons_index_count = 0;
 			}
 
-			bsp_TriangulatePolygonsIndexes(brush->clipped_polygons, &brush->clipped_polygons_indexes, &brush->clipped_polygons_index_count);
-			brush_BuildBatches(brush);
-			brush_UploadBrushVertices(brush);
-			brush_UploadBrushIndexes(brush);
-			//brush_UpdateBrushElementBuffer(brush);
+			if(brush->clipped_polygons)
+			{
+				brush->clipped_polygons_vertices = brush->clipped_polygons[0].vertices;
+				polygon = brush->clipped_polygons;
+
+				while(polygon)
+				{
+					brush->clipped_polygon_count++;
+					brush->clipped_polygons_vert_count += polygon->vert_count;
+					polygon = polygon->next;
+				}
+
+				bsp_TriangulatePolygonsIndexes(brush->clipped_polygons, &brush->clipped_polygons_indexes, &brush->clipped_polygons_index_count);
+				brush_BuildBatches(brush);
+				brush_UploadBrushVertices(brush);
+				brush_UploadBrushIndexes(brush);
+				//brush_UpdateBrushElementBuffer(brush);
+			}
+
+			brush->bm_flags &= ~(BRUSH_MOVED | BRUSH_CLIP_POLYGONS);
+
+			brush = brush->next;
+
+			updated_brush_count++;
+
+			if(updated_brush_count >= CLIP_COUNT)
+			{
+				//printf("break!\n");
+				break;
+			}
 		}
 
-		brush->bm_flags &= ~(BRUSH_MOVED | BRUSH_CLIP_POLYGONS);
+		last_updated_brush = brush;
+
+
+		if(!last_updated_brush)
+		{
+			check_intersection = 1;
+		}
+	}
+}
+
+void brush_UpdateTexCoords()
+{
+    brush_t *brush;
+
+    int i;
+    int j;
+
+    bsp_polygon_t *polygons;
+    bsp_polygon_t *polygon;
+    vertex_t vertice;
+
+    vec3_t vertice_vec;
+
+    vec3_t face_tanh;
+    vec3_t face_tanv;
+    vec3_t face_normal;
+    vec3_t face_center;
+
+    float proj;
+    float abs_proj;
+    float highest_proj;
+    float abs_highest_proj;
+
+    float u;
+    float v;
+
+    int highest_proj_index;
+
+    double integer_part;
+
+    vec3_t vertice_plane_vec;
+
+    vec3_t basis[3] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
+
+    brush = brushes;
+
+    while(brush)
+	{
+		if(brush->bm_flags & BRUSH_USE_WORLD_SPACE_TEX_COORDS)
+		{
+
+			if(brush->bm_flags & BRUSH_MOVED)
+			{
+				polygons = brush->base_polygons;
+
+				for(i = 0; i < brush->base_polygons_count; i++)
+				{
+					polygon = polygons + i;
+					face_normal = polygon->normal;
+
+					//highest_proj = -1.0;
+
+					abs_highest_proj = -1.0;
+
+					for(j = 0; j < 3; j++)
+					{
+						proj = face_normal.floats[j];
+						abs_proj = fabs(proj);
+
+						if(abs_proj > abs_highest_proj)
+						{
+							abs_highest_proj = abs_proj;
+							highest_proj = proj;
+							highest_proj_index = j;
+						}
+
+					}
+
+					//face_tanh = cross(face_normal, basis[(highest_proj_index + 1) % 3]);
+					//face_tanv = cross(face_normal, face_tanh);
+
+					if(brush->bm_flags & BRUSH_SUBTRACTIVE)
+					{
+						highest_proj = -highest_proj;
+					}
+
+
+					switch(highest_proj_index)
+					{
+						case 0:
+							/* face is facing +X or -X... */
+
+							if(highest_proj > 0.0)
+							{
+								face_normal = vec3_t_c(1.0, 0.0, 0.0);
+								face_tanh = vec3_t_c(0.0, 0.0, -1.0);
+								face_tanv = vec3_t_c(0.0, 1.0, 0.0);
+							}
+							else
+							{
+								face_normal = vec3_t_c(-1.0, 0.0, 0.0);
+								face_tanh = vec3_t_c(0.0, 0.0, 1.0);
+								face_tanv = vec3_t_c(0.0, 1.0, 0.0);
+							}
+
+						break;
+
+						case 1:
+							/* face is facing +Y or -Y... */
+
+							if(highest_proj > 0.0)
+							{
+								face_normal = vec3_t_c(0.0, 1.0, 0.0);
+								face_tanv = vec3_t_c(-1.0, 0.0, 0.0);
+								face_tanh = vec3_t_c(0.0, 0.0, -1.0);
+							}
+							else
+							{
+								face_normal = vec3_t_c(0.0, -1.0, 0.0);
+								face_tanv = vec3_t_c(-1.0, 0.0, 0.0);
+								face_tanh = vec3_t_c(0.0, 0.0, 1.0);
+							}
+
+						break;
+
+						case 2:
+							/* face is facing +Z or -Z... */
+							face_normal = vec3_t_c(0.0, 0.0, 1.0);
+							face_tanh = vec3_t_c(1.0, 0.0, 0.0);
+							face_tanv = vec3_t_c(0.0, 1.0, 0.0);
+						break;
+					}
+
+					/*if(highest_proj < 0.0)
+					{
+						face_normal.floats[highest_proj_index] = -face_normal.floats[highest_proj_index];
+					}*/
+
+
+					face_center = vec3_t_c(0.0, 0.0, 0.0);
+
+					for(j = 0; j < polygon->vert_count; j++)
+					{
+						vertice_vec = polygon->vertices[j].position;
+
+						face_center.x += vertice_vec.x;
+						face_center.y += vertice_vec.y;
+						face_center.z += vertice_vec.z;
+
+						proj = dot3(vertice_vec, face_normal);
+
+						vertice_plane_vec.x = vertice_vec.x - face_normal.x * proj;
+						vertice_plane_vec.y = vertice_vec.y - face_normal.y * proj;
+						vertice_plane_vec.z = vertice_vec.z - face_normal.z * proj;
+
+						//u = modf(dot3(vertice_plane_vec, face_tanh), &integer_part) * 0.5 + 0.5;
+						//v = modf(dot3(vertice_plane_vec, face_tanv), &integer_part) * 0.5 + 0.5;
+
+						u = dot3(vertice_plane_vec, face_tanh) * 0.5 + 0.5;
+						v = dot3(vertice_plane_vec, face_tanv) * 0.5 + 0.5;
+
+						polygon->vertices[j].tex_coord.x = u * polygon->tiling.x;
+						polygon->vertices[j].tex_coord.y = v * polygon->tiling.y;
+					}
+
+					face_center.x /= polygon->vert_count;
+					face_center.y /= polygon->vert_count;
+					face_center.z /= polygon->vert_count;
+
+					face_center.x += face_normal.x * 0.05;
+					face_center.y += face_normal.y * 0.05;
+					face_center.z += face_normal.z * 0.05;
+
+
+					renderer_DrawLine(face_center, vec3_t_c(face_center.x + face_normal.x, face_center.y + face_normal.y, face_center.z + face_normal.z), vec3_t_c(0.0, 0.0, 1.0), 1.0, 1);
+					renderer_DrawLine(face_center, vec3_t_c(face_center.x + face_tanh.x, face_center.y + face_tanh.y, face_center.z + face_tanh.z), vec3_t_c(1.0, 0.0, 0.0), 1.0, 1);
+					renderer_DrawLine(face_center, vec3_t_c(face_center.x + face_tanv.x, face_center.y + face_tanv.y, face_center.z + face_tanv.z), vec3_t_c(0.0, 1.0, 0.0), 1.0, 1);
+
+				}
+			}
+
+
+		}
 
 		brush = brush->next;
 	}
-
-
-
 }
 
 int brush_CheckBrushIntersection(brush_t *a, brush_t *b)
@@ -2336,8 +2640,9 @@ struct polygon_record_t
 	int vert_count;
 	int first_index_offset;
 
-	int reserved0;
-	int reserved1;
+	vec2_t tiling;
+	//int reserved0;
+	//int reserved1;
 	int reserved2;
 	int reserved3;
 	int reserved4;
@@ -2359,6 +2664,8 @@ void brush_SerializeBrushes(void **buffer, int *buffer_size)
 	struct polygon_record_t *polygon_record;
 	bsp_polygon_t *polygon;
 	vertex_t *vertices;
+
+	material_t *material;
 	char *out;
 	int size;
 	int i;
@@ -2438,8 +2745,11 @@ void brush_SerializeBrushes(void **buffer, int *buffer_size)
 			polygon_record = (struct polygon_record_t *)out;
 			out += sizeof(struct polygon_record_t);
 
-			strcpy(polygon_record->material_name,  material_GetMaterialName(polygon->material_index));
+			material = material_GetMaterialPointerIndex(polygon->material_index);
+
+			strcpy(polygon_record->material_name,  material->name);
 			polygon_record->normal = polygon->normal;
+			polygon_record->tiling = polygon->tiling;
 			polygon_record->vert_count = polygon->vert_count;
 
 			vertices = (vertex_t *)out;
@@ -2490,6 +2800,20 @@ void brush_DeserializeBrushes(void **buffer)
 				brush = brush_CreateEmptyBrush();
 				brush_InitializeBrush(brush, &brush_record->orientation, brush_record->position, brush_record->scale, brush_record->type, brush_record->vertex_count, brush_record->polygon_count);
 
+				//brush->bm_flags = brush_record->bm_flags;
+
+				if(brush_record->bm_flags & BRUSH_SUBTRACTIVE)
+				{
+					brush->bm_flags |= BRUSH_SUBTRACTIVE;
+				}
+
+				if(brush_record->bm_flags & BRUSH_USE_WORLD_SPACE_TEX_COORDS)
+				{
+					brush->bm_flags |= BRUSH_USE_WORLD_SPACE_TEX_COORDS;
+				}
+
+				//brush->bm_flags |= BRUSH_MOVED;
+
 				for(j = 0; j < brush_record->polygon_count; j++)
 				{
 					polygon_record = (struct polygon_record_t *)in;
@@ -2498,7 +2822,7 @@ void brush_DeserializeBrushes(void **buffer)
 					vertices = (vertex_t *)in;
 					in += sizeof(vertex_t) * polygon_record->vert_count;
 
-					brush_AddPolygonToBrush(brush, vertices, polygon_record->normal, polygon_record->vert_count, material_MaterialIndex(polygon_record->material_name));
+					brush_AddPolygonToBrush(brush, vertices, polygon_record->normal, polygon_record->tiling, polygon_record->vert_count, material_MaterialIndex(polygon_record->material_name));
 				}
 
 				brush_FinalizeBrush(brush, 0);

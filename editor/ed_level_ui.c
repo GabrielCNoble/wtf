@@ -9,6 +9,7 @@
 #include "..\..\common\navigation.h"
 #include "..\..\common\material.h"
 #include "..\..\common\entity.h"
+#include "..\..\common\texture.h"
 #include "..\common\r_main.h"
 #include "..\common\r_gl.h"
 #include "..\common\r_shader.h"
@@ -16,6 +17,9 @@
 #include "..\brush.h"
 #include "..\bsp_cmp.h"
 #include "..\pvs.h"
+#include "..\common\imgui\imgui.h"
+
+#include "..\..\common\engine.h"
 
 #include "vector.h"
 
@@ -39,6 +43,7 @@ int ed_level_editor_light_options_menu_open = 0;
 vec2_t ed_level_editor_light_options_menu_pos;
 
 int ed_level_editor_waypoint_options_menu_open = 0;
+int ed_level_editor_waypoint_window_open = 0;
 vec2_t ed_level_editor_waypoint_options_menu_pos;
 
 int ed_level_editor_entity_options_menu_open = 0;
@@ -58,10 +63,17 @@ vec2_t ed_level_editor_delete_selections_menu_pos;
 
 vec2_t ed_level_editor_snap_3d_cursor_menu_pos;
 
+int ed_level_editor_material_window_open = 0;
+int ed_level_editor_material_window_current_material = -1;
+
+
+int ed_level_editor_map_compiler_window_open = 0;
+
 
 /* from ed_level.c */
 extern vec3_t level_editor_3d_cursor_position;
 extern int level_editor_need_to_copy_data;
+extern int level_editor_draw_brushes;
 extern pick_list_t level_editor_pick_list;
 extern float level_editor_linear_snap_value;
 extern float level_editor_angular_snap_value;
@@ -83,12 +95,26 @@ extern int ed_pick_shader;
 
 /* from material.c */
 extern int mat_material_count;
+extern int mat_material_list_cursor;
 extern material_t *mat_materials;
 extern char **mat_material_names;
 
 
+/* from world.c */
+extern struct bsp_dleaf_t *w_world_leaves;
+extern int w_world_leaves_count;
+extern int w_world_nodes_count;
+extern int w_world_batch_count;
+extern int w_world_triangle_count;
+
+
 /* from entity.c */
 extern struct stack_list_t ent_entities[2];
+
+
+/* texture.c */
+
+extern struct stack_list_t tex_textures;
 
 
 
@@ -238,6 +264,8 @@ void editor_LevelEditorUpdateUI()
 	editor_LevelEditorAddToWorldMenu();
 	editor_LevelEditorDeleteSelectionsMenu();
 	editor_LevelEditorWaypointOptionsMenu();
+	editor_LevelEditorMaterialsWindow();
+	editor_LevelEditorMapCompilerWindow();
 }
 
 
@@ -259,6 +287,7 @@ void editor_LevelEditorMenuWindow()
 	ed_level_editor_light_options_menu_open = 0;
 	ed_level_editor_brush_options_menu_open = 0;
 	ed_level_editor_entity_options_menu_open = 0;
+	ed_level_editor_waypoint_window_open = 0;
 
 	pick_record_t *pick;
 
@@ -278,6 +307,10 @@ void editor_LevelEditorMenuWindow()
 
 			case PICK_ENTITY:
 				ed_level_editor_entity_options_menu_open = 1;
+			break;
+
+			case PICK_WAYPOINT:
+				ed_level_editor_waypoint_window_open = 1;
 			break;
 		}
 
@@ -305,11 +338,279 @@ void editor_LevelEditorMenuWindow()
 		editor_LevelEditorBrushOptionsMenu();
 		editor_LevelEditorLightOptionsMenu();
 		editor_LevelEditorEntityOptionsMenu();
+		editor_LevelEditorWaypointWindow(pick->index0);
 
 
 		gui_ImGuiEnd();
 
 		//gui_ImGuiPopID();
+	}
+}
+
+extern int b_compiling;
+extern int b_calculating_pvs;
+
+void editor_LevelEditorMapCompilerWindow()
+{
+	char *status;
+
+	static float delta_time = 0.0;
+	static unsigned int total_seconds_elapsed = 0;
+	int seconds;
+	int minutes;
+	int hours;
+
+	if(ed_level_editor_map_compiler_window_open)
+	{
+        gui_ImGuiBegin("Map compiler", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+
+		if(!(b_compiling || b_calculating_pvs))
+		{
+			gui_ImGuiPushStyleColor(ImGuiCol_Text, vec4(0.0, 1.0, 0.0, 1.0));
+			status = "Ready";
+		}
+		else if(b_compiling || b_calculating_pvs)
+		{
+			gui_ImGuiPushStyleColor(ImGuiCol_Text, vec4(1.0, 1.0, 0.0, 1.0));
+
+			if(b_compiling)
+			{
+                status = "Building bsp";
+			}
+
+			else if(b_calculating_pvs)
+			{
+				status = "Calculating pvs";
+			}
+		}
+
+		gui_ImGuiText("Compiler: %s", status);
+		gui_ImGuiPopStyleColor();
+
+
+		if(!(b_compiling || b_calculating_pvs))
+		{
+
+			if(total_seconds_elapsed)
+			{
+				seconds = total_seconds_elapsed % 60;
+				minutes = total_seconds_elapsed / 60;
+				hours = (minutes / 60) % 24;
+				minutes %= 60;
+
+				gui_ImGuiText("Map compilation time: %02d:%02d:%02d", hours, minutes, seconds);
+			}
+
+			if(gui_ImGuiButton("Start map compiler", vec2(130.0, 16.0)))
+			{
+				total_seconds_elapsed = 0;
+				delta_time = 0.0;
+
+				bsp_CompileBsp(0);
+			}
+		}
+		else
+		{
+			delta_time += engine_GetDeltaTime();
+
+            if(delta_time >= 1000.0)
+			{
+				delta_time -= 1000.0;
+				total_seconds_elapsed++;
+			}
+
+			seconds = total_seconds_elapsed % 60;
+			minutes = total_seconds_elapsed / 60;
+			hours = (minutes / 60) % 24;
+			minutes %= 60;
+
+			gui_ImGuiText("Map compilation time: %02d:%02d:%02d", hours, minutes, seconds);
+
+			if(gui_ImGuiButton("Stop map compiler", vec2(130.0, 16.0)))
+			{
+				bsp_Stop();
+			}
+		}
+
+
+		if(w_world_leaves)
+		{
+			gui_ImGuiText("Level statistics:");
+			gui_ImGuiText("Leaves: %d", w_world_leaves_count);
+			gui_ImGuiText("Nodes: %d", w_world_nodes_count);
+			gui_ImGuiText("Batches: %d", w_world_batch_count);
+			gui_ImGuiText("Triangles: %d", w_world_triangle_count);
+		}
+
+
+
+		gui_ImGuiEnd();
+	}
+}
+
+void editor_LevelEditorMaterialsWindow()
+{
+	material_t *current_material;
+	material_t *material;
+
+	struct texture_t *texture;
+
+	int texture_flag;
+
+	char *texture_name;
+	char *menu_name;
+	char material_name[512];
+
+	unsigned short *texture_handle;
+
+	int i;
+	int j;
+
+	int selected;
+
+	if(ed_level_editor_material_window_open)
+	{
+		current_material = material_GetMaterialPointerIndex(ed_level_editor_material_window_current_material);
+
+        gui_ImGuiBegin("Materials", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+
+        strcpy(material_name, current_material->name);
+
+		if(gui_ImGuiInputText("", material_name, strlen(material_name) + 1, ImGuiInputTextFlags_EnterReturnsTrue))
+		{
+            material_SetMaterialName(material_name, ed_level_editor_material_window_current_material);
+		}
+
+		gui_ImGuiSameLine(0.0, -1.0);
+
+        if(gui_ImGuiBeginCombo(" ", current_material->name, ImGuiComboFlags_NoPreview))
+		{
+			for(i = 0; i < mat_material_list_cursor; i++)
+			{
+				material = material_GetMaterialPointerIndex(i);
+
+				if(material)
+				{
+					if(gui_ImGuiMenuItem(material->name, NULL, NULL, 1))
+					{
+						ed_level_editor_material_window_current_material = i;
+					}
+				}
+			}
+
+            gui_ImGuiEndCombo();
+		}
+
+		gui_ImGuiSameLine(0.0, -1.0);
+
+		if(gui_ImGuiButton("New material", vec2(90.0, 16.0)))
+		{
+            material_CreateMaterial("New material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, -1, -1, -1);
+		}
+
+		gui_ImGuiSameLine(0.0, -1.0);
+
+		if(gui_ImGuiButton("Delete material", vec2(90.0, 16.0)))
+		{
+			material_DestroyMaterialIndex(ed_level_editor_material_window_current_material);
+			ed_level_editor_material_window_current_material = -1;
+			brush_UpdateAllBrushes();
+            //material_CreateMaterial("New material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, -1, -1, -1);
+		}
+
+
+       // gui_ImGuiText()
+
+
+        for(j = 0; j < 2; j++)
+		{
+            switch(j)
+			{
+				case 0:
+					if(current_material->flags & MATERIAL_USE_DIFFUSE_TEXTURE)
+					{
+						texture = texture_GetTexturePointer(current_material->diffuse_texture);
+
+						texture_name = texture->texture_info->name;
+					}
+					else
+					{
+						texture_name = "None";
+					}
+
+					menu_name = "Diffuse textures";
+
+					texture_handle = &current_material->diffuse_texture;
+
+					texture_flag = MATERIAL_USE_DIFFUSE_TEXTURE;
+
+				break;
+
+				case 1:
+					if(current_material->flags & MATERIAL_USE_NORMAL_TEXTURE)
+					{
+						texture = texture_GetTexturePointer(current_material->normal_texture);
+
+						texture_name = texture->texture_info->name;
+					}
+					else
+					{
+						texture_name = "None";
+					}
+
+					menu_name = "Normal textures";
+
+					texture_handle = &current_material->normal_texture;
+
+					texture_flag = MATERIAL_USE_NORMAL_TEXTURE;
+
+				break;
+			}
+
+			if(gui_ImGuiButton("Remove texture", vec2(120.0, 16.0)))
+			{
+				*texture_handle = -1;
+
+				current_material->flags &= ~texture_flag;
+			}
+
+			gui_ImGuiSameLine(0.0, -1.0);
+
+
+
+			if(gui_ImGuiBeginCombo(menu_name, texture_name, ImGuiComboFlags_HeightLargest))
+			{
+				for(i = 0; i < tex_textures.element_count; i++)
+				{
+					texture = texture_GetTexturePointer(i);
+
+					if(texture)
+					{
+						if(texture->target == GL_TEXTURE_2D)
+						{
+							gui_ImGuiText("%s", texture->texture_info->name);
+							if(gui_ImGuiImageButton(texture->gl_handle, vec2(150.0, 150.0), vec2(0.0, 0.0), vec2(1.0, 1.0), 5, vec4(0.0, 0.0, 0.0, 0.0), vec4(1.0, 1.0, 1.0, 1.0)))
+							{
+								*texture_handle = i;
+								current_material->flags |= texture_flag;
+								gui_ImGuiCloseCurrentPopup();
+								brush_UpdateAllBrushes();
+							}
+						}
+					}
+				}
+
+				gui_ImGuiEndCombo();
+			}
+
+		}
+
+
+
+
+
+
+		gui_ImGuiEnd();
 	}
 }
 
@@ -377,9 +678,10 @@ void editor_LevelEditorBrushOptionsMenu()
 	bsp_polygon_t *brush_face;
 	material_t *brush_face_material;
 
-	char *brush_face_material_name;
+	//char *brush_face_material_name;
 
 	char is_subtractive;
+	char use_world_tex_coords;
 
 	int i;
 
@@ -415,10 +717,34 @@ void editor_LevelEditorBrushOptionsMenu()
 			//is_subtractive = 0;
 		}
 
+
+
+		if(brush->bm_flags & BRUSH_USE_WORLD_SPACE_TEX_COORDS)
+		{
+			use_world_tex_coords = 1;
+		}
+		else
+		{
+			use_world_tex_coords = 0;
+		}
+
+		gui_ImGuiSameLine(0.0, -1.0);
+
+		gui_ImGuiCheckbox("World tex coords", &use_world_tex_coords);
+
+		if(use_world_tex_coords)
+		{
+			brush->bm_flags |= BRUSH_USE_WORLD_SPACE_TEX_COORDS;
+		}
+		else
+		{
+			brush->bm_flags &= ~BRUSH_USE_WORLD_SPACE_TEX_COORDS;
+		}
+
+
+
 		if(ed_level_editor_brush_face_option_open)
 		{
-
-
 
 			pick = &level_editor_brush_face_pick_list.records[level_editor_brush_face_pick_list.record_count - 1];
 			brush_face_index = pick->index0;
@@ -426,18 +752,18 @@ void editor_LevelEditorBrushOptionsMenu()
 			brush_face = &brush->base_polygons[brush_face_index];
 
 			brush_face_material = material_GetMaterialPointerIndex(brush_face->material_index);
-			brush_face_material_name = material_GetMaterialName(brush_face->material_index);
+			//brush_face_material_name = material_GetMaterialName(brush_face->material_index);
 
 			gui_ImGuiText("Face material: ");
 			gui_ImGuiSameLine(0.0, -1.0);
 
 			gui_ImGuiPushItemWidth(120.0);
 
-			if(gui_ImGuiBeginCombo(" ", brush_face_material_name, 0))
+			if(gui_ImGuiBeginCombo(" ", brush_face_material->name, 0))
 			{
 				for(i = -1; i < mat_material_count; i++)
 				{
-					if(gui_ImGuiSelectable(mat_material_names[i], 0, vec2(120.0, 16.0)))
+					if(gui_ImGuiSelectable(mat_materials[i].name, 0, vec2(120.0, 16.0)))
 					{
 						brush_SetFaceMaterial(brush, brush_face_index, i);
 					}
@@ -447,6 +773,65 @@ void editor_LevelEditorBrushOptionsMenu()
 			}
 
 			gui_ImGuiPopItemWidth(120.0);
+
+			gui_ImGuiPushID("X tiling");
+
+			if(gui_ImGuiButton("-", vec2(16.0, 16.0)))
+			{
+                brush_face->tiling.x *= 0.5;
+                brush->bm_flags |= BRUSH_MOVED;
+			}
+
+			if(brush_face->tiling.x < 0.0625)
+			{
+				brush_face->tiling.x = 0.0625;
+				brush->bm_flags |= BRUSH_MOVED;
+			}
+
+			gui_ImGuiSameLine(0.0, -1.0);
+			gui_ImGuiText("X tiling: %.06f", brush_face->tiling.x);
+			gui_ImGuiSameLine(0.0, -1.0);
+
+			if(gui_ImGuiButton("+", vec2(16.0, 16.0)))
+			{
+                brush_face->tiling.x *= 2.0;
+                brush->bm_flags |= BRUSH_MOVED;
+			}
+
+			gui_ImGuiPopID();
+
+
+
+
+
+			gui_ImGuiPushID("Y tiling");
+
+			if(gui_ImGuiButton("-", vec2(16.0, 16.0)))
+			{
+                brush_face->tiling.y *= 0.5;
+                brush->bm_flags |= BRUSH_MOVED;
+			}
+
+			if(brush_face->tiling.y < 0.0625)
+			{
+				brush_face->tiling.y = 0.0625;
+				brush->bm_flags |= BRUSH_MOVED;
+			}
+
+			gui_ImGuiSameLine(0.0, -1.0);
+			gui_ImGuiText("Y tiling: %.06f", brush_face->tiling.y);
+			gui_ImGuiSameLine(0.0, -1.0);
+
+			if(gui_ImGuiButton("+", vec2(16.0, 16.0)))
+			{
+                brush_face->tiling.y *= 2.0;
+                brush->bm_flags |= BRUSH_MOVED;
+			}
+
+			gui_ImGuiPopID();
+
+
+
 
 			if(gui_ImGuiButton("UV window", vec2(70.0, 30.0)))
 			{
@@ -854,6 +1239,17 @@ void editor_LevelEditorEntityOptionsMenu()
 	}
 }
 
+void editor_LevelEditorWaypointWindow(int waypoint_index)
+{
+	struct waypoint_t *waypoint;
+	if(ed_level_editor_waypoint_window_open)
+	{
+		waypoint = navigation_GetWaypointPointer(waypoint_index);
+
+        gui_ImGuiText("Position: [%f %f %f]", waypoint->position.x, waypoint->position.y, waypoint->position.z);
+	}
+}
+
 void editor_LevelEditorWorldMenu()
 {
 	//gui_ImGuiPushID("LevelEditorWorldMenu");
@@ -872,6 +1268,31 @@ void editor_LevelEditorWorldMenu()
 				world_Clear(0);
 				level_editor_need_to_copy_data = 1;
 			}
+			if(gui_ImGuiMenuItem("Export bsp", NULL, NULL, 1))
+			{
+				bsp_SaveBsp("test");
+			}
+			if(gui_ImGuiMenuItem("Import bsp", NULL, NULL, 1))
+			{
+				bsp_LoadBsp("test.bsp");
+			}
+
+			if(level_editor_draw_brushes)
+			{
+				if(gui_ImGuiMenuItem("Hide brushes", NULL, NULL, 1))
+				{
+					level_editor_draw_brushes = 0;
+				}
+			}
+			else
+			{
+				if(gui_ImGuiMenuItem("Show brushes", NULL, NULL, 1))
+				{
+					level_editor_draw_brushes = 1;
+				}
+			}
+
+
 			gui_ImGuiEndMenu();
 		}
 
@@ -1332,7 +1753,29 @@ void editor_LevelEditorOpenSnap3dCursorMenu(int x, int y)
 }
 
 
+void editor_LevelEditorToggleMaterialsWindow()
+{
+    if(ed_level_editor_material_window_open)
+	{
+		ed_level_editor_material_window_open = 0;
+	}
+	else
+	{
+		ed_level_editor_material_window_open = 1;
+	}
+}
 
+void editor_LevelEditorToggleMapCompilerWindow()
+{
+	if(ed_level_editor_map_compiler_window_open)
+	{
+		ed_level_editor_map_compiler_window_open = 0;
+	}
+	else
+	{
+		ed_level_editor_map_compiler_window_open = 1;
+	}
+}
 
 
 

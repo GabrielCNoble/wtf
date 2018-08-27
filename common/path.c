@@ -43,6 +43,9 @@ char *vis_file_exts[] =
 	".ogg",
 	".wtf",
 	".vsf",
+	".eas",
+	".was",
+	".pas",
 	NULL
 };
 

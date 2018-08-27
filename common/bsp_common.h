@@ -15,11 +15,11 @@
 /* indexes into an array of vertex_t. first_vertex is the index of the first
 vertex of this triangle, and triangle_group is the index of the triangle_group_t
 this triangle belongs to. bsp_triangle_t's may be unsorted on memory. */
-typedef struct
+struct bsp_striangle_t
 {
 	int first_vertex;
 	int batch;				/* a.k.a. material */
-}bsp_striangle_t;			/* could cut this struct in half... 8 bits for triangle group + 24 bits for the first vertex, which
+};						/* could cut this struct in half... 8 bits for triangle group + 24 bits for the first vertex, which
 gives 256 different triangle batches and 5592405 triangles... */
 
 
@@ -34,14 +34,16 @@ typedef struct
 #define BSP_SOLID_LEAF 0xffff
 
 /* dleaf stands for draw leaf... */
-typedef struct
+struct bsp_dleaf_t
 {
 	vec3_t center;
 	vec3_t extents;
 	unsigned int tris_count;			/* could get rid of this... */
-	bsp_striangle_t *tris;
+	struct bsp_striangle_t *tris;
+
+	unsigned int pvs_lenght;
 	unsigned char *pvs;					/* this makes this struct not 32 byte aligned. Fuck! */
-}bsp_dleaf_t;
+};
 
 //#define PACK_NEXT_PREV_CURSOR(next, prev, cursor) ((next&0x00003fff)|((prev&0x00003fff)<<14)|((cursor&0x0000000f)<<28))
 
@@ -98,11 +100,13 @@ typedef struct bsp_polygon_t
 	int material_index;
 	int triangle_group;
 	int b_used;
+
 	vertex_t *vertices;
 	int *indexes;
 	//bsp_triangle_t *triangles;						/* the triangles that form this face... */
 	//vec3_t *vertices;
 	vec3_t normal;
+	vec2_t tiling;
 }bsp_polygon_t;
 
 
@@ -112,13 +116,13 @@ it points to a empty leaf, child == 0xffff points
 to a solid leaf. In case of empty leaf, the leaf
 index will be contained in dist. To obtain the index,
 just do *(int *)&dist... */
-typedef struct
+struct bsp_pnode_t
 {
 	vec3_t normal;					/* could use packed normal here, but bsp's are really finicky with precision... */
 	float dist;
 	unsigned short child[2];		/* relative displacement... */	 /* given that the front child will be always one position away, it's
 																		only necessary to keep the stride to the back child. */
-}bsp_pnode_t;	/* would like to shrink this from 20 to 16 bytes... */
+};	/* would like to shrink this from 20 to 16 bytes... */
 
 typedef struct
 {

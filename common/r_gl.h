@@ -4,6 +4,11 @@
 #include "r_common.h"
 #include "GL/glew.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void renderer_PushStates(GLenum cap);
 
 void renderer_PopStates(GLenum cap);
@@ -82,5 +87,9 @@ unsigned int renderer_GenGLTexture(int target, int min_filter, int mag_filter, i
 */
 
 char *renderer_GetGLEnumString(GLenum name);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

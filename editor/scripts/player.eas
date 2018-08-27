@@ -19,6 +19,7 @@ void main()
 {
 	component_handle_t camera_transform;
 	entity_handle_t camera_entity;
+	entity_handle_t current_entity;
 
 	vec3_t direction;
 	mat3_t orientation;
@@ -72,6 +73,7 @@ void main()
 	mat3_t_rotate(pitch_matrix, vec3_t(0.0, 1.0, 0.0), -0.5, 1);
 	mat3_t_rotate(pitch_matrix, vec3_t(0.0, 0.0, 1.0), pitch, 0);
 
+	current_entity = entity_GetCurrentEntity();
 
 	camera_entity = entity_GetChildEntity("camera entity");
 
@@ -132,6 +134,10 @@ void main()
 	entity_SetComponentValue3f(weapon_transform, "position", weapon_position);*/
 
 
+	if(entity_GetEntityProp1i(current_entity, "damage counter") != 0)
+	{
+		entity_DecEntityProp1i(current_entity, "damage counter");
+	}
 
 
 	if((input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED) == KEY_JUST_PRESSED)
@@ -233,6 +239,11 @@ void OnSpawn()
 	body_entity = entity_GetCurrentEntity();
 
 	entity_AddEntityProp1i(body_entity, "player");
+	entity_AddEntityProp1i(body_entity, "life");
+	entity_AddEntityProp1i(body_entity, "damage counter");
+
+	entity_SetEntityProp1i(body_entity, "life", 100);
+	entity_SetEntityProp1i(body_entity, "damage counter", 0);
 
 	camera_entity = entity_GetChildEntity("camera entity");
 
@@ -294,7 +305,6 @@ void OnSpawn()
 		entity_SetEntityVelocity(enemy, vec3_t(0.0, 0.0, 0.0));
 	}*/
 
-
 }
 
 
@@ -307,11 +317,32 @@ void OnCollision(array<entity_contact_t> @contacts)
 {
 	int i;
 
+	int damage = 0;
+	entity_handle_t current_entity;
+
+	current_entity = entity_GetCurrentEntity();
+
 	for(i = 0; i < contacts.count; i++)
 	{
-		if(entity_IsEntityValid(contacts[i].entity) == 0)
+		if(entity_IsEntityValid(contacts[i].entity) != 0)
 		{
+			if(entity_EntityHasProp(contacts[i].entity, "enemy") != 0)
+			{
+                damage = 1;
+			}
 			//entity_Print("contact with world!\n");
+		}
+	}
+
+	if(damage != 0)
+	{
+		if(entity_GetEntityProp1i(current_entity, "damage counter") == 0)
+		{
+			damage = entity_GetEntityProp1i(current_entity, "life");
+			damage -= 5;
+			entity_SetEntityProp1i(current_entity, "life", damage);
+
+			entity_SetEntityProp1i(current_entity, "damage counter", 60);
 		}
 	}
 }
