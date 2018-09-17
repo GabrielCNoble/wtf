@@ -70,7 +70,16 @@ struct list_t ent_top_transforms;
 struct list_t ent_entity_contacts;
 
 
+struct stack_list_t ent_triggers;
+
+
 void (*dispose_component_callback[COMPONENT_TYPE_LAST])() = {NULL};
+
+
+
+static int ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_LAST] = {0};
+#define DECLARE_PROP_TYPE_SIZE(type, size) ENTITY_PROP_TYPES_SIZES[type]=size
+
 
 /*
 ===============================================================
@@ -170,6 +179,16 @@ int entity_Init()
 
 
 
+	DECLARE_PROP_TYPE_SIZE(ENTITY_PROP_TYPE_INT, sizeof(int));
+	DECLARE_PROP_TYPE_SIZE(ENTITY_PROP_TYPE_FLOAT, sizeof(float));
+	DECLARE_PROP_TYPE_SIZE(ENTITY_PROP_TYPE_VEC2, sizeof(vec2_t));
+	DECLARE_PROP_TYPE_SIZE(ENTITY_PROP_TYPE_VEC3, sizeof(vec3_t));
+	DECLARE_PROP_TYPE_SIZE(ENTITY_PROP_TYPE_VEC4, sizeof(vec4_t));
+	DECLARE_PROP_TYPE_SIZE(ENTITY_PROP_TYPE_MAT2, sizeof(mat2_t));
+	DECLARE_PROP_TYPE_SIZE(ENTITY_PROP_TYPE_MAT3, sizeof(mat3_t));
+	DECLARE_PROP_TYPE_SIZE(ENTITY_PROP_TYPE_MAT4, sizeof(mat4_t));
+
+
 
 
 	dispose_component_callback[COMPONENT_TYPE_TRANSFORM] = entity_TransformComponentDisposeCallback;
@@ -185,6 +204,9 @@ int entity_Init()
 	id_rot = mat3_t_id();
 
 
+	ent_triggers = stack_list_create(sizeof(struct trigger_t), 128, NULL);
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 	return 1;
 }
@@ -197,6 +219,7 @@ void entity_Finish()
 	stack_list_destroy(&ent_entities[0]);
 	stack_list_destroy(&ent_entities[1]);
 	stack_list_destroy(&ent_entity_def_source_files);
+	stack_list_destroy(&ent_triggers);
 
 	stack_list_destroy(&ent_entity_aabbs);
 	stack_list_destroy(&ent_world_transforms);
@@ -888,8 +911,11 @@ void entity_RemoveComponent(struct entity_handle_t entity, int component_type)
 
 void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 {
+	struct entity_prop_t *props;
 	struct entity_prop_t *prop;
 	struct entity_t *entity_ptr;
+
+	//int size;
 
 	int prop_index;
 
@@ -910,11 +936,19 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 			entity_ptr->flags |= ENTITY_FLAG_MODIFIED;
 		}
 
-		for(prop_index = 0; prop_index < entity_ptr->prop_count; prop_index++)
+		if(!entity_ptr->props.elements)
 		{
-			if(!strcmp(name, entity_ptr->props[prop_index].name))
+			entity_ptr->props = list_create(sizeof(struct entity_prop_t), 16, NULL);
+		}
+
+
+		props = (struct entity_prop_t *)entity_ptr->props.elements;
+
+		for(prop_index = 0; prop_index < entity_ptr->props.element_count; prop_index++)
+		{
+			if(!strcmp(name, props[prop_index].name))
 			{
-				if(size == entity_ptr->props[prop_index].size)
+				if(size == props[prop_index].size)
 				{
 					/* don't add a prop if the requested name and size
 					is the same of an existing one... */
@@ -925,25 +959,11 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 			}
 		}
 
-		if(prop_index == entity_ptr->prop_count)
+		if(prop_index == entity_ptr->props.element_count)
 		{
-			if(entity_ptr->prop_count >= entity_ptr->max_props)
-			{
-				prop = memory_Malloc(sizeof(struct entity_prop_t) * (entity_ptr->max_props + 4));
+			list_add(&entity_ptr->props, NULL);
 
-				if(entity_ptr->props)
-				{
-					memcpy(prop, entity_ptr->props, sizeof(struct entity_prop_t) * entity_ptr->max_props);
-					memory_Free(entity_ptr->props);
-				}
-
-				entity_ptr->props = prop;
-				entity_ptr->max_props += 4;
-			}
-
-
-			prop = entity_ptr->props + entity_ptr->prop_count;
-			entity_ptr->prop_count++;
+			prop = list_get(&entity_ptr->props, prop_index);
 
 			prop->name = memory_Calloc(ENTITY_PROP_NAME_MAX_LEN, 1);
 
@@ -951,45 +971,82 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 			{
 				prop->name[i] = name[i];
 			}
-
-			//prop->name = memory_Strdup(name);
-
 		}
 		else
 		{
-			prop = entity_ptr->props + prop_index;
+			prop = list_get(&entity_ptr->props, prop_index);
 			memory_Free(prop->memory);
 		}
 
-		size = (size + 3) & (~3);
-
+		//prop->type = type;
 		prop->size = size;
-		prop->memory = memory_Malloc(prop->size);
+		prop->memory = memory_Malloc((prop->size + 3) & (~3));
 	}
 }
+
+void entity_AddProp1i(struct entity_handle_t entity, char *name)
+{
+	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_INT]);
+}
+
+void entity_AddProp1f(struct entity_handle_t entity, char *name)
+{
+	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_FLOAT]);
+}
+
+void entity_AddProp2f(struct entity_handle_t entity, char *name)
+{
+	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_VEC2]);
+}
+
+void entity_AddProp3f(struct entity_handle_t entity, char *name)
+{
+	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_VEC3]);
+}
+
+void entity_AddProp4f(struct entity_handle_t entity, char *name)
+{
+	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_VEC4]);
+}
+
+void entity_AddProp22f(struct entity_handle_t entity, char *name)
+{
+	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_MAT2]);
+}
+
+void entity_AddProp33f(struct entity_handle_t entity, char *name)
+{
+	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_MAT3]);
+}
+
+void entity_AddProp44f(struct entity_handle_t entity, char *name)
+{
+	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_MAT4]);
+}
+
+
 
 void entity_RemoveProp(struct entity_handle_t entity, char *name)
 {
 	int i;
 	struct entity_t *entity_ptr;
+	struct entity_prop_t *props;
 
 
     entity_ptr = entity_GetEntityPointerHandle(entity);
 
     if(entity_ptr)
 	{
-		for(i = 0; i < entity_ptr->prop_count; i++)
-		{
-			if(!strcmp(name, entity_ptr->props[i].name))
-			{
-				memory_Free(entity_ptr->props[i].memory);
-				memory_Free(entity_ptr->props[i].name);
+		props = (struct entity_prop_t *)entity_ptr->props.elements;
 
-                if(i < entity_ptr->prop_count - 1 )
-				{
-					entity_ptr->props[i] = entity_ptr->props[entity_ptr->prop_count - 1];
-				}
-				entity_ptr->prop_count--;
+		for(i = 0; i < entity_ptr->props.element_count; i++)
+		{
+			if(!strcmp(name,props[i].name))
+			{
+				memory_Free(props[i].memory);
+				memory_Free(props[i].name);
+
+                list_remove(&entity_ptr->props, i);
 
 				return;
 			}
@@ -1047,16 +1104,20 @@ struct entity_prop_t *entity_GetPropPointer(struct entity_handle_t entity, char 
 {
 	int i;
 	struct entity_t *entity_ptr;
+	struct entity_prop_t *props;
 
 	entity_ptr = entity_GetEntityPointerHandle(entity);
 
 	if(entity_ptr)
 	{
-		for(i = 0; i < entity_ptr->prop_count; i++)
+		props = (struct entity_prop_t *)entity_ptr->props.elements;
+
+		for(i = 0; i < entity_ptr->props.element_count; i++)
 		{
-			if(!strcmp(name, entity_ptr->props[i].name))
+			if(!strcmp(name, props[i].name))
+
 			{
-				return entity_ptr->props + i;
+				return props + i;
 			}
 		}
 	}
@@ -1372,7 +1433,8 @@ struct entity_handle_t entity_CreateEntity(char *name, int def)
 	entity_ptr = stack_list_get(&ent_entities[def], entity_index);
 	entity_ptr->flags = ENTITY_FLAG_NOT_INITIALIZED;
 	entity_ptr->leaf = NULL;
-	entity_ptr->prop_count = 0;
+	//entity_ptr->prop_count = 0;
+	entity_ptr->props.element_count = 0;
 	entity_ptr->ref_count = 0;
 
 	entity_ptr->def.def = 1;
@@ -1447,11 +1509,17 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 	int collider_index;
 	struct collider_handle_t collider_handle;
 
+	struct entity_prop_t *props;
+
 	struct component_handle_t component;
 
 	int i;
 	int component_type;
 	int j;
+
+	static int level = -1;
+
+	level++;
 
 	handle = entity_CreateEntity(name, 0);
 
@@ -1465,6 +1533,14 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 			entity_ptr->components[i].type = COMPONENT_TYPE_NONE;
 		}
 	}
+
+	if(!level)
+    {
+        transform_component = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+        scale.x *= transform_component->scale.x;
+        scale.y *= transform_component->scale.y;
+        scale.z *= transform_component->scale.z;
+    }
 
 
 
@@ -1524,12 +1600,14 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 	}
 
 
+	props = (struct entity_prop_t *)entity_def_ptr->props.elements;
+
 	/* entities spanwed through a def will inherit all
 	the props and its values... */
-	for(i = 0; i < entity_def_ptr->prop_count; i++)
+	for(i = 0; i < entity_def_ptr->props.element_count; i++)
 	{
-		entity_AddProp(handle, entity_def_ptr->props[i].name, entity_def_ptr->props[i].size);
-		entity_SetProp(handle, entity_def_ptr->props[i].name, entity_def_ptr->props[i].memory);
+		entity_AddProp(handle, props[i].name, props[i].size);
+		entity_SetProp(handle, props[i].name, props[i].memory);
 	}
 
 	entity_ptr->spawn_time = r_frame;
@@ -1567,6 +1645,8 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 			entity_ParentEntity(handle, child_handle);
 		}
 	}
+
+	level--;
 
 	return handle;
 }
@@ -1829,7 +1909,8 @@ struct entity_t *entity_GetEntityPointer(char *name, int get_def)
 	return NULL;
 }
 
-struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity)
+#if 0
+__attribute__((always_inline)) inline struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity)
 {
 	struct entity_t *entity_ptr = NULL;
 	int cursor;
@@ -1850,6 +1931,10 @@ struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity)
 	return entity_ptr;
 }
 
+#endif
+
+
+#if 0
 __attribute__((always_inline)) inline void *entity_GetComponentPointer(struct component_handle_t component)
 {
 	struct stack_list_t *list;
@@ -1860,6 +1945,10 @@ __attribute__((always_inline)) inline void *entity_GetComponentPointer(struct co
 	}
 	return NULL;
 }
+
+#endif
+
+#if 0
 
 __attribute__((always_inline)) inline void *entity_GetComponentPointerIndex(int index, int type, int def)
 {
@@ -1874,15 +1963,25 @@ __attribute__((always_inline)) inline void *entity_GetComponentPointerIndex(int 
 	return entity_GetComponentPointer(handle);
 }
 
+#endif
+
+
+#if 0
 __attribute__((always_inline)) inline struct entity_transform_t *entity_GetWorldTransformPointer(struct component_handle_t component)
 {
 	return (struct entity_transform_t *)((char *)ent_world_transforms.elements + ent_world_transforms.element_size * component.index);
 }
+#endif
+
+
+#if 0
 
 __attribute__((always_inline)) inline struct entity_aabb_t *entity_GetAabbPointer(struct component_handle_t component)
 {
 	return (struct entity_aabb_t *)((char *)ent_entity_aabbs.elements + ent_entity_aabbs.element_size * component.index);
 }
+
+#endif
 
 /*__forceinline struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity)
 {
@@ -1905,6 +2004,7 @@ __attribute__((always_inline)) inline struct entity_aabb_t *entity_GetAabbPointe
 	return entity_ptr;
 }*/
 
+#if 0
 __attribute__((always_inline)) inline struct entity_t *entity_GetEntityParentPointerHandle(struct entity_handle_t entity)
 {
 	struct entity_t *entity_ptr = NULL;
@@ -1933,6 +2033,10 @@ __attribute__((always_inline)) inline struct entity_t *entity_GetEntityParentPoi
 	return parent_entity_ptr;
 }
 
+#endif
+
+#if 0
+
 __attribute__((always_inline)) inline struct entity_t *entity_GetEntityPointerIndex(int entity_index)
 {
 	struct entity_t *entity_ptr;
@@ -1953,6 +2057,10 @@ __attribute__((always_inline)) inline struct entity_t *entity_GetEntityPointerIn
 
 	return NULL;
 }
+
+#endif
+
+#if 0
 
 __attribute__((always_inline)) inline struct entity_t *entity_GetEntityDefPointerIndex(int entity_def_index)
 {
@@ -1975,6 +2083,9 @@ __attribute__((always_inline)) inline struct entity_t *entity_GetEntityDefPointe
 	return NULL;
 }
 
+#endif
+
+#if 0
 __attribute__((always_inline)) inline struct entity_handle_t entity_GetEntityHandle(char *name, int get_def)
 {
 	int i;
@@ -2009,6 +2120,10 @@ __attribute__((always_inline)) inline struct entity_handle_t entity_GetEntityHan
 
 	return handle;
 }
+
+#endif
+
+#if 0
 
 struct entity_handle_t entity_GetNestledEntityHandle_Stack[1024];
 
@@ -2070,6 +2185,8 @@ __attribute__((always_inline)) inline struct entity_handle_t entity_GetNestledEn
 
 	return (struct entity_handle_t){parent_entity.def, INVALID_ENTITY_INDEX};
 }
+
+#endif
 
 struct entity_source_file_t *entity_GetSourceFile(struct entity_handle_t entity)
 {
@@ -2589,7 +2706,7 @@ void entity_UpdatePhysicsComponents()
 
             if(increment > ent_entity_contacts.max_elements)
             {
-                increment = 32 + (increment + 3) & (~3);
+                increment = 128 + (increment + 3) & (~3);
                 list_resize(&ent_entity_contacts, increment);
                 entity_contacts = (struct entity_contact_t *)ent_entity_contacts.elements;
             }
@@ -2870,6 +2987,10 @@ void entity_UpdateCameraComponents()
 	struct entity_t *entity;
 	camera_t *camera;
 
+	vec3_t forward_vec;
+	vec3_t right_vec;
+	vec3_t up_vec;
+
 	camera_components = (struct camera_component_t *)ent_components[0][COMPONENT_TYPE_CAMERA].elements;
 	c = ent_components[0][COMPONENT_TYPE_CAMERA].element_count;
 
@@ -2898,8 +3019,41 @@ void entity_UpdateCameraComponents()
 				camera->world_position.y = world_transform->transform.floats[3][1];
 				camera->world_position.z = world_transform->transform.floats[3][2];
 
+				right_vec.x = world_transform->transform.floats[0][0];
+				right_vec.y = world_transform->transform.floats[0][1];
+				right_vec.z = world_transform->transform.floats[0][2];
 
-				camera->world_orientation.floats[0][0] = world_transform->transform.floats[0][0];
+				up_vec.x = world_transform->transform.floats[1][0];
+				up_vec.y = world_transform->transform.floats[1][1];
+				up_vec.z = world_transform->transform.floats[1][2];
+
+				forward_vec.x = world_transform->transform.floats[2][0];
+				forward_vec.y = world_transform->transform.floats[2][1];
+				forward_vec.z = world_transform->transform.floats[2][2];
+
+
+				right_vec = normalize3(right_vec);
+				up_vec = normalize3(up_vec);
+				forward_vec = normalize3(forward_vec);
+
+
+
+				camera->world_orientation.floats[0][0] = right_vec.x;
+				camera->world_orientation.floats[0][1] = right_vec.y;
+				camera->world_orientation.floats[0][2] = right_vec.z;
+
+				camera->world_orientation.floats[1][0] = up_vec.x;
+				camera->world_orientation.floats[1][1] = up_vec.y;
+				camera->world_orientation.floats[1][2] = up_vec.z;
+
+				camera->world_orientation.floats[2][0] = forward_vec.x;
+				camera->world_orientation.floats[2][1] = forward_vec.y;
+				camera->world_orientation.floats[2][2] = forward_vec.z;
+
+
+
+
+				/*camera->world_orientation.floats[0][0] = world_transform->transform.floats[0][0];
 				camera->world_orientation.floats[0][1] = world_transform->transform.floats[0][1];
 				camera->world_orientation.floats[0][2] = world_transform->transform.floats[0][2];
 
@@ -2909,7 +3063,7 @@ void entity_UpdateCameraComponents()
 
 				camera->world_orientation.floats[2][0] = world_transform->transform.floats[2][0];
 				camera->world_orientation.floats[2][1] = world_transform->transform.floats[2][1];
-				camera->world_orientation.floats[2][2] = world_transform->transform.floats[2][2];
+				camera->world_orientation.floats[2][2] = world_transform->transform.floats[2][2];*/
 
 				camera_ComputeWorldToCameraMatrix(camera);
 			}
@@ -2966,6 +3120,342 @@ int entity_LineOfSightToEntity(struct entity_handle_t from, struct entity_handle
 	return 0;
 }
 
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
+
+int entity_CreateTrigger(mat3_t *orientation, vec3_t position, vec3_t scale, char *event_name, char *name)
+{
+	struct trigger_t *trigger;
+    int trigger_index;
+
+    trigger_index = stack_list_add(&ent_triggers, NULL);
+    trigger = (struct trigger_t *)stack_list_get(&ent_triggers, trigger_index);
+
+	if(orientation)
+	{
+		memcpy(&trigger->orientation, orientation, sizeof(mat3_t));
+	}
+	else
+	{
+		trigger->orientation = mat3_t_id();
+	}
+
+
+	trigger->position = position;
+	trigger->scale = scale;
+	trigger->flags = 0;
+
+	/*if(event_name)
+	{
+		trigger->event_name = memory_Strdup(event_name);
+	}
+	else
+	{
+		trigger->event_name = NULL;
+	}*/
+
+	trigger->event_name = memory_Calloc(WORLD_EVENT_NAME_MAX_LEN, 1);
+
+	if(event_name)
+	{
+		strcpy(trigger->event_name, event_name);
+	}
+
+	trigger->name = memory_Calloc(ENTITY_TRIGGER_NAME_MAX_LEN, 1);
+	strcpy(trigger->name, name);
+
+	//trigger->name = memory_Strdup(name);
+
+	trigger->collider = physics_CreateTrigger(orientation, position, scale);
+
+	trigger->trigger_filters = list_create(sizeof(struct trigger_filter_t), 8, NULL);
+
+	return trigger_index;
+}
+
+struct trigger_t *entity_GetTriggerPointerIndex(int trigger_index)
+{
+    struct trigger_t *trigger;
+
+    if(trigger_index >= 0 && trigger_index < ent_triggers.element_count)
+	{
+        trigger = (struct trigger_t *)ent_triggers.elements + trigger_index;
+
+		if(!(trigger->flags & TRIGGER_FLAG_INVALID))
+		{
+			return trigger;
+		}
+	}
+
+	return NULL;
+}
+
+int entity_GetTrigger(char *name)
+{
+	struct trigger_t *triggers;
+	int i;
+
+	triggers = (struct trigger_t *)ent_triggers.elements;
+
+	for(i = 0; i < ent_triggers.element_count; i++)
+	{
+        if(triggers[i].flags & TRIGGER_FLAG_INVALID)
+		{
+			continue;
+		}
+
+		if(!strcmp(name, triggers[i].name))
+		{
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+int entity_IsTriggered(int trigger_index)
+{
+    struct trigger_t *trigger;
+
+    trigger = entity_GetTriggerPointerIndex(trigger_index);
+
+    if(trigger)
+	{
+		return (trigger->flags & TRIGGER_FLAG_TRIGGERED) && 1;
+	}
+
+	return 0;
+}
+
+void entity_DestroyTriggerIndex(int trigger_index)
+{
+	struct trigger_t *trigger;
+
+    trigger = entity_GetTriggerPointerIndex(trigger_index);
+
+    if(trigger)
+	{
+        trigger->flags |= TRIGGER_FLAG_INVALID;
+		physics_DestroyColliderHandle(trigger->collider);
+
+		memory_Free(trigger->event_name);
+		memory_Free(trigger->name);
+
+		stack_list_remove(&ent_triggers, trigger_index);
+	}
+}
+
+void entity_AddTriggerFilter(int trigger_index, char *filter_name)
+{
+    struct trigger_t *trigger;
+    struct trigger_filter_t *filters;
+    struct trigger_filter_t *filter;
+    int filter_index;
+
+    int i;
+
+    trigger = entity_GetTriggerPointerIndex(trigger_index);
+
+    if(trigger)
+	{
+		filters = (struct trigger_filter_t *)trigger->trigger_filters.elements;
+
+		for(i = 0; i < trigger->trigger_filters.element_count; i++)
+		{
+            if(!strcmp(filter_name, filters[i].prop_name))
+			{
+				return;
+			}
+		}
+
+        filter_index = list_add(&trigger->trigger_filters, NULL);
+        filter = list_get(&trigger->trigger_filters, filter_index);
+
+        //filter->prop_name = memory_Strdup(filter_name);
+
+        filter->prop_name = memory_Calloc(ENTITY_PROP_NAME_MAX_LEN, 1);
+
+        strcpy(filter->prop_name, filter_name);
+	}
+}
+
+void entity_RemoveTriggerFilter(int trigger_index, char *filter_name)
+{
+	struct trigger_t *trigger;
+    struct trigger_filter_t *filters;
+    struct trigger_filter_t *filter;
+    int filter_index;
+
+    int i;
+
+    trigger = entity_GetTriggerPointerIndex(trigger_index);
+
+    if(trigger)
+	{
+		filters = (struct trigger_filter_t *)trigger->trigger_filters.elements;
+
+		for(i = 0; i < trigger->trigger_filters.element_count; i++)
+		{
+            if(!strcmp(filter_name, filters[i].prop_name))
+			{
+				memory_Free(filters[i].prop_name);
+				list_remove(&trigger->trigger_filters, i);
+
+				return;
+			}
+		}
+
+
+	}
+}
+
+void entity_UpdateTriggers()
+{
+    struct trigger_t *triggers;
+    struct trigger_t *trigger;
+    struct trigger_collider_t *trigger_collider;
+    struct trigger_filter_t *filters;
+    struct collider_t *other_collider;
+
+    struct entity_prop_t *prop;
+
+    struct entity_t *entity;
+    struct entity_handle_t entity_handle;
+	int trigger_count;
+	int i;
+	int j;
+	int k;
+
+	struct contact_record_t *contact_records;
+	int contact_record_count;
+
+    triggers = (struct trigger_t *)ent_triggers.elements;
+    trigger_count = ent_triggers.element_count;
+
+    entity_handle.def = 0;
+
+    for(i = 0; i < trigger_count; i++)
+	{
+        trigger = triggers + i;
+
+        if(trigger->flags & TRIGGER_FLAG_INVALID)
+		{
+			continue;
+		}
+
+		trigger->flags &= ~TRIGGER_FLAG_TRIGGERED;
+
+		filters = (struct trigger_filter_t *)trigger->trigger_filters.elements;
+
+		trigger_collider = (struct trigger_collider_t *)physics_GetColliderPointerHandle(trigger->collider);
+		contact_records = physics_GetColliderContactRecords(trigger->collider);
+
+		for(j = 0; j < trigger_collider->base.contact_record_count; j++)
+		{
+			other_collider = physics_GetColliderPointerHandle(contact_records[j].collider);
+
+			if(other_collider)
+			{
+				entity_handle.entity_index = other_collider->entity_index;
+
+				entity = entity_GetEntityPointerHandle(entity_handle);
+
+				if(entity)
+				{
+					for(k = 0; k < trigger->trigger_filters.element_count; k++)
+					{
+						prop = entity_GetPropPointer(entity_handle, filters[k].prop_name);
+
+						if(prop)
+						{
+							/* T-T-T-TRIGGEREEEED!!!!! */
+
+							if(trigger->event_name)
+							{
+								world_CallEvent(trigger->event_name);
+							}
+
+							trigger->flags |= TRIGGER_FLAG_TRIGGERED;
+
+							goto _next_trigger;
+						}
+					}
+				}
+			}
+		}
+
+		_next_trigger:
+
+		continue;
+	}
+}
+
+void entity_SetTriggerPosition(int trigger_index, vec3_t position)
+{
+	struct trigger_t *trigger;
+
+	trigger = entity_GetTriggerPointerIndex(trigger_index);
+
+	if(trigger)
+	{
+        trigger->position.x = position.x;
+		trigger->position.y = position.y;
+		trigger->position.z = position.z;
+
+		physics_SetColliderPosition(trigger->collider, trigger->position);
+	}
+}
+
+void entity_TranslateTrigger(int trigger_index, vec3_t direction, float amount)
+{
+	struct trigger_t *trigger;
+
+	trigger = entity_GetTriggerPointerIndex(trigger_index);
+
+	if(trigger)
+	{
+        trigger->position.x += direction.x * amount;
+		trigger->position.y += direction.y * amount;
+		trigger->position.z += direction.z * amount;
+
+		physics_SetColliderPosition(trigger->collider, trigger->position);
+	}
+}
+
+
+void entity_ScaleTrigger(int trigger_index, vec3_t axis, float amount)
+{
+	struct trigger_t *trigger;
+
+	trigger = entity_GetTriggerPointerIndex(trigger_index);
+
+	if(trigger)
+	{
+		trigger->scale.x += axis.x * amount;
+		trigger->scale.y += axis.y * amount;
+		trigger->scale.z += axis.z * amount;
+
+		if(trigger->scale.x <= 0.0) trigger->scale.x = 0.001;
+		if(trigger->scale.y <= 0.0) trigger->scale.y = 0.001;
+		if(trigger->scale.z <= 0.0) trigger->scale.z = 0.001;
+
+		physics_SetColliderScale(trigger->collider, trigger->scale);
+	}
+}
+
+void entity_DestroyAllTriggers()
+{
+	int i;
+
+    for(i = 0; i < ent_triggers.element_count; i++)
+	{
+		entity_DestroyTriggerIndex(i);
+	}
+}
 
 /*
 ==============================================================
@@ -3008,87 +3498,94 @@ void *entity_SetupScriptDataCallback(struct script_t *script, void *script_contr
 
 	//ent_current_entity = script_component->base.entity;
 
-	script_SetCurrentInvocationData(&script_component->base.entity, sizeof(struct entity_handle_t));
+	script_SetCurrentContextData(&script_component->base.entity, sizeof(struct entity_handle_t));
 
 	ent = entity_GetEntityPointerHandle(script_component->base.entity);
 
 	physics_component = entity_GetComponentPointer(ent->components[COMPONENT_TYPE_PHYSICS]);
 
-	if(ent->flags & ENTITY_FLAG_MARKED_INVALID)
-	{
-		if(!(ent->flags & ENTITY_FLAG_EXECUTED_DIE_FUNCTION))
-		{
-			script_QueueEntryPoint(entity_script->on_die_entry_point);
-		}
 
-		ent->flags |= ENTITY_FLAG_EXECUTED_DIE_FUNCTION;
-	}
-	else
+	if(engine_GetEngineState() & ENGINE_PLAYING)
 	{
-		if(r_frame - ent->spawn_time <= 1)
+		if(ent->flags & ENTITY_FLAG_MARKED_INVALID)
 		{
+			if(!(ent->flags & ENTITY_FLAG_EXECUTED_DIE_FUNCTION))
+			{
+				script_QueueEntryPoint(entity_script->on_die_entry_point);
+			}
+
+			ent->flags |= ENTITY_FLAG_EXECUTED_DIE_FUNCTION;
+		}
+		else
+		{
+			//if(r_frame - ent->spawn_time <= 1)
+			//{
 			if(!(ent->flags & ENTITY_FLAG_EXECUTED_SPAWN_FUNCTION))
 			{
 				script_QueueEntryPoint(entity_script->on_spawn_entry_point);
 			}
 
 			ent->flags |= ENTITY_FLAG_EXECUTED_SPAWN_FUNCTION;
-			//script_QueueEntryPoint(entity_script->on_spawn_entry_point);
-		}
+				//script_QueueEntryPoint(entity_script->on_spawn_entry_point);
+			//}
 
-		if(physics_component)
-		{
-			if(entity_script->on_collision_entry_point)
+			if(physics_component)
 			{
-			    if(physics_component->entity_contact_count)
-                {
-                    script_array.buffer = (struct entity_contact_t *)ent_entity_contacts.elements + physics_component->first_entity_contact;
-                    script_array.element_count = physics_component->entity_contact_count;
-                    script_array.element_size = sizeof(struct entity_contact_t);
-
-                    script_QueueEntryPoint(entity_script->on_collision_entry_point);
-                    script_PushArg(&script_array, SCRIPT_ARG_TYPE_ADDRESS);
-                }
-
-
-			    #if 0
-				if(physics_HasNewCollisions(physics_component->collider.collider_handle))
+				if(entity_script->on_collision_entry_point)
 				{
-					touched = entity_GetTouchedEntities(ent_current_entity, &touched_count);
-
-					if(touched_count)
+					if(physics_component->entity_contact_count)
 					{
-						memcpy(entity_handles, touched, sizeof(struct entity_handle_t) * touched_count);
-
-						script_array.buffer = entity_handles;
-						script_array.element_size = sizeof(struct entity_handle_t);
-						script_array.element_count = touched_count;
-
-					/*	if(collided_entities)
-						{
-							collided_entities->buffer = entity_handles;
-							collided_entities->element_size = sizeof(struct entity_handle_t);
-							collided_entities->element_count = touched_count;
-						}
-						else
-						{
-
-						}*/
-
-
+						script_array.buffer = (struct entity_contact_t *)ent_entity_contacts.elements + physics_component->first_entity_contact;
+						script_array.element_count = physics_component->entity_contact_count;
+						script_array.element_size = sizeof(struct entity_contact_t);
 
 						script_QueueEntryPoint(entity_script->on_collision_entry_point);
 						script_PushArg(&script_array, SCRIPT_ARG_TYPE_ADDRESS);
 					}
+
+
+					#if 0
+					if(physics_HasNewCollisions(physics_component->collider.collider_handle))
+					{
+						touched = entity_GetTouchedEntities(ent_current_entity, &touched_count);
+
+						if(touched_count)
+						{
+							memcpy(entity_handles, touched, sizeof(struct entity_handle_t) * touched_count);
+
+							script_array.buffer = entity_handles;
+							script_array.element_size = sizeof(struct entity_handle_t);
+							script_array.element_count = touched_count;
+
+						/*	if(collided_entities)
+							{
+								collided_entities->buffer = entity_handles;
+								collided_entities->element_size = sizeof(struct entity_handle_t);
+								collided_entities->element_count = touched_count;
+							}
+							else
+							{
+
+							}*/
+
+
+
+							script_QueueEntryPoint(entity_script->on_collision_entry_point);
+							script_PushArg(&script_array, SCRIPT_ARG_TYPE_ADDRESS);
+						}
+					}
+
+					#endif
 				}
 
-				#endif
 			}
 
+			script_QueueEntryPoint(entity_script->script.main_entry_point);
 		}
-
-		script_QueueEntryPoint(entity_script->script.main_entry_point);
 	}
+
+
+
 
 	//script_component->flags &= ~SCRIPT_CONTROLLER_FLAG_FIRST_RUN;
 	return entry_point;

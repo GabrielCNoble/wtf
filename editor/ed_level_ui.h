@@ -29,15 +29,17 @@ void editor_LevelEditorMapCompilerWindow();
 
 void editor_LevelEditorMaterialsWindow();
 
-void editor_LevelEditorLightOptionsMenu();
+void editor_LevelEditorLightWindow(int light_index);
 
-void editor_LevelEditorBrushOptionsMenu();
+void editor_LevelEditorBrushWindow(struct brush_t *brush);
 
-void editor_LevelEditorBrushUVMenu();
+void editor_LevelEditorBrushUVWindow();
 
-void editor_LevelEditorEntityOptionsMenu();
+void editor_LevelEditorEntityWindow(int entity_index);
 
 void editor_LevelEditorWaypointWindow(int waypoint_index);
+
+void editor_LevelEditorTriggerWindow(int trigger_index);
 
 void editor_LevelEditorWorldMenu();
 
@@ -73,6 +75,9 @@ void editor_LevelEditorOpenSnap3dCursorMenu(int x, int y);
 void editor_LevelEditorToggleMaterialsWindow();
 
 void editor_LevelEditorToggleMapCompilerWindow();
+
+
+
 
 
 

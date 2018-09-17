@@ -102,10 +102,11 @@ enum COLLIDER_TYPE
 enum COLLIDER_FLAGS
 {
 	COLLIDER_FLAG_INVALID = 1,
-	COLLIDER_FLAG_UPDATE_RIGID_BODY = 1 << 1,
+	COLLIDER_FLAG_UPDATE_COLLISION_OBJECT = 1 << 1,
 	COLLIDER_FLAG_NO_SCALE_HINT = 1 << 2,
 	COLLIDER_FLAG_NEW_COLLISIONS = 1 << 3,
-	COLLIDER_FLAG_STATIC = 1 << 4,
+	COLLIDER_FLAG_DONT_TRACK_COLLISIONS = 1 << 4,
+	COLLIDER_FLAG_STATIC = 1 << 5,
 };
 
 enum CHARACTER_COLLIDER_FLAGS
@@ -157,8 +158,8 @@ struct collider_def_t
 	float height;
 	float crouch_height;
 	float radius;
-	float step_height;
-	float slope_angle;
+	float max_step_height;
+	float max_slope_angle;
 	float max_walk_speed;
 	//	}character_collider_data;
 	//}collider_data;
@@ -185,6 +186,58 @@ struct collider_handle_t
 
 
 #define INVALID_COLLIDER_HANDLE (struct collider_handle_t){COLLIDER_TYPE_NONE, INVALID_COLLIDER_INDEX}
+
+
+struct collider_t
+{
+	mat3_t orientation;
+	vec3_t position;
+	vec3_t scale;
+
+	void *collision_object;						/* opaque reference to a btRigidBody... */
+	struct collider_def_t *def;
+	unsigned short flags;
+	unsigned short type;
+
+	int entity_index;
+
+	short contact_record_count;
+	unsigned short max_contact_records;
+	unsigned int first_contact_record;
+
+};
+
+
+struct rigid_body_collider_t
+{
+    struct collider_t base;
+    vec3_t linear_velocity;
+};
+
+
+struct character_collider_t
+{
+	struct collider_t base;
+	float radius;
+	float height;
+	float max_step_height;
+	float max_slope_angle;
+	float max_walk_speed;
+	int flags;
+};
+
+
+struct trigger_collider_t
+{
+	struct collider_t base;
+};
+
+struct projectile_collider_t
+{
+	struct collider_t base;
+};
+
+#if 0
 
 struct collider_t
 {
@@ -224,6 +277,8 @@ struct collider_t
 	unsigned int first_contact_record;
 
 };
+
+#endif
 
 struct contact_record_t
 {

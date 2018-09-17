@@ -3,6 +3,8 @@
 #include "shader.h"
 #include "model.h"
 
+#include "containers/stack_list.h"
+
 #include "GL/glew.h"
 
 
@@ -10,7 +12,9 @@ int r_active_shader = -1;
 int r_current_vertex_format = VERTEX_FORMAT_CUSTOM;
 
 /* from shader.c */
-extern shader_t *shaders;
+//extern struct shader_t *shaders;
+
+extern struct stack_list_t shd_shaders;
 
 
 /* from r_main.c */
@@ -22,8 +26,8 @@ extern int r_shader_uniform_updates;
 
 void renderer_SetShader(int shader_index)
 {
-	shader_t *shader;
-	shader_t *current_shader = NULL;
+	struct shader_t *shader;
+	struct shader_t *current_shader = NULL;
 	unsigned int program;
 	unsigned int diffuse_tex;
 	unsigned int normal_tex;
@@ -38,13 +42,16 @@ void renderer_SetShader(int shader_index)
 	}
 	else
 	{
-		shader = &shaders[shader_index];
+		//shader = &shaders[shader_index];
+		shader = shader_GetShaderPointerIndex(shader_index);
 		program = shader->shader_program;
 	}
 
 	if(r_active_shader > -1)
 	{
-		current_shader = &shaders[r_active_shader];
+		//current_shader = &shaders[r_active_shader];
+
+		current_shader = shader_GetShaderPointerIndex(r_active_shader);
 
 		if(current_shader->vertex_position != 0xff)
 		{
@@ -233,11 +240,12 @@ void renderer_SetUniformMatrix4fv(uniform_t *uniform, float *value)
 
 void renderer_SetDefaultUniform1i(int uniform, int value)
 {
-	shader_t *shader;
+	struct shader_t *shader;
 
 	if(r_active_shader >= 0)
 	{
-		shader = &shaders[r_active_shader];
+		//shader = &shaders[r_active_shader];
+		shader = shader_GetShaderPointerIndex(r_active_shader);
 
 		if(uniform < UNIFORM_LAST_UNIFORM && uniform >= 0)
 		{
@@ -258,7 +266,7 @@ renderer_SetNamedUniform1i
 */
 void renderer_SetNamedUniform1i(char *uniform, int value)
 {
-	shader_t *shader;
+	struct shader_t *shader;
 	named_uniform_t *u;
 
 	int uniform_index;
@@ -268,7 +276,8 @@ void renderer_SetNamedUniform1i(char *uniform, int value)
 		return;
 	}
 
-	shader = &shaders[r_active_shader];
+	//shader = &shaders[r_active_shader];
+	shader = shader_GetShaderPointerIndex(r_active_shader);
 
 	uniform_index = shader_GetShaderNamedUniformIndex(shader, uniform);
 
@@ -280,11 +289,12 @@ void renderer_SetNamedUniform1i(char *uniform, int value)
 
 void renderer_SetDefaultUniform1iv(int uniform, int count, int *value)
 {
-	shader_t *shader;
+	struct shader_t *shader;
 
 	if(r_active_shader >= 0)
 	{
-		shader = &shaders[r_active_shader];
+		//shader = &shaders[r_active_shader];
+		shader = shader_GetShaderPointerIndex(r_active_shader);
 
 		if(uniform < UNIFORM_LAST_UNIFORM && uniform >= 0)
 		{
@@ -301,11 +311,12 @@ void renderer_SetDefaultUniform1iv(int uniform, int count, int *value)
 
 void renderer_SetDefaultUniform1ui(int uniform, unsigned int value)
 {
-	shader_t *shader;
+	struct shader_t *shader;
 
 	if(r_active_shader >= 0)
 	{
-		shader = &shaders[r_active_shader];
+		//shader = &shaders[r_active_shader];
+		shader = shader_GetShaderPointerIndex(r_active_shader);
 
 		if(uniform < UNIFORM_LAST_UNIFORM && uniform >= 0)
 		{
@@ -322,11 +333,12 @@ void renderer_SetDefaultUniform1ui(int uniform, unsigned int value)
 
 void renderer_SetDefaultUniform1f(int uniform, float value)
 {
-	shader_t *shader;
+	struct shader_t *shader;
 
 	if(r_active_shader >= 0)
 	{
-		shader = &shaders[r_active_shader];
+		//shader = &shaders[r_active_shader];
+		shader = shader_GetShaderPointerIndex(r_active_shader);
 
 		if(uniform < UNIFORM_LAST_UNIFORM && uniform >= 0)
 		{
@@ -347,7 +359,7 @@ renderer_SetNamedUniform1i
 */
 void renderer_SetNamedUniform1f(char *uniform, float value)
 {
-	shader_t *shader;
+	struct shader_t *shader;
 	named_uniform_t *u;
 
 	int uniform_index;
@@ -357,7 +369,9 @@ void renderer_SetNamedUniform1f(char *uniform, float value)
 		return;
 	}
 
-	shader = &shaders[r_active_shader];
+	//shader = &shaders[r_active_shader];
+
+	shader = shader_GetShaderPointerIndex(r_active_shader);
 
 	uniform_index = shader_GetShaderNamedUniformIndex(shader, uniform);
 
@@ -372,11 +386,13 @@ void renderer_SetNamedUniform1f(char *uniform, float value)
 
 void renderer_SetDefaultUniform4fv(int uniform, int count, float *value)
 {
-	shader_t *shader;
+	struct shader_t *shader;
 
 	if(r_active_shader >= 0)
 	{
-		shader = &shaders[r_active_shader];
+		//shader = &shaders[r_active_shader];
+
+		shader = shader_GetShaderPointerIndex(r_active_shader);
 
 		if(uniform < UNIFORM_LAST_UNIFORM && uniform >= 0)
 		{
@@ -397,7 +413,7 @@ renderer_SetNamedUniform4fv
 */
 void renderer_SetNamedUniform4fv(char *uniform, int count, float *value)
 {
-	shader_t *shader;
+	struct shader_t *shader;
 	named_uniform_t *u;
 
 	int uniform_index;
@@ -408,7 +424,8 @@ void renderer_SetNamedUniform4fv(char *uniform, int count, float *value)
 		return;
 	}
 
-	shader = &shaders[r_active_shader];
+	//shader = &shaders[r_active_shader];
+	shader = shader_GetShaderPointerIndex(r_active_shader);
 
 	uniform_index = shader_GetShaderNamedUniformIndex(shader, uniform);
 
@@ -424,11 +441,12 @@ void renderer_SetNamedUniform4fv(char *uniform, int count, float *value)
 
 void renderer_SetDefaultUniformMatrix4fv(int uniform, float *value)
 {
-	shader_t *shader;
+	struct shader_t *shader;
 
 	if(r_active_shader >= 0)
 	{
-		shader = &shaders[r_active_shader];
+		//shader = &shaders[r_active_shader];
+		shader = shader_GetShaderPointerIndex(r_active_shader);
 
 		if(uniform < UNIFORM_LAST_UNIFORM && uniform >= 0)
 		{
@@ -450,7 +468,7 @@ renderer_SetNamedUniformMatrix4fv
 */
 void renderer_SetNamedUniformMatrix4fv(char *uniform, float *value)
 {
-	shader_t *shader;
+	struct shader_t *shader;
 	named_uniform_t *u;
 
 	int uniform_index;
@@ -461,7 +479,9 @@ void renderer_SetNamedUniformMatrix4fv(char *uniform, float *value)
 		return;
 	}
 
-	shader = &shaders[r_active_shader];
+	//sshader = &shaders[r_active_shader];
+
+	shader = shader_GetShaderPointerIndex(r_active_shader);
 
 	uniform_index = shader_GetShaderNamedUniformIndex(shader, uniform);
 
@@ -490,12 +510,13 @@ with following rendering commands...
 */
 void renderer_SetVertexAttribPointer(int attrib, int size, int type, int normalized, int stride, void *pointer)
 {
-	shader_t *shader;
+	struct shader_t *shader;
 
 	if(r_active_shader < 0)
 		return;
 
-	shader = &shaders[r_active_shader];
+//	shader = &shaders[r_active_shader];
+	shader = shader_GetShaderPointerIndex(r_active_shader);
 
 	switch(attrib)
 	{
@@ -533,11 +554,12 @@ void renderer_SetVertexAttribPointer(int attrib, int size, int type, int normali
 
 void renderer_ClearVertexAttribPointers()
 {
-	shader_t *shader;
+	struct shader_t *shader;
 
 	if(r_active_shader > -1)
 	{
-		shader = &shaders[r_active_shader];
+		//shader = &shaders[r_active_shader];
+		shader = shader_GetShaderPointerIndex(r_active_shader);
 
 		if(shader->vertex_position != 0xff)
 		{
@@ -566,11 +588,12 @@ void renderer_ClearVertexAttribPointers()
 	}
 }
 
-shader_t *renderer_GetActiveShaderPointer()
+struct shader_t *renderer_GetActiveShaderPointer()
 {
 	if(r_active_shader >= 0)
 	{
-		return &shaders[r_active_shader];
+		//return &shaders[r_active_shader];
+		return shader_GetShaderPointerIndex(r_active_shader);
 	}
 }
 

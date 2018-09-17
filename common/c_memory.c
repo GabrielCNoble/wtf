@@ -5,7 +5,7 @@
 
 #include "c_memory.h"
 #include "log.h"
-//#include "SDL2\SDL_mutex.h"
+#include "SDL2\SDL_mutex.h"
 
 
 #define USE_GUARD_BYTES
@@ -37,6 +37,8 @@
 
 static int mem_alloc_count = 0;
 
+unsigned long mem_total_bytes = 0;
+
 typedef struct alloc_header_t
 {
 	#ifdef USE_GUARD_BYTES
@@ -55,7 +57,7 @@ typedef struct alloc_header_t
 
 
  static int mem_initialized = 0;
- //static SDL_mutex *mem_mutex = NULL;
+ static SDL_mutex *mem_mutex = NULL;
 
 
 static alloc_header_t *head = NULL;
@@ -71,7 +73,7 @@ void memory_Init(int memory_mode)
 	if(!mem_initialized)
 	{
 		mem_initialized = 1;
-	//	mem_mutex = SDL_CreateMutex();
+		mem_mutex = SDL_CreateMutex();
 	}
 }
 
@@ -91,7 +93,7 @@ void memory_Finish()
 		}
 
 		mem_initialized = 0;
-//		SDL_DestroyMutex(mem_mutex);
+		SDL_DestroyMutex(mem_mutex);
 	}
 }
 
@@ -157,6 +159,7 @@ void *memory_SetupHeader(void *memory, int size, const char *caller)
 	tail = header;
 
 	mem_alloc_count++;
+	mem_total_bytes += size;
 
 	return memory;
 }
@@ -167,7 +170,7 @@ void *memory_MallocCaller(size_t size, const char *caller)
 	void *mem = NULL;
 
 
-//	SDL_LockMutex(mem_mutex);
+	SDL_LockMutex(mem_mutex);
 
 	mem = malloc(size + sizeof(alloc_header_t) + GUARD_BYTE_COUNT);
 
@@ -176,13 +179,13 @@ void *memory_MallocCaller(size_t size, const char *caller)
 		#ifdef KEEP_CALLER_NAME
 		if(caller)
 		{
-			printf("memory_Malloc: call from %s returned a null pointer!\n", caller);
-		//	log_LogMessage(LOG_MESSAGE_ERROR, "memory_Malloc: call from %s returned a null pointer!", caller);
+		//	printf("memory_Malloc: call from %s returned a null pointer!\n", caller);
+			log_LogMessage(LOG_MESSAGE_ERROR, 1, "memory_Malloc: call from %s returned a null pointer!", caller);
 		}
 		else
 		{
-			printf("memory_Malloc: call returned a null pointer!\n");
-		//	log_LogMessage(LOG_MESSAGE_ERROR, "memory_Malloc: call returned a null pointer!");
+		//	printf("memory_Malloc: call returned a null pointer!\n");
+			log_LogMessage(LOG_MESSAGE_ERROR, 1, "memory_Malloc: call returned a null pointer!");
 		}
 		#endif
 	}
@@ -191,7 +194,7 @@ void *memory_MallocCaller(size_t size, const char *caller)
 		mem = memory_SetupHeader(mem, size, caller);
 	}
 
-//	SDL_UnlockMutex(mem_mutex);
+	SDL_UnlockMutex(mem_mutex);
 
 	return mem;
 
@@ -206,20 +209,18 @@ void *memory_CallocCaller(size_t count, size_t elem_size, const char *caller)
 		#ifdef KEEP_CALLER_NAME
 		if(caller)
 		{
-			printf("memory_Calloc: bad params from %s!\n", caller);
-		//	log_LogMessage(LOG_MESSAGE_ERROR, "memory_Calloc: bad params from %s!", caller);
+			log_LogMessage(LOG_MESSAGE_ERROR, 1, "memory_Calloc: bad params from %s!", caller);
 		}
 		else
 		{
-			printf("memory_Calloc: bad params!\n", caller);
-		//	log_LogMessage(LOG_MESSAGE_ERROR, "memory_Calloc: bad params!");
+			log_LogMessage(LOG_MESSAGE_ERROR, 1, "memory_Calloc: bad params!");
 		}
 		#endif
 
 		return NULL;
 	}
 
-	//SDL_LockMutex(mem_mutex);
+	SDL_LockMutex(mem_mutex);
 
 	mem = calloc(1, count * elem_size + sizeof(alloc_header_t) + GUARD_BYTE_COUNT);
 
@@ -228,13 +229,11 @@ void *memory_CallocCaller(size_t count, size_t elem_size, const char *caller)
 		#ifdef KEEP_CALLER_NAME
 		if(caller)
 		{
-			printf("call from %s returned a null pointer!\n", caller);
-		//	log_LogMessage(LOG_MESSAGE_ERROR, "memory_Calloc: call from %s returned a null pointer!", caller);
+			log_LogMessage(LOG_MESSAGE_ERROR, 1, "memory_Calloc: call from %s returned a null pointer!", caller);
 		}
 		else
 		{
-			printf("call returned a null pointer!\n");
-		//	log_LogMessage(LOG_MESSAGE_ERROR, "memory_Calloc: call returned a null pointer!");
+			log_LogMessage(LOG_MESSAGE_ERROR, 1, "memory_Calloc: call returned a null pointer!");
 		}
 		#endif
 	}
@@ -243,7 +242,7 @@ void *memory_CallocCaller(size_t count, size_t elem_size, const char *caller)
 		mem = memory_SetupHeader(mem, count * elem_size, caller);
 	}
 
-	//SDL_UnlockMutex(mem_mutex);
+	SDL_UnlockMutex(mem_mutex);
 
 	return mem;
 }
@@ -253,11 +252,12 @@ void memory_Free(void *memory)
 	alloc_header_t *header;
 	header = (alloc_header_t *)((char *)memory - sizeof(alloc_header_t));
 
-	//SDL_LockMutex(mem_mutex);
+	SDL_LockMutex(mem_mutex);
 
 	if(header == head)
 	{
 		head = header->next;
+
 		if(head)
 		{
 			head->prev = NULL;
@@ -277,10 +277,12 @@ void memory_Free(void *memory)
 		}
 	}
 
+    mem_total_bytes -= header->size;
+	mem_alloc_count--;
+
 	free(header);
 
-	mem_alloc_count--;
-//	SDL_UnlockMutex(mem_mutex);
+	SDL_UnlockMutex(mem_mutex);
 }
 
 char *memory_StrdupCaller(char *src, const char *caller)
@@ -295,7 +297,7 @@ char *memory_StrdupCaller(char *src, const char *caller)
 	return memory;
 }
 
-void memory_Report()
+void memory_Report(int report_allocs)
 {
 	alloc_header_t *header;
 	size_t total_allocd = 0;
@@ -303,23 +305,21 @@ void memory_Report()
 
 	//SDL_LockMutex(mem_mutex);
 	header = head;
+    if(report_allocs)
+    {
+        while(header)
+        {
+            #ifdef KEEP_CALLER_NAME
+        	log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "memory_Report: alloc of %d bytes from %s", header->size, header->caller);
+            #else
+        	log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "memory_Report: alloc of %d bytes", header->size);
+            #endif
 
-	while(header)
-	{
-		#ifdef KEEP_CALLER_NAME
-		printf("memory_Report: alloc of %d bytes from %s\n", header->size, header->caller);
-	//	log_LogMessage(LOG_MESSAGE_NOTIFY, "memory_Report: alloc of %d bytes from %s", header->size, header->caller);
-		#else
-		printf("memory_Report: alloc of %d bytes\n", header->size);
-	//	log_LogMessage(LOG_MESSAGE_NOTIFY, "memory_Report: alloc of %d bytes", header->size);
-		#endif
+            header = header->next;
+        }
+    }
 
-		total_allocd += header->size;
-		header = header->next;
-	}
-
-	printf("memory_Report: %d allocd bytes remain\n", total_allocd);
-//	log_LogMessage(LOG_MESSAGE_NOTIFY, "memory_Report: %d allocd bytes remain", total_allocd);
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "memory_Report: %d allocd bytes remain", total_allocd);
 
 //	SDL_UnlockMutex(mem_mutex);
 
@@ -334,28 +334,23 @@ void memory_ReportFromCaller(char *caller)
 //	SDL_LockMutex(mem_mutex);
 	header = head;
 
+	#ifndef KEEP_CALLER_NAME
+	return;
+	#endif // KEEP_CALLER_NAME
+
+
 	while(header)
 	{
-		#ifdef KEEP_CALLER_NAME
 		if(!strcmp(header->caller, caller))
 		{
-			printf("memory_ReportFromCaller: alloc of %d bytes from %s\n", header->size, header->caller);
-	//		log_LogMessage(LOG_MESSAGE_NOTIFY, "memory_Report: alloc of %d bytes from %s", header->size, header->caller);
+			//printf("memory_ReportFromCaller: alloc of %d bytes from %s\n", header->size, header->caller);
+			log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "memory_Report: alloc of %d bytes from %s", header->size, header->caller);
 			total_allocd += header->size;
 		}
 
-		#else
-
-		return;
-
-		#endif
-
-
 		header = header->next;
 	}
-
-	printf("memory_ReportFromCaller: %d allocd bytes remain from %s\n", total_allocd, caller);
-//	log_LogMessage(LOG_MESSAGE_NOTIFY, "memory_ReportFromCaller: %d allocd bytes remain from %s", total_allocd, caller);
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "memory_ReportFromCaller: %d allocd bytes remain from %s", total_allocd, caller);
 
 	//SDL_UnlockMutex(mem_mutex);
 }
@@ -400,35 +395,19 @@ void memory_CheckCorrupted()
 		{
 			if(corrupt & 1)
 			{
-				#ifdef LOG_OUTPUT
-					#ifdef KEEP_CALLER_NAME
-		//			log_LogMessage(LOG_MESSAGE_ERROR, "memory_CheckCorrupted: alloc at 0x%x (%s): header guard bytes are corrupt!", header, header->caller);
-					#else
-			//		log_LogMessage(LOG_MESSAGE_ERROR, "memory_CheckCorrupted: alloc at 0x%x: header guard bytes are corrupt!", header);
-					#endif
-				#endif
-
 				#ifdef KEEP_CALLER_NAME
-				printf("memory_CheckCorrupted: alloc at 0x%x (%s): header guard bytes are corrupt!\n", header, header->caller);
+				log_LogMessage(LOG_MESSAGE_WARNING, 1, "memory_CheckCorrupted: alloc at 0x%x (%s): header guard bytes are corrupt!\n", header, header->caller);
 				#else
-				print("memory_CheckCorrupted: alloc at 0x%x: header guard bytes are corrupt!", header);
+				log_LogMessage(LOG_MESSAGE_WARNING, 1, "memory_CheckCorrupted: alloc at 0x%x: header guard bytes are corrupt!\n", header);
 				#endif
 			}
 
 			if(corrupt & 2)
 			{
-				#ifdef LOG_OUTPUT
-					#ifdef KEEP_CALLER_NAME
-			//		log_LogMessage(LOG_MESSAGE_ERROR, "memory_CheckCorrupted: alloc at 0x%x (%s): header guard bytes are corrupt!", header, header->caller);
-					#else
-			//		log_LogMessage(LOG_MESSAGE_ERROR, "memory_CheckCorrupted: alloc at 0x%x: tail guard bytes are corrupt!", header);
-					#endif
-				#endif
-
 				#ifdef KEEP_CALLER_NAME
-				printf("memory_CheckCorrupted: alloc at 0x%x (%s): tail guard bytes are corrupt!\n", header, header->caller);
+				log_LogMessage(LOG_MESSAGE_WARNING, 1, "memory_CheckCorrupted: alloc at 0x%x (%s): tail guard bytes are corrupt!\n", header, header->caller);
 				#else
-				print("memory_CheckCorrupted: alloc at 0x%x: tail guard bytes are corrupt!", header);
+				log_LogMessage(LOG_MESSAGE_WARNING, 1, "memory_CheckCorrupted: alloc at 0x%x: tail guard bytes are corrupt!\n", header);
 				#endif
 			}
 
@@ -441,23 +420,11 @@ void memory_CheckCorrupted()
 
 	if(corrupted_count)
 	{
-		#ifdef STDOUT_OUTPUT
-		printf("memory_CheckCorrupted: %d corrupted allocs found!\n", corrupted_count);
-		#endif
-
-		#ifdef LOG_OUTPUT
-	//	log_LogMessage(LOG_MESSAGE_NOTIFY, "memory_CheckCorrupted: %d corrupted allocs found!", corrupted_count);
-		#endif
+		log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "memory_CheckCorrupted: %d corrupted allocs found!", corrupted_count);
 	}
 	else
 	{
-		#ifdef STDOUT_OUTPUT
-		printf("memory_CheckCorrupted: no memory corruption detected...\n");
-		#endif
-
-		#ifdef LOG_OUTPUT
-	//	log_LogMessage(LOG_MESSAGE_NOTIFY, "memory_CheckCorrupted: no memory corruption detected...");
-		#endif
+		log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "memory_CheckCorrupted: no memory corruption detected...");
 	}
 
 	//SDL_UnlockMutex(mem_mutex);

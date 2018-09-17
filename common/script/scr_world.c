@@ -1,4 +1,5 @@
 #include "scr_world.h"
+#include "script.h"
 #include "world.h"
 
 #include "ent_common.h"
@@ -163,6 +164,50 @@ void *world_ScriptGetEntities()
 }
 
 
+void world_ScriptCallEvent(struct script_string_t *event_name)
+{
+	char *name = script_string_GetRawString(event_name);
+
+	world_CallEvent(name);
+}
+
+
+void world_ScriptStopCurrentEvent()
+{
+    char *event_name;
+    struct world_script_t *world_script;
+    void *current_function;
+    int i;
+
+    world_script = world_GetWorldScript();
+
+    if(world_script)
+	{
+		current_function = script_GetCurrentFunction();
+
+		for(i = 0; i < world_script->event_count; i++)
+		{
+            if(current_function == world_script->events[i].event_function)
+			{
+                world_StopEventIndex(i);
+                break;
+			}
+		}
+	}
+}
+
+
+void world_ScriptStopAllEvents()
+{
+	world_StopAllEvents();
+}
+
+
+
+void world_ScriptClearWorld()
+{
+    world_Clear(WORLD_CLEAR_FLAG_ALL);
+}
 
 
 

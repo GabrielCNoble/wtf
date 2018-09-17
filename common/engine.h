@@ -81,6 +81,17 @@ void engine_BackTrace();
 
 void engine_BreakPoint();
 
+void engine_Error(const char *format, ...);
+
+void engine_CaptureFunctionName(const char *name);
+
+
+
+
+
+//#define engine_Error(msg, ...) printf("%s: " msg "\n", __func__, __VA_ARGS__)
+
+
 #ifdef __cplusplus
 }
 #endif

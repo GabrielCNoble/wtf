@@ -10,7 +10,7 @@
 
 #ifdef R_DBG_NO_DEBUG
 	#define R_DBG_PUSH_FUNCTION_NAME()
-	#define R_DBG_POP_FUNCTION_NAME() 
+	#define R_DBG_POP_FUNCTION_NAME()
 #else
 	#define R_DBG_PUSH_FUNCTION_NAME() renderer_PushFunctionName(__func__)
 	#define R_DBG_POP_FUNCTION_NAME() renderer_PopFunctionName()
@@ -39,7 +39,7 @@ typedef struct
 	unsigned char stencil_test;
 	unsigned char depth_mask;
 	unsigned char stencil_ref;
-	
+
 	unsigned short stencil_func;
 	unsigned short stencil_op_fail;
 	unsigned short stencil_op_zfail;
@@ -52,7 +52,7 @@ typedef struct
 	vec3_t color;
 	int smooth;
 	float size;
-	
+
 	dbg_draw_params_t draw_params;
 }point_dbg_draw_data_t;
 
@@ -78,14 +78,14 @@ typedef struct
 	unsigned char stencil_test;
 	unsigned char depth_mask;
 	unsigned char stencil_ref;
-	
+
 	unsigned short stencil_func;
 	unsigned short stencil_op_fail;
 	unsigned short stencil_op_zfail;
 	unsigned short stencil_op_zpass;
-	
+
 	unsigned short fill_mode;
-	
+
 }polygon_dbg_draw_params_t;
 
 
@@ -95,9 +95,9 @@ typedef struct
 	short stride;
 	short mode;
 	int count;
-	
+
 	polygon_dbg_draw_params_t params;
-	
+
 	void *verts;
 }verts_dbg_draw_data_t;
 
@@ -155,6 +155,8 @@ void renderer_DrawCharacterCollider(void *collider);
 void renderer_DrawColliders();
 
 void renderer_DrawEntities();
+
+void renderer_DrawTriggers();
 
 
 

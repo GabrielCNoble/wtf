@@ -16,6 +16,7 @@
 #include "shader.h"
 #include "c_memory.h"
 #include "r_debug.h"
+#include "log.h"
 
 #include "half_float.h"
 
@@ -105,6 +106,8 @@ int model_Init()
 	//mdl_model_free_stack = memory_Malloc(sizeof(int) * mdl_max_models, "model_Init");
 
 	mdl_models = stack_list_create(sizeof(struct model_t), 32, model_DisposeModelCallback);
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 	return 1;
 }
@@ -315,8 +318,12 @@ int model_LoadModel(char *file_name, char *model_name)
         gpu_Write(model->vertice_buffer_handle, 0, compact_vertices, sizeof(struct compact_vertex_t) * model->vert_count);
 
 	}
+	else
+	{
+		printf("model_LoadModel: something went wrong when loading model [%s]\n", model_name);
+	}
 
-	printf("model_LoadModel: something went wrong when loading model [%s]\n", model_name);
+	//
 
 	renderer_PopFunctionName();
 

@@ -10,6 +10,7 @@
 #include "gpu.h"
 #include "c_memory.h"
 #include "matrix.h"
+#include "log.h"
 
 #include "stack_list.h"
 #include "list.h"
@@ -32,6 +33,9 @@ int collision_def_count = 0;
 struct collider_def_t *phy_collider_defs = NULL;
 struct collider_def_t *phy_last_collider_def = NULL;
 
+
+
+int collider_type_size[COLLIDER_TYPE_LAST];
 
 
 
@@ -66,6 +70,8 @@ extern "C++"
 	#include "bullet/include/BulletCollision/CollisionShapes/btCapsuleShape.h"
 	#include "bullet/include/BulletCollision/CollisionShapes/btCompoundShape.h"
 	#include "bullet/include/BulletCollision/NarrowPhaseCollision/btPersistentManifold.h"
+
+	#include "bullet/include/BulletCollision/CollisionDispatch/btGhostObject.h"
 
 	btDefaultCollisionConfiguration *collision_configuration = NULL;
 	btCollisionDispatcher *narrow_phase = NULL;
@@ -144,6 +150,15 @@ int physics_Init()
 	physics_world = new btDiscreteDynamicsWorld(narrow_phase, broad_phase, solver, collision_configuration);
 	physics_world->setGravity(btVector3(0.0, -GRAVITY * 1000.0, 0.0));
 
+
+
+	collider_type_size[COLLIDER_TYPE_RIGID_BODY_COLLIDER] = sizeof(struct rigid_body_collider_t);
+	collider_type_size[COLLIDER_TYPE_CHARACTER_COLLIDER] = sizeof(struct character_collider_t);
+	collider_type_size[COLLIDER_TYPE_TRIGGER_COLLIDER] = sizeof(struct trigger_collider_t);
+	collider_type_size[COLLIDER_TYPE_PROJECTILE_COLLIDER] = sizeof(struct projectile_collider_t);
+
+
+
 	//max_colliders = 128;
 	//colliders = (collider_t *) memory_Malloc(sizeof(collider_t ) * max_colliders, "physics_Init");
 	//colliders_free_positions_stack = (int *) memory_Malloc(sizeof(int) * max_colliders, "physics_Init");
@@ -151,10 +166,12 @@ int physics_Init()
 
 	for(i = 0; i < COLLIDER_TYPE_LAST; i++)
 	{
-		phy_colliders[i] = stack_list_create(sizeof(collider_t), 64, NULL);
+		phy_colliders[i] = stack_list_create(collider_type_size[i], 64, NULL);
 	}
 
 	phy_contact_records = list_create(sizeof(struct contact_record_t), 32000, NULL);
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 
 	return 1;
@@ -164,8 +181,6 @@ void physics_Finish()
 {
 	int i;
 	btRigidBody *collider_rigid_body;
-
-
 
 	while(phy_collider_defs)
 	{
@@ -282,7 +297,7 @@ collider_def_t *physics_CreateRigidBodyColliderDef(char *name)
 	return def;
 }
 
-collider_def_t *physics_CreateCharacterColliderDef(char *name, float height, float crouch_height, float radius, float step_height, float slope_angle, float max_walk_speed)
+collider_def_t *physics_CreateCharacterColliderDef(char *name, float height, float crouch_height, float radius, float step_height, float slope_angle, float max_walk_speed, float mass)
 {
 	collider_def_t *def;
 	def = physics_CreateColliderDef(name);
@@ -290,11 +305,11 @@ collider_def_t *physics_CreateCharacterColliderDef(char *name, float height, flo
 	def->height = height;
 	def->crouch_height = crouch_height;
 	def->radius = radius;
-	def->slope_angle = slope_angle;
-	def->step_height = step_height;
+	def->max_slope_angle = slope_angle;
+	def->max_step_height = step_height;
 	def->max_walk_speed = max_walk_speed;
 
-	def->mass = 1.0;
+	def->mass = mass;
 
 	def->flags = COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
 	def->type = COLLIDER_TYPE_CHARACTER_COLLIDER;
@@ -743,7 +758,7 @@ void physics_UpdateReferencingColliders(collider_def_t *def)
 			{
 				/* make a copy of the collision shape, so this collider can be freely scaled... */
 				collision_shape = (btCollisionShape *) physics_BuildCollisionShape(def);
-				rigid_body = (btRigidBody *) collider->rigid_body;
+				rigid_body = (btRigidBody *) collider->collision_object;
 
 				/* get rid of the outdated copy this collider has... */
 				physics_DestroyCollisionShape(rigid_body->getCollisionShape());
@@ -756,7 +771,7 @@ void physics_UpdateReferencingColliders(collider_def_t *def)
 			rigid_body->setLinearVelocity(btVector3(0.0, 0.0, 0.0));
 			rigid_body->activate(true);
 
-			collider->flags |= COLLIDER_FLAG_UPDATE_RIGID_BODY;
+			collider->flags |= COLLIDER_FLAG_UPDATE_COLLISION_OBJECT;
 		}
 
 	//	}
@@ -849,6 +864,7 @@ struct collider_handle_t physics_CreateEmptyCollider(int type)
 		case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
 		case COLLIDER_TYPE_CHARACTER_COLLIDER:
 		case COLLIDER_TYPE_PROJECTILE_COLLIDER:
+		case COLLIDER_TYPE_TRIGGER_COLLIDER:
 			collider_index = stack_list_add(&phy_colliders[type], NULL);
 		break;
 
@@ -859,37 +875,10 @@ struct collider_handle_t physics_CreateEmptyCollider(int type)
 
 	collider = (struct collider_t *)stack_list_get(&phy_colliders[type], collider_index);
 
+	memset(collider, 0, collider_type_size[type]);
+
 	handle.type = type;
 	handle.index = collider_index;
-
-	/*if(colliders_free_positions_stack_top > -1)
-	{
-		collider_index = colliders_free_positions_stack[colliders_free_positions_stack_top];
-		colliders_free_positions_stack_top--;
-	}
-	else
-	{
-		collider_index = collider_list_cursor++;
-
-		if(collider_index >= max_colliders)
-		{
-
-			memory_Free(colliders_free_positions_stack);
-
-			collider = (collider_t *) memory_Malloc(sizeof(collider_t) * (max_colliders + 16), "physics_CreateEmtpyCollider");
-			colliders_free_positions_stack = (int *) memory_Malloc(sizeof(int) * (max_colliders + 16), "physics_CreateEmptyCollider");
-
-			memcpy(collider, colliders, sizeof(collider_t) * max_colliders);
-			memory_Free(colliders);
-
-			colliders = collider;
-			max_colliders += 16;
-		}
-
-	}
-
-	collider = &colliders[collider_index];*/
-
 
 	collider->orientation.floats[0][0] = 1.0;
 	collider->orientation.floats[0][1] = 0.0;
@@ -908,9 +897,8 @@ struct collider_handle_t physics_CreateEmptyCollider(int type)
 	collider->position.z = 0.0;
 
 	collider->flags = 0;
-	collider->character_collider_flags = 0;
 	collider->type = type;
-	collider->rigid_body = NULL;
+	collider->collision_object = NULL;
 	collider->def = NULL;
 	collider->max_contact_records = 32;
 	collider->contact_record_count = 0;
@@ -928,8 +916,13 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	struct collider_handle_t handle;
 
 	struct collider_t *collider;
+	struct character_collider_t *character_collider;
+	struct trigger_collider_t *trigger_collider;
+
+
 	btCollisionShape *collider_collision_shape;
 	btRigidBody *collider_rigid_body;
+	btCollisionObject *collider_collision_object;
 	btTransform collider_transform;
 	btDefaultMotionState *collider_motion_state;
 
@@ -945,8 +938,6 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 
 	//collider_index = physics_CreateEmptyCollider();
 	//collider = &colliders[collider_index];
-
-
 
 
 	if((flags & COLLIDER_FLAG_NO_SCALE_HINT) && def->cached_collision_shape)
@@ -968,36 +959,42 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	handle = physics_CreateEmptyCollider(def->type);
 	collider = physics_GetColliderPointerHandle(handle);
 
-	collider->position = position;
-	collider->scale = scale;
-	collider->type = def->type;
-	collider->flags = COLLIDER_FLAG_UPDATE_RIGID_BODY;
-	collider->def = def;
-	collider->max_walk_speed = def->max_walk_speed;
-	collider->contact_record_count = 0;
-	collider->max_contact_records = 32;
-
 	collider_transform.setIdentity();
 	collider_transform.setOrigin(btVector3(position.x, position.y, position.z));
 
-	if(def->type == COLLIDER_TYPE_RIGID_BODY_COLLIDER && orientation)
+	collider->position = position;
+	collider->scale = scale;
+
+	if(orientation && def->type != COLLIDER_TYPE_CHARACTER_COLLIDER)
 	{
 		collider->orientation = *orientation;
 		collider_transform.setBasis((float *)orientation);
 	}
-	else
+
+	collider->type = def->type;
+	collider->flags = COLLIDER_FLAG_UPDATE_COLLISION_OBJECT;
+	collider->def = def;
+
+    switch(def->type)
 	{
-		collider->height = def->height;
-		collider->radius = def->radius;
-		collider->max_slope = def->slope_angle;
-		collider->step_height = def->step_height;
+		case COLLIDER_TYPE_CHARACTER_COLLIDER:
+			character_collider = (struct character_collider_t *)collider;
+			character_collider->height = def->height;
+			character_collider->radius = def->radius;
+			character_collider->max_slope_angle = def->max_slope_angle;
+			character_collider->max_walk_speed = def->max_walk_speed;
+            character_collider->max_step_height = def->max_step_height;
+
+        case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
+
+		break;
 	}
 
 
 	collider_motion_state = new btDefaultMotionState(collider_transform);
 	collider_rigid_body = new btRigidBody(def->mass, collider_motion_state, collider_collision_shape, btVector3(def->inertia_tensor.x, def->inertia_tensor.y, def->inertia_tensor.z));
 
-	physics_world->addRigidBody(collider_rigid_body, 0xffff, 0xffff);
+	physics_world->addRigidBody(collider_rigid_body);
 
 	collider_rigid_body->setWorldTransform(collider_transform);
 	collider_rigid_body->setLinearVelocity(btVector3(0.0, 0.0, 0.0));
@@ -1009,22 +1006,79 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	{
 		/* a character controller is a capsule that can't rotate... */
 		collider_rigid_body->setAngularFactor(btVector3(0.0, 0.0, 0.0));
-
-		//if(def->type == COLLIDER_TYPE_PROJECTILE_COLLIDER)
-		//{
-		//	collider_rigid_body->setLinearFactor(btVector3(0.0, 0.0, 0.0));
-		//}
 	}
 
 
 	collider_rigid_body->setSleepingThresholds(0.05, 0.05);
 	collider_rigid_body->activate(true);
 
-	collider->rigid_body = collider_rigid_body;
+	collider->collision_object = collider_rigid_body;
 
 	return handle;
-	//return collider_index;
 }
+
+struct collider_handle_t physics_CreateTrigger(mat3_t *orientation, vec3_t position, vec3_t scale)
+{
+	int trigger_index;
+	struct collider_handle_t handle = INVALID_COLLIDER_HANDLE;
+	struct trigger_collider_t *trigger;
+
+	//btGhostObject *ghost_object;
+	btCollisionObject *collision_object;
+	btRigidBody *rigid_body;
+	btCollisionShape *collision_shape;
+
+	btDefaultMotionState *motion_state;
+	btTransform transform;
+
+    handle = physics_CreateEmptyCollider(COLLIDER_TYPE_TRIGGER_COLLIDER);
+
+    trigger = (struct trigger_collider_t *)physics_GetColliderPointerHandle(handle);
+
+    if(orientation)
+	{
+		memcpy(&trigger->base.orientation, orientation, sizeof(mat3_t));
+	}
+	else
+	{
+		trigger->base.orientation = mat3_t_id();
+	}
+
+	trigger->base.position = position;
+	trigger->base.scale = scale;
+	trigger->base.type = COLLIDER_TYPE_TRIGGER_COLLIDER;
+
+	collision_shape = new btBoxShape(btVector3(1.0, 1.0, 1.0));
+	collision_object = new btCollisionObject();
+	collision_object->setCollisionShape(collision_shape);
+	collision_object->setCollisionFlags(btCollisionObject::CF_NO_CONTACT_RESPONSE);
+	collision_object->setUserIndex(*(int *)&handle);
+
+	//transform.setIdentity();
+
+	//motion_state = new btDefaultMotionState();
+
+	//motion_state->setWorldTransform(transform);
+
+	//rigid_body = new btRigidBody(0.0, motion_state, collision_shape);
+
+
+
+	//ghost_object = new btGhostObject();
+	//ghost_object->setCollisionShape(collision_shape);
+
+	trigger->base.collision_object = collision_object;
+
+
+	physics_world->addCollisionObject(collision_object, 0xffff, 0xffff);
+	//physics_world->addRigidBody(collision_object->setCollisionShape(collision_shape););
+
+	trigger->base.flags |= COLLIDER_FLAG_UPDATE_COLLISION_OBJECT;
+
+	return handle;
+}
+
+
 
 int physics_CopyCollider(int collider_index)
 {/*
@@ -1069,40 +1123,47 @@ int physics_CopyCollider(int collider_index)
 void physics_DestroyColliderHandle(struct collider_handle_t collider)
 {
 	btRigidBody *collider_rigid_body;
+	btCollisionObject *collider_ghost_object;
 	struct collider_t *collider_ptr;
 	btCollisionShape *collider_collision_shape;
 	collider_def_t *collider_def;
 	struct stack_list_t *list;
 
-	if(collider.type != COLLIDER_TYPE_NONE)
+
+	collider_ptr = physics_GetColliderPointerHandle(collider);
+
+	if(collider_ptr)
 	{
-		list = &phy_colliders[collider.type];
+		collider_ptr->flags |= COLLIDER_FLAG_INVALID;
 
-		if(collider.index >= 0 && collider.index < list->element_count)
+		switch(collider_ptr->type)
 		{
-			collider_ptr = (struct collider_t *)list->elements + collider.index;
-
-			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
-			{
-				collider_ptr->flags |= COLLIDER_FLAG_INVALID;
-				collider_rigid_body = (btRigidBody *)collider_ptr->rigid_body;
-
-				physics_world->removeRigidBody(collider_rigid_body);
+			case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
+			case COLLIDER_TYPE_CHARACTER_COLLIDER:
+				collider_rigid_body = (btRigidBody *)collider_ptr->collision_object;
 				collider_collision_shape = collider_rigid_body->getCollisionShape();
-				physics_DestroyCollisionShape(collider_collision_shape);
-
+				physics_world->removeRigidBody(collider_rigid_body);
 				delete collider_rigid_body;
+			break;
 
-
-				physics_DecColliderDefRefCount(collider_ptr->def);
-
-				collider_ptr->rigid_body = NULL;
-				collider_ptr->def = NULL;
-
-				stack_list_remove(list, collider.index);
-			}
+			case COLLIDER_TYPE_TRIGGER_COLLIDER:
+				collider_ghost_object = (btCollisionObject *)collider_ptr->collision_object;
+				collider_collision_shape = collider_ghost_object->getCollisionShape();
+				physics_world->removeCollisionObject(collider_ghost_object);
+				delete collider_ghost_object;
+			break;
 		}
+
+		physics_DestroyCollisionShape(collider_collision_shape);
+
+		physics_DecColliderDefRefCount(collider_ptr->def);
+
+		collider_ptr->collision_object = NULL;
+		collider_ptr->def = NULL;
+
+		stack_list_remove(&phy_colliders[collider.type], collider.index);
 	}
+
 }
 
 struct collider_t *physics_GetColliderPointerHandle(struct collider_handle_t collider)
@@ -1116,7 +1177,8 @@ struct collider_t *physics_GetColliderPointerHandle(struct collider_handle_t col
 
 		if(collider.index >= 0 && collider.index < list->element_count)
 		{
-			collider_ptr = (struct collider_t *)list->elements + collider.index;
+			collider_ptr = (struct collider_t *)((char *)list->elements + collider.index * list->element_size);
+
 			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
 			{
 				return collider_ptr;
@@ -1137,16 +1199,13 @@ void physics_GetColliderAabb(struct collider_handle_t collider, vec3_t *aabb)
 
 	if(collider.type != COLLIDER_TYPE_NONE)
 	{
-		list = &phy_colliders[collider.type];
-
-		if(collider.index >= 0 && collider.index < list->element_count)
+        if(collider.type != COLLIDER_TYPE_TRIGGER_COLLIDER)
 		{
-			collider_ptr = (struct collider_t *)list->elements + collider.index;
+            collider_ptr = physics_GetColliderPointerHandle(collider);
 
-			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
+			if(collider_ptr)
 			{
-				//collider = colliders + collider_index;
-				rigid_body = (btRigidBody *) collider_ptr->rigid_body;
+				rigid_body = (btRigidBody *) collider_ptr->collision_object;
 				rigid_body->getAabb(min, max);
 
 				aabb->x = (max[0] - min[0]) / 2.0;
@@ -1155,9 +1214,6 @@ void physics_GetColliderAabb(struct collider_handle_t collider, vec3_t *aabb)
 			}
 		}
 	}
-
-
-
 }
 
 /*
@@ -1171,23 +1227,13 @@ void physics_SetColliderPosition(struct collider_handle_t collider, vec3_t posit
 	struct collider_t *collider_ptr;
 	struct stack_list_t *list;
 
-	if(collider.type != COLLIDER_TYPE_NONE)
+	collider_ptr = physics_GetColliderPointerHandle(collider);
+
+	if(collider_ptr)
 	{
-		list = &phy_colliders[collider.type];
-
-		if(collider.index >= 0 && collider.index < list->element_count)
-		{
-			collider_ptr = (struct collider_t *)list->elements + collider.index;
-
-			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
-			{
-				collider_ptr->position = position;
-				collider_ptr->flags |= COLLIDER_FLAG_UPDATE_RIGID_BODY;
-			}
-		}
+        collider_ptr->position = position;
+		collider_ptr->flags |= COLLIDER_FLAG_UPDATE_COLLISION_OBJECT;
 	}
-
-
 }
 
 void physics_SetColliderOrientation(struct collider_handle_t collider, mat3_t *orientation)
@@ -1195,20 +1241,12 @@ void physics_SetColliderOrientation(struct collider_handle_t collider, mat3_t *o
 	struct collider_t *collider_ptr;
 	struct stack_list_t *list;
 
-	if(collider.type != COLLIDER_TYPE_NONE)
+    collider_ptr = physics_GetColliderPointerHandle(collider);
+
+    if(collider_ptr)
 	{
-		list = &phy_colliders[collider.type];
-
-		if(collider.index >= 0 && collider.index < list->element_count)
-		{
-			collider_ptr = (struct collider_t *)list->elements + collider.index;
-
-			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
-			{
-				collider_ptr->orientation = *orientation;
-				collider_ptr->flags |= COLLIDER_FLAG_UPDATE_RIGID_BODY;
-			}
-		}
+        collider_ptr->orientation = *orientation;
+		collider_ptr->flags |= COLLIDER_FLAG_UPDATE_COLLISION_OBJECT;
 	}
 }
 
@@ -1217,97 +1255,74 @@ void physics_SetColliderScale(struct collider_handle_t collider, vec3_t scale)
 	struct collider_t *collider_ptr;
 	struct stack_list_t *list;
 
-	if(collider.type != COLLIDER_TYPE_NONE)
+	collider_ptr = physics_GetColliderPointerHandle(collider);
+
+	if(collider_ptr)
 	{
-		list = &phy_colliders[collider.type];
-
-		if(collider.index >= 0 && collider.index < list->element_count)
+        if(collider_ptr->flags & COLLIDER_FLAG_NO_SCALE_HINT)
 		{
-			collider_ptr = (struct collider_t *)list->elements + collider.index;
-
-			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
-			{
-				if(collider_ptr->flags & COLLIDER_FLAG_NO_SCALE_HINT)
-				{
-					return;
-				}
-
-				collider_ptr->scale = scale;
-				collider_ptr->flags |= COLLIDER_FLAG_UPDATE_RIGID_BODY;
-			}
+			return;
 		}
+
+		collider_ptr->scale = scale;
+		collider_ptr->flags |= COLLIDER_FLAG_UPDATE_COLLISION_OBJECT;
 	}
+
 }
 
 void physics_SetColliderVelocity(struct collider_handle_t collider, vec3_t velocity)
 {
-	struct collider_t *collider_ptr;
-	struct stack_list_t *list;
-	btRigidBody *rigid_body;
+	struct rigid_body_collider_t *rigid_body_collider;
 
-	if(collider.type != COLLIDER_TYPE_NONE)
+	if(collider.type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
 	{
-		list = &phy_colliders[collider.type];
+        rigid_body_collider = (struct rigid_body_collider_t *)physics_GetColliderPointerHandle(collider);
 
-		if(collider.index >= 0 && collider.index < list->element_count)
+		if(rigid_body_collider)
 		{
-			collider_ptr = (struct collider_t *)list->elements + collider.index;
-
-			if(!(collider_ptr->flags & COLLIDER_FLAG_INVALID))
-			{
-				//rigid_body = (btRigidBody *)collider_ptr->rigid_body;
-				//rigid_body->activate(true);
-				//rigid_body->setLinearVelocity(btVector3(velocity.x, velocity.y, velocity.z));
-
-				collider_ptr->linear_velocity = velocity;
-				collider_ptr->flags |= COLLIDER_FLAG_UPDATE_RIGID_BODY;
-			}
+            rigid_body_collider->linear_velocity = velocity;
+            rigid_body_collider->base.flags |= COLLIDER_FLAG_UPDATE_COLLISION_OBJECT;
 		}
 	}
 }
 
 void physics_SetColliderMass(struct collider_handle_t collider, float mass)
 {
-    struct collider_t *collider_ptr;
+    struct rigid_body_collider_t *collider_ptr;
     btRigidBody *rigid_body;
     btCollisionShape *collision_shape;
 
     btVector3 inertia_tensor;
 
 
-    collider_ptr = physics_GetColliderPointerHandle(collider);
-
-    if(collider_ptr)
+	if(collider.type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
 	{
+		collider_ptr = (struct rigid_body_collider_t *)physics_GetColliderPointerHandle(collider);
 
-		collider_ptr->flags &= ~COLLIDER_FLAG_STATIC;
-
-		if(mass <= 0.0)
+		if(collider_ptr)
 		{
-			if(collider.type != COLLIDER_TYPE_RIGID_BODY_COLLIDER)
-			{
-				mass = 0.1;
-			}
-			else
+			collider_ptr->base.flags &= ~COLLIDER_FLAG_STATIC;
+
+			if(mass <= 0.0)
 			{
 				mass = 0.0;
-				collider_ptr->flags |= COLLIDER_FLAG_STATIC;
+				collider_ptr->base.flags |= COLLIDER_FLAG_STATIC;
 			}
+
+			rigid_body = (btRigidBody *)collider_ptr->base.collision_object;
+
+			collision_shape = rigid_body->getCollisionShape();
+
+			collision_shape->calculateLocalInertia(mass, inertia_tensor);
+
+			rigid_body->setMassProps(mass, inertia_tensor);
 		}
-
-        rigid_body = (btRigidBody *)collider_ptr->rigid_body;
-
-        collision_shape = rigid_body->getCollisionShape();
-
-        collision_shape->calculateLocalInertia(mass, inertia_tensor);
-
-        rigid_body->setMassProps(mass, inertia_tensor);
 	}
 }
 
 void physics_SetColliderStatic(struct collider_handle_t collider, int set)
 {
-    struct collider_t *collider_ptr;
+    /*struct collider_t *collider_ptr;
 
     if(collider.type != COLLIDER_TYPE_RIGID_BODY_COLLIDER)
 	{
@@ -1326,7 +1341,7 @@ void physics_SetColliderStatic(struct collider_handle_t collider, int set)
 		{
 			physics_SetColliderMass(collider, collider_ptr->def->mass);
 		}
-	}
+	}*/
 }
 
 void physics_ApplyCentralForce(struct collider_handle_t collider, vec3_t force)
@@ -1338,7 +1353,7 @@ void physics_ApplyCentralForce(struct collider_handle_t collider, vec3_t force)
 
 	if(collider_ptr)
 	{
-		rigid_body = (btRigidBody *)collider_ptr->rigid_body;
+		rigid_body = (btRigidBody *)collider_ptr->collision_object;
 		rigid_body->activate(true);
 		rigid_body->applyCentralForce(btVector3(force.x, force.y, force.z));
 	}
@@ -1349,13 +1364,17 @@ void physics_ApplyCentralImpulse(struct collider_handle_t collider, vec3_t impul
 	struct collider_t *collider_ptr;
 	btRigidBody *rigid_body;
 
-	collider_ptr = physics_GetColliderPointerHandle(collider);
 
-	if(collider_ptr)
+	if(collider.type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
 	{
-		rigid_body = (btRigidBody *)collider_ptr->rigid_body;
-		rigid_body->activate(true);
-		rigid_body->applyCentralImpulse(btVector3(impulse.x, impulse.y, impulse.z));
+		collider_ptr = physics_GetColliderPointerHandle(collider);
+
+		if(collider_ptr)
+		{
+			rigid_body = (btRigidBody *)collider_ptr->collision_object;
+			rigid_body->activate(true);
+			rigid_body->applyCentralImpulse(btVector3(impulse.x, impulse.y, impulse.z));
+		}
 	}
 }
 
@@ -1375,11 +1394,15 @@ void physics_UpdateColliders()
 	int j;
 
 	struct collider_t *collider;
+	struct rigid_body_collider_t *rigid_body_collider;
+	struct trigger_collider_t *trigger_collider;
 	struct stack_list_t *list;
+	struct collider_handle_t collider_handle;
 	btRigidBody *rigid_body;
+	btGhostObject *ghost_object;
+	btCollisionObject *collision_object;
 	btCollisionShape *collision_shape;
-	btTransform rigid_body_transform;
-
+	btTransform collision_object_transform;
 
 	for(j = 0; j < COLLIDER_TYPE_LAST; j++)
 	{
@@ -1387,47 +1410,79 @@ void physics_UpdateColliders()
 		list = &phy_colliders[j];
 		collider_count = list->element_count;
 
+		collider_handle.type = j;
+
 		for(i = 0; i < collider_count; i++)
 		{
+			collider_handle.index = i;
+			collider = physics_GetColliderPointerHandle(collider_handle);
 
-			collider = (struct collider_t *)list->elements + i;
-
-			if(collider->flags & COLLIDER_FLAG_INVALID)
+			if(!collider)
 			{
 				continue;
 			}
 
-			if(!(collider->flags & COLLIDER_FLAG_UPDATE_RIGID_BODY))
+			if(!(collider->flags & COLLIDER_FLAG_UPDATE_COLLISION_OBJECT))
 			{
 				continue;
 			}
 
-			//collider = &colliders[i];
+			collision_object_transform.setIdentity();
+			collision_object_transform.setOrigin(btVector3(collider->position.x, collider->position.y, collider->position.z));
 
-			rigid_body = (btRigidBody *)collider->rigid_body;
-
-			rigid_body_transform.setIdentity();
-			rigid_body_transform.setOrigin(btVector3(collider->position.x, collider->position.y, collider->position.z));
-
-			if(collider->type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
+            switch(collider->type)
 			{
-				rigid_body_transform.setBasis(&collider->orientation.floats[0][0]);
+				case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
+				case COLLIDER_TYPE_CHARACTER_COLLIDER:
+					rigid_body = (btRigidBody *)collider->collision_object;
 
-				if(!(collider->flags & COLLIDER_FLAG_NO_SCALE_HINT))
-				{
-					collision_shape = rigid_body->getCollisionShape();
 
+					if(collider->type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
+					{
+						collision_object_transform.setBasis(&collider->orientation.floats[0][0]);
+
+						if(!(collider->flags & COLLIDER_FLAG_NO_SCALE_HINT))
+						{
+							collision_shape = rigid_body->getCollisionShape();
+
+							collision_shape->setLocalScaling(btVector3(collider->scale.x, collider->scale.y, collider->scale.z));
+						}
+					}
+
+					rigid_body->setWorldTransform(collision_object_transform);
+
+					if(collider->type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
+					{
+						rigid_body_collider = (struct rigid_body_collider_t *)collider;
+						rigid_body->setLinearVelocity(btVector3(rigid_body_collider->linear_velocity.x, rigid_body_collider->linear_velocity.y, rigid_body_collider->linear_velocity.z));
+						//rigid_body->setAngularVelocity(btVector3(0.0, 0.0, 0.0));
+					}
+
+					rigid_body->activate(true);
+
+				break;
+
+				case COLLIDER_TYPE_TRIGGER_COLLIDER:
+					trigger_collider = (struct trigger_collider_t *)collider;
+					//ghost_object = (btGhostObject *)collider->collision_object;
+
+					collision_object = (btCollisionObject *) collider->collision_object;
+
+					collision_object_transform.setBasis(&collider->orientation.floats[0][0]);
+					collision_shape = collision_object->getCollisionShape();
+					//collision_shape->setLocalScaling()
 					collision_shape->setLocalScaling(btVector3(collider->scale.x, collider->scale.y, collider->scale.z));
-				}
+
+					collision_object->setWorldTransform(collision_object_transform);
+
+					collision_object->activate(true);
+
+				break;
 			}
 
-			rigid_body->setWorldTransform(rigid_body_transform);
-			//rigid_body->getMotionState()->setWorldTransform(rigid_body_transform);
-			rigid_body->setLinearVelocity(btVector3(collider->linear_velocity.x, collider->linear_velocity.y, collider->linear_velocity.z));
-			//rigid_body->setAngularVelocity(btVector3(0.0, 0.0, 0.0));
-			rigid_body->activate(true);
 
-			collider->flags &= ~COLLIDER_FLAG_UPDATE_RIGID_BODY;
+
+			collider->flags &= ~COLLIDER_FLAG_UPDATE_COLLISION_OBJECT;
 		}
 	}
 
@@ -1438,6 +1493,7 @@ void physics_PostUpdateColliders()
 {
 	int i;
 	int j;
+	int collider_type;
 	int contact_point_index;
 	int contact_point_count;
 	int collider_count;
@@ -1446,9 +1502,12 @@ void physics_PostUpdateColliders()
 	int contact_record_index;
 
 	struct collider_t *collider;
+	struct rigid_body_collider_t *rigid_body_collider;
 	struct stack_list_t *list;
 	struct collider_handle_t handle;
 	btRigidBody *collider_rigid_body;
+	btGhostObject *collider_ghost_object;
+	btCollisionObject *collider_collision_object;
 	btTransform collider_rigid_body_transform;
 	btVector3 collider_rigid_body_position;
 	btVector3 collider_rigid_body_linear_velocity;
@@ -1494,20 +1553,33 @@ void physics_PostUpdateColliders()
 	int handle0;
 	int handle1;
 
+	struct collider_handle_t collider_handle;
+
 	float step_delta;
 
+
+	void (*physics_UpdateColliderFunction)(struct collider_handle_t collider);
+
+
 	/* "realloc" contacts... */
-	for(j = 0; j < COLLIDER_TYPE_LAST; j++)
+	for(collider_type = 0; collider_type < COLLIDER_TYPE_LAST; collider_type++)
 	{
-        list = &phy_colliders[j];
+        list = &phy_colliders[collider_type];
 		collider_count = list->element_count;
 
 		for(i = 0; i < collider_count; i++)
 		{
-			collider = (struct collider_t *)list->elements + i;
+			collider = (struct collider_t *)((char *)list->elements + i * list->element_size);
 
 			if(collider->flags & COLLIDER_FLAG_INVALID)
+			{
 				continue;
+			}
+
+			if(collider->flags & COLLIDER_FLAG_DONT_TRACK_COLLISIONS)
+			{
+				continue;
+			}
 
 			if(collider->contact_record_count > collider->max_contact_records)
 			{
@@ -1519,6 +1591,13 @@ void physics_PostUpdateColliders()
 			collider->first_contact_record = prev_start;
 
 			prev_start += collider->max_contact_records;
+
+			/*if(collider->type == COLLIDER_TYPE_TRIGGER_COLLIDER)
+			{
+				collider_ghost_object = (btGhostObject *)collider->collision_object;
+
+				printf("%d\n", collider_ghost_object->getNumOverlappingObjects());
+			}*/
 		}
 	}
 
@@ -1560,8 +1639,6 @@ void physics_PostUpdateColliders()
 				contact_position.y = contact_point.m_positionWorldOnA[1];
 				contact_position.z = contact_point.m_positionWorldOnA[2];
 
-
-
 				if(!(collider0 && collider1))
 				{
 					if(!collider0)
@@ -1596,161 +1673,191 @@ void physics_PostUpdateColliders()
 
 				if(collider0)
 				{
-					if(collider0->contact_record_count < collider0->max_contact_records)
+					if(!(collider0->flags & COLLIDER_FLAG_DONT_TRACK_COLLISIONS))
 					{
-						contact_record_index = collider0->first_contact_record + collider0->contact_record_count;
-
-						if(body1)
+						if(collider0->contact_record_count < collider0->max_contact_records)
 						{
-							contact_records[contact_record_index].collider = *(struct collider_handle_t *)&handle1;
-						}
-						else
-						{
-							contact_records[contact_record_index].collider = INVALID_COLLIDER_HANDLE;
-						}
+							contact_record_index = collider0->first_contact_record + collider0->contact_record_count;
 
-						contact_records[contact_record_index].normal = contact_normal;
-						contact_records[contact_record_index].position = contact_position;
-						contact_records[contact_record_index].life = contact_point.m_lifeTime;
+							if(body1)
+							{
+								contact_records[contact_record_index].collider = *(struct collider_handle_t *)&handle1;
+							}
+							else
+							{
+								contact_records[contact_record_index].collider = INVALID_COLLIDER_HANDLE;
+							}
 
+							contact_records[contact_record_index].normal = contact_normal;
+							contact_records[contact_record_index].position = contact_position;
+							contact_records[contact_record_index].life = contact_point.m_lifeTime;
+
+						}
+						collider0->contact_record_count++;
 					}
-					collider0->contact_record_count++;
 				}
 
 
 				if(collider1)
 				{
-					if(collider1->contact_record_count < collider1->max_contact_records)
+					if(!(collider1->flags & COLLIDER_FLAG_DONT_TRACK_COLLISIONS))
 					{
-						contact_record_index = collider1->first_contact_record + collider1->contact_record_count;
-
-						if(body0)
+						if(collider1->contact_record_count < collider1->max_contact_records)
 						{
-							contact_records[contact_record_index].collider = *(struct collider_handle_t *)&handle0;
-						}
-						else
-						{
-							contact_records[contact_record_index].collider = INVALID_COLLIDER_HANDLE;
+							contact_record_index = collider1->first_contact_record + collider1->contact_record_count;
+
+							if(body0)
+							{
+								contact_records[contact_record_index].collider = *(struct collider_handle_t *)&handle0;
+							}
+							else
+							{
+								contact_records[contact_record_index].collider = INVALID_COLLIDER_HANDLE;
+							}
+
+							contact_records[contact_record_index].normal = contact_normal;
+							contact_records[contact_record_index].position = contact_position;
+							contact_records[contact_record_index].life = contact_point.m_lifeTime;
 						}
 
-						contact_records[contact_record_index].normal = contact_normal;
-						contact_records[contact_record_index].position = contact_position;
-						contact_records[contact_record_index].life = contact_point.m_lifeTime;
+						collider1->contact_record_count++;
 					}
-					collider1->contact_record_count++;
 				}
 			}
 		}
 	}
 
-
-	//world_collision_mesh->getMeshInterface()->unLockVertexBase(0);
-
-
-
-	for(j = 0; j < COLLIDER_TYPE_LAST; j++)
+	for(collider_type = 0; collider_type < COLLIDER_TYPE_LAST; collider_type++)
 	{
-		list = &phy_colliders[j];
+		list = &phy_colliders[collider_type];
 		collider_count = list->element_count;
+
+		switch(collider_type)
+		{
+			case COLLIDER_TYPE_CHARACTER_COLLIDER:
+				physics_UpdateColliderFunction = physics_UpdateCharacterCollider;
+			break;
+
+			case COLLIDER_TYPE_PROJECTILE_COLLIDER:
+				physics_UpdateColliderFunction = physics_UpdateProjectileCollider;
+			break;
+
+			case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
+				continue;
+			break;
+
+			case COLLIDER_TYPE_TRIGGER_COLLIDER:
+				continue;
+			break;
+		}
+
+		handle.type = collider_type;
 
 		for(i = 0; i < collider_count; i++)
 		{
-			collider = (struct collider_t *)list->elements + i;
+			collider = (struct collider_t *)((char *)list->elements + i * list->element_size);
 
 			if(collider->flags & COLLIDER_FLAG_INVALID)
-				continue;
-
-			//if(collider->collision_record_count > collider->max_collision_records)
-			//{
-			//	j = collider->collision_record_count;
-			//	collider->max_collision_records = (j + 3) & (~3);
-			//}
-
-			//collider->collision_record_count = 0;
-			//collider->first_collision_record = prev_start;
-
-			//prev_start += collider->max_collision_records;
-
-			switch(collider->type)
 			{
-				case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
-
-				break;
-
-				case COLLIDER_TYPE_CHARACTER_COLLIDER:
-					handle.type = COLLIDER_TYPE_CHARACTER_COLLIDER;
-					handle.index = i;
-					physics_UpdateCharacterCollider(handle);
-				break;
-
-				case COLLIDER_TYPE_PROJECTILE_COLLIDER:
-					handle.type = COLLIDER_TYPE_PROJECTILE_COLLIDER;
-					handle.index = i;
-					physics_UpdateProjectileCollider(handle);
-				break;
+				continue;
 			}
 
-			//if(collider->flags & COLLIDER_FLAG_UPDATE_RIGID_BODY)
-			//{
-			//	continue;
-			//}
+			handle.index = i;
+			physics_UpdateColliderFunction(handle);
+		}
+	}
 
-			if(collider->type != COLLIDER_TYPE_TRIGGER_COLLIDER)
-			{
-				collider_rigid_body = (btRigidBody *)collider->rigid_body;
 
-				//collider_rigid_body->getMotionState()->getWorldTransform(collider_rigid_body_transform);
+	for(collider_type = 0; collider_type < COLLIDER_TYPE_LAST; collider_type++)
+	{
+		list = &phy_colliders[collider_type];
+		collider_count = list->element_count;
 
-				collider_rigid_body_transform = collider_rigid_body->getWorldTransform();
-
-				collider_rigid_body_position = collider_rigid_body_transform.getOrigin();
-				collider_rigid_body_orientation = collider_rigid_body_transform.getBasis();
-				collider_rigid_body_linear_velocity = collider_rigid_body->getLinearVelocity();
-
-				if(collider->type == COLLIDER_TYPE_CHARACTER_COLLIDER)
+		switch(collider_type)
+		{
+			case COLLIDER_TYPE_CHARACTER_COLLIDER:
+			case COLLIDER_TYPE_PROJECTILE_COLLIDER:
+			case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
+				for(i = 0; i < collider_count; i++)
 				{
-					if(collider->character_collider_flags & CHARACTER_COLLIDER_FLAG_STEPPING_UP)
+					collider = (struct collider_t *)((char *)list->elements + i * list->element_size);
+
+					if(collider->flags & COLLIDER_FLAG_INVALID)
 					{
-						step_delta = collider_rigid_body_position[1] - collider->position.y;
+						continue;
+					}
 
-						if(step_delta < 0.01)
+					collider_rigid_body = (btRigidBody *)collider->collision_object;
+
+					collider_rigid_body_transform = collider_rigid_body->getWorldTransform();
+					collider_rigid_body_position = collider_rigid_body_transform.getOrigin();
+					collider_rigid_body_orientation = collider_rigid_body_transform.getBasis();
+					collider_rigid_body_linear_velocity = collider_rigid_body->getLinearVelocity();
+
+					/*if(collider->type == COLLIDER_TYPE_CHARACTER_COLLIDER)
+					{
+						if(collider->character_collider_flags & CHARACTER_COLLIDER_FLAG_STEPPING_UP)
 						{
-							collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_STEPPING_UP;
-						}
+							step_delta = collider_rigid_body_position[1] - collider->position.y;
 
-						collider->position.y += step_delta * 0.1;
+							if(step_delta < 0.01)
+							{
+								collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_STEPPING_UP;
+							}
+
+							collider->position.y += step_delta * 0.1;
+						}
+						else
+						{
+							collider->position.y = collider_rigid_body_position[1];
+						}
 					}
 					else
 					{
 						collider->position.y = collider_rigid_body_position[1];
+					}*/
+
+					collider->position.x = collider_rigid_body_position[0];
+					collider->position.y = collider_rigid_body_position[1];
+					collider->position.z = collider_rigid_body_position[2];
+
+					if(collider_type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
+					{
+
+						rigid_body_collider = (struct rigid_body_collider_t *)collider;
+
+						rigid_body_collider->linear_velocity.x = collider_rigid_body_linear_velocity[0];
+						rigid_body_collider->linear_velocity.y = collider_rigid_body_linear_velocity[1];
+						rigid_body_collider->linear_velocity.z = collider_rigid_body_linear_velocity[2];
+
+						collider->orientation.floats[0][0] = collider_rigid_body_orientation[0][0];
+						collider->orientation.floats[0][1] = collider_rigid_body_orientation[1][0];
+						collider->orientation.floats[0][2] = collider_rigid_body_orientation[2][0];
+
+						collider->orientation.floats[1][0] = collider_rigid_body_orientation[0][1];
+						collider->orientation.floats[1][1] = collider_rigid_body_orientation[1][1];
+						collider->orientation.floats[1][2] = collider_rigid_body_orientation[2][1];
+
+						collider->orientation.floats[2][0] = collider_rigid_body_orientation[0][2];
+						collider->orientation.floats[2][1] = collider_rigid_body_orientation[1][2];
+						collider->orientation.floats[2][2] = collider_rigid_body_orientation[2][2];
 					}
 				}
-				else
-				{
-					collider->position.y = collider_rigid_body_position[1];
-				}
+			break;
 
-				collider->position.x = collider_rigid_body_position[0];
-				collider->position.z = collider_rigid_body_position[2];
+			case COLLIDER_TYPE_TRIGGER_COLLIDER:
 
-				collider->linear_velocity.x = collider_rigid_body_linear_velocity[0];
-				collider->linear_velocity.y = collider_rigid_body_linear_velocity[1];
-				collider->linear_velocity.z = collider_rigid_body_linear_velocity[2];
+				//collider = (struct collider_t *)((char *)list->elements);
 
-				collider->orientation.floats[0][0] = collider_rigid_body_orientation[0][0];
-				collider->orientation.floats[0][1] = collider_rigid_body_orientation[1][0];
-				collider->orientation.floats[0][2] = collider_rigid_body_orientation[2][0];
+				//printf("%d\n", collider->contact_record_count);
+				continue;
+			break;
 
-				collider->orientation.floats[1][0] = collider_rigid_body_orientation[0][1];
-				collider->orientation.floats[1][1] = collider_rigid_body_orientation[1][1];
-				collider->orientation.floats[1][2] = collider_rigid_body_orientation[2][1];
-
-				collider->orientation.floats[2][0] = collider_rigid_body_orientation[0][2];
-				collider->orientation.floats[2][1] = collider_rigid_body_orientation[1][2];
-				collider->orientation.floats[2][2] = collider_rigid_body_orientation[2][2];
-			}
 		}
 	}
+
+
+
 }
 
 

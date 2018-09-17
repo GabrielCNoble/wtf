@@ -13,6 +13,7 @@
 #define ENTITY_NAME_MAX_LEN 24				/* including trailing null... */
 #define ENTITY_DEF_NAME_MAX_LEN 24
 #define ENTITY_PROP_NAME_MAX_LEN 24
+#define ENTITY_TRIGGER_NAME_MAX_LEN 32
 
 #define MAX_ENTITIES 65536
 #define MAX_VISIBLE_ENTITIES 1024
@@ -318,7 +319,12 @@ enum ENTITY_PROP_TYPE
 {
 	ENTITY_PROP_TYPE_INT,
 	ENTITY_PROP_TYPE_FLOAT,
+	ENTITY_PROP_TYPE_VEC2,
 	ENTITY_PROP_TYPE_VEC3,
+	ENTITY_PROP_TYPE_VEC4,
+	ENTITY_PROP_TYPE_MAT2,
+	ENTITY_PROP_TYPE_MAT3,
+	ENTITY_PROP_TYPE_MAT4,
 	ENTITY_PROP_TYPE_LAST,
 	ENTITY_PROP_TYPE_NONE,
 };
@@ -365,9 +371,11 @@ struct entity_t
 	struct component_handle_t components[COMPONENT_TYPE_LAST];
 	struct entity_handle_t def;
 
-	int max_props;
-	int prop_count;
-	struct entity_prop_t *props;
+    struct list_t props;
+
+	//int max_props;
+	//int prop_count;
+	//struct entity_prop_t *props;
 
 
 	int ref_count;									/* how many times this entity (if a def) is being referenced from other entities... */
@@ -379,6 +387,42 @@ struct entity_t
 	char *name;
 };
 
+
+
+enum TRIGGER_FLAGS
+{
+	TRIGGER_FLAG_INVALID = 1,
+	TRIGGER_FLAG_TRIGGERED = 1 << 1,
+};
+
+enum TRIGGER_FILTER_FLAG
+{
+	TRIGGER_FILTER_FLAG_TRIGGER_ON_EQUAL = 1,
+};
+
+struct trigger_filter_t
+{
+    //entity_prop_t prop;
+    char *prop_name;
+    int flag;
+};
+
+
+struct trigger_t
+{
+	mat3_t orientation;
+	vec3_t position;
+	vec3_t scale;
+
+	struct list_t trigger_filters;
+
+    struct collider_handle_t collider;
+
+    int flags;
+
+    char *event_name;
+    char *name;
+};
 
 
 

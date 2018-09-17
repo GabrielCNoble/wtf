@@ -78,6 +78,7 @@ struct list_t w_visible_entities;
 
 
 struct gpu_light_t *w_light_buffer = NULL;
+struct gpu_bsp_node_t *w_bsp_buffer = NULL;
 
 struct gpu_alloc_handle_t w_world_handle = INVALID_GPU_ALLOC_HANDLE;
 int w_world_start = -1;
@@ -135,6 +136,14 @@ extern portal_t *ptl_portals;
 
 /* from r_main.c */
 extern int r_frame;
+extern float r_fade_value;
+extern int r_clusters_per_row;
+extern int r_cluster_rows;
+extern int r_cluster_layers;
+extern cluster_t *r_clusters;
+extern unsigned int r_cluster_texture;
+extern unsigned int r_light_uniform_buffer;
+extern unsigned int r_world_bsp_uniform_buffer;
 
 
 #ifdef __cplusplus
@@ -145,16 +154,19 @@ extern "C"
 int world_Init()
 {
 	w_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS);
+	w_bsp_buffer = memory_Malloc(sizeof(struct gpu_bsp_node_t) * W_MAX_BSP_NODES);
 	w_visible_entities = list_create(sizeof(struct entity_handle_t), 128, NULL);
 
 	w_world_vars = list_create(sizeof(struct world_var_t), 128, NULL);
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 	return 1;
 }
 
 void world_Finish()
 {
-	world_Clear();
+	world_Clear(WORLD_CLEAR_FLAG_BSP | WORLD_CLEAR_FLAG_ENTITIES | WORLD_CLEAR_FLAG_LIGHTS | WORLD_CLEAR_FLAG_PHYSICS_MESH);
 
 	list_destroy(&w_world_vars);
 	memory_Free(w_light_buffer);
@@ -409,7 +421,7 @@ void world_MarkLightsOnLeaves()
 			if(!light_leaf->pvs)
 				continue;
 
-			#define BLODDY_SSE
+			//#define BLODDY_SSE
 
 
 			#ifdef BLODDY_SSE
@@ -1136,40 +1148,40 @@ void world_LightBounds()
 
 			_skip_stuff:
 
-			cluster_x_start = (int)((x_min * 0.5 + 0.5) * CLUSTERS_PER_ROW);
-			cluster_y_start = (int)((y_min * 0.5 + 0.5) * CLUSTER_ROWS);
+			cluster_x_start = (int)((x_min * 0.5 + 0.5) * r_clusters_per_row);
+			cluster_y_start = (int)((y_min * 0.5 + 0.5) * r_cluster_rows);
 			light_z = light_origin.z + light_radius;
 
-			if(cluster_x_start >= CLUSTERS_PER_ROW) cluster_x_start = CLUSTERS_PER_ROW - 1;
-			if(cluster_y_start >= CLUSTER_ROWS) cluster_y_start = CLUSTER_ROWS - 1;
+			if(cluster_x_start >= r_clusters_per_row) cluster_x_start = r_clusters_per_row - 1;
+			if(cluster_y_start >= r_cluster_rows) cluster_y_start = r_cluster_rows - 1;
 
 
 			if(light_z > -CLUSTER_NEAR) cluster_z_start = 0;
-			else cluster_z_start = (int)((log(-light_z / CLUSTER_NEAR) / denom) * (float)(CLUSTER_LAYERS));
+			else cluster_z_start = (int)((log(-light_z / CLUSTER_NEAR) / denom) * (float)(r_cluster_layers));
 
-			if(cluster_z_start > CLUSTER_LAYERS) cluster_z_start = CLUSTER_LAYERS - 1;
+			if(cluster_z_start > r_cluster_layers) cluster_z_start = r_cluster_layers - 1;
 
 
-			cluster_x_end = (int)((x_max * 0.5 + 0.5) * CLUSTERS_PER_ROW);
-			cluster_y_end = (int)((y_max * 0.5 + 0.5) * CLUSTER_ROWS);
+			cluster_x_end = (int)((x_max * 0.5 + 0.5) * r_clusters_per_row);
+			cluster_y_end = (int)((y_max * 0.5 + 0.5) * r_cluster_rows);
 			light_z = light_origin.z - light_radius;
 
-			if(cluster_x_end >= CLUSTERS_PER_ROW) cluster_x_end = CLUSTERS_PER_ROW - 1;
-			if(cluster_y_end >= CLUSTER_ROWS) cluster_y_end = CLUSTER_ROWS - 1;
+			if(cluster_x_end >= r_clusters_per_row) cluster_x_end = r_clusters_per_row - 1;
+			if(cluster_y_end >= r_cluster_rows) cluster_y_end = r_cluster_rows - 1;
 
 			if(light_z > -CLUSTER_NEAR) cluster_z_end = 0;
-			else cluster_z_end = (int)((log(-light_z / CLUSTER_NEAR) / denom) * (float)(CLUSTER_LAYERS));
+			else cluster_z_end = (int)((log(-light_z / CLUSTER_NEAR) / denom) * (float)(r_cluster_layers));
 
-			if(cluster_z_end > CLUSTER_LAYERS) cluster_z_end = CLUSTER_LAYERS - 1;
+			if(cluster_z_end > r_cluster_layers) cluster_z_end = r_cluster_layers - 1;
 
 
-			params->cluster.x0 = cluster_x_start;
-			params->cluster.y0 = cluster_y_start;
-			params->cluster.z0 = cluster_z_start;
+			params->first_cluster.x = cluster_x_start;
+			params->first_cluster.y = cluster_y_start;
+			params->first_cluster.z = cluster_z_start;
 
-			params->cluster.x1 = cluster_x_end;
-			params->cluster.y1 = cluster_y_end;
-			params->cluster.z1 = cluster_z_end;
+			params->last_cluster.x = cluster_x_end;
+			params->last_cluster.y = cluster_y_end;
+			params->last_cluster.z = cluster_z_end;
 
 
 			//params->first_cluster = PACK_CLUSTER_INDEXES2(cluster_x_start, cluster_y_start, cluster_z_start, cluster_x_end, cluster_y_end, cluster_z_end);
@@ -2620,7 +2632,7 @@ void world_UploadVisibleLights()
 	proj_param_b = l_shadow_map_projection_matrix.floats[3][2];
 
 	active_camera = camera_GetActiveCamera();
-	glBindBuffer(GL_UNIFORM_BUFFER, l_light_uniform_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, r_light_uniform_buffer);
 	//lights = w_light_buffer;
 
 	//view_lights = view_data->view_lights;
@@ -2683,15 +2695,19 @@ void world_UploadVisibleLights()
 	/*************************************************************/
 	/*************************************************************/
 
+	#undef CLUSTER_OFFSET
 
-	for(z = 0; z < CLUSTER_LAYERS; z++)
+	#define CLUSTER_OFFSET(x, y, z) (x+y*r_clusters_per_row+z*r_clusters_per_row*r_cluster_rows)
+
+
+	for(z = 0; z < r_cluster_layers; z++)
 	{
-		for(y = 0; y < CLUSTER_ROWS; y++)
+		for(y = 0; y < r_cluster_rows; y++)
 		{
-			for(x = 0; x < CLUSTERS_PER_ROW; x++)
+			for(x = 0; x < r_clusters_per_row; x++)
 			{
 				cluster_index = CLUSTER_OFFSET(x, y, z);
-				l_clusters[cluster_index].light_indexes_bm = 0;
+				r_clusters[cluster_index].light_indexes_bm = 0;
 			}
 		}
 	}
@@ -2711,13 +2727,13 @@ void world_UploadVisibleLights()
 		//UNPACK_CLUSTER_INDEXES2(cluster_x_start, cluster_y_start, cluster_z_start, cluster_x_end, cluster_y_end, cluster_z_end, view_lights[i].view_clusters);
 		//UNPACK_CLUSTER_INDEXES2(cluster_x_start, cluster_y_start, cluster_z_start, cluster_x_end, cluster_y_end, cluster_z_end, parms->first_cluster);
 
-		cluster_x_start = parms->cluster.x0;
-		cluster_y_start = parms->cluster.y0;
-		cluster_z_start = parms->cluster.z0;
+		cluster_x_start = parms->first_cluster.x;
+		cluster_y_start = parms->first_cluster.y;
+		cluster_z_start = parms->first_cluster.z;
 
-		cluster_x_end = parms->cluster.x1;
-		cluster_y_end = parms->cluster.y1;
-		cluster_z_end = parms->cluster.z1;
+		cluster_x_end = parms->last_cluster.x;
+		cluster_y_end = parms->last_cluster.y;
+		cluster_z_end = parms->last_cluster.z;
 
 		for(z = cluster_z_start; z <= cluster_z_end; z++)
 		{
@@ -2726,7 +2742,7 @@ void world_UploadVisibleLights()
 				for(x = cluster_x_start; x <= cluster_x_end; x++)
 				{
 					cluster_index = CLUSTER_OFFSET(x, y, z);
-					l_clusters[cluster_index].light_indexes_bm |= 1 << i;
+					r_clusters[cluster_index].light_indexes_bm |= 1 << i;
 				}
 			}
 		}
@@ -2735,9 +2751,8 @@ void world_UploadVisibleLights()
 
 
 	/* this is a bottleneck... */
-	glBindTexture(GL_TEXTURE_3D, l_cluster_texture);
-	glTexImage3D(GL_TEXTURE_3D, 0, GL_R32UI, CLUSTERS_PER_ROW, CLUSTER_ROWS, CLUSTER_LAYERS, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, l_clusters);
-	//glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, CLUSTERS_PER_ROW, CLUSTER_ROWS, CLUSTER_LAYERS, GL_RED_INTEGER, GL_UNSIGNED_INT, l_clusters);
+	glBindTexture(GL_TEXTURE_3D, r_cluster_texture);
+	glTexImage3D(GL_TEXTURE_3D, 0, GL_R32UI, r_clusters_per_row, r_cluster_rows, r_cluster_layers, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, r_clusters);
 	glBindTexture(GL_TEXTURE_3D, 0);
 
 	R_DBG_POP_FUNCTION_NAME();
@@ -2996,6 +3011,31 @@ void world_VisibleLeaves()
 }
 
 
+
+void world_UploadWorldBspNodes()
+{
+    glBindBuffer(GL_UNIFORM_BUFFER, r_world_bsp_uniform_buffer);
+
+    int i;
+
+    for(i = 0; i < w_world_nodes_count; i++)
+	{
+		w_bsp_buffer[i].normal_dist.x = w_world_nodes[i].normal.x;
+		w_bsp_buffer[i].normal_dist.y = w_world_nodes[i].normal.y;
+		w_bsp_buffer[i].normal_dist.z = w_world_nodes[i].normal.z;
+
+		w_bsp_buffer[i].normal_dist.w = w_world_nodes[i].dist;
+
+		w_bsp_buffer[i].children[0] = w_world_nodes[i].child[0];
+		w_bsp_buffer[i].children[0] = w_world_nodes[i].child[0];
+	}
+
+
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(struct gpu_bsp_node_t) * W_MAX_BSP_NODES, w_bsp_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+
 void world_VisibleWorld()
 {
 
@@ -3157,8 +3197,9 @@ void world_VisibleWorld()
 		/* for each leaf on the list... */
 		for(j = 0; j < w_visible_leaves_count; j++)
 		{
-
 			leaf = w_visible_leaves[j];
+
+			leaf->visible_frame = r_frame;
 
 			c = leaf->tris_count;
 
@@ -3183,6 +3224,7 @@ void world_VisibleWorld()
 	}
 
 }
+
 
 
 
@@ -3325,6 +3367,10 @@ void world_WorldVarValue(char *name, void *value, int set)
             memcpy(value, world_var->value, world_var->element_size);
 		}
 	}
+    else
+    {
+        printf("world_WorldVarValue: no var named [%s]\n", name);
+    }
 }
 
 void world_WorldArrayVarValue(char *name, void *value, int index, int set)
@@ -3369,6 +3415,7 @@ void world_WorldArrayVarValue(char *name, void *value, int index, int set)
             memcpy(value, (char *)world_var->value + offset, world_var->element_size);
         }
     }
+
 }
 
 
@@ -3416,7 +3463,7 @@ void world_ClearWorldArrayVar(char *name)
 void *world_SetupScriptDataCallback(struct script_t *script, void *data)
 {
     struct world_script_t *world_script;
-
+	int i;
 
     world_script = (struct world_script_t *)script;
 
@@ -3426,10 +3473,19 @@ void *world_SetupScriptDataCallback(struct script_t *script, void *data)
         w_execute_on_map_enter = 0;
     }
 
-    script_QueueEntryPoint(world_script->on_map_update);
+	for(i = 0; i < world_script->event_count; i++)
+	{
+        if(world_script->events[i].executing)
+		{
+			script_QueueEntryPoint(world_script->events[i].event_function);
+		}
+	}
 
     return NULL;
 }
+
+char on_map_enter_function_name[] = "OnMapEnter";
+char on_map_exit_function_name[] = "OnMapExit";
 
 int world_GetScriptDataCallback(struct script_t *script)
 {
@@ -3437,9 +3493,58 @@ int world_GetScriptDataCallback(struct script_t *script)
 
     world_script = (struct world_script_t *)script;
 
-    world_script->on_map_update = script_GetFunctionAddress("OnMapUpdate", script);
-    world_script->on_map_exit = script_GetFunctionAddress("OnMapExit", script);
-    world_script->on_map_enter = script_GetFunctionAddress("OnMapEnter", script);
+    void *function;
+    char *function_name;
+    char *function_name_postfix;
+
+    int function_count;
+    int i;
+
+
+    char event_postfix[] = "_event";
+
+	function_count = script_GetFunctionCount(script);
+
+	world_script->on_map_exit = script_GetFunctionAddress(on_map_exit_function_name, script);
+    world_script->on_map_enter = script_GetFunctionAddress(on_map_enter_function_name, script);
+    world_script->current_event = -1;
+
+	if(function_count)
+	{
+		world_script->events = memory_Calloc(function_count, sizeof(struct world_event_t));
+		world_script->event_count = 0;
+
+        for(i = 0; i < function_count; i++)
+		{
+			function = script_GetFunctionAddressByIndex(i, script);
+
+			if(function != world_script->on_map_enter && function != world_script->on_map_exit)
+			{
+				function_name = script_GetFunctionName(function);
+
+				function_name_postfix = strstr(function_name, "_event");
+
+				if(function_name_postfix)
+				{
+					/* if this function has a _event substring,
+					check to see whether it's truly the end of the string... */
+
+					if(strlen(function_name_postfix) + 1 == sizeof(event_postfix))
+					{
+						world_script->events[world_script->event_count].event_function = function;
+
+						/* keep the name without the postfix... */
+						world_script->events[world_script->event_count].event_name = memory_Calloc(function_name_postfix - function_name + 1, 1);
+						memcpy(world_script->events[world_script->event_count].event_name, function_name, function_name_postfix - function_name);
+						world_script->events[world_script->event_count].executing = 0;
+						world_script->event_count++;
+					}
+				}
+			}
+		}
+	}
+
+	return 1;
 }
 
 
@@ -3468,111 +3573,138 @@ struct world_script_t *world_GetWorldScript()
 
 void world_ExecuteWorldScript()
 {
+    int i;
+
     if(w_world_script)
     {
+        //if(engine_GetEngineState() & ENGINE_JUST_RESUMED)
+        //{
+        //    world_StopAllEvents();
+        //}
+
         script_ExecuteScriptImediate((struct script_t *)w_world_script, NULL);
     }
 }
 
-
-
-
-
-void world_AddLeafIndexes(int leaf_index)
-{
-
-}
-
-void world_RemoveLeafIndexes(int leaf_index)
-{
-
-}
-
-
-void world_Update()
+struct world_event_t *world_GetEventPointer(char *event_name)
 {
 	int i;
-	int j;
-	int c;
-	int k;
 
-	struct bsp_dleaf_t *leaf;
-
-	int total_batches = 0;
-	int cur_group_index;
-	int cur_batch_index;
-
-	struct compact_vertex_t *compact_world_vertices;
-
-
-	if(!w_world_leaves)
-		return;
-
-	if(w_need_to_clear_world)
+	if(w_world_script)
 	{
-		world_Clear(1);
-	}
-
-
-	w_leaf_lights = memory_Malloc(sizeof(bsp_lights_t ) * w_world_leaves_count);
-	//leaf_entities = memory_Malloc(sizeof(bsp_entities_t) * world_leaves_count, "world_Update: leaf_entities");
-	w_index_buffer = memory_Malloc(sizeof(unsigned int ) * w_world_vertices_count);
-
-
-	for(i = 0; i < w_world_leaves_count; i++)
-	{
-		for(j = 0; j < MAX_WORLD_LIGHTS >> 5; j++)
+        for(i = 0; i < w_world_script->event_count; i++)
 		{
-			w_leaf_lights[i].lights[j] = 0;
+			if(!strcmp(event_name, w_world_script->events[i].event_name))
+			{
+				return w_world_script->events + i;
+			}
 		}
 	}
 
+	return NULL;
+}
 
-/*	for(i = 0; i < w_world_leaves_count; i++)
+void world_CallEvent(char *event_name)
+{
+	int i;
+
+	struct world_event_t *event;
+
+	if(w_world_script)
 	{
-		for(j = 0; j < MAX_ENTITIES >> 5; j++)
+		event = world_GetEventPointer(event_name);
+
+		if(event)
 		{
-			w_leaf_entities[i].entities[j] = 0;
+			event->executing = 1;
+
+			//printf("world_CallEvent: event [%s] called\n", event->event_name);
 		}
-	}*/
+	}
+}
 
-	//world_handle = gpu_AllocAlign(sizeof(vertex_t) * world_vertices_count, sizeof(vertex_t));
-	//world_start = gpu_GetAllocStart(world_handle) / sizeof(vertex_t);
+void world_CallEventIndex(int event_index)
+{
+	if(w_world_script)
+	{
+		if(event_index >= 0 && event_index < w_world_script->event_count)
+		{
+            w_world_script->events[event_index].executing = 1;
 
-	//world_handle = gpu_AllocAlign(sizeof(compact_vertex_t) * world_vertices_count, sizeof(compact_vertex_t), 1);
-	w_world_handle = gpu_AllocVerticesAlign(sizeof(struct compact_vertex_t) * w_world_vertices_count + 1024 * 64, sizeof(struct compact_vertex_t));
-	w_world_start = gpu_GetAllocStart(w_world_handle) / sizeof(struct compact_vertex_t);
+            //printf("world_CallEventIndex: event [%s] called\n", w_world_script->events[event_index].event_name);
+		}
+	}
+}
 
-	w_world_index_handle = gpu_AllocIndexesAlign(sizeof(int) * w_world_vertices_count + 1024 * 64, sizeof(int));
-	w_world_index_start = gpu_GetAllocStart(w_world_index_handle) / sizeof(int);
+void world_StopEvent(char *event_name)
+{
+    int i;
 
-	compact_world_vertices = model_ConvertVertices(w_world_vertices, w_world_vertices_count);
-	//gpu_Write(world_handle, 0, world_vertices, sizeof(vertex_t) * world_vertices_count, 0);
-	gpu_Write(w_world_handle, 0, compact_world_vertices, sizeof(struct compact_vertex_t) * w_world_vertices_count);
+    struct world_event_t *event;
 
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_element_buffer);
-	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * world_vertices_count, NULL, GL_DYNAMIC_DRAW);
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	if(w_world_script)
+	{
+		event = world_GetEventPointer(event_name);
 
-	//light_ClearLightLeaves();
+		if(event)
+		{
+			event->executing = 0;
 
+			//printf("world_StopEvent: event [%s] stopped\n", event->event_name);
+		}
+	}
+}
 
-	physics_BuildWorldCollisionMesh();
-	memory_Free(compact_world_vertices);
+void world_StopEventIndex(int event_index)
+{
+	if(w_world_script)
+	{
+		if(event_index >= 0 && event_index < w_world_script->event_count)
+		{
+            w_world_script->events[event_index].executing = 0;
 
-	w_need_to_clear_world = 1;
+            //printf("world_StopEventIndex: event [%s] stopped\n", w_world_script->events[event_index].event_name);
+		}
+	}
+}
+
+void world_StopAllEvents()
+{
+	int i;
+
+    if(w_world_script)
+	{
+		for(i = 0; i < w_world_script->event_count; i++)
+		{
+            w_world_script->events[i].executing = 0;
+		}
+	}
+}
+
+void world_FadeIn()
+{
 
 }
 
-void world_Clear(int clear_collision_mesh)
+int world_HasFadedIn()
+{
+
+}
+
+void world_FadeOut()
+{
+
+}
+
+int world_HasFadedOut()
+{
+
+}
+
+void world_ClearBsp()
 {
 	if(w_world_leaves)
 	{
-		if(clear_collision_mesh)
-		{
-			physics_ClearWorldCollisionMesh();
-		}
-
 		gpu_Free(w_world_handle);
 		gpu_Free(w_world_index_handle);
 		memory_Free(w_world_vertices);
@@ -3601,6 +3733,88 @@ void world_Clear(int clear_collision_mesh)
 		w_max_visible_indexes = 0;
 
 		w_need_to_clear_world = 0;
+	}
+}
+
+void world_Update()
+{
+	int i;
+	int j;
+	int c;
+	int k;
+
+	struct bsp_dleaf_t *leaf;
+
+	int total_batches = 0;
+	int cur_group_index;
+	int cur_batch_index;
+
+	struct compact_vertex_t *compact_world_vertices;
+
+
+	if(!w_world_leaves)
+		return;
+
+	if(w_need_to_clear_world)
+	{
+		world_Clear(WORLD_CLEAR_FLAG_PHYSICS_MESH | WORLD_CLEAR_FLAG_LIGHT_LEAVES | WORLD_CLEAR_FLAG_BSP);
+	}
+
+	w_leaf_lights = memory_Malloc(sizeof(bsp_lights_t ) * w_world_leaves_count);
+	w_index_buffer = memory_Malloc(sizeof(unsigned int ) * w_world_vertices_count);
+
+	for(i = 0; i < w_world_leaves_count; i++)
+	{
+		for(j = 0; j < MAX_WORLD_LIGHTS >> 5; j++)
+		{
+			w_leaf_lights[i].lights[j] = 0;
+		}
+	}
+
+	w_world_handle = gpu_AllocVerticesAlign(sizeof(struct compact_vertex_t) * w_world_vertices_count + 1024 * 64, sizeof(struct compact_vertex_t));
+	w_world_start = gpu_GetAllocStart(w_world_handle) / sizeof(struct compact_vertex_t);
+
+	w_world_index_handle = gpu_AllocIndexesAlign(sizeof(int) * w_world_vertices_count + 1024 * 64, sizeof(int));
+	w_world_index_start = gpu_GetAllocStart(w_world_index_handle) / sizeof(int);
+
+	compact_world_vertices = model_ConvertVertices(w_world_vertices, w_world_vertices_count);
+	gpu_Write(w_world_handle, 0, compact_world_vertices, sizeof(struct compact_vertex_t) * w_world_vertices_count);
+
+	physics_BuildWorldCollisionMesh();
+	memory_Free(compact_world_vertices);
+
+	world_UploadWorldBspNodes();
+
+	w_need_to_clear_world = 1;
+
+}
+
+void world_Clear(int clear_flags)
+{
+
+	if(clear_flags &  WORLD_CLEAR_FLAG_LIGHT_LEAVES)
+	{
+		light_ClearLightLeaves();
+	}
+
+    if(clear_flags & WORLD_CLEAR_FLAG_LIGHTS)
+	{
+		light_DestroyAllLights();
+	}
+
+	if(clear_flags & WORLD_CLEAR_FLAG_ENTITIES)
+	{
+        entity_RemoveAllEntities();
+	}
+
+	if(clear_flags & WORLD_CLEAR_FLAG_PHYSICS_MESH)
+	{
+		physics_ClearWorldCollisionMesh();
+	}
+
+    if(clear_flags & WORLD_CLEAR_FLAG_BSP)
+	{
+		world_ClearBsp();
 	}
 }
 

@@ -35,7 +35,7 @@ void entity_ScriptMove(vec3_t *direction)
 
 	struct entity_handle_t current_entity;
 
-	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+	script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	entity_ptr = entity_GetEntityPointerHandle(current_entity);
 
@@ -83,7 +83,7 @@ void entity_ScriptJump(float jump_force)
 
 	struct entity_handle_t current_entity;
 
-	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+	script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	entity_ptr = entity_GetEntityPointerHandle(current_entity);
 
@@ -110,7 +110,7 @@ void entity_ScriptDie()
 {
 	struct entity_handle_t current_entity;
 
-	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+	script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	entity_MarkForRemoval(current_entity);
 }
@@ -130,7 +130,7 @@ void *entity_ScriptGetPosition(int local)
 {
 	struct entity_handle_t current_entity;
 
-	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+	script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	return entity_ScriptGetEntityPosition(current_entity, local);
 }
@@ -176,7 +176,7 @@ void *entity_ScriptGetOrientation(int local)
 {
 	struct entity_handle_t current_entity;
 
-	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+	script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	return entity_ScriptGetEntityOrientation(current_entity, local);
 }
@@ -221,7 +221,7 @@ void *entity_ScriptGetForwardVector(int local)
 {
 	struct entity_handle_t current_entity;
 
-    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+    script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	return entity_ScriptGetEntityForwardVector(current_entity, local);
 }
@@ -265,13 +265,29 @@ void *entity_ScriptGetEntityForwardVector(struct entity_handle_t entity, int loc
 
 
 
+void entity_ScriptTranslate(vec3_t *direction)
+{
+    struct entity_handle_t current_entity;
+
+    script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
+
+    entity_ScriptTranslateEntity(current_entity, direction);
+}
+
+
+void entity_ScriptTranslateEntity(struct entity_handle_t entity, vec3_t *direction)
+{
+    entity_TranslateEntity(entity, *direction, 1.0);
+}
+
+
 void entity_ScriptRotate(vec3_t *axis, float angle, int set)
 {
 	struct entity_t *entity;
 	struct transform_component_t *transform;
 	struct entity_handle_t current_entity;
 
-	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+	script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	entity = entity_GetEntityPointerHandle(current_entity);
 	transform = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
@@ -301,7 +317,7 @@ int entity_ScriptGetLife()
 	struct entity_t *entity;
 	struct entity_handle_t current_entity;
 
-	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+	script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	entity = entity_GetEntityPointerHandle(current_entity);
 
@@ -312,7 +328,7 @@ struct entity_handle_t entity_ScriptGetCurrentEntity()
 {
 	struct entity_handle_t current_entity;
 
-	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+	script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	return current_entity;
 }
@@ -334,7 +350,7 @@ struct component_handle_t entity_ScriptGetComponent(int component_index)
 {
 	struct entity_handle_t current_entity;
 
-	script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+	script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	return entity_ScriptGetEntityComponent(current_entity, component_index);
 }
@@ -372,7 +388,7 @@ struct entity_handle_t entity_ScriptGetChildEntity(struct script_string_t *entit
 {
 	struct entity_handle_t current_entity;
 
-    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+    script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	return entity_ScriptGetEntityChildEntity(current_entity, entity);
 }
@@ -481,6 +497,9 @@ void entity_ScriptGetComponentValue(struct component_handle_t component, struct 
 {
 
 }
+
+
+
 
 
 /*
@@ -640,6 +659,24 @@ int entity_ScriptEntityHasProp(struct entity_handle_t entity, struct script_stri
 }
 
 
+
+int entity_ScriptGetTrigger(struct script_string_t *name)
+{
+	char *trigger_name = script_string_GetRawString(name);
+
+	return entity_GetTrigger(trigger_name);
+}
+
+void entity_ScriptSetTriggerPosition(int script_index, vec3_t *position)
+{
+    entity_SetTriggerPosition(script_index, *position);
+}
+
+int entity_ScriptIsTriggered(int trigger_index)
+{
+	return entity_IsTriggered(trigger_index);
+}
+
 /*
 =====================================
 =====================================
@@ -656,7 +693,7 @@ void entity_ScriptSetCameraPosition(vec3_t *position)
 
 	struct entity_handle_t current_entity;
 
-    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+    script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	entity = entity_GetEntityPointerHandle(current_entity);
 
@@ -696,7 +733,7 @@ void entity_ScriptFindPath(vec3_t *to)
 {
 	struct entity_handle_t current_entity;
 
-    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+    script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	entity_FindPath(current_entity, *to);
 }
@@ -714,7 +751,7 @@ int entity_ScriptGetWaypointDirection(vec3_t *direction)
 
 	struct entity_handle_t current_entity;
 
-    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+    script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	float l;
 
@@ -773,7 +810,7 @@ void entity_ScriptAdvanceWaypoint()
 
 	struct entity_handle_t current_entity;
 
-    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+    script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	entity = entity_GetEntityPointerHandle(current_entity);
 	navigation_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_NAVIGATION]);
@@ -791,7 +828,7 @@ int entity_ScriptLineOfSightToEntity(struct entity_handle_t entity)
 {
 	struct entity_handle_t current_entity;
 
-    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+    script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	return entity_LineOfSightToEntity(current_entity, entity);
 }
@@ -800,7 +837,7 @@ void entity_ScriptPrint(struct script_string_t *script_string)
 {
 	struct entity_handle_t current_entity;
 
-    script_GetCurrentInvocationData(&current_entity, sizeof(struct entity_handle_t));
+    script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	printf(script_string_GetRawString(script_string));
 }

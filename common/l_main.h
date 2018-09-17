@@ -24,6 +24,10 @@ int light_Init();
 
 void light_Finish();
 
+void light_SetShadowMapsResolution(int resolution);
+
+int light_GetShadowMapsResolution();
+
 int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t color, float radius, float energy, int bm_flags);
 
 int light_DestroyLight(char *name);

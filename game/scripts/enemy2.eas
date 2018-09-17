@@ -95,6 +95,11 @@ void main()
 	}
 
 
+	int sound_source = entity_GetEntityProp1i(current_entity, "sound source");
+	sound_SetSourcePosition(sound_source, entity_GetPosition(0));
+	entity_SetEntityProp1i(current_entity, "sound source", sound_source);
+
+
 	/*if(entity_GetLife() >= 1800)
 	{
 		entity_Die();
@@ -102,6 +107,10 @@ void main()
 
 
 }
+
+
+int scream_source;
+
 
 void OnSpawn()
 {
@@ -111,10 +120,18 @@ void OnSpawn()
     entity_AddEntityProp1i(current_entity, "enemy");
     entity_SetEntityProp1i(current_entity, "enemy", -1);
 
+    entity_AddEntityProp1i(current_entity, "sound source");
+
     entity_AddEntityProp3f(current_entity, "player pos");
 
     entity_AddEntityProp1i(current_entity, "state");
     entity_SetEntityProp1i(current_entity, "state", 0);
+
+
+    sound_handle_t scream = sound_GetSound("scream");
+    int sound_source = sound_PlaySound(scream, entity_GetPosition(0), 6.0, SOURCE_FLAG_LOOP);
+    entity_SetEntityProp1i(current_entity, "sound source", sound_source);
+
 }
 
 void OnDie()
@@ -128,29 +145,44 @@ void OnDie()
 	entity_RemoveEntityProp(current_entity, "state");
 	entity_RemoveEntityProp(current_entity, "player pos");
 
-	int sound_index;
+	int explosion_index;
+	int doh_index;
 
 	sound_handle_t explosion_sound;
+	sound_handle_t doh_sound;
 
-	sound_index = rand() % 3;
+	explosion_index = rand() % 3;
 
-	switch(sound_index)
+	switch(explosion_index)
 	{
 		case 0:
-			explosion_sound = sound_GetSound("explosion0");
+			explosion_sound = sound_GetSound("explode3");
 		break;
 
 		case 1:
-			explosion_sound = sound_GetSound("explosion1");
+			explosion_sound = sound_GetSound("explode4");
 		break;
 
 		case 2:
-			explosion_sound = sound_GetSound("explosion2");
+			explosion_sound = sound_GetSound("explode5");
 		break;
 	}
 
-	//sound_handle_t explosion_sound = sound_GetSound("explosion");
+	doh_index = rand() % 20;
+
+	doh_sound = sound_GetSound("doh" + doh_index);
+
+
+
+    int sound_source = entity_GetEntityProp1i(current_entity, "sound source");
+	sound_StopSound(sound_source, 0);
+
 	sound_PlaySound(explosion_sound, position, 1.5, 0);
+	sound_PlaySound(doh_sound, position, 5.5, 0);
+
+
+
+
 
 	//script_Print("DIE!\n");
 }
@@ -161,6 +193,9 @@ void OnCollision(array<entity_contact_t> @contacts)
 	int value;
 	entity_handle_t entity;
 	entity_handle_t current_entity;
+	entity_handle_t player_entity;
+
+	int score;
 
 	for(i = 0; i < contacts.count; i++)
 	{
@@ -175,6 +210,12 @@ void OnCollision(array<entity_contact_t> @contacts)
                 if(entity_GetEntityProp1i(current_entity, "enemy") < 0)
                 {
                     entity_SetEntityProp1i(current_entity, "enemy", 0);
+                    player_entity = entity_GetEntity("player entity", 0);
+                    score = entity_GetEntityProp1i(player_entity, "score");
+                    score += 50;
+                    entity_SetEntityProp1i(player_entity, "score", score);
+
+                    //script_Print("Score: " + score + "\n");
                 }
             }
         }

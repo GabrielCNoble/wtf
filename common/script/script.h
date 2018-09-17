@@ -26,9 +26,15 @@ void script_ExecuteScripts(double delta_time);
 =========================================================
 */
 
-void *script_PopScriptContext();
+struct script_context_t *script_PopScriptContext();
 
-void script_PushScriptContext(void *script_context);
+void script_PushScriptContext();
+
+struct script_context_t *script_GetCurrentContext();
+
+void script_QueueEntryPoint(void *entry_point);
+
+void script_PushArg(void *arg, int arg_type);
 
 /*
 =========================================================
@@ -49,9 +55,7 @@ struct script_t *script_GetScript(char *script_name);
 
 void script_ReloadScripts();
 
-void script_QueueEntryPoint(void *entry_point);
 
-void script_PushArg(void *arg, int arg_type);
 
 void script_ExecuteScript(struct script_t *script, void *data);
 
@@ -61,10 +65,22 @@ void script_ExecuteScriptImediate(struct script_t *script, void *data);
 
 void script_RegisterGlobalFunction(char *decl, void *function);
 
+void script_RegisterEnum(char *type);
+
+void script_RegisterEnumValue(char *type, char *name, int value);
+
+
+
 
 void *script_GetGlobalVarAddress(char *var, struct script_t *script);
 
+int script_GetFunctionCount(struct script_t *script);
+
+void *script_GetFunctionAddressByIndex(int index, struct script_t *script);
+
 void *script_GetFunctionAddress(char *function, struct script_t *script);
+
+char *script_GetFunctionName(void *function);
 
 void *script_GetTypeInfo(char *type);
 
@@ -77,9 +93,22 @@ int script_GetContextStackTop();
 
 void script_SetCurrentInvocationData(void *data, int size);
 
-void *script_GetCurrentInvocationDataPointer();
+void *script_GetCurrentContextDataPointer();
 
-void script_GetCurrentInvocationData(void *data, int size);
+void script_GetCurrentContextData(void *data, int size);
+
+char *script_GetCurrentFunctionName();
+
+void *script_GetCurrentFunction();
+
+
+void script_LineCallback();
+
+void script_BeginDebugSection();
+
+void script_EndDebugSection();
+
+//void script_BreakPoint();
 
 
 #ifdef __cplusplus

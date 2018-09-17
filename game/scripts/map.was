@@ -7,9 +7,109 @@ int prev_alive_count;
 
 int pokey_intro_source;
 int pokey_loop_source;
+int text_sound_source;
 
 sound_handle_t pokey_intro;
 sound_handle_t pokey_loop;
+sound_handle_t text_loop;
+sound_handle_t won_loop;
+
+enum TEXT_STATE
+{
+	TEXT_STATE_DONE = 1,
+	TEXT_STATE_FADING_IN,
+	TEXT_STATE_FADING_OUT
+};
+
+float text_alpha = 0.0;
+int text_state = TEXT_STATE_FADING_IN;
+int current_text = 0;
+
+int world_clear = 0;
+
+
+
+void spawn_enemy()
+{
+	entity_handle_t spawn_point;
+	entity_handle_t enemy_def;
+	entity_handle_t spawned;
+
+	int spawn_point_index;
+
+	vec3_t spawn_position;
+	mat3_t entity_orientation;
+
+	entity_orientation.identity();
+
+	enemy_def = entity_GetEntity("enemy entity", 1);
+    entity_orientation.identity();
+
+    spawn_point_index = rand() % spawn_points.count;
+	spawn_point = spawn_points[spawn_point_index];
+
+	spawn_position = entity_GetEntityPosition(spawn_point, 0);
+
+	//spawn_position.x += (randfloat() * 2.0 - 1.0) * 3.0;
+	//spawn_position.z += (randfloat() * 2.0 - 1.0) * 3.0;
+
+	spawned = entity_SpawnEntity(entity_orientation, spawn_position, vec3_t(1.0, 1.0, 1.0), enemy_def, "enemy");
+	entity_SetEntityVelocity(spawned, vec3_t(0.0, 0.0, 0.0));
+
+	alive_entities.Append(spawned);
+
+	//script_Print("count :" + alive_entities.count + "\n");
+}
+
+int alive_enemies_count()
+{
+	int alive_count = 0;
+	int i;
+
+	//script_Print("count: " + alive_entities.count + "\n");
+
+	for(i = 0; i < alive_entities.count; i++)
+	{
+		if(entity_IsEntityValid(alive_entities[i]) != 0)
+		{
+			alive_count++;
+		}
+		else
+		{
+			alive_entities.Drop(i);
+			i--;
+		}
+	}
+
+	return alive_count;
+}
+
+void enumerate_spawn_points(string &in prop)
+{
+	array<entity_handle_t> world_entities;
+	int i;
+
+	world_entities = world_GetEntities();
+	spawn_points.Clear();
+
+	//script_Print("world entities :" + world_entities.Count() + "\n");
+
+	for(i = 0; i < world_entities.count; i++)
+	{
+		if(entity_IsEntityValid(world_entities[i]) != 0)
+		{
+			if(entity_EntityHasProp(world_entities[i], prop) != 0)
+			{
+				spawn_points.Append(world_entities[i]);
+			}
+		}
+	}
+
+	//script_Print("spawn points: " + spawn_points.count + "\n");
+}
+
+
+
 
 void OnMapEnter()
 {
@@ -18,11 +118,65 @@ void OnMapEnter()
 	int c;
 	int j;
 
-	world_AddWorldVar("respawn timer", typeof<int>());
+	world_AddWorldVar("spawn timer", typeof<int>());
+	world_AddWorldVar("wave timer", typeof<int>());
 	world_AddWorldVar("wave index", typeof<int>());
+	world_AddWorldVar("spawn count", typeof<int>());
+	//world_AddWorldVar("alive expected", typeof<int>());
+	world_AddWorldVar("current text", typeof<int>());
 
-	world_SetWorldVarValue("respawn timer", 300);
+	world_SetWorldVarValue("wave timer", 300);
+	world_SetWorldVarValue("spawn timer", 20);
 	world_SetWorldVarValue("wave index", 0);
+	world_SetWorldVarValue("spawn count", 0);
+	//world_SetWorldVarValue("alive expected", 0);
+	world_SetWorldVarValue("current text", 0);
+
+
+	resource_LoadResource("pokey_intro.ogg");
+	resource_LoadResource("pokey_loop.ogg");
+	resource_LoadResource("wilhelm.ogg");
+
+	resource_LoadResource("explode3.wav");
+	resource_LoadResource("explode4.wav");
+	resource_LoadResource("explode5.wav");
+
+	resource_LoadResource("scream.ogg");
+	resource_LoadResource("pain.ogg");
+	resource_LoadResource("laser.wav");
+
+	resource_LoadResource("elevator_start.wav");
+	resource_LoadResource("elevator_loop.wav");
+	resource_LoadResource("elevator_stop.wav");
+
+	resource_LoadResource("doh0.ogg");
+	resource_LoadResource("doh1.ogg");
+	resource_LoadResource("doh2.ogg");
+	resource_LoadResource("doh3.ogg");
+	resource_LoadResource("doh4.ogg");
+	resource_LoadResource("doh5.ogg");
+	resource_LoadResource("doh6.ogg");
+	resource_LoadResource("doh7.ogg");
+	resource_LoadResource("doh8.ogg");
+	resource_LoadResource("doh9.ogg");
+	resource_LoadResource("doh10.ogg");
+	resource_LoadResource("doh11.ogg");
+	resource_LoadResource("doh12.ogg");
+	resource_LoadResource("doh13.ogg");
+	resource_LoadResource("doh14.ogg");
+	resource_LoadResource("doh15.ogg");
+	resource_LoadResource("doh16.ogg");
+	resource_LoadResource("doh17.ogg");
+	resource_LoadResource("doh18.ogg");
+	resource_LoadResource("doh19.ogg");
+	resource_LoadResource("doh20.ogg");
+
+
+	resource_LoadResource("giygas_lair.ogg");
+	resource_LoadResource("prayer_for_safety.ogg");
+
+
+
 
 
 	alive_entities.Clear();
@@ -30,52 +184,180 @@ void OnMapEnter()
 
 	pokey_intro = sound_GetSound("pokey_intro");
 	pokey_loop = sound_GetSound("pokey_loop");
+	text_loop = sound_GetSound("giygas_lair");
+	won_loop = sound_GetSound("prayer_for_safety");
 	//pokey_intro = sound_PlaySound(music, vec3_t(0.0, 0.0, 0.0), 5.0, 1);
 
 	pokey_intro_source = -1;
 	pokey_loop_source = -1;
-
-	//if(sound_IsSourcePlaying(pokey_intro) == 0)
-	//{
-
-	//}
-
-	//int spawn_point_count = 0;
+	text_sound_source = -1;
 
 
-	//world_ClearWorldArrayVar("spawn points");
+	//enumerate_spawn_points("enemy spawn");
+
+	world_StopAllEvents();
+	world_CallEvent("Text");
 
 
+	entity_handle_t elevator = entity_GetEntity("elevator", 0);
 
-	world_entities = world_GetEntities();
-	c = world_entities.count;
-
-	//spawn_points.Clear();
-
-	//world_ClearWorldArrayVar("spawn points");
-
-	for(i = 0; i < world_entities.count; i++)
-	{
-        if(entity_EntityHasProp(world_entities[i], "spawn point") != 0)
-		{
-			spawn_points.Append(world_entities[i]);
-			//world_AppendWorldArrayVarValue("spawn points", world_entities[i]);
-		}
-	}
-
-	//script_Print("enter map\n");
+	entity_AddEntityProp1i(elevator, "state");
+	entity_AddEntityProp1i(elevator, "elevator");
+	entity_SetEntityProp1i(elevator, "state", 1);
 
 }
 
 
-void OnMapUpdate()
+
+
+/* events... */
+
+/*
+========================
+Text
+========================
+*/
+void Text_event()
 {
-	//script_Print(world_entities.count);
+    if(text_sound_source == -1)
+	{
+		text_sound_source = sound_PlaySound(text_loop, vec3_t(0.0, 0.0, 0.0), 1.0, SOURCE_FLAG_RELATIVE | SOURCE_FLAG_LOOP | SOURCE_FLAG_FADE_IN);
+	}
+
+    if(text_state == TEXT_STATE_DONE)
+	{
+		if((input_AnyKeyStatus() & KEY_JUST_PRESSED) == KEY_JUST_PRESSED)
+		{
+			text_state = TEXT_STATE_FADING_OUT;
+		}
+	}
+    else
+	{
+        if(text_state == TEXT_STATE_FADING_IN)
+		{
+			if(text_alpha < 1.0)
+			{
+				text_alpha += 0.008;
+			}
+			else
+			{
+				text_state = TEXT_STATE_DONE;
+			}
+		}
+		else if(text_state == TEXT_STATE_FADING_OUT)
+		{
+			if(text_alpha > 0.0)
+			{
+				text_alpha -= 0.008;
+			}
+			else
+			{
+				text_state = TEXT_STATE_FADING_IN;
+				current_text++;
+			}
+		}
+	}
+
+    switch(current_text)
+	{
+		case 0:
+			gui_TextWall("The year is xxxx. You've been caught up in the crossfire of a war of beliefs", text_alpha);
+		break;
+
+		case 1:
+			gui_TextWall("The toilet revolution has begun, and no toilets were to be left behind", text_alpha);
+		break;
+
+		case 2:
+			gui_TextWall("Humans fought fiercily, with the help of some of their faithful toilets", text_alpha);
+		break;
+
+		case 3:
+			gui_TextWall("You're one of them", text_alpha);
+		break;
+
+		case 4:
+			gui_TextWall("The master toilet, the so called savior of the toilet kind, has grown tired of the crescent number of toilets fleeing his cult. Seeing your faithfulness to your owner has made him decide to use your porcelain corpse as an example for those who betray their race", text_alpha);
+		break;
+
+		case 5:
+			gui_TextWall("You've been thrown into an arena, and sentenced to fight to total destruction against the worst, most violent toilets in existence. Toilets forced into this fate are guaranteed to die. And you're expected to be no different", text_alpha);
+		break;
+
+		case 6:
+			gui_TextWall("One thing the master toilet has not foreseen, however, is that your faithfulness was always recognized by your owner, and he has given you means by which to defend yourself. Two plasma blasters", text_alpha);
+		break;
+
+		case 7:
+			gui_TextWall("You've been thrust into the porcelain hell, but not without the means by which to turn hell inside out", text_alpha);
+		break;
+
+		default:
+
+			//if(text_sound_source != -1)
+			//{
+			sound_StopSound(text_sound_source, 1);
+			//}
+
+			if(sound_IsSourceAssigned(text_sound_source) == 0)
+			{
+				text_sound_source = -1;
+				world_StopCurrentEvent();
+				world_CallEvent("SpawnPlayer");
+			}
+
+		break;
+	}
+}
+
+
+/*
+========================
+SpawnPlayer
+========================
+*/
+void SpawnPlayer_event()
+{
+    entity_handle_t player_entity;
+    entity_handle_t player_spawn;
+
+    mat3_t orientation;
+    orientation.identity();
+
+    vec3_t spawn_position;
+
+    player_spawn = entity_GetEntity("player spawn", 0);
+    player_entity = entity_GetEntity("player entity", 1);
+
+    spawn_position = entity_GetEntityPosition(player_spawn, 0);
+
+    player_entity = entity_SpawnEntity(orientation, spawn_position, vec3_t(1.0, 1.0, 1.0), player_entity, "player entity");
+
+	entity_AddEntityProp1i(player_entity, "control");
+    entity_SetEntityProp1i(player_entity, "control", 1);
+
+
+    enumerate_spawn_points("enemy spawn");
+
+
+
+    world_StopCurrentEvent();
+    world_CallEvent("ArenaFight");
+}
+
+
+/*
+========================
+ArenaFight
+========================
+*/
+void ArenaFight_event()
+{
 	entity_handle_t entity;
 	int i;
 	int c;
 	int spawn_count;
-	int alive_entities_count = 0;
+	int enemy_count = 0;
 	int spawn_point_count;
 	int spawn_point_index;
 
@@ -87,45 +369,55 @@ void OnMapUpdate()
 
 
 	int spawn_timer;
+	int wave_timer;
 	int wave_index;
+	int alive_expected;
 
 	int x;
 	int z;
 
-
 	if(pokey_intro_source < 0 && pokey_loop_source < 0)
 	{
-		pokey_intro_source = sound_PlaySound(pokey_intro, vec3_t(0.0, 0.0, 0.0), 8.0, 0);
+		pokey_intro_source = sound_PlaySound(pokey_intro, vec3_t(0.0, 0.0, 0.0), 1.0, SOURCE_FLAG_RELATIVE);
 	}
 	else
 	{
 		if(pokey_loop_source < 0)
 		{
-			if(sound_IsSourcePlaying(pokey_intro_source) == 0)
+			if(sound_IsSourceAssigned(pokey_intro_source) == 0)
 			{
 				pokey_intro_source = -1;
-				pokey_loop_source = sound_PlaySound(pokey_loop, vec3_t(0.0, 0.0, 0.0), 5.0, 1);
+				pokey_loop_source = sound_PlaySound(pokey_loop, vec3_t(0.0, 0.0, 0.0), 1.0, SOURCE_FLAG_RELATIVE | SOURCE_FLAG_LOOP);
 			}
 		}
 	}
 
-	//spawn_point_count = world_GetWorldArrayVarLength("spawn points");
 	spawn_point_count = spawn_points.count;
+	world_GetWorldVarValue("spawn count", spawn_count);
+
+	//script_Print("spawn count: " + spawn_count + "\n");
+
+	//script_Breakpoint();
+
+	//script_BeginDebugSection();
 
 	if(spawn_point_count > 0)
 	{
-		world_GetWorldVarValue("respawn timer", spawn_timer);
+		//wave_timer = 0;
+		world_GetWorldVarValue("wave timer", wave_timer);
 
-		if(spawn_timer > 0)
+		//script_Print("wave timer: " + wave_timer + "\n");
+
+		if(wave_timer > 0)
 		{
-			spawn_timer--;
-			world_SetWorldVarValue("respawn timer", spawn_timer);
+			wave_timer--;
+			world_SetWorldVarValue("wave timer", wave_timer);
 		}
-		else if(spawn_timer == 0)
+		else if(wave_timer == 0)
 		{
-			spawn_timer = -1;
-			world_SetWorldVarValue("respawn timer", spawn_timer);
+			//wave_timer = -1;
 
+			world_SetWorldVarValue("wave timer", -1);
 			world_GetWorldVarValue("wave index", wave_index);
 
 			switch(wave_index)
@@ -142,109 +434,435 @@ void OnMapUpdate()
 					spawn_count = 75;
 				break;
 
+				case 3:
+                    spawn_count = 100;
+                break;
+
+                case 4:
+                    spawn_count = 125;
+                break;
+
+                case 5:
+                    spawn_count = 150;
+                break;
+
+                case 6:
+                    spawn_count = 175;
+                break;
+
 				default:
-					spawn_count = 100;
+					spawn_count = 200;
 				break;
-
-				//default:
-				//	spawn_count = 120;
-				//break;
-
 			}
 
-			script_Print("wave: " + wave_index + "\n");
+			world_SetWorldVarValue("spawn count", spawn_count);
 
-			//enumerate_spawn_points();
+			//script_Print("wave: " + wave_index + "\n");
 
-			//world_ClearWorldArrayVar("alive entities");
-			alive_entities.Clear();
-			enemy_def = entity_GetEntity("enemy entity", 1);
-			entity_orientation.identity();
-
-			//script_Print("FUCK!\n");
-
-			for(i = 0; i < spawn_count; i++)
-			{
-				spawn_point_index = rand() % spawn_point_count;
-
-				//world_GetWorldArrayVarValue("spawn points", spawn_point_index, spawn_point);
-
-				spawn_point = spawn_points[spawn_point_index];
-				//
-
-				spawn_position = entity_GetEntityPosition(spawn_point, 0);
-
-				spawn_position.x += (randfloat() * 2.0 - 1.0) * 3.0;
-				//spawn_position.y += (randfloat() * 2.0 - 1.0) * 3.0;
-				//spawn_position.y += 10.0;
-				spawn_position.z += (randfloat() * 2.0 - 1.0) * 3.0;
-
-
-				//spawned = entity_SpawnEntity(entity_orientation, vec3_t(-5.0 + x, 3.0, (-z / 2) + z * 2), vec3_t(1.0, 1.0, 1.0), enemy_def, "enemy");
-				spawned = entity_SpawnEntity(entity_orientation, spawn_position, vec3_t(1.0, 1.0, 1.0), enemy_def, "enemy");
-				entity_SetEntityVelocity(spawned, vec3_t(0.0, 0.0, 0.0));
-				alive_entities.Append(spawned);
-				//world_AppendWorldArrayVarValue("alive entities", spawned);
-			}
-
-			prev_alive_count = spawn_count;
+			//alive_entities.Clear();
+			//prev_alive_count = spawn_count;
 		}
-		else if(spawn_timer < 0)
+		else if(wave_timer < 0)
 		{
-			//c = world_GetWorldArrayVarLength("alive entities");
-			c = alive_entities.count;
-			alive_entities_count = 0;
 
-			//script_Print("Check alive\n");
+			//script_Print("HERE MOTHERFUCKER!\n");
 
-			for(i = 0; i < c; i++)
+		    world_GetWorldVarValue("spawn count", spawn_count);
+            world_GetWorldVarValue("spawn timer", spawn_timer);
+
+			enemy_count = alive_enemies_count();
+
+			if(spawn_count > 0 && spawn_timer == 0)
+            {
+                spawn_enemy();
+
+                spawn_count--;
+                world_SetWorldVarValue("spawn count", spawn_count);
+                world_SetWorldVarValue("spawn timer", 10);
+            }
+            else
+            {
+                spawn_timer--;
+                world_SetWorldVarValue("spawn timer", spawn_timer);
+            }
+
+			if(enemy_count == 0 && spawn_count == 0)
 			{
-				//world_GetWorldArrayVarValue("alive entities", i, spawned);
+				world_SetWorldVarValue("wave timer", 150);
+				world_SetWorldVarValue("spawn timer", 10);
 
-				spawned = alive_entities[i];
-
-				if(entity_IsEntityValid(spawned) != 0)
-				{
-					if(entity_EntityHasProp(spawned, "enemy") != 0)
-					{
-						alive_entities_count++;
-					}
-				}
-
-			}
-
-			if(prev_alive_count > alive_entities_count)
-			{
-                entity_handle_t player = entity_GetEntity("player entity", 0);
-                int score;
-
-                score = entity_GetEntityProp1i(player, "score");
-                score += (prev_alive_count - alive_entities_count) * 50;
-                entity_SetEntityProp1i(player, "score", score);
-
-                prev_alive_count = alive_entities_count;
-			}
+				//world_SetWorldVarValue("alive expected", 0);
 
 
-			//script_Print("Alive entities: " + alive_entities_count + "\n");
-
-			if(alive_entities_count == 0)
-			{
-				world_SetWorldVarValue("respawn timer", 150);
+				//script_Print("No alive entities left\n");
 
 				world_GetWorldVarValue("wave index", wave_index);
 				wave_index++;
 				world_SetWorldVarValue("wave index", wave_index);
 
-				script_Print("No alive entities left\n");
+				if(wave_index >= 4)
+				{
+					world_StopCurrentEvent();
+					world_CallEvent("StartElevator");
+				}
+
+
+
+
 			}
 		}
+	}
+
+	//script_EndDebugSection();
+}
+
+
+
+
+enum ELEVATOR_STATE
+{
+	//ELEVATOR_STATE_FORCE_DESCENT_TO_BOTTOM = -1,
+	//ELEVATOR_STATE_ASCEND_WITH_PLAYER_ONLY = 0,
+    //ELEVATOR_STATE_AT_TOP = 1,
+    //ELEVATOR_STATE_NO_RETURN = 2,
+
+    ELEVATOR_STATE_ASCENDING  = 1,
+    ELEVATOR_STATE_DESCENDING,
+    ELEVATOR_STATE_STOPPPED,
+    ELEVATOR_STATE_NO_RETURN,
+};
+
+/*
+========================
+StartElevator
+========================
+*/
+void StartElevator_event()
+{
+	entity_handle_t elevator = entity_GetEntity("elevator", 0);
+	entity_SetEntityProp1i(elevator, "state", ELEVATOR_STATE_DESCENDING);
+
+	world_StopCurrentEvent();
+	world_CallEvent("Elevator");
+
+	entity_handle_t master_toilet = entity_GetEntity("master toilet", 1);
+	entity_handle_t master_spawn = entity_GetEntity("master spawn point", 0);
+
+	vec3_t position = entity_GetEntityPosition(master_spawn, 0);
+	mat3_t orientation;
+
+	orientation.identity();
+
+	entity_SpawnEntity(orientation, position, vec3_t(1.0, 1.0, 1.0), master_toilet, "master");
+}
+
+
+
+
+
+/*
+========================
+Elevator
+========================
+*/
+void Elevator_event()
+{
+	entity_handle_t elevator = entity_GetEntity("elevator", 0);
+	int run_elevator = entity_GetTrigger("run elevator");
+	int stop_trigger = entity_GetTrigger("stop elevator");
+	int first_stop_trigger = entity_GetTrigger("first stop");
+	int no_return_trigger = entity_GetTrigger("no return");
+
+	int elevator_state;
+
+	vec3_t elevator_position;
+
+
+
+	if(entity_IsTriggered(stop_trigger) != 0)
+	{
+		/* if  we got to the top of the shaft... */
+		entity_SetEntityProp1i(elevator, "state", ELEVATOR_STATE_STOPPPED);
+		world_StopCurrentEvent();
+		world_CallEvent("StartFinalFight");
+	}
+
+	else if(entity_IsTriggered(run_elevator) == 0)
+	{
+		entity_SetEntityProp1i(elevator, "state", ELEVATOR_STATE_DESCENDING);
+	}
+
+	else if(entity_IsTriggered(no_return_trigger) != 0)
+	{
+		elevator_state = entity_GetEntityProp1i(elevator, "state");
+
+		if(elevator_state == ELEVATOR_STATE_ASCENDING)
+		{
+			entity_SetEntityProp1i(elevator, "state", ELEVATOR_STATE_NO_RETURN);
+		}
+	}
+
+	else
+	{
+		entity_SetEntityProp1i(elevator, "state", ELEVATOR_STATE_ASCENDING);
+	}
+	//else if(entity_IsTriggered(first_stop_trigger) != 0)
+	//{
+		/* if we got to the bottom of the shaft for the first time... */
+	//	entity_SetEntityProp1i(elevator, "state", ELEVATOR_STATE_ASCEND_WITH_PLAYER_ONLY);
+	//}
+	//else if(entity_IsTriggered(no_return_trigger) != 0)
+	//{
+	elevator_state = entity_GetEntityProp1i(elevator, "state");
+
+	//	if(elevator_state == ELEVATOR_STATE_ASCEND_WITH_PLAYER_ONLY)
+	//	{
+	//		entity_SetEntityProp1i(elevator, "state", ELEVATOR_STATE_NO_RETURN);
+	//	}
+
+	//}
+
+
+
+	if(elevator_state == ELEVATOR_STATE_DESCENDING)
+	{
+		elevator_position = entity_GetEntityPosition(elevator, 0);
+
+		if(elevator_position.y > -1.0)
+		{
+			entity_TranslateEntity(elevator, vec3_t(0.0, -0.12, 0.0));
+		}
+	}
+	else if(elevator_state == ELEVATOR_STATE_ASCENDING || elevator_state == ELEVATOR_STATE_NO_RETURN)
+	{
+		entity_TranslateEntity(elevator, vec3_t(0.0, 0.12, 0.0));
+	}
+
+
+	//if(elevator_state == ELEVATOR_STATE_ASCEND_WITH_PLAYER_ONLY)
+	//{
+	//	if(entity_IsTriggered(run_elevator) != 0)
+	//	{
+	//		entity_TranslateEntity(elevator, vec3_t(0.0, 0.12, 0.0));
+	//	}
+	//	else
+	//	{
+	//		elevator_position = entity_GetEntityPosition(elevator, 0);
+	//		if(elevator_position.y > -1.0)
+	//		{
+	//			entity_TranslateEntity(elevator, vec3_t(0.0, -0.12, 0.0));
+	//		}
+	//	}
+	//}
+	//else if(elevator_state == ELEVATOR_STATE_FORCE_DESCENT_TO_BOTTOM)
+	//{
+//		/* make sure the elevator goes all the way down in the first time to
+//		avoid the player getting stuck... */
+//		elevator_position = entity_GetEntityPosition(elevator, 0);
+
+//		if(elevator_position.y > 0.0)
+//		{
+//			entity_TranslateEntity(elevator, vec3_t(0.0, -0.12, 0.0));
+//		}
+//	}
+//	else if(elevator_state == ELEVATOR_STATE_NO_RETURN)
+//	{
+//		entity_TranslateEntity(elevator, vec3_t(0.0, 0.12, 0.0));
+//	}
+
+	elevator_position = entity_GetEntityPosition(elevator, 0);
+
+	entity_SetTriggerPosition(run_elevator, elevator_position + vec3_t(0.0, 0.5, 0.0));
+}
+
+
+
+/*
+========================
+StartFinalFight
+========================
+*/
+void StartFinalFight_event()
+{
+	//array<entity_handle_t> world_entities;
+
+	int i;
+	int c;
+
+	enumerate_spawn_points("battle spawner");
+
+	//alive_entities.Clear();
+
+	world_StopCurrentEvent();
+	world_CallEvent("FinalFight");
+
+	//script_Print("start fight\n");
+
+}
+
+
+/*
+========================
+FinalFight
+========================
+*/
+void FinalFight_event()
+{
+	int i;
+
+	int spawn_timer;
+	vec3_t position;
+	mat3_t orientation;
+	entity_handle_t enemy;
+	entity_handle_t master;
+
+	int alive_count;
+
+	master = entity_GetEntity("master", 0);
+
+
+	alive_count = alive_enemies_count();
+
+	//alive_count = 1;
+
+	if(entity_IsEntityValid(master) != 0)
+	{
+		world_GetWorldVarValue("spawn timer", spawn_timer);
+
+		if(spawn_timer > 0)
+		{
+			spawn_timer--;
+			world_SetWorldVarValue("spawn timer", spawn_timer);
+		}
+		else
+		{
+			spawn_enemy();
+			world_SetWorldVarValue("spawn timer", 15);
+		}
+	}
+	else
+	{
+		if(alive_count == 0)
+		{
+			sound_StopSound(pokey_loop_source, 1);
+			world_StopCurrentEvent();
+			world_CallEvent("YouWon");
+		}
+	}
+}
+
+
+/*
+========================
+YouWon
+========================
+*/
+void YouWon_event()
+{
+
+	if(text_sound_source == -1)
+	{
+		text_sound_source = sound_PlaySound(won_loop, vec3_t(0.0, 0.0, 0.0), 1.0, SOURCE_FLAG_RELATIVE | SOURCE_FLAG_LOOP | SOURCE_FLAG_FADE_IN);
+		current_text = 0;
+		text_alpha = 0.0;
+		text_state = TEXT_STATE_FADING_IN;
+	}
+
+
+
+	if(text_state == TEXT_STATE_DONE)
+	{
+		if((input_AnyKeyStatus() & KEY_JUST_PRESSED) == KEY_JUST_PRESSED)
+		{
+			text_state = TEXT_STATE_FADING_OUT;
+		}
+	}
+    else
+	{
+        if(text_state == TEXT_STATE_FADING_IN)
+		{
+			if(text_alpha < 1.0)
+			{
+				text_alpha += 0.008;
+			}
+			else
+			{
+				text_state = TEXT_STATE_DONE;
+
+				if(world_clear == 0)
+				{
+					world_clear = 1;
+					world_ClearWorld();
+				}
+
+
+			}
+		}
+		else if(text_state == TEXT_STATE_FADING_OUT)
+		{
+			if(text_alpha > 0.0)
+			{
+				text_alpha -= 0.008;
+			}
+			else
+			{
+				text_state = TEXT_STATE_FADING_IN;
+				current_text++;
+			}
+		}
+	}
+
+	switch(current_text)
+	{
+		case 0:
+			gui_TextWall("After a bloody battle, the toilet master has been defeated...", text_alpha);
+		break;
+
+		case 1:
+			gui_TextWall("The world now breathes relieved, and everything slowly returns to normal...", text_alpha);
+		break;
+
+		case 2:
+			gui_TextWall("Toilet master's evil influence still fades away, but life is once again worth living...", text_alpha);
+		break;
+
+		case 3:
+			gui_TextWall("Now go home, porcelain warrior, for you deserve to rest. Be aware that your actions have changed the world...", text_alpha);
+		break;
+
+		case 4:
+			gui_TextWall("Your existence has changed the world...", text_alpha);
+		break;
+
+		case 5:
+			gui_TextWall("Remember that...", text_alpha);
+		break;
+
+		default:
+			game_SetGameState(GAME_STATE_QUIT);
+		break;
 	}
 
 
 
 
+	/*if((input_AnyKeyStatus() & KEY_JUST_PRESSED) != 0)
+	{
+        world_StopCurrentEvent();
+	}*/
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

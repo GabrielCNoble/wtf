@@ -17,39 +17,60 @@ extern "C"
 
 void log_Init()
 {
-	log_file = fopen("massacre.log", "w");
+	log_file = fopen("engine.log", "w");
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "LOG START");
 }
 
 
 
 void log_Finish()
 {
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "LOG END");
 	fflush(log_file);
 	fclose(log_file);
 }
 
-  
-void log_LogMessage(int message_type, char *format, ...)
+
+void log_LogMessage(int message_type, int echo, char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	
+
+	static char message_buffer[8192];
+	static char temp_message_buffer[8192];
+	char *message_type_str;
+
 	switch(message_type)
 	{
 		case LOG_MESSAGE_NOTIFY:
-			fputs("NOTIFY: ", log_file);
+			message_type_str = "NOTIFY: ";
 		break;
-		
+
 		case LOG_MESSAGE_WARNING:
-			fputs("WARNING: ", log_file);
+			message_type_str = "WARNING: ";
 		break;
-		
+
 		case LOG_MESSAGE_ERROR:
-			fputs("ERROR: ", log_file);
+			message_type_str = "ERROR: ";
+		break;
+
+		case LOG_MESSAGE_NONE:
+			message_type_str = "";
 		break;
 	}
-	vfprintf(log_file, format, args);
-	fputs("\n", log_file);
+
+	strcpy(message_buffer, message_type_str);
+	vsprintf(temp_message_buffer, format, args);
+
+	strcat(message_buffer, temp_message_buffer);
+	strcat(message_buffer, "\n");
+
+	fputs(message_buffer, log_file);
+
+	if(echo)
+	{
+		printf("%s", message_buffer);
+	}
 }
 
 

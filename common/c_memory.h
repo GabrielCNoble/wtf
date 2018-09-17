@@ -27,7 +27,7 @@ void memory_Free(void *memory);
 
 char *memory_StrdupCaller(char *src, const char *caller);
 
-void memory_Report();
+void memory_Report(int report_allocs);
 
 void memory_ReportFromCaller(char *caller);
 

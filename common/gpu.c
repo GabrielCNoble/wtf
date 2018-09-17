@@ -4,7 +4,10 @@
 
 #include "gpu.h"
 #include "vector.h"
+#include "log.h"
 #include "model.h"
+#include "containers/list.h"
+#include "containers/stack_list.h"
 
 #include "c_memory.h"
 
@@ -15,7 +18,7 @@
 #include <assert.h>
 
 
-#define GPU_HEAP_SIZE 33554432			/* 32 MB */
+#define GPU_HEAP_SIZE 33554432*4			/* 32 MB */
 //#define GPU_HEAP_SIZE 1048576*5
 #define GPU_MIN_ALLOC sizeof(float)
 #define FREE_THRESHOLD 15
@@ -33,7 +36,7 @@
 unsigned int gpu_vertex_heap;
 unsigned int gpu_index_heap;
 
-static int frees;
+//static int free_count;
 
 int vertex_frees = 0;
 int index_frees = 0;
@@ -41,11 +44,21 @@ int index_frees = 0;
 int heap_bound = 0;
 
 
-static gpu_heap_list_t vertex_alloc_list;
-static gpu_heap_list_t vertex_free_list;
+//static gpu_heap_list_t vertex_alloc_list;
+//static gpu_heap_list_t vertex_free_list;
 
-static gpu_heap_list_t index_alloc_list;
-static gpu_heap_list_t index_free_list;
+static struct stack_list_t vertex_alloc_list;
+static struct list_t vertex_free_list;
+
+
+static struct stack_list_t index_alloc_list;
+static struct list_t index_free_list;
+
+//static gpu_heap_list_t index_alloc_list;
+//static gpu_heap_list_t index_free_list;
+
+
+
 
 
 static unsigned int mapped_array_buffer;
@@ -65,7 +78,8 @@ extern "C"
 
 /* internal use only... */
 void gpu_Defrag();
-void gpu_Sort(gpu_heap_list_t *free_list, int left, int right);
+void gpu_Sort(struct gpu_head_t *free_list, int left, int right);
+void gpu_MergeFreeBlocks(int index_heap);
 
 
 int gpu_Init()
@@ -92,37 +106,67 @@ int gpu_Init()
 	bound_array_buffer = 0;
 	bound_index_buffer = 0;
 
+
 	frees = 0;*/
 
-	vertex_alloc_list.cursor = 0;
-	vertex_alloc_list.size = 3200;
-	vertex_alloc_list.free_stack_top = -1;
-	vertex_alloc_list.free_stack = memory_Malloc(sizeof(int) * vertex_alloc_list.size);
-	vertex_alloc_list.list = memory_Malloc(sizeof(gpu_head_t) * vertex_alloc_list.size);
+	struct gpu_head_t *allocs;
 
-	vertex_free_list.cursor = 1;
-	vertex_free_list.size = 3200;
-	vertex_free_list.list = memory_Malloc(sizeof(gpu_head_t) * vertex_free_list.size);
+
+    vertex_alloc_list = stack_list_create(sizeof(struct gpu_head_t), 32, NULL);
+    vertex_free_list = list_create(sizeof(struct gpu_head_t), 32, NULL);
+
+
+    index_alloc_list = stack_list_create(sizeof(struct gpu_head_t), 32, NULL);
+    index_free_list = list_create(sizeof(struct gpu_head_t), 32, NULL);
+
+
+
+	vertex_free_list.element_count = 1;
+	allocs = (struct gpu_head_t *)vertex_free_list.elements;
+	allocs[0].align_offset = 0;
+	allocs[0].size = GPU_HEAP_SIZE;
+	allocs[0].start = 0;
+
+
+	index_free_list.element_count = 1;
+	allocs = (struct gpu_head_t *)index_free_list.elements;
+	allocs[0].align_offset = 0;
+	allocs[0].size = GPU_HEAP_SIZE;
+	allocs[0].start = 0;
+
+
+
+	//vertex_alloc_list.cursor = 0;
+	//vertex_alloc_list.size = 3200;
+	//vertex_alloc_list.free_stack_top = -1;
+	//vertex_alloc_list.free_stack = memory_Malloc(sizeof(int) * vertex_alloc_list.size);
+	//vertex_alloc_list.list = memory_Malloc(sizeof(gpu_head_t) * vertex_alloc_list.size);
+
+	//vertex_free_list.cursor = 1;
+	//vertex_free_list.size = 3200;
+	//vertex_free_list.list = memory_Malloc(sizeof(gpu_head_t) * vertex_free_list.size);
 	/* the whole heap is free... */
-	vertex_free_list.list[0].start = 0;
-	vertex_free_list.list[0].size = GPU_HEAP_SIZE;
+	//vertex_free_list.list[0].start = 0;
+	//vertex_free_list.list[0].size = GPU_HEAP_SIZE;
 
 
 
-	index_alloc_list.cursor = 0;
-	index_alloc_list.size = 3200;
-	index_alloc_list.free_stack_top = -1;
-	index_alloc_list.free_stack = memory_Malloc(sizeof(int) * index_alloc_list.size);
-	index_alloc_list.list = memory_Malloc(sizeof(gpu_head_t) * index_alloc_list.size);
+	//index_alloc_list.cursor = 0;
+	//index_alloc_list.size = 3200;
+	//index_alloc_list.free_stack_top = -1;
+	//index_alloc_list.free_stack = memory_Malloc(sizeof(int) * index_alloc_list.size);
+	//index_alloc_list.list = memory_Malloc(sizeof(gpu_head_t) * index_alloc_list.size);
 
-	index_free_list.cursor = 1;
-	index_free_list.size = 3200;
-	index_free_list.list = memory_Malloc(sizeof(gpu_head_t) * index_free_list.size);
+	//index_free_list.cursor = 1;
+	//index_free_list.size = 3200;
+	//index_free_list.list = memory_Malloc(sizeof(gpu_head_t) * index_free_list.size);
 	/* the whole heap is free... */
-	index_free_list.list[0].start = 0;
-	index_free_list.list[0].size = GPU_HEAP_SIZE;
+	//index_free_list.list[0].start = 0;
+	//index_free_list.list[0].size = GPU_HEAP_SIZE;
 
 	R_DBG_POP_FUNCTION_NAME();
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 	return 1;
 
@@ -133,13 +177,21 @@ void gpu_Finish()
 	glDeleteBuffers(1, &gpu_vertex_heap);
 	glDeleteBuffers(1, &gpu_index_heap);
 
-	memory_Free(vertex_alloc_list.list);
+
+	stack_list_destroy(&vertex_alloc_list);
+	stack_list_destroy(&index_alloc_list);
+
+	list_destroy(&vertex_free_list);
+	list_destroy(&index_free_list);
+
+
+	/*memory_Free(vertex_alloc_list.list);
 	memory_Free(vertex_alloc_list.free_stack);
 	memory_Free(vertex_free_list.list);
 
 	memory_Free(index_alloc_list.list);
 	memory_Free(index_alloc_list.free_stack);
-	memory_Free(index_free_list.list);
+	memory_Free(index_free_list.list);*/
 }
 
 /*gpu_buffer_t gpu_CreateGPUBuffer(int size, int type, int hint)
@@ -230,52 +282,43 @@ struct gpu_alloc_handle_t gpu_AllocIndexesAlign(int size, int alignment)
 struct gpu_alloc_handle_t gpu_AllocAlign(int size, int alignment, int index_alloc)
 {
 	//int h = INVALID_HANDLE;
-	struct gpu_alloc_handle_t h = INVALID_GPU_ALLOC_HANDLE;
-	register int i;
+	struct gpu_alloc_handle_t handle = INVALID_GPU_ALLOC_HANDLE;
+	int free_index;
 	//int c = free_list.cursor;
-	int c;
-	gpu_head_t *t;
+	int free_count;
+	struct gpu_head_t *t;
 	int *q;
 	int f;
 	int attempt_defrag = 0;
 
-	gpu_heap_list_t *alloc_list;
-	gpu_heap_list_t *free_list;
+	struct gpu_head_t *new_alloc;
+
+	struct gpu_head_t *alloc_list;
+	struct gpu_head_t *free_list;
+
+	struct stack_list_t *allocs;
+	struct list_t *frees;
+
+	//gpu_heap_list_t *alloc_list;
+	//gpu_heap_list_t *free_list;
 
 	if(index_alloc)
 	{
-		alloc_list = &index_alloc_list;
-		free_list = &index_free_list;
-		h.index_alloc = 1;
+		allocs = &index_alloc_list;
+		frees = &index_free_list;
 	}
 	else
 	{
-		alloc_list = &vertex_alloc_list;
-		free_list = &vertex_free_list;
-		h.index_alloc = 0;
+		allocs = &vertex_alloc_list;
+		frees = &vertex_free_list;
 	}
 
-	c = free_list->cursor;
 
-	if(alloc_list->cursor >= alloc_list->size)
-	{
-		/*t = (gpu_head_t *)malloc(sizeof(gpu_head_t) * (alloc_list.size + 32));
-		q = (int *)malloc(sizeof(int) * (alloc_list.size + 32));*/
+	alloc_list = (struct gpu_head_t *)allocs->elements;
+	free_list = (struct gpu_head_t *)frees->elements;
+	free_count = frees->element_count;
 
-		t = (gpu_head_t *)memory_Malloc(sizeof(gpu_head_t) * (alloc_list->size + 32));
-		q = (int *)memory_Malloc(sizeof(int) * (alloc_list->size + 32));
-
-		memcpy(t, alloc_list->list, sizeof(gpu_head_t) * alloc_list->size);
-		//free(alloc_list.list);
-		//free(alloc_list.free_stack);
-
-		memory_Free(alloc_list->list);
-		memory_Free(alloc_list->free_stack);
-
-		alloc_list->list = t;
-		alloc_list->free_stack = q;
-		alloc_list->size += 32;
-	}
+    handle.is_index_alloc = index_alloc && 1;
 
 	if(size > 0)
 	{
@@ -292,33 +335,26 @@ struct gpu_alloc_handle_t gpu_AllocAlign(int size, int alignment, int index_allo
 
 		_try_again:
 		/* go over the list of free chunks... */
-		for(i = 0; i < c; i++)
+		for(free_index = 0; free_index < free_count; free_index++)
 		{
 			/* ...and test to see if any fit the request... */
-			if(free_list->list[i].size >= size)
+			//if(free_list->list[i].size >= size)
+			if(free_list[free_index].size >= size)
 			{
+                handle.alloc_index = stack_list_add(allocs, NULL);
+                new_alloc = stack_list_get(allocs, handle.alloc_index);
 
-				if(alloc_list->free_stack_top > -1)
-				{
-					h.alloc_index = alloc_list->free_stack[alloc_list->free_stack_top--];
-				}
-				else
-				{
-					h.alloc_index = alloc_list->cursor++;
-				}
-				//h = f;
+				new_alloc->size = size;
+				new_alloc->start = free_list[free_index].start;
+				new_alloc->align_offset = 0;
 
-				alloc_list->list[h.alloc_index].size = size;
-				alloc_list->list[h.alloc_index].start = free_list->list[i].start;
-				alloc_list->list[h.alloc_index].align_offset = 0;
-
-				if(free_list->list[i].size > size)
+				if(free_list[free_index].size > size)
 				{
 					/* alloc is smaller than this free block, so just chopp
 					a chunk off and set it as alloc'd... */
 
-					free_list->list[i].start += size;
-					free_list->list[i].size -= size;
+					free_list[free_index].start += size;
+					free_list[free_index].size -= size;
 				}
 				else
 				{
@@ -326,20 +362,14 @@ struct gpu_alloc_handle_t gpu_AllocAlign(int size, int alignment, int index_allo
 					to the alloc_list and pull the last element of the free_list to
 					the now vacant position...*/
 
-					free_list->list[i].size = -1;
-					if(i < free_list->cursor - 1)
-					{
-						free_list->list[i] = free_list->list[free_list->cursor - 1];
-						free_list->cursor--;
-					}
+                    list_remove(frees, free_index);
+
 				}
 
-				if(alloc_list->list[h.alloc_index].start % alignment)
+				if(new_alloc->start % alignment)
 				{
-					/* align the start... */
-					alloc_list->list[h.alloc_index].align_offset +=  alignment - alloc_list->list[h.alloc_index].start % alignment;
+                    new_alloc->align_offset += alignment - new_alloc->start % alignment;
 				}
-
 
 				break;
 			}
@@ -347,7 +377,7 @@ struct gpu_alloc_handle_t gpu_AllocAlign(int size, int alignment, int index_allo
 		/* couldn't find a free block that could
 		service the request, so try to defrag the heap and
 		repeat the search... */
-		if(!attempt_defrag && h.alloc_index == INVALID_GPU_ALLOC_INDEX)
+		if(!attempt_defrag && handle.alloc_index == INVALID_GPU_ALLOC_INDEX)
 		{
 			attempt_defrag = 1;
 			gpu_Defrag(index_alloc);
@@ -355,18 +385,43 @@ struct gpu_alloc_handle_t gpu_AllocAlign(int size, int alignment, int index_allo
 		}
 	}
 
-
-	//if(index_alloc)
-	//{
-	//	h = SET_INDEX_BIT(h);
-	//}
-
-	return h;
+	return handle;
 }
 
 struct gpu_alloc_handle_t gpu_Realloc(struct gpu_alloc_handle_t handle, int size)
 {
 	return handle;
+}
+
+int gpu_IsAllocValid(struct gpu_alloc_handle_t handle)
+{
+    struct gpu_head_t *alloc;
+
+	if(handle.alloc_index == INVALID_GPU_ALLOC_INDEX)
+	{
+		return 0;
+	}
+
+    if(handle.is_index_alloc)
+	{
+		if(handle.alloc_index >= index_alloc_list.element_count)
+		{
+			return 0;
+		}
+
+        alloc = (struct gpu_head_t *)index_alloc_list.elements + handle.alloc_index;
+	}
+	else
+	{
+		if(handle.alloc_index >= vertex_alloc_list.element_count)
+		{
+			return 0;
+		}
+
+		alloc = (struct gpu_head_t *)vertex_alloc_list.elements + handle.alloc_index;
+	}
+
+	return alloc->size > 0;
 }
 
 /*
@@ -388,10 +443,21 @@ void gpu_FreeIndexes(struct gpu_alloc_handle_t handle)
 
 void gpu_Free(struct gpu_alloc_handle_t handle)
 {
-	gpu_head_t *t;
-	gpu_heap_list_t *free_list;
-	gpu_heap_list_t *alloc_list;
-	int frees;
+	struct gpu_head_t *t;
+	//gpu_heap_list_t *free_list;
+	//gpu_heap_list_t *alloc_list;
+
+
+	struct gpu_head_t *free_list;
+	struct gpu_head_t *alloc_list;
+	struct gpu_head_t *alloc;
+
+
+	struct stack_list_t *allocs;
+	struct list_t *frees;
+
+
+	int free_count;
 	int index_alloc = 0;
 
 	if(handle.alloc_index == INVALID_GPU_ALLOC_INDEX)
@@ -401,47 +467,60 @@ void gpu_Free(struct gpu_alloc_handle_t handle)
 	}
 
 	//if(IS_INDEX_HANDLE(handle))
-	if(handle.index_alloc)
+	if(handle.is_index_alloc)
 	{
-		alloc_list = &index_alloc_list;
-		free_list = &index_free_list;
+		allocs = &index_alloc_list;
+		frees = &index_free_list;
 		index_frees++;
-		frees = index_frees;
-//		handle = UNSET_INDEX_BIT(handle);
-		index_alloc = 1;
+		free_count = index_frees;
 	}
 	else
 	{
-		alloc_list = &vertex_alloc_list;
-		free_list = &vertex_free_list;
+		allocs = &vertex_alloc_list;
+		frees = &vertex_free_list;
 		vertex_frees++;
-		frees = vertex_frees;
+		free_count = vertex_frees;
 	}
 
 
-	if(free_list->cursor >= free_list->size)
-	{
+	free_list = (struct gpu_head_t *)frees->elements;
+	alloc_list = (struct gpu_head_t *)allocs->elements;
+
+
+	//if(free_list->cursor >= free_list->size)
+	//{
 		//t = (gpu_head_t *)malloc(sizeof(gpu_head_t) * (free_list.size + 32));
-		t = (gpu_head_t *)memory_Malloc(sizeof(gpu_head_t) * (free_list->size + 32));
-		memcpy(t, free_list->list, sizeof(gpu_head_t) * free_list->size);
+	//	t = (gpu_head_t *)memory_Malloc(sizeof(gpu_head_t) * (free_list->size + 32));
+	//	memcpy(t, free_list->list, sizeof(gpu_head_t) * free_list->size);
 		//free(free_list.list);
-		memory_Free(free_list->list);
-		free_list->list = t;
-		free_list->size += 32;
-	}
+	//	memory_Free(free_list->list);
+	//	free_list->list = t;
+	//	free_list->size += 32;
+	//}
+
+
+	list_add(frees, &alloc_list[handle.alloc_index]);
+	alloc = stack_list_get(allocs, handle.alloc_index);
+
+	alloc->size = -1;
+	alloc->start = -1;
+	alloc->align_offset = -1;
+
+	stack_list_remove(allocs, handle.alloc_index);
+
 
 	//assert(handle > -1);
 
-	free_list->list[free_list->cursor++] = alloc_list->list[handle.alloc_index];
+	//free_list->list[free_list->cursor++] = alloc_list->list[handle.alloc_index];
 
-	alloc_list->free_stack_top++;
+	//alloc_list->free_stack_top++;
 
-	alloc_list->free_stack[alloc_list->free_stack_top] = handle.alloc_index;
+	//alloc_list->free_stack[alloc_list->free_stack_top] = handle.alloc_index;
 	//frees++;
 	//printf("%d free block heads\n", free_list.cursor);
-	if(frees > FREE_THRESHOLD)
+	if(free_count > FREE_THRESHOLD)
 	{
-		gpu_Defrag(handle.index_alloc);
+		gpu_Defrag(handle.is_index_alloc);
 	}
 
 	//printf("%d free block heads\n", free_list.cursor);
@@ -457,8 +536,32 @@ void gpu_Free(struct gpu_alloc_handle_t handle)
 
 void gpu_ClearHeap()
 {
+	struct gpu_head_t *allocs;
 
-	vertex_free_list.cursor = 1;
+	vertex_free_list.element_count = 1;
+	allocs = (struct gpu_head_t *)vertex_free_list.elements;
+    allocs[0].align_offset = 0;
+    allocs[0].size = GPU_HEAP_SIZE;
+    allocs[0].start = 0;
+
+    vertex_alloc_list.element_count = 0;
+    vertex_alloc_list.free_stack_top = -1;
+
+
+
+
+    index_free_list.element_count = 1;
+	allocs = (struct gpu_head_t *)index_free_list.elements;
+    allocs[0].align_offset = 0;
+    allocs[0].size = GPU_HEAP_SIZE;
+    allocs[0].start = 0;
+
+    index_alloc_list.element_count = 0;
+    index_alloc_list.free_stack_top = -1;
+
+
+
+	/*vertex_free_list.cursor = 1;
 	vertex_free_list.list[0].start = 0;
 	vertex_free_list.list[0].size = GPU_HEAP_SIZE;
 	vertex_alloc_list.cursor = 0;
@@ -471,46 +574,53 @@ void gpu_ClearHeap()
 	index_free_list.list[0].size = GPU_HEAP_SIZE;
 	index_alloc_list.cursor = 0;
 	index_alloc_list.free_stack_top = -1;
-	index_frees = 0;
+	index_frees = 0;*/
 }
 
 void gpu_Defrag(int index_heap)
 {
 	register int i;
 	//int c = free_list.cursor;
-	int c;
+	int old_count;
 	int k = 0;
 	int j;
 	//int new_count = c;
 	int new_count;
-	gpu_heap_list_t *free_list;
+	struct gpu_head_t *free_list;
+	struct list_t *frees;
 
 	if(index_heap)
 	{
-		free_list = &index_free_list;
+		frees = &index_free_list;
+		//free_list = (struct gpu_head_t *)index_free_list.elements;
+		//old_count = index_free_list.element_count;
 		index_frees = 0;
 	}
 	else
 	{
-		free_list = &vertex_alloc_list;
+		frees = &vertex_free_list;
+		//free_list = (struct gpu_head_t *)vertex_free_list.elements;
+		//old_count = vertex_free_list.element_count
 		vertex_frees = 0;
 	}
 
-	c = free_list->cursor;
-	new_count = c;
+	free_list = (struct gpu_head_t *)frees->elements;
+	old_count = frees->element_count;
 
-	gpu_Sort(free_list, 0, c - 1);
+	new_count = old_count;
 
-	for(i = 1; i < c; i++)
+	gpu_Sort(free_list, 0, old_count - 1);
+
+	for(i = 1; i < old_count; i++)
 	{
 		/* go over the free chunks, testing for contiguity. If there is one free
 		chunks after another, merge the two and keep merging until finding a chunk
 		that doesn't begin after the end of the last merged chunk. In this case, set this
 		rebel chunk as the current chunk and repeat the process...  */
-		if(free_list->list[k].start + free_list->list[k].size == free_list->list[i].start)
+		if(free_list[k].start + free_list[k].size == free_list[i].start)
 		{
-			free_list->list[k].size += free_list->list[i].size;
-			free_list->list[i].size = -1;	/* if this chunk was merged, mark it as so... */
+			free_list[k].size += free_list[i].size;
+			free_list[i].size = -1;	/* if this chunk was merged, mark it as so... */
 			new_count--;
 		}
 		else
@@ -520,59 +630,59 @@ void gpu_Defrag(int index_heap)
 	}
 
 	/* go over the list of free chunks... */
-	for(i = 0; i < c; i++)
+	for(i = 0; i < old_count; i++)
 	{
 		/* ... and test for any chunk with negative value.
 		If this happens, this chunk has been merged to another
 		and is no longer valid... */
-		if(free_list->list[i].size < 0)
+		if(free_list[i].size < 0)
 		{
 			/* starting from this invalid, negative
 			sized chunk, go forward until hitting
 			a valid chunk... */
-			for(j = i; j < c; j++)
+			for(j = i; j < old_count; j++)
 			{
-				if(free_list->list[j].size > -1)
+				if(free_list[j].size > -1)
 				{
 					/* hit a valid chunk, so move it
 					to this currently invalid chunk's position... */
-					free_list->list[i] = free_list->list[j];
-					free_list->list[j].size = -1;
+					free_list[i] = free_list[j];
+					free_list[j].size = -1;
 					i--;
 					break;
 				}
 			}
 
-			if(j >= c)
+			if(j >= old_count)
 				break;
 		}
 	}
 
-	free_list->cursor = new_count;
+	//free_list->cursor = new_count;
 
-	for(i = 0; i < free_list->cursor; i++)
-	{
-		printf("%d %d\n", free_list->list[i].start, free_list->list[i].size);
-	}
+	//for(i = 0; i < free_list->cursor; i++)
+	//{
+	//	printf("%d %d\n", free_list->list[i].start, free_list->list[i].size);
+	//}
 }
 
-void gpu_Sort(gpu_heap_list_t *free_list, int left, int right)
+void gpu_Sort(struct gpu_head_t *free_list, int left, int right)
 {
 	int i = left;
 	int j = right;
 	int m = (right + left) / 2;
-	gpu_head_t t;
-	gpu_head_t q = free_list->list[m];
+	struct gpu_head_t t;
+	struct gpu_head_t q = free_list[m];
 	while(i <= j)
 	{
-		for(; free_list->list[i].start < q.start && i < right; i++);
-		for(; free_list->list[j].start > q.start && j > left; j--);
+		for(; free_list[i].start < q.start && i < right; i++);
+		for(; free_list[j].start > q.start && j > left; j--);
 
 		if(i <= j)
 		{
-			t = free_list->list[i];
-			free_list->list[i] = free_list->list[j];
-			free_list->list[j] = t;
+			t = free_list[i];
+			free_list[i] = free_list[j];
+			free_list[j] = t;
 			i++;
 			j--;
 		}
@@ -585,37 +695,51 @@ void gpu_Sort(gpu_heap_list_t *free_list, int left, int right)
 
 int gpu_GetAllocStart(struct gpu_alloc_handle_t handle)
 {
+	struct gpu_head_t *alloc;
+
 	if(handle.alloc_index != INVALID_GPU_ALLOC_INDEX)
 	{
 		//if(IS_INDEX_HANDLE(handle))
-		if(handle.index_alloc)
+		if(handle.is_index_alloc)
 		{
-			return index_alloc_list.list[handle.alloc_index].start + index_alloc_list.list[handle.alloc_index].align_offset;
+			alloc = (struct gpu_head_t *)index_alloc_list.elements + handle.alloc_index;
+			//return index_alloc_list.list[handle.alloc_index].start + index_alloc_list.list[handle.alloc_index].align_offset;
 		}
 		else
 		{
-			return vertex_alloc_list.list[handle.alloc_index].start + vertex_alloc_list.list[handle.alloc_index].align_offset;
+			alloc = (struct gpu_head_t *)vertex_alloc_list.elements + handle.alloc_index;
+			//return vertex_alloc_list.list[handle.alloc_index].start + vertex_alloc_list.list[handle.alloc_index].align_offset;
 		}
 
+		return alloc->start + alloc->align_offset;
 	}
+
+	return -1;
 }
 
 int gpu_GetAllocSize(struct gpu_alloc_handle_t handle)
 {
+	struct gpu_head_t *alloc;
+
 	if(handle.alloc_index != INVALID_GPU_ALLOC_INDEX)
 	{
 		//if(IS_INDEX_HANDLE(handle))
-		if(handle.index_alloc)
+		if(handle.is_index_alloc)
 		{
+			alloc = (struct gpu_head_t *)index_alloc_list.elements + handle.alloc_index;
 			//handle = UNSET_INDEX_BIT(handle);
-			return index_alloc_list.list[handle.alloc_index].size - index_alloc_list.list[handle.alloc_index].align_offset;
+			//return index_alloc_list.list[handle.alloc_index].size - index_alloc_list.list[handle.alloc_index].align_offset;
 		}
 		else
 		{
-			return vertex_alloc_list.list[handle.alloc_index].size - vertex_alloc_list.list[handle.alloc_index].align_offset;
+			alloc = (struct gpu_head_t *)vertex_alloc_list.elements + handle.alloc_index;
+			//return vertex_alloc_list.list[handle.alloc_index].size - vertex_alloc_list.list[handle.alloc_index].align_offset;
 		}
 
+		return alloc->size;
 	}
+
+	return 0;
 }
 
 int gpu_GetVertexOffset(struct gpu_alloc_handle_t handle)
@@ -686,6 +810,8 @@ void gpu_Write(struct gpu_alloc_handle_t handle, int offset, void *buffer, int c
 	unsigned int buffer_id;
 	void *p;
 
+	struct gpu_head_t *alloc;
+
 	//assert(handle > -1);
 
 	/*if(direct)
@@ -709,22 +835,29 @@ void gpu_Write(struct gpu_alloc_handle_t handle, int offset, void *buffer, int c
 
 	//if(index_alloc)
 	//if(IS_INDEX_HANDLE(handle))
-	if(handle.index_alloc)
+	if(handle.is_index_alloc)
 	{
 		//handle = UNSET_INDEX_BIT(handle);
 
 		buffer_id = gpu_index_heap;
-		start = index_alloc_list.list[handle.alloc_index].start + index_alloc_list.list[handle.alloc_index].align_offset;
+
+		alloc = (struct gpu_head_t *)index_alloc_list.elements + handle.alloc_index;
+
+		//start = index_alloc_list.list[handle.alloc_index].start + index_alloc_list.list[handle.alloc_index].align_offset;
 		//offset = index_alloc_list.list[handle].align_offset;
 		target = GL_ELEMENT_ARRAY_BUFFER;
 	}
 	else
 	{
 		buffer_id = gpu_vertex_heap;
-		start = vertex_alloc_list.list[handle.alloc_index].start + vertex_alloc_list.list[handle.alloc_index].align_offset;
+		alloc = (struct gpu_head_t *)vertex_alloc_list.elements + handle.alloc_index;
+		//start = vertex_alloc_list.list[handle.alloc_index].start + vertex_alloc_list.list[handle.alloc_index].align_offset;
 		//offset = vertex_alloc_list.list[handle].align_offset;
 		target = GL_ARRAY_BUFFER;
 	}
+
+
+	start = alloc->start + alloc->align_offset;
 
 
 	glBindBuffer(target, buffer_id);
@@ -783,6 +916,8 @@ void gpu_WriteNonMapped(struct gpu_alloc_handle_t handle, int offset, void *buff
 	unsigned int buffer_id;
 	void *p;
 
+	struct gpu_head_t *alloc;
+
 	R_DBG_PUSH_FUNCTION_NAME();
 
 	if(handle.alloc_index == INVALID_GPU_ALLOC_INDEX)
@@ -794,12 +929,13 @@ void gpu_WriteNonMapped(struct gpu_alloc_handle_t handle, int offset, void *buff
 
 	//if(index_alloc)
 	//if(IS_INDEX_HANDLE(handle))
-	if(handle.index_alloc)
+	if(handle.is_index_alloc)
 	{
 		//handle = UNSET_INDEX_BIT(handle);
 
 		buffer_id = gpu_index_heap;
-		start = index_alloc_list.list[handle.alloc_index].start + index_alloc_list.list[handle.alloc_index].align_offset;
+		alloc = (struct gpu_head_t *)index_alloc_list.elements + handle.alloc_index;
+		//start = index_alloc_list.list[handle.alloc_index].start + index_alloc_list.list[handle.alloc_index].align_offset;
 		target = GL_ELEMENT_ARRAY_BUFFER;
 		heap_buffer_id = gpu_index_heap;
 		current_bound_target = GL_ELEMENT_ARRAY_BUFFER_BINDING;
@@ -807,11 +943,15 @@ void gpu_WriteNonMapped(struct gpu_alloc_handle_t handle, int offset, void *buff
 	else
 	{
 		buffer_id = gpu_vertex_heap;
-		start = vertex_alloc_list.list[handle.alloc_index].start + vertex_alloc_list.list[handle.alloc_index].align_offset;
+		alloc = (struct gpu_head_t *)vertex_alloc_list.elements + handle.alloc_index;
+		//start = vertex_alloc_list.list[handle.alloc_index].start + vertex_alloc_list.list[handle.alloc_index].align_offset;
 		target = GL_ARRAY_BUFFER;
 		heap_buffer_id = gpu_vertex_heap;
 		current_bound_target = GL_ARRAY_BUFFER_BINDING;
 	}
+
+
+	start = alloc->start + alloc->align_offset;
 
 	glGetIntegerv(current_bound_target, &current_bound_buffer_id);
 
@@ -858,7 +998,7 @@ void *gpu_MapAlloc(struct gpu_alloc_handle_t handle, int access)
 	}
 
 	//if(IS_INDEX_HANDLE(handle))
-	if(handle.index_alloc)
+	if(handle.is_index_alloc)
 	{
 		target = GL_ELEMENT_ARRAY_BUFFER;
 		buffer = gpu_index_heap;
@@ -892,7 +1032,7 @@ void gpu_UnmapAlloc(struct gpu_alloc_handle_t handle)
 	}
 
 	//if(IS_INDEX_HANDLE(handle))
-	if(handle.index_alloc)
+	if(handle.is_index_alloc)
 	{
 		target = GL_ELEMENT_ARRAY_BUFFER;
 	}

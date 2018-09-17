@@ -49,17 +49,11 @@ void editor_InitUI();
 
 void editor_FinishUI();
 
-void editor_ProcessUI();
+void editor_MiscMenu();
 
-void editor_LockUI();
+void editor_EditorsMenu();
 
-void editor_UnlockUI();
 
-void editor_HideUI();
-
-void editor_ShowUI();
-
-void editor_EnumerateEditors();
 
 
 

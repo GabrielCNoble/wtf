@@ -10,11 +10,13 @@
 #include "model.h"
 #include "world.h"
 #include "bsp_common.h"
+
+#include "SDL2/SDL.h"
 //#include "bsp_file.h"
 //#include "bsp_cmp.h"
 
 
-#define BRUSH_MAX_VERTICES (1024*3)
+#define BRUSH_MAX_VERTICES (8192*3)
 
 
 enum BRUSH_TYPE
@@ -39,6 +41,7 @@ enum BRUSH_FLAGS
 	BRUSH_CLIP_POLYGONS = 1 << 5,
 	BRUSH_HAS_PREV_CLIPS = 1 << 6,
 	BRUSH_USE_WORLD_SPACE_TEX_COORDS = 1 << 7,
+	BRUSH_UPLOAD_DATA = 1 << 8,
 };
 
 
@@ -111,7 +114,7 @@ typedef struct brush_t
 	struct gpu_alloc_handle_t index_handle;
 
 	int type;
-	unsigned int element_buffer;
+	//unsigned int element_buffer;
 	int bm_flags;
 
 	intersection_record_t *intersection_records;
@@ -119,10 +122,15 @@ typedef struct brush_t
 	intersection_record_t *freed_records;
 
 
+	SDL_mutex *brush_mutex;
+
+	int update_count;
+
+
 	//intersection_record_t *
 
-	int max_intersections;
-	int *intersections;
+	//int max_intersections;
+	//int *intersections;
 
 
 }brush_t;
@@ -226,11 +234,15 @@ void brush_ClipBrushes();
 
 void brush_UpdateTexCoords();
 
+void brush_UploadBrushes();
+
+int brush_ProcessBrushesAsync(void *data);
+
 int brush_CheckBrushIntersection(brush_t *a, brush_t *b);
 
-void brush_AddIntersectionRecord(brush_t *add_to, brush_t *to_add);
+int brush_AddIntersectionRecord(brush_t *add_to, brush_t *to_add);
 
-void brush_RemoveIntersectionRecord(brush_t *remove_from, brush_t *to_remove, int free_record);
+int brush_RemoveIntersectionRecord(brush_t *remove_from, brush_t *to_remove, int free_record);
 
 intersection_record_t *brush_GetIntersectionRecord(brush_t *brush, brush_t *brush2);
 

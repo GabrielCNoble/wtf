@@ -11,6 +11,7 @@
 #include "SOIL.h"
 #include "c_memory.h"
 #include "r_gl.h"
+#include "log.h"
 
 #include "containers/stack_list.h"
 
@@ -176,6 +177,9 @@ int texture_Init()
 	default_texture_info->full_path = "default";
 
 	memory_Free(default_texture_data);
+
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 	return 1;
 }

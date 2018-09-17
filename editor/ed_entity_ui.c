@@ -18,6 +18,10 @@
 #include "..\..\common\gmath\vector.h"
 #include "..\..\common\gmath\matrix.h"
 
+#include "..\ed_ui_explorer.h"
+
+#include "ed_entity.h"
+
 //extern struct entity_def_t *entity_editor_current_entity_def;
 
 /* from r_main.c */
@@ -164,6 +168,37 @@ void editor_EntityEditorFinishUI()
 
 void editor_EntityEditorUpdateUI()
 {
+
+if(gui_ImGuiBeginMainMenuBar())
+	{
+		if(gui_ImGuiBeginMenu("File"))
+		{
+			if(gui_ImGuiMenuItem("New...", NULL, NULL, 1))
+			{
+				//editor_LevelEditorNewLevel();
+			}
+			if(gui_ImGuiMenuItem("Save...", NULL, NULL, 1))
+			{
+				editor_SetExplorerWriteFileCallback(editor_EntityEditorSaveEntityFileCallback);
+				editor_OpenExplorerWindow(NULL, EXPLORER_FILE_MODE_WRITE);
+			}
+			if(gui_ImGuiMenuItem("Open...", NULL, NULL, 1))
+			{
+				editor_SetExplorerReadFileCallback(editor_EntityEditorLoadEntityFileCallback);
+				editor_OpenExplorerWindow(NULL, EXPLORER_FILE_MODE_READ);
+			}
+			if(gui_ImGuiMenuItem("Exit", NULL, NULL, 1))
+			{
+				//engine_SetEngineState(ENGINE_QUIT);
+			}
+
+			gui_ImGuiEndMenu();
+		}
+
+		gui_ImGuiEndMainMenuBar();
+	}
+
+
 	editor_EntityEditorDefTree();
 	editor_EntityEditorAddComponentMenu();
 	editor_EntityEditorSetComponentValueMenu();
@@ -391,7 +426,7 @@ editor_EntityEditorSetPhysicsComponentValue(struct entity_handle_t entity)
 		{
 			if(gui_ImGuiMenuItem("Character collider", NULL, NULL, 1))
 			{
-				collider_defs = physics_CreateCharacterColliderDef("New character collider", 0.5, 0.5, 0.25, 0.5, 0.5, 2.0);
+				collider_defs = physics_CreateCharacterColliderDef("New character collider", 0.5, 0.5, 0.25, 0.5, 0.5, 2.0, 1.0);
 				keep_open = 0;
 			}
 
@@ -714,12 +749,17 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 					ed_entity_editor_update_preview_entity = 1;
 				}
 
-				if(gui_ImGuiDragFloat("max slope angle", &collider_def->slope_angle, 0.001, 0.0, 1.0, "%0.3f", 1.0))
+				if(gui_ImGuiDragFloat("max slope angle", &collider_def->max_slope_angle, 0.001, 0.0, 1.0, "%0.3f", 1.0))
 				{
 					ed_entity_editor_update_preview_entity = 1;
 				}
 
 				if(gui_ImGuiDragFloat("max walk speed", &collider_def->max_walk_speed, 0.01, 0.1, 10.0, "%0.3f", 1.0))
+				{
+					ed_entity_editor_update_preview_entity = 1;
+				}
+
+				if(gui_ImGuiDragFloat("Mass", &collider_def->mass, 0.01, 0.0, 100.0, "%.03f", 1.0))
 				{
 					ed_entity_editor_update_preview_entity = 1;
 				}
@@ -909,6 +949,9 @@ void editor_EntityEditorProp(struct entity_handle_t entity)
     int i;
     struct entity_t *entity_ptr;
     struct entity_prop_t *prop;
+    struct entity_prop_t *props;
+
+    char *preview_value;
 
     int name_len;
 
@@ -916,20 +959,63 @@ void editor_EntityEditorProp(struct entity_handle_t entity)
 
     if(entity_ptr)
 	{
+		props = (struct entity_prop_t *)entity_ptr->props.elements;
+
 		if(gui_ImGuiTreeNode("Props", "Props"))
 		{
-			for(i = 0; i < entity_ptr->prop_count; i++)
+			for(i = 0; i < entity_ptr->props.element_count; i++)
 			{
-				prop = entity_ptr->props + i;
+				prop = props + i;
 				gui_ImGuiPushIDi(i);
 
 				gui_ImGuiInputText(" ", prop->name, ENTITY_PROP_NAME_MAX_LEN, ImGuiInputTextFlags_EnterReturnsTrue);
 
 				gui_ImGuiSameLine(0.0, -1.0);
+
+
+				/*switch(prop->type)
+				{
+					case ENTITY_PROP_TYPE_INT:
+						preview_value = "int";
+					break;
+
+					case ENTITY_PROP_TYPE_FLOAT:
+						preview_value = "float";
+					break;
+
+					case ENTITY_PROP_TYPE_VEC2:
+						preview_value = "vec2_t";
+					break;
+				}
+
+				if(gui_ImGuiBeginCombo("Prop type", preview_value, 0))
+				{
+
+
+                    gui_ImGuiEndCombo();
+				}*/
+
+
 				if(gui_ImGuiButton("Remove", vec2(80.0, 16.0)))
 				{
 					entity_RemoveProp(entity, prop->name);
 				}
+
+				/*switch(prop->type)
+				{
+					case ENTITY_PROP_TYPE_INT:
+
+					break;
+
+					case ENTITY_PROP_TYPE_FLOAT:
+
+					break;
+
+					case ENTITY_PROP_TYPE_VEC2:
+
+					break;
+				}*/
+
 				gui_ImGuiPopID();
 			}
 

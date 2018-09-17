@@ -128,10 +128,13 @@
 typedef struct bsp_triangle_t
 {
 	struct bsp_triangle_t *next;
+	struct bsp_triangle_t *prev;
 
-	vertex_t a;
-	vertex_t b;
-	vertex_t c;
+	//vertex_t a;
+	//vertex_t b;
+	//vertex_t c;
+	vertex_t vertices[3];
+	vec3_t normal;
 
 	#ifndef REMOVE_ALL_DEPENDENCIES
 
@@ -307,7 +310,13 @@ bsp_polygon_t *bsp_ClipBrushes(brush_t *brush_list, int brush_list_count);
 bsp_polygon_t *bsp_ClipBrushes2(brush_t *brush_list, int brush_list_count);
 
 
+//bsp_polygon_t *bsp_ClipCoplanarPolygons(bsp_polygon_t *clip_to, bsp_polygon_t *to_clip);
 
+
+
+void bsp_ClipCoplanarLeafPolygons(bsp_node_t *bsp);
+
+void bsp_MergeCoplanarLeafTriangles(bsp_node_t *bsp, int *triangle_count);
 
 void bsp_TriangulateLeafPolygons(bsp_node_t *node, int *triangle_count);
 
@@ -322,6 +331,10 @@ void bsp_LinearizeBsp(struct bsp_node_t *bsp, vertex_t **vertices, int *vertex_c
 bsp_edge_t *bsp_BuildBevelEdges(bsp_polygon_t *brush_polygons);
 
 void bsp_ExpandBrushes(vec3_t box_extents);
+
+void bsp_LockBrushPolygons();
+
+void bsp_UnlockBrushPolygons();
 
 void bsp_CompileBsp(int remove_outside);
 

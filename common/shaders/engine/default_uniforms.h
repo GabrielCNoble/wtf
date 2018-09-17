@@ -49,12 +49,24 @@
 		float proj_param_b;
 		int shadow_map;
 	};
-
+	
+	struct bsp_node_t
+	{
+		vec4 normal_dist;
+		unsigned int children[2];
+		int align0;
+		int aling1;
+	};
 
 
 	layout(std140) uniform light_params_uniform_block
 	{
 		light_params_fields light_params[LIGHT_UNIFORM_BUFFER_SIZE];
+	};
+	
+	layout(std140) uniform world_bsp_uniform
+	{
+		bsp_node_t world_bsp[1024];
 	};
 
 	uniform sampler2D UNIFORM_texture_sampler0;
@@ -90,6 +102,9 @@ uniform mat4 UNIFORM_model_view_matrix;
 uniform int UNIFORM_r_frame;
 uniform int UNIFORM_r_width;
 uniform int UNIFORM_r_height;
+uniform int UNIFORM_r_clusters_per_row;
+uniform int UNIFORM_r_cluster_rows;
+uniform int UNIFORM_r_cluster_layers;
 uniform float UNIFORM_r_near;
 uniform float UNIFORM_r_far;
 

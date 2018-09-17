@@ -136,7 +136,7 @@ struct AllConvexResultCallback : public btCollisionWorld::ConvexResultCallback
 
 void physics_Jump(struct collider_handle_t character_collider, float jump_force)
 {
-	struct collider_t *collider;
+	struct character_collider_t *collider;
 	btRigidBody *rigid_body;
 
 	if(!world_collision_object)
@@ -146,25 +146,28 @@ void physics_Jump(struct collider_handle_t character_collider, float jump_force)
 		return;
 	}
 
-	collider = physics_GetColliderPointerHandle(character_collider);
-
-	if(collider->type != COLLIDER_TYPE_CHARACTER_COLLIDER)
+	if(character_collider.type != COLLIDER_TYPE_CHARACTER_COLLIDER)
 	{
 		return;
 	}
 
-	if(collider->character_collider_flags & CHARACTER_COLLIDER_FLAG_ON_GROUND)
+	collider = (struct character_collider_t *)physics_GetColliderPointerHandle(character_collider);
+
+
+	if(collider)
 	{
-		rigid_body = (btRigidBody *)collider->rigid_body;
-		rigid_body->activate(true);
-		rigid_body->applyCentralImpulse(btVector3(0.0, jump_force, 0.0));
-		//rigid_body->applyCentralForce(btVector3(0.0, jump_force, 0.0));
+		if(collider->flags & CHARACTER_COLLIDER_FLAG_ON_GROUND)
+		{
+			rigid_body = (btRigidBody *)collider->base.collision_object;
+			rigid_body->activate(true);
+			rigid_body->applyCentralImpulse(btVector3(0.0, jump_force, 0.0));
+		}
 	}
 }
 
 void physics_Move(struct collider_handle_t character_collider, vec3_t direction)
 {
-	struct collider_t *collider;
+	struct character_collider_t *collider;
 	btRigidBody *rigid_body;
 
 	if(!world_collision_object)
@@ -174,28 +177,29 @@ void physics_Move(struct collider_handle_t character_collider, vec3_t direction)
 		return;
 	}
 
-	collider = physics_GetColliderPointerHandle(character_collider);
-
-	if(collider->type != COLLIDER_TYPE_CHARACTER_COLLIDER)
+	if(character_collider.type != COLLIDER_TYPE_CHARACTER_COLLIDER)
 	{
-		return;
+        return;
 	}
 
-	if(direction.x != 0.0 && direction.z != 0.0)
+	collider = (struct character_collider_t *)physics_GetColliderPointerHandle(character_collider);
+
+	if(collider)
 	{
-		collider->character_collider_flags |= CHARACTER_COLLIDER_FLAG_WALKING;
-		rigid_body = (btRigidBody *)collider->rigid_body;
-		rigid_body->activate(true);
-		rigid_body->applyCentralForce(btVector3(direction.x, 0.0, direction.z));
+		if(direction.x != 0.0 && direction.z != 0.0)
+		{
+			collider->flags |= CHARACTER_COLLIDER_FLAG_WALKING;
+			rigid_body = (btRigidBody *)collider->base.collision_object;
+			rigid_body->activate(true);
+			rigid_body->applyCentralForce(btVector3(direction.x, 0.0, direction.z));
+		}
 	}
-
-
 }
 
 void physics_UpdateCharacterCollider(struct collider_handle_t character_collider)
 {
 
-	struct collider_t *collider;
+	struct character_collider_t *collider;
 	btRigidBody *rigid_body;
 	btCapsuleShape *capsule;
 	btTransform transform_from;
@@ -306,9 +310,9 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	}
 
 
-	collider = physics_GetColliderPointerHandle(character_collider);
+	collider = (struct character_collider_t *)physics_GetColliderPointerHandle(character_collider);
 
-	rigid_body = (btRigidBody *)collider->rigid_body;
+	rigid_body = (btRigidBody *)collider->base.collision_object;
 	//capsule = (btCapsuleShape *)rigid_body->getCollisionShape();
 
 	//to = btVector3(collider->position.x, collider->position.y - collider->step_height * 0.5, collider->position.z);
@@ -348,7 +352,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 //	c = result_callback.m_hitFractions.size();
 
 	bottom_hit_dist = collider->height * 0.5;
-	collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_ON_GROUND;
+	collider->flags &= ~CHARACTER_COLLIDER_FLAG_ON_GROUND;
 
 	//world_collision_mesh->getMeshInterface()->getLockedVertexIndexBase((unsigned char **)&triangles, vert_count, vert_type, vert_stride, (unsigned char **)&indexes, index_stride, index_count, index_type, 0);
 
@@ -358,7 +362,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	{
 	//	persistent_manifolds_count = narrow_phase->getNumManifolds();
 
-		for(i = 0; i < collider->contact_record_count; i++)
+		for(i = 0; i < collider->base.contact_record_count; i++)
 		{
 			/* go over all contacts... */
 			//persistent_manifold = persistent_manifolds[i];
@@ -435,7 +439,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 
 					/* distance from the contact point to
 					the middle of the collider... */
-					dist = collider->position.y - hit_point_y;
+					dist = collider->base.position.y - hit_point_y;
 
 					/* the smaller the hit time, the closer
 					it is to the middle of the box */
@@ -448,7 +452,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 
                     if(hit_time >= 0.0 && hit_time <= 1.0)
 					{
-						if(contact_slope > collider->max_slope)
+						if(contact_slope > collider->max_slope_angle)
 						{
 							/* vertical-ish surface (step or wall)... */
 
@@ -472,7 +476,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 									it's normal... */
 
 									smallest_horizontal_contact_normal = contact_normal;
-									collider->character_collider_flags |= CHARACTER_COLLIDER_FLAG_ON_GROUND;
+									collider->flags |= CHARACTER_COLLIDER_FLAG_ON_GROUND;
 								}
 							}
 
@@ -481,7 +485,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 								/* this hit is closer to the bottom of the box... */
 								smallest_horizontal_contact_time = hit_time;
 								smallest_horizontal_contact_normal = contact_normal;
-								collider->character_collider_flags |= CHARACTER_COLLIDER_FLAG_ON_GROUND;
+								collider->flags |= CHARACTER_COLLIDER_FLAG_ON_GROUND;
 							}
 
 						}
@@ -494,7 +498,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	}
 
 
-	if(collider->character_collider_flags & CHARACTER_COLLIDER_FLAG_ON_GROUND)
+	if(collider->flags & CHARACTER_COLLIDER_FLAG_ON_GROUND)
 	{
 		gravity_on_plane = -rigid_body->getGravity();
 
@@ -509,7 +513,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
         //collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_STEPPING_UP;
 	}
 
-	if(collider->character_collider_flags & CHARACTER_COLLIDER_FLAG_WALKING)
+	if(collider->flags & CHARACTER_COLLIDER_FLAG_WALKING)
 	{
 		linear_velocity = rigid_body->getLinearVelocity();
 
@@ -599,7 +603,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 
 
 
-	collider->character_collider_flags &= ~CHARACTER_COLLIDER_FLAG_WALKING;
+	collider->flags &= ~CHARACTER_COLLIDER_FLAG_WALKING;
 
 	//world_collision_mesh->getMeshInterface()->unLockVertexBase(0);
 }

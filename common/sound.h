@@ -5,21 +5,23 @@
 
 enum SOURCE_FLAGS
 {
-	SOURCE_FLAG_FADING_IN = 1,
-	SOURCE_FLAG_FADING_OUT = 1 << 1,
-	SOURCE_FLAG_PLAYING = 1 << 2,
-	SOURCE_FLAG_PAUSED = 1 << 3,
-	SOURCE_FLAG_STOPPED = 1 << 4,
-	SOURCE_FLAG_JUST_RESUMED = 1 << 5,
-	SOURCE_FLAG_JUST_PAUSED = 1 << 6,
-	SOURCE_FLAG_JUST_STOPPED = 1 << 7,
+	SOURCE_FLAG_PLAY = 1,
+	SOURCE_FLAG_PAUSE = 1 << 1,
+	SOURCE_FLAG_RESUME = 1 << 2,
+	SOURCE_FLAG_STOP = 1 << 3,
 
-	SOURCE_FLAG_START_SOUND = 1 << 8,
-	SOURCE_FLAG_PAUSE_SOUND = 1 << 9,
-	SOURCE_FLAG_STOP_SOUND = 1 << 10,
+	SOURCE_FLAG_FADE_IN = 1 << 4,
+	SOURCE_FLAG_FADE_OUT = 1 << 5,
 
-	SOURCE_FLAG_ASSIGNED = 1 << 11,
-	SOURCE_FLAG_LOOP = 1 << 12,
+	SOURCE_FLAG_LOOP = 1 << 6,
+	SOURCE_FLAG_RELATIVE = 1 << 7,
+
+	SOURCE_FLAG_FADING_IN = 1 << 8,
+	SOURCE_FLAG_FADING_OUT = 1 << 9,
+	SOURCE_FLAG_PLAYING = 1 << 10,
+	SOURCE_FLAG_PAUSED = 1 << 11,
+	SOURCE_FLAG_STOPPED = 1 << 12,
+	SOURCE_FLAG_ASSIGNED = 1 << 13,
 };
 
 
@@ -81,6 +83,7 @@ struct sound_source_t
 {
 	unsigned int source_handle;
 	unsigned int flags;
+	float current_gain;
 	struct sound_source_params_t params;
 };
 
@@ -119,6 +122,10 @@ void sound_SetSoundData(struct sound_handle_t sound, void *data, int size, int f
 
 struct sound_handle_t sound_LoadSound(char *file_name, char *name);
 
+void sound_DestroySoundHandle(struct sound_handle_t sound);
+
+void sound_DestroySound(char *name);
+
 struct sound_handle_t sound_GenerateWhiteNoise(char *name, float length);
 
 struct sound_handle_t sound_GenerateSineWave(char *name, float length, float frequency);
@@ -147,15 +154,22 @@ int sound_EmitSoundCommand(int type, int source);
 
 
 
-int sound_PlaySound(struct sound_handle_t sound, vec3_t position, float gain, int loop);
+int sound_PlaySound(struct sound_handle_t sound, vec3_t position, float gain, int flags);
 
-void sound_PauseSound(int sound_source);
+void sound_PauseSound(int sound_source, int fade_out);
 
-void sound_ResumeSound(int sound_source);
+void sound_ResumeSound(int sound_source, int fade_in);
 
-void sound_StopSound(int sound_source);
+void sound_StopSound(int sound_source, int fade_out);
+
+
+
 
 int sound_IsSourcePlaying(int sound_source);
+
+int sound_IsSourceAssigned(int sound_source);
+
+void sound_SetSourcePosition(int sound_source, vec3_t position);
 
 void sound_ResumeAllSounds();
 

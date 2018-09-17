@@ -10,6 +10,7 @@
 #include "w_common.h"
 #include "material.h"
 #include "c_memory.h"
+#include "log.h"
 
 #include "GL\glew.h"
 //#include "draw.h"
@@ -93,6 +94,8 @@ int camera_Init()
 
 
 	//renderer_RegisterCallback(camera_UpdateCamerasCallback, RENDERER_RESOLUTION_CHANGE_CALLBACK);
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 	return 1;
 }
@@ -278,6 +281,12 @@ void camera_DestroyCamera(camera_t *camera)
 {
 	if(camera)
 	{
+
+		if(camera == active_camera)
+		{
+			camera_SetCamera(NULL);
+		}
+
 		if(camera == cameras)
 		{
 			cameras = cameras->next;

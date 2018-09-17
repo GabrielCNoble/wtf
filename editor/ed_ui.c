@@ -155,83 +155,11 @@ void editor_FinishUI()
 	editor_FinishExplorerUI();
 }
 
-void editor_ProcessUI()
+
+void editor_MiscMenu()
 {
-	editor_t *editor;
-	editor_t *selected_editor;
-
-
 	if(gui_ImGuiBeginMainMenuBar())
 	{
-		if(gui_ImGuiBeginMenu("File"))
-		{
-			if(gui_ImGuiMenuItem("New...", NULL, NULL, 1))
-			{
-				editor_LevelEditorNewLevel();
-			}
-			if(gui_ImGuiMenuItem("Save...", NULL, NULL, 1))
-			{
-				editor_OpenExplorerWindow(NULL, EXPLORER_FILE_MODE_WRITE);
-			}
-			if(gui_ImGuiMenuItem("Open...", NULL, NULL, 1))
-			{
-				editor_OpenExplorerWindow(NULL, EXPLORER_FILE_MODE_READ);
-			}
-			if(gui_ImGuiMenuItem("Exit", NULL, NULL, 1))
-			{
-				engine_SetEngineState(ENGINE_QUIT);
-			}
-
-			gui_ImGuiEndMenu();
-		}
-
-		if(gui_ImGuiBeginMenu("Renderer"))
-		{
-			if(r_flat)
-			{
-				if(gui_ImGuiMenuItem("Disable fullbright", NULL, NULL, 1))
-				{
-					r_flat = 0;
-				}
-			}
-			else
-			{
-				if(gui_ImGuiMenuItem("Enable fullbright", NULL, NULL, 1))
-				{
-					r_flat = 1;
-				}
-			}
-
-			//if(gui_ImGuiBeginMenu("Renderer batch size"))
-			//{
-             //   gui_ImGuiBeginChild("Renderer batch size", vec2(520.0, 50.0), 0, 0);
-
-             //   gui_ImGuiSliderInt("Batch size", &r_max_batch_size, 0, 1000, "%d");
-
-                /*gui_ImGuiText("Current batch size: %d triangles\n", r_max_batch_size);
-
-                if(gui_ImGuiButton("+", vec2(20.0, 20.0)))
-				{
-					r_max_batch_size++;
-				}
-				if(gui_ImGuiButton("-", vec2(20.0, 20.0)))
-				{
-					if(r_max_batch_size)
-					{
-						r_max_batch_size--;
-					}
-				}*/
-
-             //   gui_ImGuiEndChild();
-			//	gui_ImGuiEndMenu();
-			//}
-
-
-
-
-			gui_ImGuiEndMenu();
-		}
-
 		if(gui_ImGuiBeginMenu("Misc"))
 		{
 			if(gui_ImGuiMenuItem("Reload shaders", NULL, NULL, 1))
@@ -242,53 +170,64 @@ void editor_ProcessUI()
 			{
 				script_ReloadScripts();
 			}
+			if(gui_ImGuiMenuItem("Reload path", NULL, NULL, 1))
+			{
+				path_ReadCfg();
+			}
 			if(gui_ImGuiMenuItem("Check memory", NULL, NULL, 1))
 			{
 				memory_CheckCorrupted();
 			}
 			if(gui_ImGuiMenuItem("Report memory", NULL, NULL, 1))
 			{
-				memory_Report();
-			}
-			if(gui_ImGuiMenuItem("Reload path cfg", NULL, NULL, 1))
-			{
-				path_ReadCfg();
-			}
-
-			if(r_debug)
-			{
-				if(gui_ImGuiMenuItem("Disable debug", NULL, NULL, 1))
-				{
-					renderer_Debug(0, r_debug_verbose);
-				}
-			}
-			else
-			{
-				if(gui_ImGuiMenuItem("Enable debug", NULL, NULL, 1))
-				{
-					renderer_Debug(1, r_debug_verbose);
-				}
+				memory_Report(1);
 			}
 
 
-			if(r_debug_verbose)
-			{
-				if(gui_ImGuiMenuItem("Disable verbose debug", NULL, NULL, 1))
+				/*if(r_debug)
 				{
-					renderer_Debug(r_debug, 0);
+					if(gui_ImGuiMenuItem("Disable debug", NULL, NULL, 1))
+					{
+						renderer_Debug(0, r_debug_verbose);
+					}
 				}
-			}
-			else
-			{
-				if(gui_ImGuiMenuItem("Enable verbose debug", NULL, NULL, 1))
+				else
 				{
-					renderer_Debug(r_debug, 1);
+					if(gui_ImGuiMenuItem("Enable debug", NULL, NULL, 1))
+					{
+						renderer_Debug(1, r_debug_verbose);
+					}
 				}
-			}
+
+
+				if(r_debug_verbose)
+				{
+					if(gui_ImGuiMenuItem("Disable verbose debug", NULL, NULL, 1))
+					{
+						renderer_Debug(r_debug, 0);
+					}
+				}
+				else
+				{
+					if(gui_ImGuiMenuItem("Enable verbose debug", NULL, NULL, 1))
+					{
+						renderer_Debug(r_debug, 1);
+					}
+				}*/
 
 			gui_ImGuiEndMenu();
 		}
+		gui_ImGuiEndMainMenuBar();
+	}
+}
 
+void editor_EditorsMenu()
+{
+	struct editor_t *editor;
+	struct editor_t *selected_editor;
+
+	if(gui_ImGuiBeginMainMenuBar())
+	{
 		if(gui_ImGuiBeginMenu("Editors"))
 		{
 			editor = ed_editors;
@@ -311,46 +250,8 @@ void editor_ProcessUI()
 		}
 		gui_ImGuiEndMainMenuBar();
 	}
-
-
-	editor_UpdateExplorerUI();
 }
 
-void editor_LockUI()
-{
-	//gui_SetIgnoreMouse((widget_t *)menu_bar);
-}
-
-void editor_UnlockUI()
-{
-	//gui_SetReceiveMouse((widget_t *)menu_bar);
-}
-
-void editor_HideUI()
-{
-
-}
-
-void editor_ShowUI()
-{
-
-}
-
-void editor_EnumerateEditors()
-{
-	/*editor_t *editor;
-	editor = ed_editors;
-	option_t *option;
-
-	gui_RemoveAllOptions(editors_list);
-
-	while(editor)
-	{
-		option = gui_AddOptionToList(editors_list, editor->name, editor->name);
-		option->widget.data = editor->name;
-		editor = editor->next;
-	}*/
-}
 
 
 

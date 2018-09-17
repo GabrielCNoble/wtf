@@ -59,6 +59,12 @@ void *entity_ScriptGetEntityForwardVector(struct entity_handle_t entity, int loc
 
 
 
+void entity_ScriptTranslate(vec3_t *direction);
+
+void entity_ScriptTranslateEntity(struct entity_handle_t entity, vec3_t *direction);
+
+
+
 void entity_ScriptRotate(vec3_t *axis, float angle, int set);
 
 void entity_ScriptRotateEntity(struct entity_handle_t entity, vec3_t *axis, float angle, int set);
@@ -111,6 +117,7 @@ void entity_ScriptSetComponentValue(struct component_handle_t component, struct 
 void entity_ScriptGetComponentValue(struct component_handle_t component, struct script_string_t *field_name, void *value);
 
 
+
 /*
 =====================================
 =====================================
@@ -157,8 +164,17 @@ void entity_ScriptSetEntityPropValue(struct entity_handle_t entity, struct scrip
 
 void entity_ScriptGetEntityPropValue(struct entity_handle_t entity, struct script_string_t *name, void *value);
 
-
 int entity_ScriptEntityHasProp(struct entity_handle_t entity, struct script_string_t *name);
+
+
+
+
+int entity_ScriptGetTrigger(struct script_string_t *name);
+
+void entity_ScriptSetTriggerPosition(int script_index, vec3_t *position);
+
+int entity_ScriptIsTriggered(int trigger_index);
+
 
 /*
 =====================================

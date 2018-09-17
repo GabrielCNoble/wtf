@@ -46,10 +46,10 @@
 			int row;
 			int layer;
 
-			cluster = min(int((x / width) * float(CLUSTERS_PER_ROW)), CLUSTERS_PER_ROW);
-			row = min(int((y / height) * float(CLUSTER_ROWS)), CLUSTER_ROWS);
-			layer = int((log(view_z / znear) / log(zfar / znear)) * float(CLUSTER_LAYERS));
-			layer = max(min(layer, CLUSTER_LAYERS), 0);
+			cluster = min(int((x / float(UNIFORM_r_width)) * float(UNIFORM_r_clusters_per_row)), UNIFORM_r_clusters_per_row);
+			row = min(int((y / float(UNIFORM_r_height)) * float(UNIFORM_r_cluster_rows)), UNIFORM_r_cluster_rows);
+			layer = int((log(view_z / znear) / log(zfar / znear)) * float(UNIFORM_r_cluster_layers));
+			layer = max(min(layer, UNIFORM_r_cluster_layers), 0);
 			return ivec3(cluster, row, layer);
 		}
 
@@ -216,17 +216,19 @@
 
 			//light_space_vec = normalize(light_space_vec);
 
-			if(pixel_z < light_z - 0.1)
+			return float(pixel_z >= light_z - 0.1);
+
+			/*if(pixel_z < light_z - 0.1)
 			{
 				shadow = 0.0;
-			}
+			}*/
 
 			//if(pixel_z + 0.00000 < light_z)
 			//{
 			//	shadow = 0.25;
 			//}
 
-			return shadow;
+			//return shadow;
 		}
 
 		/*
@@ -237,14 +239,7 @@
 
 		vec4 pixel_albedo()
 		{
-			if(bool(UNIFORM_material_flags & MATERIAL_USE_DIFFUSE_TEXTURE))
-			{
-				return texture2D(UNIFORM_texture_sampler0, tex_coords);
-			}
-			else
-			{
-				return gl_FrontMaterial.diffuse;
-			}
+			return mix(gl_FrontMaterial.diffuse, texture2D(UNIFORM_texture_sampler0, tex_coords), float(bool(UNIFORM_material_flags & MATERIAL_USE_DIFFUSE_TEXTURE)));
 		}
 
 		vec3 pixel_normal()
@@ -260,8 +255,8 @@
 
 				normal = (texture2D(UNIFORM_texture_sampler1, tex_coords).rgb * 2.0 - 1.0);
 
-				normal.x = mix(normal.x, -normal.x, clamp(float(bool(UNIFORM_material_flags & MATERIAL_INVERT_NORMAL_X)), 0.0, 1.0));
-				normal.y = mix(normal.y, -normal.y, clamp(float(bool(UNIFORM_material_flags & MATERIAL_INVERT_NORMAL_Y)), 0.0, 1.0));
+				normal.x = mix(normal.x, -normal.x, float(bool(UNIFORM_material_flags & MATERIAL_INVERT_NORMAL_X)));
+				normal.y = mix(normal.y, -normal.y, float(bool(UNIFORM_material_flags & MATERIAL_INVERT_NORMAL_Y)));
 
 				return normalize(tbn * normal);
 			}
@@ -292,7 +287,7 @@
 			vec3 specular;
 			vec3 diffuse;
 
-			vec4 accum = vec4(0.0);
+			vec4 accum = vec4(albedo * 0.5, 0.0);
 
 
 			shininess = 512.0;
@@ -312,6 +307,7 @@
 					light_color = light_params[light_index].color_energy.rgb;
 
 					distance = length(light_vec);
+					//distance = dot(light_vec, light_vec);
 					energy = light_params[light_index].color_energy.a;
 					radius = light_params[light_index].position_radius.w;
 
@@ -322,9 +318,9 @@
 					light_vec /= distance;
 					half_vec = normalize(eye_vec + light_vec);
 
-					attenuation = (1.0 / (distance)) * max(1.0 - (distance / radius), 0.0);
-					diffuse = ((albedo / 3.14159265) * max(dot(light_vec, normal), 0.0)) * attenuation * energy;
-					specular = light_color * pow(max(dot(half_vec, normal), 0.0), shininess) * attenuation * energy * 1.5;
+					attenuation = (1.0 / (distance)) * max(1.0 - (distance / radius), 0.0) * energy;
+					diffuse = ((albedo / 3.14159265) * max(dot(light_vec, normal), 0.0)) * attenuation;
+					specular = light_color * pow(max(dot(half_vec, normal), 0.0), shininess) * attenuation * 1.5;
 
 					accum += ((vec4(diffuse * light_color, 1.0)) + vec4(specular, 1.0)) * shadow;
 				}

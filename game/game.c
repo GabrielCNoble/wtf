@@ -9,12 +9,22 @@
 #include "..\common\l_main.h"
 #include "..\common\camera.h"
 #include "..\common\entity.h"
+#include "..\common\r_main.h"
+#include "..\common\script\script.h"
 
 int game_state = GAME_STATE_NONE;
 
 extern int r_window_width;
 extern int r_window_height;
 struct world_script_t *world_script;
+
+
+void game_ScriptSetGameState(int state)
+{
+    game_state = state;
+}
+
+
 
 void game_Init(int argc, char *argv[])
 {
@@ -23,6 +33,15 @@ void game_Init(int argc, char *argv[])
 	engine_SetEngineState(ENGINE_PAUSED);
 
 	renderer_Debug(0, 0);
+	//renderer_Fullscreen(1);
+
+
+	script_RegisterGlobalFunction("void game_SetGameState(int state)", game_ScriptSetGameState);
+    script_RegisterEnum("GAME_STATE");
+    script_RegisterEnumValue("GAME_STATE", "GAME_STATE_PLAYING", GAME_STATE_PLAYING);
+    script_RegisterEnumValue("GAME_STATE", "GAME_STATE_GAME_OVER", GAME_STATE_GAME_OVER);
+    script_RegisterEnumValue("GAME_STATE", "GAME_STATE_QUIT", GAME_STATE_QUIT);
+
 
 
 	input_RegisterKey(SDL_SCANCODE_ESCAPE);
@@ -57,23 +76,193 @@ void game_Init(int argc, char *argv[])
 
 
 	world_script = world_LoadScript("map.was", "level");
-	sound_LoadSound("pokey_intro.ogg", "pokey_intro");
-	sound_LoadSound("pokey_loop.ogg", "pokey_loop");
+	//sound_LoadSound("pokey_intro.ogg", "pokey_intro");
+	//sound_LoadSound("pokey_loop.ogg", "pokey_loop");
 
-	sound_LoadSound("wilhelm.ogg", "death");
+	//sound_LoadSound("wilhelm.ogg", "death");
 
-	sound_LoadSound("explode3.wav", "explosion0");
+	/*sound_LoadSound("explode3.wav", "explosion0");
 	sound_LoadSound("explode4.wav", "explosion1");
 	sound_LoadSound("explode5.wav", "explosion2");
+
+	sound_LoadSound("SCREAM_4.ogg", "scream");
+
+	sound_LoadSound("pain0.ogg", "pain");
+
+	sound_LoadSound("laser4.wav", "laser");*/
+
+	/*sound_LoadSound("doh0.ogg", "doh0");
+	sound_LoadSound("doh1.ogg", "doh1");
+	sound_LoadSound("doh2.ogg", "doh2");
+	sound_LoadSound("doh3.ogg", "doh3");
+	sound_LoadSound("doh4.ogg", "doh4");
+	sound_LoadSound("doh5.ogg", "doh5");
+	sound_LoadSound("doh6.ogg", "doh6");
+	sound_LoadSound("doh7.ogg", "doh7");
+	sound_LoadSound("doh8.ogg", "doh8");
+	sound_LoadSound("doh9.ogg", "doh9");
+	sound_LoadSound("doh10.ogg", "doh10");
+	sound_LoadSound("doh11.ogg", "doh11");
+	sound_LoadSound("doh12.ogg", "doh12");
+	sound_LoadSound("doh13.ogg", "doh13");
+	sound_LoadSound("doh14.ogg", "doh14");
+	sound_LoadSound("doh15.ogg", "doh15");
+	sound_LoadSound("doh16.ogg", "doh16");
+	sound_LoadSound("doh17.ogg", "doh17");
+	sound_LoadSound("doh18.ogg", "doh18");
+	sound_LoadSound("doh19.ogg", "doh19");
+	sound_LoadSound("doh20.ogg", "doh20");*/
+
+
+	//sound_LoadSound("giygas_lair.ogg", "text");
+	//sound_LoadSound("prayer_for_safety.ogg", "won");
 
 	int explosion_texture = texture_LoadTexture("explosion2.ptx", "explosion", 0);
 	struct particle_system_script_t *ps_script = particle_LoadParticleSystemScript("explosion.pas", "explosion");
 	particle_CreateParticleSystemDef("explosion", 1, 60, 1, 0, explosion_texture, ps_script);
+
+	camera_t *camera;
+
+
+	camera = camera_GetActiveCamera();
+    camera->world_position.x = -350.0;
+    camera->world_position.y = -350.0;
+    camera->world_position.z = -350.0;
+    camera_ComputeWorldToCameraMatrix(camera);
 }
 
 void game_Finish()
 {
 
+}
+
+void game_Options()
+{
+
+	int current_shadow_maps_resolution;
+	int current_frame_rate_clamping;
+	//char current_shadow_maps_resolution_text[512];
+
+	char *current_shadow_maps_resolution_text;
+	char *current_frame_rate_clamping_text;
+
+	gui_ImGuiPushItemWidth(230.0);
+
+	if(!renderer_GetFullscreen())
+	{
+		if(gui_ImGuiButton("Fullscreen", vec2(230.0, 32.0)))
+		{
+			renderer_Fullscreen(1);
+		}
+	}
+	else
+	{
+		if(gui_ImGuiButton("Windowed", vec2(230.0, 32.0)))
+		{
+            renderer_Fullscreen(0);
+		}
+	}
+
+	current_shadow_maps_resolution = renderer_GetShadowMapResolution();
+
+	switch(current_shadow_maps_resolution)
+	{
+		case 1024:
+			current_shadow_maps_resolution_text = "High";
+		break;
+
+		case 512:
+			current_shadow_maps_resolution_text = "Medium";
+		break;
+
+		case 256:
+			current_shadow_maps_resolution_text = "Low";
+		break;
+
+		case 128:
+			current_shadow_maps_resolution_text = "Very low";
+		break;
+
+		default:
+			current_shadow_maps_resolution_text = "Off";
+		break;
+	}
+
+
+
+
+	current_frame_rate_clamping = renderer_GetFrameRateClamping();
+
+	switch(current_frame_rate_clamping)
+	{
+		case 0:
+            current_frame_rate_clamping_text = "Uncapped";
+		break;
+
+		case 1:
+			current_frame_rate_clamping_text = "60 fps";
+		break;
+
+		case 2:
+			current_frame_rate_clamping_text = "30 fps";
+		break;
+	}
+
+
+
+	//sprintf(current_shadow_maps_resolution_text, "%d", current_shadow_maps_resolution);
+
+	if(gui_ImGuiBeginCombo("Shadows", current_shadow_maps_resolution_text, 0))
+	{
+		if(gui_ImGuiMenuItem("High", NULL, NULL, 1))
+		{
+			renderer_SetShadowMapResolution(1024);
+			gui_ImGuiCloseCurrentPopup();
+		}
+		if(gui_ImGuiMenuItem("Medium", NULL, NULL, 1))
+		{
+			renderer_SetShadowMapResolution(512);
+			gui_ImGuiCloseCurrentPopup();
+		}
+		if(gui_ImGuiMenuItem("Low", NULL, NULL, 1))
+		{
+			renderer_SetShadowMapResolution(256);
+			gui_ImGuiCloseCurrentPopup();
+		}
+		if(gui_ImGuiMenuItem("Very low", NULL, NULL, 1))
+		{
+			renderer_SetShadowMapResolution(128);
+			gui_ImGuiCloseCurrentPopup();
+		}
+		if(gui_ImGuiMenuItem("Off", NULL, NULL, 1))
+		{
+			renderer_SetShadowMapResolution(0);
+			gui_ImGuiCloseCurrentPopup();
+		}
+
+		gui_ImGuiEndCombo();
+	}
+
+
+	if(gui_ImGuiBeginCombo("Frame rate capping", current_frame_rate_clamping_text, 0))
+	{
+        if(gui_ImGuiMenuItem("Uncapped", NULL, NULL, 1))
+		{
+			renderer_SetFrameRateClamping(0);
+		}
+		if(gui_ImGuiMenuItem("60 fps", NULL, NULL, 1))
+		{
+			renderer_SetFrameRateClamping(1);
+		}
+		if(gui_ImGuiMenuItem("30 fps", NULL, NULL, 1))
+		{
+			renderer_SetFrameRateClamping(2);
+		}
+
+		gui_ImGuiEndCombo();
+	}
+
+	gui_ImGuiPopItemWidth();
 }
 
 void game_Main(float delta_time)
@@ -88,6 +277,11 @@ void game_Main(float delta_time)
 
 	int life_value;
 
+	static int main_menu_options_open = 0;
+	static int game_menu_options_open = 0;
+
+
+
 	switch(game_state)
 	{
 		case GAME_STATE_MAIN_MENU:
@@ -96,20 +290,42 @@ void game_Main(float delta_time)
 
 			gui_ImGuiBegin("Main menu", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar);
 
-			if(gui_ImGuiButton("Start", vec2(230.0, 32.0)))
+			if(!main_menu_options_open)
 			{
-				game_state = GAME_STATE_PLAYING;
-				world_SetWorldScript(world_script);
-				bsp_LoadBsp("map.bsp");
+				if(gui_ImGuiButton("Start", vec2(230.0, 32.0)))
+				{
+					game_state = GAME_STATE_PLAYING;
+					world_SetWorldScript(world_script);
+					bsp_LoadBsp("map.bsp");
+				}
+
+				if(gui_ImGuiButton("Options", vec2(230.0, 32.0)))
+				{
+                    main_menu_options_open = 1;
+				}
+
+				if(gui_ImGuiButton("Quit", vec2(230.0, 32.0)))
+				{
+					game_state = GAME_STATE_QUIT;
+				}
+			}
+			else
+			{
+
+				game_Options();
+
+				if(gui_ImGuiButton("Back", vec2(230.0, 32.0)))
+				{
+					main_menu_options_open = 0;
+				}
 			}
 
-			if(gui_ImGuiButton("Quit", vec2(230.0, 32.0)))
-			{
-				game_state = GAME_STATE_QUIT;
-			}
 			gui_ImGuiEnd();
 
 			gui_ImGuiPopFont();
+
+			return;
+
 		break;
 
 		case GAME_STATE_GAME_OVER:
@@ -225,17 +441,37 @@ void game_Main(float delta_time)
 
 			gui_ImGuiBegin("Main menu", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar);
 
-			if(gui_ImGuiButton("Resume", vec2(230.0, 32.0)))
+			if(!game_menu_options_open)
 			{
-				game_state = GAME_STATE_PLAYING;
+				if(gui_ImGuiButton("Resume", vec2(230.0, 32.0)))
+				{
+					game_state = GAME_STATE_PLAYING;
+				}
+
+				if(gui_ImGuiButton("Options", vec2(230.0, 32.0)))
+				{
+                    game_menu_options_open = 1;
+				}
+
+				if(gui_ImGuiButton("Quit", vec2(230.0, 32.0)))
+				{
+					game_state = GAME_STATE_QUIT;
+				}
+			}
+			else
+			{
+				game_Options();
+
+				if(gui_ImGuiButton("Back", vec2(230.0, 32.0)))
+				{
+					game_menu_options_open = 0;
+				}
 			}
 
-			if(gui_ImGuiButton("Quit", vec2(230.0, 32.0)))
-			{
-                game_state = GAME_STATE_QUIT;
-			}
 			gui_ImGuiEnd();
 			gui_ImGuiPopFont();
+
+			return;
 		break;
 
 		case GAME_STATE_QUIT:
@@ -243,6 +479,9 @@ void game_Main(float delta_time)
 			engine_SetEngineState(ENGINE_QUIT);
 		break;
 	}
+
+	main_menu_options_open = 0;
+	game_menu_options_open = 0;
 }
 
 

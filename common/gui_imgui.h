@@ -270,6 +270,8 @@ int gui_ImGuiSliderFloat(const char *label, float *v, float v_min, float v_max, 
 
 int gui_ImGuiSliderFloat3(const char *label, float *v, float v_min, float v_max, const char *format, float power);
 
+int gui_ImGuiSliderFloat4(const char *label, float *v, float v_min, float v_max, const char *format, float power);
+
 int gui_ImGuiSliderAngle(const char *label, float *v_rad, float v_degrees_min, float v_degrees_max);
 
 int gui_ImGuiSliderInt(const char *label, int *v, int v_min, int v_max, const char *format);
@@ -369,6 +371,8 @@ int gui_ImGuiIsItemVisible();
 int gui_ImGuiIsItemDeactivated();
 
 int gui_ImGuiIsAnyItemActive();
+
+vec2_t gui_ImGuiCalcTexSize(const char *text, const char *text_end, int hide_text_after_double_hash, float wrap_width);
 
 
 /*

@@ -59,18 +59,24 @@ enum SCRIPT_VAR_TYPE
 };
 
 
-typedef struct
+struct script_prop_t
+{
+	char *name;
+	int size;
+	int type;
+	void *memory;
+};
+
+
+/*typedef struct
 {
 	char *var;
 	int type;
 	int sub_type;
 	char *struct_name;
-}script_var_t;
+}script_var_t;*/
 
-struct script_invocation_data_t
-{
-	char data[64];
-};
+
 
 
 enum SCRIPT_ARG_TYPE
@@ -102,6 +108,12 @@ struct script_arg_t
 	}arg;
 };
 
+struct script_execution_data_t
+{
+	char data[64];
+};
+
+
 #define MAX_SCRIPT_ARGS 8
 
 struct script_entry_point_t
@@ -110,6 +122,19 @@ struct script_entry_point_t
 	int arg_count;
 	struct script_arg_t args[MAX_SCRIPT_ARGS];
 };
+
+#define MAX_SCRIPT_ENTRY_POINTS 16
+
+struct script_context_t
+{
+	void *execution_context;
+	struct script_execution_data_t execution_data;
+
+	int entry_point_count;
+	struct script_entry_point_t entry_points[MAX_SCRIPT_ENTRY_POINTS];
+};
+
+
 
 struct script_t
 {

@@ -13,24 +13,24 @@ typedef struct
 
 struct gpu_alloc_handle_t
 {
-    unsigned index_alloc : 1;
+    unsigned is_index_alloc : 1;
     unsigned alloc_index : 31;
 };
 
 #define INVALID_GPU_ALLOC_HANDLE (struct gpu_alloc_handle_t){1, INVALID_GPU_ALLOC_INDEX}
 
-typedef struct
+struct gpu_head_t
 {
 	int start;
 	int size;
 	int align_offset;
-}gpu_head_t;
+};
 
 typedef struct
 {
 	int size;
 	int cursor;
-	gpu_head_t *list;
+	struct gpu_head_t *list;
 	int free_stack_top;
 	//int free_stack_size;
 	int *free_stack;
@@ -73,6 +73,8 @@ struct gpu_alloc_handle_t gpu_AllocIndexesAlign(int size, int alignment);
 struct gpu_alloc_handle_t gpu_AllocAlign(int size, int alignment, int index_alloc);
 
 struct gpu_alloc_handle_t gpu_Realloc(struct gpu_alloc_handle_t handle, int size);
+
+int gpu_IsAllocValid(struct gpu_alloc_handle_t handle);
 
 /*
 ========================================================

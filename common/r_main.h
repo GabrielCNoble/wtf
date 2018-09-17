@@ -34,6 +34,8 @@ int renderer_BindTexture(int texture_target, int texture);
 
 void renderer_SetClearColor(float r, float g, float b);
 
+void renderer_SetUniformBuffers();
+
 /*
 ====================================================================
 ====================================================================
@@ -107,17 +109,34 @@ void renderer_BindWindowBuffer(int clear, int read);
 ====================================================================
 */
 
+int renderer_GetFullscreen();
+
 void renderer_Fullscreen(int enable);
 
 void renderer_ToggleFullscreen();
+
+
 
 void renderer_Multisample(int enable);
 
 void renderer_ToggleMultisample();
 
+
+
 void renderer_DeferredRenderer(int enable);
 
 void renderer_Fullbright(int enable);
+
+
+void renderer_SetShadowMapResolution(int resolution);
+
+int renderer_GetShadowMapResolution();
+
+
+void renderer_SetFrameRateClamping(int clamping);
+
+int renderer_GetFrameRateClamping();
+
 
 /*
 ====================================================================

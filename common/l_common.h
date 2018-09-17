@@ -20,7 +20,7 @@
 #define MAX_TRIANGLES_PER_LIGHT (MAX_INDEXES_PER_FRUSTUM*2)
 
 
-#define SHADOW_MAP_RESOLUTION 1024		/* fixed size shadow maps for all lights... */
+#define SHADOW_MAP_RESOLUTION 512		/* fixed size shadow maps for all lights... */
 #define SHARED_SHADOW_MAP_HEIGHT 8192
 #define SHARED_SHADOW_MAP_WIDTH 8192
 
@@ -98,7 +98,7 @@ set of clusters belong to... */
 //}view_clusters_t;
 
 
-struct light_cluster_t
+/*struct light_cluster_t
 {
 	unsigned x0 : 6;
 	unsigned y0 : 5;
@@ -107,6 +107,13 @@ struct light_cluster_t
 	unsigned x1 : 6;
 	unsigned y1 : 5;
 	unsigned z1 : 5;
+};*/
+
+struct light_cluster_t
+{
+	unsigned x : 10;
+	unsigned y : 10;
+	unsigned z : 10;
 };
 
 typedef struct
@@ -170,7 +177,8 @@ typedef struct
 //	unsigned int first_cluster;
 //	unsigned int last_cluster;
 
-	struct light_cluster_t cluster;
+	struct light_cluster_t first_cluster;
+	struct light_cluster_t last_cluster;
 
 }light_params_t;
 
@@ -190,6 +198,14 @@ struct gpu_light_t
 	float proj_param_a;
 	float proj_param_b;
 	int shadow_map;
+};
+
+struct gpu_bsp_node_t
+{
+	vec4_t normal_dist;
+	unsigned int children[2];
+	int align0;
+	int align1;
 };
 
 

@@ -3,6 +3,8 @@
 
 #include "ent_common.h"
 
+#include "macros.h"
+
 #include "vector.h"
 #include "matrix.h"
 #include "model.h"
@@ -43,13 +45,13 @@ void entity_Finish();
 
 
 
-__attribute__((always_inline)) inline void *entity_GetComponentPointer(struct component_handle_t component);
+static __attribute__((always_inline)) inline void *entity_GetComponentPointer(struct component_handle_t component);
 
-__attribute__((always_inline)) inline  void *entity_GetComponentPointerIndex(int index, int type, int def);
+static __attribute__((always_inline)) inline void *entity_GetComponentPointerIndex(int index, int type, int def);
 
-__attribute__((always_inline)) inline  struct entity_transform_t *entity_GetWorldTransformPointer(struct component_handle_t component);
+static __attribute__((always_inline)) inline struct entity_transform_t *entity_GetWorldTransformPointer(struct component_handle_t component);
 
-__attribute__((always_inline)) inline  struct entity_aabb_t *entity_GetAabbPointer(struct component_handle_t component);
+static __attribute__((always_inline)) inline struct entity_aabb_t *entity_GetAabbPointer(struct component_handle_t component);
 
 
 /*
@@ -103,6 +105,23 @@ void entity_RemoveComponent(struct entity_handle_t entity, int component_type);
 
 void entity_AddProp(struct entity_handle_t entity, char *name, int size);
 
+void entity_AddProp1i(struct entity_handle_t entity, char *name);
+
+void entity_AddProp1f(struct entity_handle_t entity, char *name);
+
+void entity_AddProp2f(struct entity_handle_t entity, char *name);
+
+void entity_AddProp3f(struct entity_handle_t entity, char *name);
+
+void entity_AddProp4f(struct entity_handle_t entity, char *name);
+
+void entity_AddProp22f(struct entity_handle_t entity, char *name);
+
+void entity_AddProp33f(struct entity_handle_t entity, char *name);
+
+void entity_AddProp44f(struct entity_handle_t entity, char *name);
+
+
 void entity_RemoveProp(struct entity_handle_t entity, char *name);
 
 void entity_SetProp(struct entity_handle_t entity, char *name, void *value);
@@ -153,17 +172,17 @@ void entity_ResetEntitySpawnTimes();
 
 struct entity_t *entity_GetEntityPointer(char *name, int get_def);
 
-__attribute__((always_inline)) inline struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity);
+static ALWAYS_FORCE_INLINE struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity);
 
-__attribute__((always_inline)) inline struct entity_t *entity_GetEntityParentPointerHandle(struct entity_handle_t entity);
+static ALWAYS_FORCE_INLINE struct entity_t *entity_GetEntityParentPointerHandle(struct entity_handle_t entity);
 
-__attribute__((always_inline)) inline struct entity_t *entity_GetEntityPointerIndex(int entity_index);
+static ALWAYS_FORCE_INLINE struct entity_t *entity_GetEntityPointerIndex(int entity_index);
 
-__attribute__((always_inline)) inline struct entity_t *entity_GetEntityDefPointerIndex(int entity_def_index);
+static ALWAYS_FORCE_INLINE struct entity_t *entity_GetEntityDefPointerIndex(int entity_def_index);
 
-__attribute__((always_inline)) inline struct entity_handle_t entity_GetEntityHandle(char *name, int get_def);
+static ALWAYS_FORCE_INLINE struct entity_handle_t entity_GetEntityHandle(char *name, int get_def);
 
-__attribute__((always_inline)) inline struct entity_handle_t entity_GetNestledEntityHandle(struct entity_handle_t parent_entity, char *entity);
+static ALWAYS_FORCE_INLINE struct entity_handle_t entity_GetNestledEntityHandle(struct entity_handle_t parent_entity, char *entity);
 
 struct entity_source_file_t *entity_GetSourceFile(struct entity_handle_t entity);
 
@@ -217,6 +236,39 @@ int entity_LineOfSightToEntity(struct entity_handle_t from, struct entity_handle
 */
 
 
+int entity_CreateTrigger(mat3_t *orientation, vec3_t position, vec3_t scale, char *event_name, char *name);
+
+struct trigger_t *entity_GetTriggerPointerIndex(int trigger_index);
+
+int entity_GetTrigger(char *name);
+
+int entity_IsTriggered(int trigger_index);
+
+void entity_DestroyTriggerIndex(int trigger_index);
+
+void entity_AddTriggerFilter(int trigger_index, char *filter_name);
+
+void entity_RemoveTriggerFilter(int trigger_index, char *filter_name);
+
+void entity_UpdateTriggers();
+
+void entity_SetTriggerPosition(int trigger_index, vec3_t position);
+
+void entity_TranslateTrigger(int trigger_index, vec3_t direction, float amount);
+
+void entity_ScaleTrigger(int trigger_index, vec3_t axis, float amount);
+
+void entity_DestroyAllTriggers();
+
+
+
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
+
 struct entity_script_t *entity_LoadScript(char *file_name, char *script_name);
 
 
@@ -248,7 +300,7 @@ struct entity_handle_t entity_LoadEntityDef(char *file_name);
 */
 
 
-//#include "entity.inl"
+#include "entity.inl"
 
 
 #ifdef __cplusplus

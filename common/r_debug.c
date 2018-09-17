@@ -30,6 +30,7 @@ extern struct stack_list_t phy_colliders[COLLIDER_TYPE_LAST];
 /* from entity.c */
 extern int ent_entity_list_cursor;
 extern struct stack_list_t ent_entities[2];
+extern struct stack_list_t ent_triggers;
 extern struct entity_transform_t *ent_global_transforms;
 extern struct stack_list_t ent_entity_aabbs;
 
@@ -65,6 +66,7 @@ extern int r_debug_draw_views;
 extern int r_debug_draw_waypoints;
 extern int r_debug_draw_colliders;
 extern int r_debug_draw_entities;
+extern int r_debug_draw_triggers;
 extern int r_frame;
 
 /* from r_imediate.c */
@@ -972,6 +974,8 @@ void renderer_DrawColliders()
 	vec3_t capsule_vert;
 
 	struct collider_t *colliders;
+	struct rigid_body_collider_t *rigid_body_colliders;
+	struct character_collider_t *character_colliders;
 	int collider_count;
 
 	//colliders
@@ -980,20 +984,23 @@ void renderer_DrawColliders()
 
 	for(type = 0; type < COLLIDER_TYPE_LAST; type++)
 	{
-		colliders = (struct collider_t *)phy_colliders[type].elements;
 		collider_count = phy_colliders[type].element_count;
 
-		for(i = 0; i < collider_count; i++)
+		switch(type)
 		{
-			if(colliders[i].flags & COLLIDER_FLAG_INVALID)
-			{
-				continue;
-			}
+			case COLLIDER_TYPE_CHARACTER_COLLIDER:
 
-			switch(colliders[i].type)
-			{
-				case COLLIDER_TYPE_CHARACTER_COLLIDER:
+				character_colliders = (struct character_collider_t *)phy_colliders[type].elements;
+
+				for(i = 0; i < collider_count; i++)
+				{
+					if(character_colliders[i].base.flags & COLLIDER_FLAG_INVALID)
+					{
+						continue;
+					}
+
 					renderer_Color3f(1.0, 1.0, 1.0);
+
 					for(k = 0; k < 3; k++)
 					{
 						renderer_Begin(GL_LINE_LOOP);
@@ -1004,11 +1011,11 @@ void renderer_DrawColliders()
 							{
 								if(j < CHARACTER_COLLIDER_CAPSULE_SEGMENTS / 2 + 1)
 								{
-									h_offset = colliders[i].height * 0.5 - colliders[i].radius;
+									h_offset = character_colliders[i].height * 0.5 - character_colliders[i].radius;
 								}
 								else
 								{
-									h_offset = -colliders[i].height * 0.5 + colliders[i].radius;
+									h_offset = -character_colliders[i].height * 0.5 + character_colliders[i].radius;
 								}
 							}
 							else
@@ -1016,26 +1023,25 @@ void renderer_DrawColliders()
 								h_offset = 0.0;
 							}
 
+							renderer_Vertex3f(r_collider_capsule_shape[k][j].x * character_colliders[i].radius + character_colliders[i].base.position.x,
+											  r_collider_capsule_shape[k][j].y * character_colliders[i].radius + character_colliders[i].base.position.y + h_offset,
+											  r_collider_capsule_shape[k][j].z * character_colliders[i].radius + character_colliders[i].base.position.z);
 
-							renderer_Vertex3f(r_collider_capsule_shape[k][j].x * colliders[i].radius + colliders[i].position.x,
-											  r_collider_capsule_shape[k][j].y * colliders[i].radius + colliders[i].position.y + h_offset,
-											  r_collider_capsule_shape[k][j].z * colliders[i].radius + colliders[i].position.z);
-
-
-							//capsule_vert.x = r_collider_capsule_shape[0][j].x * colliders[i].collider_data.character_collider_data.radius + colliders[i].position.x;
-							//capsule_vert.y = r_collider_capsule_shape[0][j].y * colliders[i].collider_data.character_collider_data.radius + colliders[i].position.y + h_offset;
-							//capsule_vert.z = r_collider_capsule_shape[0][j].z * colliders[i].collider_data.character_collider_data.radius + colliders[i].position.z;
-							/* this function is receiving garbage when the values get passed on
-							like this... */
-							//renderer_Vertex3f(capsule_vert.x, capsule_vert.y, capsule_vert.z);
 						}
+
 						renderer_End();
 					}
+				}
+			break;
 
+			case COLLIDER_TYPE_PROJECTILE_COLLIDER:
 
-				break;
-
-				case COLLIDER_TYPE_PROJECTILE_COLLIDER:
+				/*for(i = 0; i < collider_count; i++)
+				{
+					if(character_colliders[i].flags & COLLIDER_FLAG_INVALID)
+					{
+						continue;
+					}
 
 					renderer_Color3f(1.0, 1.0, 0.0);
 
@@ -1052,13 +1058,17 @@ void renderer_DrawColliders()
 						}
 						renderer_End();
 					}
-				break;
 
-				case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
+				}*/
 
-				break;
-			}
+			break;
+
+			case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
+
+			break;
+
 		}
+
 	}
 
 
@@ -1160,6 +1170,56 @@ void renderer_DrawEntities()
 
 }
 
+void renderer_DrawTriggers()
+{
+	int i;
+	int c;
+
+    struct trigger_t *triggers;
+    struct trigger_t *trigger;
+
+    mat4_t trigger_transform;
+
+    triggers = (struct trigger_t *)ent_triggers.elements;
+
+    c = ent_triggers.element_count;
+
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    //glDisable(GL_CULL_FACE);
+    //renderer_Color3f(1.0, 1.0, 0.0);
+	glEnable(GL_BLEND);
+
+    for(i = 0; i < c; i++)
+	{
+        trigger = triggers + i;
+
+		if(trigger->flags & TRIGGER_FLAG_INVALID)
+		{
+			continue;
+		}
+
+		mat4_t_compose2(&trigger_transform, &trigger->orientation, trigger->position, trigger->scale);
+        renderer_SetModelMatrix(&trigger_transform);
+
+		renderer_Color4f(1.0, 1.0, 0.0, 1.0);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        renderer_DrawBox();
+
+        renderer_Color4f(1.0, 1.0, 0.0, 0.25);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+
+		glCullFace(GL_FRONT);
+        renderer_DrawBox();
+        glCullFace(GL_BACK);
+        renderer_DrawBox();
+	}
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDisable(GL_BLEND);
+	glCullFace(GL_BACK);
+}
+
 /*
 ==============================================================
 ==============================================================
@@ -1218,6 +1278,11 @@ void renderer_DrawDebug()
 	if(r_debug_draw_entities)
 	{
 		renderer_DrawEntities();
+	}
+
+	if(r_debug_draw_triggers)
+	{
+		renderer_DrawTriggers();
 	}
 
 	while(r_dbg_debug_cmd_next_out != r_dbg_debug_cmd_next_in)

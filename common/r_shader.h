@@ -61,7 +61,7 @@ void renderer_SetVertexAttribPointer(int attrib, int size, int type, int normali
 
 void renderer_ClearVertexAttribPointers();
 
-shader_t *renderer_GetActiveShaderPointer();
+struct shader_t *renderer_GetActiveShaderPointer();
 
 void renderer_SetCurrentVertexFormat(int format);
 

@@ -43,6 +43,8 @@ struct bsp_dleaf_t
 
 	unsigned int pvs_lenght;
 	unsigned char *pvs;					/* this makes this struct not 32 byte aligned. Fuck! */
+
+	unsigned int visible_frame;
 };
 
 //#define PACK_NEXT_PREV_CURSOR(next, prev, cursor) ((next&0x00003fff)|((prev&0x00003fff)<<14)|((cursor&0x0000000f)<<28))

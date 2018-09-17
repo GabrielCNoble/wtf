@@ -22,6 +22,7 @@
 #include "c_memory.h"
 #include "texture.h"
 #include "r_imediate.h"
+#include "log.h"
 
 
 //#include "gui_dropdown.h"
@@ -168,6 +169,9 @@ int gui_Init()
 
 	//gui_InitImGui();
 	gui_ImGuiInit();
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
+
 	return 1;
 }
 

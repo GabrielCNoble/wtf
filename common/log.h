@@ -20,7 +20,7 @@ void log_Init();
 
 void log_Finish();
 
-void log_LogMessage(int message_type, char *format, ...);
+void log_LogMessage(int message_type, int echo, char *format, ...);
 
 void log_FlushLog();
 

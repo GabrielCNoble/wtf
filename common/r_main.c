@@ -15,6 +15,7 @@
 
 #include "camera.h"
 #include "player.h"
+#include "log.h"
 #include "shader.h"
 //#include "physics.h"
 #include "model.h"
@@ -65,6 +66,7 @@ unsigned int r_pbuffer_depth = 0;
 
 int r_z_pre_pass_shader;
 int r_forward_pass_shader;
+int r_forward_pass_no_shadow_shader;
 int r_particle_forward_pass_shader;
 int r_flat_pass_shader;
 int r_geometry_pass_shader;
@@ -121,7 +123,7 @@ extern material_t *mat_materials;
 extern struct stack_list_t tex_textures;
 
 /* from shader.c */
-extern shader_t *shaders;
+extern struct shader_t *shaders;
 
 
 
@@ -177,6 +179,8 @@ draw_command_group_t *r_draw_command_groups = NULL;
 static draw_command_t *r_sorted_draw_cmds = NULL;
 static draw_command_t *r_unsorted_draw_cmds = NULL;
 
+float r_fade_value = 0.1;
+
 
 /*int r_translucent_draw_group_count = 0;
 draw_group_t *r_translucent_draw_groups = NULL;
@@ -221,13 +225,14 @@ int r_msaa_supported = 1;
 int r_draw_shadow_maps = 1;
 int r_z_prepass = 1;
 int r_query_stages = 0;
-int r_bloom = 0;
+int r_bloom = 1;
 int r_tonemap = 1;
 int r_draw_gui = 1;
 
 int r_deferred = 0;
 
 int r_flat = 0;
+int r_wireframe = 1;
 
 int r_debug = 1;
 int r_debug_verbose = 0;
@@ -236,6 +241,7 @@ int r_debug_draw_views = 1;
 int r_debug_draw_waypoints = 1;
 int r_debug_draw_colliders = 1;
 int r_debug_draw_entities = 1;
+int r_debug_draw_triggers = 1;
 
 int r_max_portal_recursion_level = 3;
 
@@ -253,7 +259,13 @@ mat4_t r_model_view_projection_matrix;
 camera_t *r_active_view = NULL;
 camera_t *r_main_view = NULL;
 
+
+unsigned int r_cluster_texture = 0;
+unsigned int r_light_uniform_buffer = 0;
+unsigned int r_world_bsp_uniform_buffer = 0;
 struct gpu_light_t *r_light_buffer = NULL;
+struct gpu_bsp_node_t *r_bsp_buffer = NULL;
+
 
 extern camera_t *active_camera;
 extern camera_t *main_view;
@@ -263,6 +275,23 @@ int r_material_swaps = 0;
 int r_shader_swaps = 0;
 int r_shader_uniform_updates = 0;
 unsigned long r_frame_vert_count = 0;
+
+int r_clusters_per_row = 0;
+int r_cluster_rows = 0;
+int r_cluster_layers = 0;
+cluster_t *r_clusters = NULL;
+
+unsigned int r_shadow_map_framebuffer = 0;
+unsigned int r_shadow_map_array = 0;
+unsigned int r_shadow_map_resolution = 0;
+unsigned int r_force_shadow_map_update = 0;
+
+
+int r_frame_clamping = 0;
+
+
+
+
 
 
 int renderer_Init(int width, int height, int init_mode)
@@ -317,17 +346,19 @@ int renderer_Init(int width, int height, int init_mode)
 
 	SDL_GL_MakeCurrent(window, context);
 
-	SDL_GL_SetSwapInterval(0);
+	//SDL_GL_SetSwapInterval(0);
 
-	if(glewInit() != GLEW_NO_ERROR)
+	renderer_SetFrameRateClamping(0);
+
+	int error = glewInit();
+
+	if(error != GLEW_NO_ERROR)
 	{
-		log_LogMessage(LOG_MESSAGE_ERROR, "renderer_Init: glew didn't init!");
+		log_LogMessage(LOG_MESSAGE_ERROR, 0, "renderer_Init: glew didn't init!\nError cause:\n %s", glewGetErrorString(error));
 		return 0;
-		//printf("oh shit...\n");
-		//exit(2);
 	}
 
-	log_LogMessage(LOG_MESSAGE_NONE, "Window resolution: %d x %d", r_width, r_height);
+	log_LogMessage(LOG_MESSAGE_NONE, 0, "Window resolution: %d x %d", r_width, r_height);
 
 
     renderer_CheckFunctionPointers();
@@ -339,15 +370,15 @@ int renderer_Init(int width, int height, int init_mode)
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_MULTISAMPLE);
-	glDepthFunc(GL_LEQUAL);
+	//glDepthFunc(GL_LESS);
 	glStencilMask(0xff);
 
 
 
-	log_LogMessage(LOG_MESSAGE_NONE, "GLSL version: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
-	log_LogMessage(LOG_MESSAGE_NONE, "OpenGL version: %s", glGetString(GL_VERSION));
-	log_LogMessage(LOG_MESSAGE_NONE, "Vendor: %s", glGetString(GL_VENDOR));
-	log_LogMessage(LOG_MESSAGE_NONE, "Renderer: %s", glGetString(GL_RENDERER));
+	log_LogMessage(LOG_MESSAGE_NONE, 0, "GLSL version: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
+	log_LogMessage(LOG_MESSAGE_NONE, 0, "OpenGL version: %s", glGetString(GL_VERSION));
+	log_LogMessage(LOG_MESSAGE_NONE, 0, "Vendor: %s", glGetString(GL_VENDOR));
+	log_LogMessage(LOG_MESSAGE_NONE, 0, "Renderer: %s", glGetString(GL_RENDERER));
 
 
 
@@ -355,6 +386,26 @@ int renderer_Init(int width, int height, int init_mode)
 	r_bbuffer.framebuffer_id = 0;
 
 	renderer_SetRendererResolution(r_width, r_height, 1);
+
+
+
+	glGenBuffers(1, &r_light_uniform_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, r_light_uniform_buffer);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS, NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+
+	glGenBuffers(1, &r_world_bsp_uniform_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, r_world_bsp_uniform_buffer);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_bsp_node_t) * W_MAX_BSP_NODES, NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	r_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS);
+	r_bsp_buffer = memory_Malloc(sizeof(struct gpu_bsp_node_t) * W_MAX_BSP_NODES);
+
+
+
+
 
 
 
@@ -374,7 +425,7 @@ int renderer_Init(int width, int height, int init_mode)
 	r_unsorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * r_max_draw_cmds_count);
 	r_sorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * r_max_draw_cmds_count);
 
-	r_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS);
+
 
 	//assert(r_draw_command_groups);
 	//assert(r_draw_cmds);
@@ -391,7 +442,12 @@ int renderer_Init(int width, int height, int init_mode)
 	renderer_InitDebug();
 	renderer_VerboseDebugOutput(0);
 
+
+	renderer_SetShadowMapResolution(512);
+
 	//renderer_Debug(1, 1);
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 	return 1;
 }
@@ -466,17 +522,21 @@ void renderer_SetNormalTexture(int texture_index)
 
 void renderer_SetShadowTexture()
 {
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, l_shared_shadow_map);
+	//glActiveTexture(GL_TEXTURE2);
+	//glBindTexture(GL_TEXTURE_2D, l_shared_shadow_map);
 
-	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler2, 2);
+	renderer_SetDefaultUniform1i(UNIFORM_texture_cube_array_sampler0, 5);
+	renderer_BindTextureTexUnit(GL_TEXTURE5, GL_TEXTURE_CUBE_MAP_ARRAY, r_shadow_map_array);
 }
 
 void renderer_SetClusterTexture()
 {
 	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_3D, l_cluster_texture);
+	glBindTexture(GL_TEXTURE_3D, r_cluster_texture);
 	renderer_SetDefaultUniform1i(UNIFORM_cluster_texture, 3);
+	renderer_SetDefaultUniform1i(UNIFORM_r_clusters_per_row, r_clusters_per_row);
+	renderer_SetDefaultUniform1i(UNIFORM_r_cluster_rows, r_cluster_rows);
+	renderer_SetDefaultUniform1i(UNIFORM_r_cluster_layers, r_cluster_layers);
 }
 
 /*
@@ -541,6 +601,14 @@ void renderer_SetClearColor(float r, float g, float b)
 	r_clear_color.r = r;
 	r_clear_color.g = g;
 	r_clear_color.b = b;
+}
+
+void renderer_SetUniformBuffers()
+{
+	R_DBG_PUSH_FUNCTION_NAME();
+	glBindBufferBase(GL_UNIFORM_BUFFER, R_LIGHT_UNIFORM_BUFFER_BINDING, r_light_uniform_buffer);
+	glBindBufferBase(GL_UNIFORM_BUFFER, R_WORLD_BSP_UNIFORM_BUFFER_BINDING, r_world_bsp_uniform_buffer);
+	R_DBG_POP_FUNCTION_NAME();
 }
 
 
@@ -770,16 +838,17 @@ void renderer_SetMaterial(int material_index)
 
 			texture = (struct texture_t *)tex_textures.elements + material->normal_texture;
 
+			texture_flags |= (material->flags & (MATERIAL_INVERT_NORMAL_X | MATERIAL_INVERT_NORMAL_Y));
 
-			if(texture->bm_flags & TEXTURE_INVERT_X)
+			/*if(material->flags & MATERIAL_INVERT_NORMAL_X)
 			{
 				texture_flags |= MATERIAL_INVERT_NORMAL_X;
 			}
 
-			if(texture->bm_flags & TEXTURE_INVERT_Y)
+			if(material->flags & MATERIAL_INVERT_NORMAL_Y)
 			{
 				texture_flags |= MATERIAL_INVERT_NORMAL_Y;
-			}
+			}*/
 
 		}
 
@@ -1055,6 +1124,11 @@ resolution...
 */
 void renderer_SetRendererResolution(int width, int height, int samples)
 {
+
+	int clusters_per_row;
+	int cluster_rows;
+	int cluster_layers;
+
 	if(width < RENDERER_MIN_WIDTH)
 	{
 		width = RENDERER_MIN_WIDTH;
@@ -1111,6 +1185,43 @@ void renderer_SetRendererResolution(int width, int height, int samples)
 	if(r_width > r_window_width || r_height > r_window_height)
 	{
 		renderer_SetWindowSize(r_width, r_height);
+	}
+
+
+	clusters_per_row = (int)(ceil((float)r_width / (float)R_CLUSTER_WIDTH));
+	cluster_rows = (int)(ceil((float)r_height / (float)R_CLUSTER_HEIGHT));
+
+
+    if(clusters_per_row != r_clusters_per_row || cluster_rows != r_clusters_per_row)
+	{
+		r_clusters_per_row = clusters_per_row;
+		r_cluster_rows = cluster_rows;
+		r_cluster_layers = CLUSTER_LAYERS;
+
+
+        if(r_clusters)
+		{
+			memory_Free(r_clusters);
+		}
+
+		r_clusters = memory_Calloc(r_clusters_per_row * r_cluster_rows * r_cluster_layers, sizeof(cluster_t));
+
+		if(r_cluster_texture)
+		{
+			glDeleteTextures(1, &r_cluster_texture);
+		}
+
+		glGenTextures(1, &r_cluster_texture);
+		glBindTexture(GL_TEXTURE_3D, r_cluster_texture);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BASE_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_R32UI, r_clusters_per_row, r_cluster_rows, r_cluster_layers, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+		glBindTexture(GL_TEXTURE_3D, 0);
 	}
 }
 
@@ -1593,6 +1704,11 @@ void renderer_BindWindowBuffer(int clear, int read)
 
 
 
+int renderer_GetFullscreen()
+{
+    return (r_window_flags & SDL_WINDOW_FULLSCREEN_DESKTOP) && 1;
+}
+
 
 void renderer_Fullscreen(int enable)
 {
@@ -1694,6 +1810,84 @@ void renderer_Fullbright(int enable)
 		r_flat = 0;
 	}
 }
+
+
+void renderer_SetShadowMapResolution(int resolution)
+{
+int i;
+
+	int shadow_map_index;
+
+	if(resolution != r_shadow_map_resolution)
+	{
+
+		r_shadow_map_resolution = resolution;
+
+		if(r_shadow_map_resolution <= 0)
+		{
+			r_draw_shadow_maps = 0;
+		}
+		else
+		{
+			r_draw_shadow_maps = 1;
+			r_force_shadow_map_update = 1;
+
+			if(r_shadow_map_array)
+			{
+				glDeleteFramebuffers(1, &r_shadow_map_framebuffer);
+				glDeleteTextures(1, &r_shadow_map_array);
+			}
+
+			glGenFramebuffers(1, &r_shadow_map_framebuffer);
+
+
+			glGenTextures(1, &r_shadow_map_array);
+			glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, r_shadow_map_array);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_BASE_LEVEL, 0);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAX_LEVEL, 0);
+			glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_DEPTH_COMPONENT16, r_shadow_map_resolution, r_shadow_map_resolution, MAX_VISIBLE_LIGHTS * 6, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+			glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
+
+
+			//glBindFramebuffer(GL_READ_FRAMEBUFFER, r_shadow_map_framebuffer);
+		}
+	}
+}
+
+int renderer_GetShadowMapResolution()
+{
+	return r_shadow_map_resolution;
+}
+
+
+
+void renderer_SetFrameRateClamping(int clamping)
+{
+	if(clamping < 0)
+	{
+		clamping = 0;
+	}
+	else if(clamping > 2)
+	{
+		clamping = 2;
+	}
+
+	r_frame_clamping = clamping;
+
+	SDL_GL_SetSwapInterval(r_frame_clamping);
+}
+
+int renderer_GetFrameRateClamping()
+{
+	return r_frame_clamping;
+}
+
+
 
 void renderer_RegisterCallback(void (*r_fn)(void), int type)
 {
@@ -2080,9 +2274,11 @@ void renderer_DrawFrame()
 
 
 	gpu_BindGpuHeap();
-	light_BindCache();
+	//light_BindCache();
 
-	//if(r_draw_shadow_maps)
+	renderer_SetUniformBuffers();
+
+	if(r_draw_shadow_maps)
 	{
 		renderer_DrawShadowMaps();
 	}
@@ -2110,10 +2306,10 @@ void renderer_DrawFrame()
 	gpu_UnbindGpuHeap();
 	light_UnbindCache();
 
-	if(r_bloom && (!r_flat))
-	{
-		renderer_DrawBloom();
-	}
+	//if(r_bloom && (!r_flat))
+	//{
+	//	renderer_DrawBloom();
+	//}
 
 	if(r_tonemap && (!r_flat))
 	{
@@ -2124,43 +2320,18 @@ void renderer_DrawFrame()
 		renderer_BlitColorbuffer();
 	}
 
-
-	//renderer_StartGpuTimer();
 	for(i = 0; i < post_shading_render_function_count; i++)
 	{
 		renderer_PostShadingRegisteredFunction[i]();
 	}
-	//printf("renderer_PostShadingRegisteredFunctions: %f\n", renderer_StopGpuTimer());
 
 	if(r_debug)
 	{
 		renderer_DrawDebug();
 	}
 
-
-	//renderer_StartGpuTimer();
 	renderer_BlitBackbuffer();
-	//printf("renderer_BlitBackbuffer: %f\n", renderer_StopGpuTimer());
-
-
-	//renderer_StartGpuTimer();
-	if(r_draw_gui)
-	{
-		renderer_DrawGUI();
-		gui_DrawGUI();
-	}
-
-	//printf("renderer_DrawGUI: %f\n", renderer_StopGpuTimer());
-
-
-
-	//renderer_DrawCachedString(0, 0, 0, 0, 0);
-
-	/*renderer_StartGpuTimer();
-	gpu_UnbindGpuHeap();
-	light_UnbindCache();
-
-	printf("unbind stuff: %f\n", renderer_StopGpuTimer());*/
+	gui_DrawGUI();
 }
 
 
@@ -2243,6 +2414,9 @@ void renderer_ZPrePass()
 	//glBindBuffer(GL_ARRAY_BUFFER, gpu_heap);
 //	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_element_buffer);
 	//shader_UseShader(z_pre_pass_shader);
+
+	glDepthFunc(GL_LESS);
+
 	renderer_SetShader(r_z_pre_pass_shader);
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->position);
 
@@ -2278,15 +2452,16 @@ void renderer_DrawWorld()
 	float s;
 	float e;
 
+	glDepthFunc(GL_EQUAL);
+
+
 	glViewport(0, 0, r_width, r_height);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_element_buffer);
+
+	glDepthMask(GL_FALSE);
 
 	c = w_world_batch_count;
-
-	//if(!r_deferred)
-	//{
 
 	if(r_flat)
 	{
@@ -2294,28 +2469,23 @@ void renderer_DrawWorld()
 	}
 	else
 	{
-		renderer_SetShader(r_forward_pass_shader);
+		if(r_draw_shadow_maps)
+		{
+			renderer_SetShader(r_forward_pass_shader);
+			renderer_SetShadowTexture();
+		}
+		else
+		{
+			renderer_SetShader(r_forward_pass_no_shadow_shader);
+		}
+
 		renderer_SetClusterTexture();
+
 
 		renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
 		renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
 		renderer_SetDefaultUniform1i(UNIFORM_r_frame, r_frame);
-		renderer_SetDefaultUniform1i(UNIFORM_texture_cube_array_sampler0, 5);
-
-		renderer_BindTextureTexUnit(GL_TEXTURE5, GL_TEXTURE_CUBE_MAP_ARRAY, l_shadow_maps_array);
-		//renderer_SetUniform4fv(UNIFORM_active_camera_position, &active_camera->world_position.floats[0]);
 	}
-
-	//}
-	/*else
-	{
-		renderer_SetShader(r_geometry_pass_shader);
-	}*/
-
-	/*renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->position);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->normal);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->tangent);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, s izeof(vertex_t), &((vertex_t *)0)->tex_coord);*/
 
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->position);
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->normal);
@@ -2334,92 +2504,10 @@ void renderer_DrawWorld()
 		renderer_DrawElements(GL_TRIANGLES, batch->next, GL_UNSIGNED_INT, (void *)((batch->start + w_world_index_start) * sizeof(int)));
 	}
 
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glDepthMask(GL_TRUE);
+	glDepthFunc(GL_LEQUAL);
 }
 
-
-void renderer_ExecuteDrawCmds()
-{
-	int i;
-	int j;
-	int k;
-	int draw_cmd_count;
-
-	draw_command_t *draw_cmds;
-	draw_command_t batch_draw_command;
-
-	/*int next_start;
-
-	int command_end;
-	int command_count;
-	int draw_mode;*/
-
-	int command_start;
-	int command_count;
-	int last_command_count;
-	int batch_count;
-	int command_draw_mode;
-
-	renderer_SetClusterTexture();
-	renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
-	renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
-	renderer_SetDefaultUniform1i(UNIFORM_r_frame, r_frame);
-
-	for(i = 0; i < r_draw_command_group_count; i++)
-	{
-		renderer_SetMaterial(r_draw_command_groups[i].material_index);
-		draw_cmd_count = r_draw_command_groups[i].draw_cmds_count;
-		draw_cmds = r_draw_command_groups[i].draw_cmds;
-
-		for(j = 0; j < draw_cmd_count; j++)
-		{
-			renderer_SetModelMatrix(draw_cmds[j].transform);
-			renderer_UpdateMatrices();
-
-			if(draw_cmds[j].flags & DRAW_COMMAND_FLAG_INDEXED_DRAW)
-			{
-			//	if(r_max_batch_size && draw_cmds[j].count > r_max_batch_size)
-			//	{
-			//		command_start = draw_cmds[j].start;
-			//		command_count = draw_cmds[j].count;
-			//		last_command_count = command_count % r_max_batch_size;
-
-			//		batch_count = command_count / r_max_batch_size;
-			//		command_draw_mode = draw_cmds[j].draw_mode;
-
-			//		for(k = 0; k < batch_count; k++)
-			//		{
-			//			renderer_DrawElements(command_draw_mode, r_max_batch_size, GL_UNSIGNED_INT, (void *)(command_start * sizeof(int)));
-			//			command_start += r_max_batch_size;
-			//		}
-
-			//		if(last_command_count)
-			//		{
-			//			renderer_DrawElements(command_draw_mode, last_command_count, GL_UNSIGNED_INT, (void *)(command_start * sizeof(int)));
-			//		}
-
-					//command_end = draw_cmds[j].start + draw_cmds[j].count;
-
-					//next_start = draw_cmds[j].start;
-
-					//while(next_start < command_end)
-					//{
-					//	renderer_DrawElements(draw_cmds[j].draw_mode, r_max_batch_size * 3, GL_UNSIGNED_INT, (void *)(next_start * sizeof(int)));
-					//	next_start += r_max_batch_size;
-					//}
-			//	}
-			//	else
-			//	{
-				renderer_DrawElements(draw_cmds[j].draw_mode, draw_cmds[j].count, GL_UNSIGNED_INT, (void *)(draw_cmds[j].start * sizeof(int)));
-			//	}
-			}
-			else
-			{
-				renderer_DrawArrays(draw_cmds[j].draw_mode, draw_cmds[j].start, draw_cmds[j].count);
-			}
-		}
-	}
-}
 
 
 void renderer_DrawOpaque()
@@ -2436,8 +2524,6 @@ void renderer_DrawOpaque()
 	float s;
 	float e;
 
-	//return;
-
 	draw_command_t *draw_cmds;
 
 	if(r_flat)
@@ -2446,9 +2532,21 @@ void renderer_DrawOpaque()
 	}
 	else
 	{
-		renderer_SetShader(r_forward_pass_shader);
-		renderer_SetDefaultUniform1i(UNIFORM_texture_cube_array_sampler0, 5);
-		renderer_BindTextureTexUnit(GL_TEXTURE5, GL_TEXTURE_CUBE_MAP_ARRAY, l_shadow_maps_array);
+
+		if(r_draw_shadow_maps)
+		{
+			renderer_SetShader(r_forward_pass_shader);
+			renderer_SetShadowTexture();
+		}
+		else
+		{
+			renderer_SetShader(r_forward_pass_no_shadow_shader);
+		}
+
+		renderer_SetClusterTexture();
+		renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
+		renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
+		renderer_SetDefaultUniform1i(UNIFORM_r_frame, r_frame);
 	}
 
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &(((struct compact_vertex_t *)0)->position));
@@ -2456,12 +2554,28 @@ void renderer_DrawOpaque()
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(struct compact_vertex_t), &(((struct compact_vertex_t *)0)->tangent));
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &(((struct compact_vertex_t *)0)->tex_coord));
 
-	//renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_HALF_FLOAT, GL_FALSE, sizeof(struct c_vertex_t), &(((struct c_vertex_t *)0)->position_x));
-	//renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 3, GL_BYTE, GL_TRUE, sizeof(struct c_vertex_t), &(((struct c_vertex_t *)0)->normal_x));
-	//renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 3, GL_BYTE, GL_TRUE, sizeof(struct c_vertex_t), &(((struct c_vertex_t *)0)->tangent_x));
-	//renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_HALF_FLOAT, GL_FALSE, sizeof(struct c_vertex_t), &(((struct c_vertex_t *)0)->tex_coord_u));
+	for(i = 0; i < r_draw_command_group_count; i++)
+	{
+		renderer_SetMaterial(r_draw_command_groups[i].material_index);
+		draw_cmd_count = r_draw_command_groups[i].draw_cmds_count;
+		draw_cmds = r_draw_command_groups[i].draw_cmds;
 
-	renderer_ExecuteDrawCmds();
+		for(j = 0; j < draw_cmd_count; j++)
+		{
+			renderer_SetModelMatrix(draw_cmds[j].transform);
+			renderer_UpdateMatrices();
+
+			if(draw_cmds[j].flags & DRAW_COMMAND_FLAG_INDEXED_DRAW)
+			{
+				renderer_DrawElements(draw_cmds[j].draw_mode, draw_cmds[j].count, GL_UNSIGNED_INT, (void *)(draw_cmds[j].start * sizeof(int)));
+			}
+			else
+			{
+				renderer_DrawArrays(draw_cmds[j].draw_mode, draw_cmds[j].start, draw_cmds[j].count);
+			}
+		}
+	}
+
 }
 
 
@@ -2485,6 +2599,8 @@ void renderer_DrawShadowMaps()
 	int j;
 	int light_index;
 
+	int shadow_map_res;
+
 
 
 	//int cache_index;
@@ -2506,10 +2622,12 @@ void renderer_DrawShadowMaps()
 	renderer_SetProjectionMatrix(&l_shadow_map_projection_matrix);
 	renderer_SetModelMatrix(NULL);
 
+	shadow_map_res = renderer_GetShadowMapResolution();
+
 	glDepthMask(GL_TRUE);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, l_shadow_map_frame_buffer);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_shadow_map_framebuffer);
 	glDrawBuffer(GL_NONE);
-	glViewport(0, 0, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
+	glViewport(0, 0, shadow_map_res, shadow_map_res);
 
 
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
@@ -2524,8 +2642,11 @@ void renderer_DrawShadowMaps()
 		//if(!(parms->bm_flags & LIGHT_GENERATE_SHADOWS))
 		//continue;
 
-		if(!(parms->bm_flags & LIGHT_UPDATE_SHADOW_MAP))
+		if((!(parms->bm_flags & LIGHT_UPDATE_SHADOW_MAP)) && (!r_force_shadow_map_update))
+		{
 			continue;
+		}
+
 
 		//if(parms->bm_flags & LIGHT_DROPPED_SHADOW)
 		//	continue;
@@ -2536,7 +2657,7 @@ void renderer_DrawShadowMaps()
 
 		for(i = 0; i < 6; i++)
 		{
-			glFramebufferTextureLayer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, l_shadow_maps_array, 0, shadow_map_index * 6 + i);
+			glFramebufferTextureLayer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, r_shadow_map_array, 0, shadow_map_index * 6 + i);
 			glClear(GL_DEPTH_BUFFER_BIT);
 
 			if(w_world_leaves)
@@ -2551,9 +2672,9 @@ void renderer_DrawShadowMaps()
 				renderer_SetViewMatrix(&mvm);
 				renderer_UpdateMatrices();
 
-				glCullFace(GL_FRONT);
-				glPolygonOffset(-2.0, 0.0);
-				renderer_DrawElements(GL_TRIANGLES, parms->visible_triangles.element_count, GL_UNSIGNED_INT, (void *)(sizeof(int) * parms->indices_start));
+				//glCullFace(GL_FRONT);
+				//glPolygonOffset(-1.0, 0.0);
+				//renderer_DrawElements(GL_TRIANGLES, parms->visible_triangles.element_count, GL_UNSIGNED_INT, (void *)(sizeof(int) * parms->indices_start));
 
 				glCullFace(GL_BACK);
 				glPolygonOffset(2.0, 0.0);
@@ -2561,6 +2682,8 @@ void renderer_DrawShadowMaps()
 			}
 		}
 	}
+
+	r_force_shadow_map_update = 0;
 
 	glViewport(0, 0, r_width, r_height);
 
@@ -3636,10 +3759,31 @@ void renderer_BlitBackbuffer()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glViewport(0, 0, r_window_width, r_window_height);
 
+	/*renderer_SetProjectionMatrix(NULL);
+	renderer_SetViewMatrix(NULL);
+	renderer_SetModelMatrix(NULL);*/
+
+
+	//while(glGetError() != GL_NO_ERROR);
+
 	renderer_SetShader(r_blit_texture_shader);
 	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_bbuffer.color_attachments[0].handle);
 	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
-	glRectf(-1.0, -1.0, 1.0, 1.0);
+
+	//renderer_UpdateMatrices();
+
+	//glEnable(GL_BLEND);
+
+	renderer_EnableImediateDrawing();
+
+	//renderer_Color4f(1.0, 1.0, 1.0, r_fade_value);
+	renderer_Rectf(-1.0, -1.0, 1.0, 1.0);
+
+	renderer_DisableImediateDrawing();
+
+	//glDisable(GL_BLEND);
+
+	//glRectf(-1.0, -1.0, 1.0, 1.0);
 
 	//renderer_SetProjectionMatrix(NULL);
 	//renderer_SetViewMatrix(NULL);
@@ -4248,8 +4392,12 @@ void renderer_Tonemap()
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
 
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glRectf(-1.0, -1.0, 1.0, 1.0);
+	renderer_EnableImediateDrawing();
+	renderer_Rectf(-1.0, -1.0, 1.0, 1.0);
+	renderer_DisableImediateDrawing();
+
+	//glColor4f(1.0, 1.0, 1.0, 1.0);
+	//glRectf(-1.0, -1.0, 1.0, 1.0);
 
 	glDisable(GL_TEXTURE_2D);
 	glEnable(GL_DEPTH_TEST);

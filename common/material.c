@@ -8,6 +8,7 @@
 //#include "bsp_file.h"
 #include "texture.h"
 #include "path.h"
+#include "log.h"
 
 
 static int mat_material_list_size = 0;
@@ -79,6 +80,8 @@ int material_Init()
 	default_material->draw_group = 0;
 
 	default_material->name = "default";
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 
 	return 1;
@@ -923,6 +926,11 @@ void material_DeserializeMaterials(void **buffer)
 	struct material_section_start_t *section_start;
 	struct material_section_end_t *section_end;
 	struct material_record_t *record;
+
+	material_t *material;
+	int material_index;
+
+
 	char *in;
 	char *material_name;
 	char *name;
@@ -970,7 +978,11 @@ void material_DeserializeMaterials(void **buffer)
 				normal_texture = texture_LoadTexture(record->normal_texture_name, path_GetFileNameFromPath(record->normal_texture_name), 0);
 			}
 
-			material_CreateMaterial(record->material_name, record->base, record->metalness, record->roughness, -1, diffuse_texture, normal_texture);
+			material_index = material_CreateMaterial(record->material_name, record->base, record->metalness, record->roughness, -1, diffuse_texture, normal_texture);
+
+			material = material_GetMaterialPointerIndex(material_index);
+
+			material->flags |= record->flags & (MATERIAL_INVERT_NORMAL_X | MATERIAL_INVERT_NORMAL_Y);
 		}
 		else
 		{

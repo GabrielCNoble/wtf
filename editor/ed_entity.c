@@ -138,8 +138,8 @@ void editor_EntityEditorSetup()
 	//entity_editor_current_entity_def = entity_GetEntityPointer("toilet", 1);
 	entity_editor_light_index = light_CreateLight("entity editor light", &light_orientation, vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), 10.0, 10.0, 0);
 
-	editor_SetExplorerReadFileCallback(editor_EntityEditorLoadEntityFileCallback);
-	editor_SetExplorerWriteFileCallback(editor_EntityEditorSaveEntityFileCallback);
+	//editor_SetExplorerReadFileCallback(editor_EntityEditorLoadEntityFileCallback);
+	//editor_SetExplorerWriteFileCallback(editor_EntityEditorSaveEntityFileCallback);
 }
 
 void editor_EntityEditorShutdown()
@@ -158,7 +158,7 @@ void editor_EntityEditorShutdown()
 	}
 
 
-	editor_ClearExplorerFileCallbacks();
+	//editor_ClearExplorerFileCallbacks();
 
 
 }

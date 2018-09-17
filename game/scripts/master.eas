@@ -1,0 +1,204 @@
+
+
+
+void main()
+{
+    vec3_t direction;
+    vec3_t player_position;
+    vec3_t current_position;
+    mat3_t orientation;
+    entity_handle_t player_entity;
+    entity_handle_t current_entity;
+    float angle;
+    //vec3_t forward_vector;
+
+    orientation = entity_GetOrientation(1);
+    //direction.y = 0.0;
+
+    player_entity = entity_GetEntity("player entity", 0);
+    current_entity = entity_GetCurrentEntity();
+
+
+	if(entity_LineOfSightToEntity(player_entity) != 0)
+	{
+		entity_SetEntityProp1i(current_entity, "state", 1);
+	}
+	else
+	{
+		entity_SetEntityProp1i(current_entity, "state", 0);
+	}
+
+
+	if(entity_GetEntityProp1i(current_entity, "state") == 1)
+	{
+		/* player is in sight, so head directly towards them... */
+
+		player_position = entity_GetEntityPosition(player_entity, 0);
+		current_position = entity_GetPosition(0);
+
+		//entity_SetEntityProp3f(current_entity, "player pos", player_position);
+
+		direction = player_position - current_position;
+
+		direction = normalize(direction);
+	}
+	else
+	{
+		direction = vec3_t(0.0, 0.0, 0.0);
+	}
+
+	//script_Print("current state: " + entity_GetEntityProp1i(current_entity, "state") + "\n");
+
+    direction.y = 0.0;
+
+    angle = dot(direction, orientation[2]);
+
+    entity_Rotate(vec3_t(0.0, 1.0, 0.0), -(angle) * 0.05, 0);
+
+    entity_Move(direction * 1000.0);
+
+    /*if(dist_squared < 4.0)
+	{
+		entity_Jump(3.5);
+	}*/
+
+    if(entity_GetEntityProp1i(current_entity, "enemy") != -1)
+	{
+		entity_DIEYOUMOTHERFUCKER();
+	}
+
+
+	//int sound_source = entity_GetEntityProp1i(current_entity, "sound source");
+	//sound_SetSourcePosition(sound_source, entity_GetPosition(0));
+	//entity_SetEntityProp1i(current_entity, "sound source", sound_source);
+
+
+	/*if(entity_GetLife() >= 1800)
+	{
+		entity_Die();
+	}*/
+
+
+}
+
+
+int scream_source;
+
+
+void OnSpawn()
+{
+    //entity_FindPath(vec3_t(25.0, 0.0, -25.0));
+    entity_handle_t current_entity = entity_GetCurrentEntity();
+
+    entity_AddEntityProp1i(current_entity, "enemy");
+    entity_SetEntityProp1i(current_entity, "enemy", -1);
+
+    entity_AddEntityProp1i(current_entity, "life");
+    entity_SetEntityProp1i(current_entity, "life", 600);
+
+    //entity_AddEntityProp1i(current_entity, "sound source");
+
+    entity_AddEntityProp3f(current_entity, "player pos");
+
+    entity_AddEntityProp1i(current_entity, "state");
+    entity_SetEntityProp1i(current_entity, "state", 1);
+
+
+    //sound_handle_t scream = sound_GetSound("scream");
+    //int sound_source = sound_PlaySound(scream, entity_GetPosition(0), 6.0, 1, 0);
+    //entity_SetEntityProp1i(current_entity, "sound source", sound_source);
+
+}
+
+void OnDie()
+{
+	int particle_system_def = particle_GetParticleSystemDef("explosion");
+	entity_handle_t current_entity = entity_GetCurrentEntity();
+	vec3_t position = entity_GetEntityPosition(current_entity, 0);
+	particle_SpawnParticleSystem(position, particle_system_def);
+
+	entity_RemoveEntityProp(current_entity, "enemy");
+	entity_RemoveEntityProp(current_entity, "state");
+	entity_RemoveEntityProp(current_entity, "player pos");
+
+	int explosion_index;
+	int doh_index;
+
+	sound_handle_t explosion_sound;
+	sound_handle_t doh_sound;
+
+	explosion_index = rand() % 3;
+
+	switch(explosion_index)
+	{
+		case 0:
+			explosion_sound = sound_GetSound("explosion0");
+		break;
+
+		case 1:
+			explosion_sound = sound_GetSound("explosion1");
+		break;
+
+		case 2:
+			explosion_sound = sound_GetSound("explosion2");
+		break;
+	}
+
+	doh_index = rand() % 20;
+
+	doh_sound = sound_GetSound("doh" + doh_index);
+
+
+
+    //int sound_source = entity_GetEntityProp1i(current_entity, "sound source");
+	//sound_StopSound(sound_source);
+
+	sound_PlaySound(explosion_sound, position, 1.5, 0);
+	sound_PlaySound(doh_sound, position, 5.5, 0);
+
+}
+
+void OnCollision(array<entity_contact_t> @contacts)
+{
+	int i;
+	int value;
+	entity_handle_t entity;
+	entity_handle_t current_entity;
+	entity_handle_t player_entity;
+	int score;
+
+	int life;
+
+	for(i = 0; i < contacts.count; i++)
+	{
+		entity = contacts[i].entity;
+
+        if(entity_IsEntityValid(entity) != 0)
+        {
+            if(entity_EntityHasProp(entity, "bullet") != 0)
+            {
+                current_entity = entity_GetCurrentEntity();
+
+                life = entity_DecEntityProp1i(current_entity, "life");
+
+                player_entity = entity_GetEntity("player entity", 0);
+                score = entity_GetEntityProp1i(player_entity, "score");
+
+                score += 75;
+
+                entity_SetEntityProp1i(player_entity, "score", score);
+
+                if(life <= 0)
+				{
+					if(entity_GetEntityProp1i(current_entity, "enemy") < 0)
+					{
+						entity_SetEntityProp1i(current_entity, "enemy", 0);
+					}
+				}
+
+            }
+        }
+	}
+}
+
+

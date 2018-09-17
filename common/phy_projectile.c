@@ -33,7 +33,7 @@ extern "C"
 
 void physics_UpdateProjectileCollider(struct collider_handle_t collider)
 {
-	struct collider_t *collider_ptr;
+	struct projectile_collider_t *collider_ptr;
 	btRigidBody *rigid_body;
 
 	int persistent_manifolds_count;
@@ -48,18 +48,18 @@ void physics_UpdateProjectileCollider(struct collider_handle_t collider)
 		return;
 	}
 
-	collider_ptr = physics_GetColliderPointerHandle(collider);
+	collider_ptr = (struct projectile_collider_t *)physics_GetColliderPointerHandle(collider);
 
-	rigid_body = (btRigidBody *)collider_ptr->rigid_body;
+	rigid_body = (btRigidBody *)collider_ptr->base.collision_object;
 
 	velocity = rigid_body->getLinearVelocity();
 
 	speed = sqrt(velocity[0] * velocity[0] + velocity[1] * velocity[1] + velocity[2] * velocity[2]);
 
-	if(speed >= collider_ptr->radius)
+	/*if(speed >= collider_ptr->radius)
 	{
 
-	}
+	}*/
 }
 
 

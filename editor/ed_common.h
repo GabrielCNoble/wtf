@@ -19,6 +19,7 @@ enum PICK_TYPE
 	PICK_COLLIDER_PRIMITIVE,
 	PICK_PORTAL,
 	PICK_WAYPOINT,
+	PICK_TRIGGER,
 };
 
 enum ED_3D_HANDLE_FLAGS
@@ -123,7 +124,7 @@ enum EDITORS
 	EDITOR_LEVEL_EDITOR,
 	EDITOR_ENTITY_EDITOR,
 	EDITOR_MATERIAL_EDITOR,
-	EDITOR_PARTICLE_SYSTEM_EDITOR,	
+	EDITOR_PARTICLE_SYSTEM_EDITOR,
 };
 
 typedef struct
@@ -157,12 +158,12 @@ typedef struct editor_action_object_t
 {
 	struct editor_action_object_t *next;
 	struct editor_action_object_t *prev;
-	
+
 	int type;
 	int index;
 	void *pointer;
 	void *data;
-	
+
 }editor_action_object_t;
 
 typedef struct editor_action_record_t
@@ -171,24 +172,24 @@ typedef struct editor_action_record_t
 	struct editor_action_record_t *prev;
 	int type;
 	editor_action_object_t *object;
-	
+
 }editor_action_record_t;
 
 typedef struct editor_t
 {
 	struct editor_t *next;
-	
+
 	char *name;
-	
+
 	void (*init_callback)();
 	void (*finish_callback)();
 	void (*restart_callback)();
 	void (*setup_callback)();
 	void (*shutdown_callback)();
 	void (*main_callback)(float);
-	
+
 	void *editor_data;
-	
+
 }editor_t;
 
 

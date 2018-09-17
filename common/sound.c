@@ -12,6 +12,7 @@
 #include "containers/stack_list.h"
 #include "containers/stack.h"
 #include "path.h"
+#include "log.h"
 
 #include "SDL2\SDL.h"
 
@@ -20,7 +21,7 @@
 #include "vorbisfile.h"
 
 
-#define MAX_SOUND_SOURCES 128
+#define MAX_SOUND_SOURCES 256
 #define MAX_SOUNDS 512
 #define MAX_SOUND_COMMANDS 512
 #define MAX_SOUND_PARAM_BUFFERS 512
@@ -116,8 +117,8 @@ int sound_Init()
 
 	if(!sound_device)
 	{
-		printf("Oh shit...\n");
-		exit(4);
+		log_LogMessage(LOG_MESSAGE_ERROR, 1, "%s: OpenAL didn't initalize!",__func__);
+		return 0;
 	}
 
 	sound_context = alcCreateContext(sound_device, context_params);
@@ -134,8 +135,11 @@ int sound_Init()
 	for(i = 0; i < MAX_SOUND_SOURCES; i++)
 	{
 		alGenSources(1, &snd_sound_sources[i].source_handle);
+		alSourcei(snd_sound_sources[i].source_handle, AL_MAX_GAIN, 50.0);
 		snd_sound_sources_indices[i] = i;
 	}
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 
 	return 1;
@@ -240,6 +244,14 @@ struct sound_handle_t sound_LoadSound(char *file_name, char *name)
 		loader = sound_LoadWAV;
 	}
 
+	sound = sound_GetSound(name);
+
+	if(sound.sound_index != INVALID_SOUND_INDEX)
+	{
+        printf("sound_LoadSound: sound [%s] already exists!\n", name);
+		return sound;
+	}
+
 
 	if(loader)
 	{
@@ -261,9 +273,36 @@ struct sound_handle_t sound_LoadSound(char *file_name, char *name)
 			printf("sound_LoadSound: couldn't find file [%s]\n", file_name);
 		}
 	}
+	else
+	{
+		printf("sound_LoadSound: bad sound format for file [%s]\n", file_name);
+	}
 
 
 	return sound;
+}
+
+void sound_DestroySoundHandle(struct sound_handle_t sound)
+{
+	struct sound_t *sound_ptr;
+
+	sound_ptr = sound_GetSoundPointer(sound);
+
+	if(sound_ptr)
+	{
+        sound_ptr->flags |= SOUND_FLAG_INVALID;
+		memory_Free(sound_ptr->data);
+		alDeleteBuffers(1, &sound_ptr->al_buffer_handle);
+
+		stack_list_remove(&snd_sounds, sound.sound_index);
+	}
+}
+
+void sound_DestroySound(char *name)
+{
+	struct sound_handle_t sound;
+	sound = sound_GetSound(name);
+	sound_DestroySoundHandle(sound);
 }
 
 struct sound_handle_t sound_GenerateWhiteNoise(char *name, float lenght)
@@ -365,14 +404,23 @@ struct sound_handle_t sound_LoadWAV(char *file_name)
 	unsigned int file_buffer_size;
 	struct sound_handle_t sound = INVALID_SOUND_HANDLE;
 
+	float relative_sample_value;
+
 	int format;
+
+	int i;
+
+	int j;
 
 	struct wav_riff_chunk_t *riff_chunk;
 	struct wav_fmt_chunk_t *fmt_chunk;
 	struct wav_data_chunk_t *data_chunk;
 
 	char *sound_buffer;
+	char *temp_sound_buffer;
 	unsigned int sound_buffer_size;
+
+	int sample;
 
 	char *in;
 
@@ -408,6 +456,32 @@ struct sound_handle_t sound_LoadWAV(char *file_name)
 
 		switch(fmt_chunk->bits_per_sample)
 		{
+			#if 0
+			case 24:
+                /* this will need to be resampled... */
+
+                temp_buffer = memory_Calloc(2, sound_buffer_size);
+
+                for(i = 0, j = 0; i < data_chunk->sub_chunk_size;)
+				{
+					sample = in[i];
+					i++;
+					sample |= ((int)in[i]) << 8;
+					i++;
+					sample |= ((int)in[i]) << 16;
+
+					relative_sample_value = (float)sample / (float)0xffffff;
+
+                    temp_buffer[j] = 0xffff
+
+
+
+				}
+
+			break;
+
+			#endif
+
 			case 16:
 				if(fmt_chunk->channel_count == 2)
 				{
@@ -540,7 +614,13 @@ struct sound_handle_t sound_GetSound(char *name)
 		if(!strcmp(name, sounds[i].name))
 		{
             sound_handle.sound_index = i;
+            break;
 		}
+	}
+
+	if(sound_handle.sound_index == INVALID_SOUND_INDEX)
+	{
+		printf("sound_GetSound: no sound named [%s] found\n", name);
 	}
 
 	return sound_handle;
@@ -557,6 +637,8 @@ struct sound_t *sound_GetSoundPointer(struct sound_handle_t sound)
 
 	return sound_ptr;
 }
+
+
 
 struct sound_source_t *sound_GetSoundSourcePointer(int sound_source)
 {
@@ -651,7 +733,7 @@ int sound_EmitSoundCommand(int type, int source)
 }
 
 
-int sound_PlaySound(struct sound_handle_t sound, vec3_t position, float gain, int loop)
+int sound_PlaySound(struct sound_handle_t sound, vec3_t position, float gain, int flags)
 {
 	int source_index = -1;
 	int stack_index;
@@ -675,53 +757,133 @@ int sound_PlaySound(struct sound_handle_t sound, vec3_t position, float gain, in
 			sound_source->params.position = position;
 			sound_source->params.gain = gain;
 			sound_source->params.al_sound_buffer = sound_ptr->al_buffer_handle;
-
-			if(loop)
-			{
-				sound_source->flags |= SOURCE_FLAG_LOOP;
-			}
-
+			sound_source->flags = flags | SOURCE_FLAG_ASSIGNED;
 			sound_EmitSoundCommand(SOUND_COMMAND_TYPE_START_SOUND, source_index);
 		}
+		else
+		{
+			printf("sound_PlaySound: bad sound handle\n");
+		}
 	}
+
 	return source_index;
 }
 
-void sound_PauseSound(int sound_source)
+
+void sound_PauseSound(int sound_source, int fade_out)
 {
-	if(sound_GetSoundSourcePointer(sound_source))
+	struct sound_source_t *source;
+
+	source = sound_GetSoundSourcePointer(sound_source);
+
+	if(source)
 	{
+		if(fade_out)
+		{
+			source->flags |= SOURCE_FLAG_FADE_OUT;
+		}
+
         sound_EmitSoundCommand(SOUND_COMMAND_TYPE_PAUSE_SOUND, sound_source);
 	}
-}
-
-void sound_ResumeSound(int sound_source)
-{
-    if(sound_GetSoundSourcePointer(sound_source))
+	else
 	{
-		sound_EmitSoundCommand(SOUND_COMMAND_TYPE_RESUME_SOUND, sound_source);
+		printf("sound_PauseSound: bad sound source index\n");
 	}
 }
 
-void sound_StopSound(int sound_source)
+void sound_ResumeSound(int sound_source, int fade_in)
 {
-	if(sound_GetSoundSourcePointer(sound_source))
+	struct sound_source_t *source;
+
+	source = sound_GetSoundSourcePointer(sound_source);
+
+    if(source)
 	{
+		if(fade_in)
+		{
+            source->flags |= SOURCE_FLAG_FADE_IN;
+		}
+
+		sound_EmitSoundCommand(SOUND_COMMAND_TYPE_RESUME_SOUND, sound_source);
+	}
+	else
+	{
+		printf("sound_ResumeSound: bad sound source index\n");
+	}
+}
+
+void sound_StopSound(int sound_source, int fade_out)
+{
+	struct sound_source_t *source;
+
+	source = sound_GetSoundSourcePointer(sound_source);
+
+	if(source)
+	{
+		if(fade_out)
+		{
+			source->flags |= SOURCE_FLAG_FADE_OUT;
+		}
+
         sound_EmitSoundCommand(SOUND_COMMAND_TYPE_STOP_SOUND, sound_source);
+	}
+	else
+	{
+		printf("sound_StopSound: bad sound source index\n");
 	}
 }
 
 int sound_IsSourcePlaying(int sound_source)
 {
     struct sound_source_t *source;
-	int flags;
+	int flags = 0;
 
     source = sound_GetSoundSourcePointer(sound_source);
 
     if(source)
 	{
-		flags = source->flags;
-		return (flags & SOURCE_FLAG_PLAYING) && 1;
+		flags = (source->flags & SOURCE_FLAG_PLAYING) && 1;
+	}
+	else
+	{
+		printf("sound_IsSourcePlaying: bad sound source index\n");
+	}
+
+	return flags;
+}
+
+int sound_IsSourceAssigned(int sound_source)
+{
+    struct sound_source_t *source;
+	int flags = 0;
+
+    source = sound_GetSoundSourcePointer(sound_source);
+
+    if(source)
+	{
+		flags =  (source->flags & SOURCE_FLAG_ASSIGNED) && 1;
+	}
+	else
+	{
+		printf("sound_IsSourceAssigned: bad sound source index\n");
+	}
+
+	return flags;
+}
+
+void sound_SetSourcePosition(int sound_source, vec3_t position)
+{
+    struct sound_source_t *source;
+
+    source = sound_GetSoundSourcePointer(sound_source);
+
+    if(source)
+    {
+        source->params.position = position;
+    }
+    else
+	{
+		printf("sound_SetSourcePosition: bad sound source index\n");
 	}
 }
 
@@ -795,30 +957,21 @@ int sound_SoundBackend(void *param)
 			switch(sound_command->cmd_id)
 			{
 				case SOUND_COMMAND_TYPE_START_SOUND:
-                    //sound_source->params = sound_command->params;
+				case SOUND_COMMAND_TYPE_RESUME_SOUND:
 
                     /* we only need the al handle to check the source status... */
                     snd_active_sound_sources_indices[snd_active_sound_sources_count] = sound_command->source;
                     snd_active_sound_sources_count++;
 
-                    alSourcei(sound_source->source_handle, AL_BUFFER, sound_source->params.al_sound_buffer);
-                    alSourcef(sound_source->source_handle, AL_GAIN, sound_source->params.gain);
-
-				case SOUND_COMMAND_TYPE_RESUME_SOUND:
-					alSourcei(sound_source->source_handle, AL_LOOPING, (sound_source->flags & SOURCE_FLAG_LOOP ? AL_TRUE : AL_FALSE));
-
-					alSourcePlay(sound_source->source_handle);
-					sound_source->flags = SOURCE_FLAG_PLAYING | SOURCE_FLAG_ASSIGNED;
+                    sound_source->flags |= SOURCE_FLAG_PLAY;
 				break;
 
 				case SOUND_COMMAND_TYPE_PAUSE_SOUND:
-					alSourcePause(sound_source->source_handle);
-					sound_source->flags &= ~SOURCE_FLAG_PLAYING;
-					sound_source->flags |= SOURCE_FLAG_PAUSED;
+					sound_source->flags |= SOURCE_FLAG_PAUSE;
 				break;
 
 				case SOUND_COMMAND_TYPE_STOP_SOUND:
-					alSourceStop(sound_source->source_handle);
+					sound_source->flags |= SOURCE_FLAG_STOP;
 				break;
 
 
@@ -853,47 +1006,137 @@ int sound_SoundBackend(void *param)
 			snd_next_out_sound_command = (snd_next_out_sound_command + 1) % MAX_SOUND_COMMANDS;
 		}
 
-		//printf("%d active sources\n", snd_active_sound_sources_count);
 
 		for(r = 0; r < snd_active_sound_sources_count; r++)
 		{
 			source_index = snd_active_sound_sources_indices[r];
 
-			//printf("%d\n", source_index);
-
 			sound_source = &snd_sound_sources[source_index];
+
+
+			if(sound_source->flags & (SOURCE_FLAG_PLAY | SOURCE_FLAG_RESUME))
+			{
+				if(sound_source->flags & SOURCE_FLAG_FADE_IN)
+				{
+					sound_source->current_gain = 0.0;
+					sound_source->flags |= SOURCE_FLAG_FADING_IN;
+					sound_source->flags &= ~SOURCE_FLAG_FADE_IN;
+				}
+				else
+				{
+					sound_source->current_gain = sound_source->params.gain;
+				}
+
+				if(sound_source->flags & SOURCE_FLAG_PLAY)
+				{
+					alSourcei(sound_source->source_handle, AL_BUFFER, sound_source->params.al_sound_buffer);
+				}
+
+                sound_source->flags |= SOURCE_FLAG_PLAYING;
+				sound_source->flags &= ~(SOURCE_FLAG_PLAY | SOURCE_FLAG_RESUME | SOURCE_FLAG_PAUSE | SOURCE_FLAG_STOP);
+
+				alSourcePlay(sound_source->source_handle);
+				alSourcei(sound_source->source_handle, AL_LOOPING, (sound_source->flags & SOURCE_FLAG_LOOP ? AL_TRUE : AL_FALSE));
+				alSourcei(sound_source->source_handle, AL_SOURCE_RELATIVE, (sound_source->flags & SOURCE_FLAG_RELATIVE ? AL_TRUE : AL_FALSE));
+			}
+
+
+			else if(sound_source->flags & (SOURCE_FLAG_PAUSE | SOURCE_FLAG_STOP))
+			{
+                //if(sound_source->flags & SOURCE_FLAG_FADE_TRANSITION)
+                if(sound_source->flags & SOURCE_FLAG_FADE_OUT)
+				{
+                    if(sound_source->current_gain > 0.0)
+					{
+                        sound_source->flags |= SOURCE_FLAG_FADING_OUT;
+                        sound_source->flags &= ~(SOURCE_FLAG_FADING_IN | SOURCE_FLAG_FADE_OUT);
+					}
+				}
+
+				if(!(sound_source->flags & SOURCE_FLAG_FADING_OUT))
+				{
+					if(sound_source->flags & SOURCE_FLAG_PAUSE)
+					{
+						sound_source->flags |= SOURCE_FLAG_PAUSED;
+						alSourcePause(sound_source->source_handle);
+					}
+					else
+					{
+						sound_source->flags |= SOURCE_FLAG_STOPPED;
+						alSourceStop(sound_source->source_handle);
+					}
+
+					sound_source->flags &= ~(SOURCE_FLAG_PLAY | SOURCE_FLAG_RESUME | SOURCE_FLAG_PAUSE | SOURCE_FLAG_STOP);
+				}
+			}
+
+
+
+			if(sound_source->flags & SOURCE_FLAG_FADING_IN)
+			{
+				if(sound_source->current_gain < sound_source->params.gain)
+				{
+					sound_source->current_gain += 0.01;
+
+					if(sound_source->current_gain > sound_source->params.gain)
+					{
+						sound_source->current_gain = sound_source->params.gain;
+						sound_source->flags &= ~SOURCE_FLAG_FADING_IN;
+					}
+				}
+			}
+			else if(sound_source->flags & SOURCE_FLAG_FADING_OUT)
+			{
+                if(sound_source->current_gain > 0.0)
+				{
+					sound_source->current_gain -= 0.01;
+
+					if(sound_source->current_gain < 0.0)
+					{
+						sound_source->current_gain = 0.0;
+						sound_source->flags &= ~SOURCE_FLAG_FADING_OUT;
+					}
+				}
+			}
 
 			alGetSourcei(sound_source->source_handle, AL_SOURCE_STATE, &source_state);
 
-			if(source_state == AL_STOPPED)
+			switch(source_state)
 			{
-				/* this source is done playing, so free it... */
-				sound_source->flags &= ~(SOURCE_FLAG_PLAYING | SOURCE_FLAG_ASSIGNED);
+				case AL_STOPPED:
+					/* this source is done playing, so free it... */
+					sound_source->flags = 0;
 
-				if(r < snd_active_sound_sources_count - 1)
-				{
-					snd_active_sound_sources_indices[r] = snd_active_sound_sources_indices[snd_active_sound_sources_count - 1];
-					r--;
-				}
+					if(r < snd_active_sound_sources_count - 1)
+					{
+						snd_active_sound_sources_indices[r] = snd_active_sound_sources_indices[snd_active_sound_sources_count - 1];
+						r--;
+					}
 
-				snd_active_sound_sources_count--;
+					snd_active_sound_sources_count--;
 
-				/* add its indice back into the ring buffer... */
-				snd_sound_sources_indices[snd_next_out_sound_source] = source_index;
+					/* add its indice back into the ring buffer... */
+					snd_sound_sources_indices[snd_next_out_sound_source] = source_index;
 
-				//printf("source %d returned to %d\n", source_index, snd_next_out_sound_source);
+					/*if(snd_next_out_sound_source == snd_next_in_sound_source - 1)
+					{
+						continue;
+					}*/
 
-				/*if(snd_next_out_sound_source == snd_next_in_sound_source - 1)
-				{
+					snd_next_out_sound_source = (snd_next_out_sound_source + 1) % MAX_SOUND_SOURCES;
+
 					continue;
-				}*/
+				break;
 
-				snd_next_out_sound_source = (snd_next_out_sound_source + 1) % MAX_SOUND_SOURCES;
+				case AL_PLAYING:
 
-				continue;
+				break;
 			}
 
-			alSourcef(sound_source->source_handle, AL_GAIN, sound_source->params.gain);
+			//sound_source->flags &= ~(SOURCE_FLAG_PLAY | SOURCE_FLAG_PAUSE | SOURCE_FLAG_RESUME | SOURCE_FLAG_STOP);
+
+			//alSourcef(sound_source->source_handle, AL_GAIN, sound_source->params.gain);
+			alSourcef(sound_source->source_handle, AL_GAIN, sound_source->current_gain);
 			alSource3f(sound_source->source_handle, AL_POSITION, sound_source->params.position.x, sound_source->params.position.y, sound_source->params.position.z);
 		}
 	}

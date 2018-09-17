@@ -3,6 +3,7 @@
 #include "..\..\common\gui.h"
 #include "..\ed_common.h"
 #include "..\ed_ui.h"
+#include "..\ed_ui_explorer.h"
 #include "..\..\common\l_main.h"
 #include "..\..\common\player.h"
 #include "..\..\common\portal.h"
@@ -47,6 +48,7 @@ int ed_level_editor_waypoint_window_open = 0;
 vec2_t ed_level_editor_waypoint_options_menu_pos;
 
 int ed_level_editor_entity_options_menu_open = 0;
+int ed_level_editor_trigger_window_open = 0;
 
 int ed_level_editor_brush_options_menu_open = 0;
 int ed_level_editor_brush_uv_menu_open = 0;
@@ -74,6 +76,8 @@ int ed_level_editor_map_compiler_window_open = 0;
 extern vec3_t level_editor_3d_cursor_position;
 extern int level_editor_need_to_copy_data;
 extern int level_editor_draw_brushes;
+extern int level_editor_draw_world_polygons;
+extern int level_editor_draw_leaves;
 extern pick_list_t level_editor_pick_list;
 extern float level_editor_linear_snap_value;
 extern float level_editor_angular_snap_value;
@@ -257,6 +261,59 @@ void editor_LevelEditorUIShutdown()
 
 void editor_LevelEditorUpdateUI()
 {
+	if(gui_ImGuiBeginMainMenuBar())
+	{
+		if(gui_ImGuiBeginMenu("File"))
+		{
+			if(gui_ImGuiMenuItem("New...", NULL, NULL, 1))
+			{
+				editor_LevelEditorNewLevel();
+			}
+			if(gui_ImGuiMenuItem("Save...", NULL, NULL, 1))
+			{
+				editor_SetExplorerWriteFileCallback(editor_LevelEditorSaveLevel);
+				editor_OpenExplorerWindow(NULL, EXPLORER_FILE_MODE_WRITE);
+			}
+			if(gui_ImGuiMenuItem("Open...", NULL, NULL, 1))
+			{
+				editor_SetExplorerReadFileCallback(editor_LevelEditorLoadLevel);
+				editor_OpenExplorerWindow(NULL, EXPLORER_FILE_MODE_READ);
+			}
+			if(gui_ImGuiMenuItem("Exit", NULL, NULL, 1))
+			{
+				engine_SetEngineState(ENGINE_QUIT);
+			}
+
+			gui_ImGuiEndMenu();
+		}
+
+		/*if(gui_ImGuiBeginMenu("Renderer"))
+		{
+			if(r_flat)
+			{
+				if(gui_ImGuiMenuItem("Disable fullbright", NULL, NULL, 1))
+				{
+					r_flat = 0;
+				}
+			}
+			else
+			{
+				if(gui_ImGuiMenuItem("Enable fullbright", NULL, NULL, 1))
+				{
+					r_flat = 1;
+				}
+			}
+
+			gui_ImGuiEndMenu();
+		}*/
+
+
+
+		gui_ImGuiEndMainMenuBar();
+	}
+
+
+
 	editor_LevelEditorMenuWindow();
 	editor_LevelEditorWorldMenu();
 	editor_LevelEditorSnapValueMenu();
@@ -288,6 +345,7 @@ void editor_LevelEditorMenuWindow()
 	ed_level_editor_brush_options_menu_open = 0;
 	ed_level_editor_entity_options_menu_open = 0;
 	ed_level_editor_waypoint_window_open = 0;
+	ed_level_editor_trigger_window_open = 0;
 
 	pick_record_t *pick;
 
@@ -312,6 +370,10 @@ void editor_LevelEditorMenuWindow()
 			case PICK_WAYPOINT:
 				ed_level_editor_waypoint_window_open = 1;
 			break;
+
+			case PICK_TRIGGER:
+				ed_level_editor_trigger_window_open = 1;
+			break;
 		}
 
 		ed_level_editor_menu_window_open = 1;
@@ -330,20 +392,15 @@ void editor_LevelEditorMenuWindow()
 
 	if(ed_level_editor_menu_window_open)
 	{
-	//	gui_ImGuiPushID("LevelEditorMenuWindow");
-		gui_ImGuiSetNextWindowSize(vec2(350.0, r_window_height - 20.0), 0);
-		gui_ImGuiSetNextWindowPos(vec2(r_window_width - 350.0, 20.0), 0, vec2(0.0, 0.0));
-		gui_ImGuiBegin("Menu window", NULL, ImGuiWindowFlags_NoResize);
+		gui_ImGuiBegin("Menu window", NULL, 0);
 
-		editor_LevelEditorBrushOptionsMenu();
-		editor_LevelEditorLightOptionsMenu();
-		editor_LevelEditorEntityOptionsMenu();
+		editor_LevelEditorBrushWindow(pick->pointer);
+		editor_LevelEditorLightWindow(pick->index0);
+		editor_LevelEditorEntityWindow(pick->index0);
 		editor_LevelEditorWaypointWindow(pick->index0);
-
+		editor_LevelEditorTriggerWindow(pick->index0);
 
 		gui_ImGuiEnd();
-
-		//gui_ImGuiPopID();
 	}
 }
 
@@ -406,8 +463,27 @@ void editor_LevelEditorMapCompilerWindow()
 				total_seconds_elapsed = 0;
 				delta_time = 0.0;
 
+				world_Clear(WORLD_CLEAR_FLAG_BSP | WORLD_CLEAR_FLAG_LIGHT_LEAVES | WORLD_CLEAR_FLAG_PHYSICS_MESH);
+
 				bsp_CompileBsp(0);
+
+				level_editor_need_to_copy_data = 1;
 			}
+
+			gui_ImGuiSameLine(0.0, -1.0);
+
+			if(gui_ImGuiButton("Export bsp", vec2(100.0, 16.0)))
+			{
+				editor_SetExplorerWriteFileCallback(editor_LevelEditorExportBsp);
+				editor_OpenExplorerWindow(NULL, EXPLORER_FILE_MODE_WRITE);
+			}
+
+			/*gui_ImGuiSameLine(0.0, -1.0);
+
+			if(gui_ImGuiButton("Import bsp", vec2(100.0, 16.0)))
+			{
+				bsp_LoadBsp("test.bsp");
+			}*/
 		}
 		else
 		{
@@ -467,6 +543,10 @@ void editor_LevelEditorMaterialsWindow()
 	int j;
 
 	int selected;
+	int flip_texture_x;
+	int flip_texture_y;
+
+	vec4_t base_color;
 
 	if(ed_level_editor_material_window_open)
 	{
@@ -520,6 +600,19 @@ void editor_LevelEditorMaterialsWindow()
 
 
        // gui_ImGuiText()
+
+		base_color.r = (float)current_material->r / 255.0;
+		base_color.g = (float)current_material->g / 255.0;
+		base_color.b = (float)current_material->b / 255.0;
+		base_color.a = (float)current_material->a / 255.0;
+
+		gui_ImGuiSliderFloat4("Base color", &base_color.r, 0.0, 1.0, "%.3f", 1.0);
+
+
+		current_material->r = 0xff * base_color.r;
+		current_material->g = 0xff * base_color.g;
+		current_material->b = 0xff * base_color.b;
+		current_material->a = 0xff * base_color.a;
 
 
         for(j = 0; j < 2; j++)
@@ -603,10 +696,74 @@ void editor_LevelEditorMaterialsWindow()
 				gui_ImGuiEndCombo();
 			}
 
+			if(j == 1)
+			{
+				gui_ImGuiSameLine(0.0, -1.0);
+
+				if(current_material->flags & MATERIAL_INVERT_NORMAL_X)
+				{
+					flip_texture_x = 1;
+				}
+				else
+				{
+					flip_texture_x = 0;
+				}
+
+
+
+
+				if(current_material->flags & MATERIAL_INVERT_NORMAL_Y)
+				{
+					flip_texture_y = 1;
+				}
+				else
+				{
+					flip_texture_y = 0;
+				}
+
+
+
+
+				gui_ImGuiSameLine(0.0, -1.0);
+
+				if(gui_ImGuiButton("Flip X", vec2(80.0, 16.0)))
+				{
+					flip_texture_x ^= 1;
+				}
+
+				gui_ImGuiSameLine(0.0, -1.0);
+
+				if(gui_ImGuiButton("Flip Y", vec2(80.0, 16.0)))
+				{
+					flip_texture_y ^= 1;
+				}
+
+
+
+
+				if(flip_texture_x)
+				{
+					current_material->flags |= MATERIAL_INVERT_NORMAL_X;
+				}
+				else
+				{
+					current_material->flags &= ~MATERIAL_INVERT_NORMAL_X;
+				}
+
+
+
+				if(flip_texture_y)
+				{
+					current_material->flags |= MATERIAL_INVERT_NORMAL_Y;
+				}
+				else
+				{
+					current_material->flags &= ~MATERIAL_INVERT_NORMAL_Y;
+				}
+
+			}
+
 		}
-
-
-
 
 
 
@@ -619,7 +776,7 @@ void editor_LevelEditorEntityDefsMenu()
 
 }
 
-void editor_LevelEditorLightOptionsMenu()
+void editor_LevelEditorLightWindow(int light_index)
 {
 	light_ptr_t light_ptr;
 	pick_record_t *pick;
@@ -632,48 +789,50 @@ void editor_LevelEditorLightOptionsMenu()
 
 	if(ed_level_editor_light_options_menu_open)
 	{
-		pick = &level_editor_pick_list.records[level_editor_pick_list.record_count - 1];
+		//pick = &level_editor_pick_list.records[light_index];
 
-		switch(pick->type)
+		//switch(pick->type)
+		//{
+		//	case PICK_LIGHT:
+		//		light_ptr = light_GetLightPointerIndex(pick->index0);
+
+		light_ptr = light_GetLightPointerIndex(light_index);
+
+		if(light_ptr.params)
 		{
-			case PICK_LIGHT:
-				light_ptr = light_GetLightPointerIndex(pick->index0);
+			r = light_ptr.params->r;
+			g = light_ptr.params->g;
+			b = light_ptr.params->b;
 
-				if(light_ptr.params)
-				{
-					r = light_ptr.params->r;
-					g = light_ptr.params->g;
-					b = light_ptr.params->b;
+			radius = light_ptr.params->radius;
+			energy = light_ptr.params->energy;
 
-					radius = light_ptr.params->radius;
-					energy = light_ptr.params->energy;
+			gui_ImGuiSetNextWindowPos(vec2(0.0, 0.0), ImGuiCond_Once, vec2(0.0, 0.0));
+			gui_ImGuiBeginChild("Light options", vec2(0.0, 0.0), 0, ImGuiWindowFlags_AlwaysAutoResize);
+			gui_ImGuiSliderInt("Red", &r, 0, 255, "%d");
+			gui_ImGuiSliderInt("Green", &g, 0, 255, "%d");
+			gui_ImGuiSliderInt("Blue", &b, 0, 255, "%d");
+			gui_ImGuiSliderInt("Radius", &radius, 0, 0xffff, "%d");
+			gui_ImGuiSliderInt("Energy", &energy, 0, 0xffff, "%d");
+			gui_ImGuiEndChild();
 
-					gui_ImGuiSetNextWindowPos(vec2(0.0, 0.0), ImGuiCond_Once, vec2(0.0, 0.0));
-					gui_ImGuiBeginChild("Light options", vec2(0.0, 0.0), 0, ImGuiWindowFlags_AlwaysAutoResize);
-					gui_ImGuiSliderInt("Red", &r, 0, 255, "%d");
-					gui_ImGuiSliderInt("Green", &g, 0, 255, "%d");
-					gui_ImGuiSliderInt("Blue", &b, 0, 255, "%d");
-					gui_ImGuiSliderInt("Radius", &radius, 0, 0xffff, "%d");
-					gui_ImGuiSliderInt("Energy", &energy, 0, 0xffff, "%d");
-					gui_ImGuiEndChild();
+			light_ptr.params->r = r;
+			light_ptr.params->g = g;
+			light_ptr.params->b = b;
 
-					light_ptr.params->r = r;
-					light_ptr.params->g = g;
-					light_ptr.params->b = b;
-
-					light_ptr.params->radius = radius;
-					light_ptr.params->energy = energy;
-				}
-
-			break;
+			light_ptr.params->radius = radius;
+			light_ptr.params->energy = energy;
 		}
+
+			//break;
+		//}
 	}
 }
 
-void editor_LevelEditorBrushOptionsMenu()
+void editor_LevelEditorBrushWindow(struct brush_t *brush)
 {
 	pick_record_t *pick;
-	brush_t *brush;
+	//brush_t *brush;
 	int brush_face_index;
 	bsp_polygon_t *brush_face;
 	material_t *brush_face_material;
@@ -688,8 +847,8 @@ void editor_LevelEditorBrushOptionsMenu()
 	if(ed_level_editor_brush_options_menu_open)
 	{
 		//pick = editor_LevelEditorGetLastSelection();
-		pick = &level_editor_pick_list.records[level_editor_pick_list.record_count - 1];
-		brush = (brush_t *)pick->pointer;
+		//pick = &level_editor_pick_list.records[level_editor_pick_list.record_count - 1];
+		//b/rush = (brush_t *)pick->pointer;
 
 		gui_ImGuiBeginChild("Brush options", vec2(0.0, 0.0), 0, ImGuiWindowFlags_AlwaysAutoResize);
 		gui_ImGuiText("Vertices: %d", brush->clipped_polygons_vert_count);
@@ -838,14 +997,14 @@ void editor_LevelEditorBrushOptionsMenu()
 				ed_level_editor_brush_uv_menu_open ^= 1;
 			}
 
-			editor_LevelEditorBrushUVMenu();
+			editor_LevelEditorBrushUVWindow();
 		}
 
 		gui_ImGuiEndChild();
 	}
 }
 
-void editor_LevelEditorBrushUVMenu()
+void editor_LevelEditorBrushUVWindow()
 {
 	float uv_mouse_x;
 	float uv_mouse_y;
@@ -1171,7 +1330,7 @@ void editor_LevelEditorBrushUVMenu()
 	}
 }
 
-void editor_LevelEditorEntityOptionsMenu()
+void editor_LevelEditorEntityWindow(int entity_index)
 {
 
 	struct entity_t *entity;
@@ -1186,7 +1345,8 @@ void editor_LevelEditorEntityOptionsMenu()
 	if(ed_level_editor_entity_options_menu_open)
 	{
 		entity_handle.def = 0;
-		entity_handle.entity_index = level_editor_pick_list.records[level_editor_pick_list.record_count - 1].index0;
+		entity_handle.entity_index = entity_index;
+		//entity_handle.entity_index = level_editor_pick_list.records[level_editor_pick_list.record_count - 1].index0;
 
 
 		entity = entity_GetEntityPointerHandle(entity_handle);
@@ -1250,22 +1410,78 @@ void editor_LevelEditorWaypointWindow(int waypoint_index)
 	}
 }
 
+void editor_LevelEditorTriggerWindow(int trigger_index)
+{
+	struct trigger_t *trigger;
+
+	struct trigger_filter_t *filters;
+	struct trigger_filter_t *filter;
+
+	int i;
+
+	char label[512];
+
+    if(ed_level_editor_trigger_window_open)
+	{
+		trigger = entity_GetTriggerPointerIndex(trigger_index);
+
+		if(trigger)
+		{
+			if(gui_ImGuiInputText("Trigger name", trigger->name, ENTITY_TRIGGER_NAME_MAX_LEN, ImGuiInputTextFlags_EnterReturnsTrue))
+			{
+				level_editor_need_to_copy_data = 1;
+			}
+
+			if(gui_ImGuiInputText("Trigger event", trigger->event_name, WORLD_EVENT_NAME_MAX_LEN, ImGuiInputTextFlags_EnterReturnsTrue))
+			{
+				level_editor_need_to_copy_data = 1;
+			}
+
+			filters = (struct trigger_filter_t *)trigger->trigger_filters.elements;
+
+			if(gui_ImGuiButton("Add filter", vec2(80.0, 16.0)))
+			{
+				entity_AddTriggerFilter(trigger_index, "New filter");
+				level_editor_need_to_copy_data = 1;
+			}
+
+			for(i = 0; i < trigger->trigger_filters.element_count; i++)
+			{
+				filter = filters + i;
+
+				if(gui_ImGuiButton("Remove filter", vec2(120.0, 16.0)))
+				{
+					entity_RemoveTriggerFilter(trigger_index, filter->prop_name);
+					level_editor_need_to_copy_data = 1;
+				}
+
+				gui_ImGuiSameLine(0.0, -1.0);
+
+				if(gui_ImGuiInputText(" ", filter->prop_name, ENTITY_PROP_NAME_MAX_LEN, ImGuiInputTextFlags_EnterReturnsTrue))
+				{
+					level_editor_need_to_copy_data = 1;
+				}
+			}
+		}
+	}
+}
+
 void editor_LevelEditorWorldMenu()
 {
 	//gui_ImGuiPushID("LevelEditorWorldMenu");
 
 	if(gui_ImGuiBeginMainMenuBar())
 	{
-		if(gui_ImGuiBeginMenu("World"))
+		if(gui_ImGuiBeginMenu("Level editor"))
 		{
-			if(gui_ImGuiMenuItem("Compile bsp", NULL, NULL, 1))
+			/*if(gui_ImGuiMenuItem("Compile bsp", NULL, NULL, 1))
 			{
 				bsp_CompileBsp(0);
 				level_editor_need_to_copy_data = 1;
 			}
 			if(gui_ImGuiMenuItem("Clear bsp", NULL, NULL, 1))
 			{
-				world_Clear(0);
+				world_Clear(WORLD_CLEAR_FLAG_BSP | WORLD_CLEAR_FLAG_LIGHT_LEAVES);
 				level_editor_need_to_copy_data = 1;
 			}
 			if(gui_ImGuiMenuItem("Export bsp", NULL, NULL, 1))
@@ -1275,7 +1491,9 @@ void editor_LevelEditorWorldMenu()
 			if(gui_ImGuiMenuItem("Import bsp", NULL, NULL, 1))
 			{
 				bsp_LoadBsp("test.bsp");
-			}
+			}*/
+
+
 
 			if(level_editor_draw_brushes)
 			{
@@ -1286,11 +1504,46 @@ void editor_LevelEditorWorldMenu()
 			}
 			else
 			{
-				if(gui_ImGuiMenuItem("Show brushes", NULL, NULL, 1))
+				if(gui_ImGuiMenuItem("Draw brushes", NULL, NULL, 1))
 				{
 					level_editor_draw_brushes = 1;
 				}
 			}
+
+
+
+			if(level_editor_draw_leaves)
+			{
+				if(gui_ImGuiMenuItem("Hide bsp leaves", NULL, NULL, 1))
+				{
+					level_editor_draw_leaves = 0;
+				}
+			}
+			else
+			{
+				if(gui_ImGuiMenuItem("Draw bsp leaves", NULL, NULL, 1))
+				{
+                    level_editor_draw_leaves = 1;
+				}
+			}
+
+
+
+			if(level_editor_draw_world_polygons)
+			{
+				if(gui_ImGuiMenuItem("Hide world polygons", NULL, NULL, 1))
+				{
+					level_editor_draw_world_polygons = 0;
+				}
+			}
+			else
+			{
+                if(gui_ImGuiMenuItem("Draw world polygons", NULL, NULL, 1))
+				{
+					level_editor_draw_world_polygons = 1;
+				}
+			}
+
 
 
 			gui_ImGuiEndMenu();
@@ -1515,6 +1768,12 @@ void editor_LevelEditorAddToWorldMenu()
 				record.type = PICK_WAYPOINT;
 				editor_ClearSelection(&level_editor_pick_list);
 				editor_LevelEditorAddSelection(&record);
+				keep_open = 0;
+			}
+			if(gui_ImGuiMenuItem("Trigger", NULL, NULL, 1))
+			{
+                entity_CreateTrigger(NULL, level_editor_3d_cursor_position, vec3_t_c(1.0, 1.0, 1.0), NULL, "New trigger");
+                level_editor_need_to_copy_data = 1;
 				keep_open = 0;
 			}
 			if(gui_ImGuiBeginMenu("Entities"))

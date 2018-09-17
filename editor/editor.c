@@ -411,6 +411,8 @@ void editor_Init(int argc, char *argv[])
 	input_RegisterKey(SDL_SCANCODE_DELETE);
 	input_RegisterKey(SDL_SCANCODE_TAB);
 
+	input_RegisterKey(SDL_SCANCODE_LCTRL);
+
 	//renderer_RegisterCallback(renderer_EditorDraw, PRE_SHADING_STAGE_CALLBACK);
 	//renderer_RegisterCallback(renderer_PostDraw, POST_SHADING_STAGE_CALLBACK);
 
@@ -526,50 +528,6 @@ void editor_Init(int argc, char *argv[])
 	renderer_PopFunctionName();
 }
 
-extern bsp_node_t *world_bsp;
-extern bsp_node_t *collision_bsp;
-
-void editor_RestartEditor()
-{
-
-	//return;
-
-	//mat3_t r = mat3_t_id();
-
-	//editor_camera_yaw = 0.2;
-	//editor_camera_pitch = -0.15;
-
-
-	//camera_PitchYawCamera(editor_camera, editor_camera_yaw, editor_camera_pitch);
-	//camera_ComputeWorldToCameraMatrix(editor_camera);
-
-	//ed_3d_cursor_position = vec3(0.0, 0.0, 0.0);
-	//ed_3d_handle_position = vec3(0.0, 0.0, 0.0);
-
-
-	//ed_3d_handle_flags = 0;
-
-	//editor_Set3dHandleTransformMode(ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION);
-	//editor_Set3dHandlePivotMode(ED_3D_HANDLE_PIVOT_MODE_MEDIAN_POINT);
-
-
-	//editor_ClearSelection();
-
-	//if(world_bsp)
-	//{
-	//	bsp_DeleteSolidLeafBsp(world_bsp);
-	//	world_bsp = NULL;
-	//}
-
-	//if(collision_bsp)
-	//{
-	//	bsp_DeleteSolidLeafBsp(collision_bsp);
-	//	collision_bsp = NULL;
-	//}
-
-	//path_ClearSearchPaths();
-	//editor_SetProjectName("untitled.wtf");
-}
 
 void editor_Finish()
 {
@@ -611,12 +569,16 @@ extern wsurface_t *edit_uv_window;
 
 void editor_Main(float delta_time)
 {
-	editor_ProcessUI();
+	//editor_ProcessUI();
 
 	if(ed_current_editor->main_callback)
 	{
 		ed_current_editor->main_callback(delta_time);
 	}
+
+	editor_MiscMenu();
+	editor_EditorsMenu();
+	editor_UpdateExplorer();
 }
 
 int editor_PickOnBrush(brush_t *brush)
@@ -828,7 +790,7 @@ void editor_RegisterEditor(char *name, void (*init_callback)(), void (*finish_ca
 	editor->next = ed_editors;
 	ed_editors = editor;
 
-	editor_EnumerateEditors();
+//	editor_EnumerateEditors();
 }
 
 void editor_UnregisterEditor(char *name)
@@ -936,7 +898,7 @@ void editor_StartEditor(char *name)
 				}
 			}
 
-			editor_CloseExplorerWindow();
+//			editor_CloseExplorerWindow();
 
 			editor->setup_callback();
 

@@ -4,6 +4,8 @@
 #include "w_common.h"
 #include "world.h"
 #include "entity.h"
+#include "sound.h"
+#include "log.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -24,6 +26,9 @@ int resource_Init()
 	file_exts[RESOURCE_TYPE_TEXTURE][1] = "jpg";
 	file_exts[RESOURCE_TYPE_TEXTURE][2] = "tga";
 
+	file_exts[RESOURCE_TYPE_SOUND][0] = "wav";
+	file_exts[RESOURCE_TYPE_SOUND][1] = "ogg";
+
 
 	file_exts[RESOURCE_TYPE_MODEL][0] = "mpk";
 
@@ -33,6 +38,8 @@ int resource_Init()
 	//file_exts[RESOURCE_TYPE_SCRIPT][0] = "as";
 	file_exts[RESOURCE_TYPE_SCRIPT][0] = ENTITY_SCRIPT_FILE_EXTENSION;
 	file_exts[RESOURCE_TYPE_SCRIPT][1] = WORLD_SCRIPT_FILE_EXTENSION;
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 	return 1;
 }
@@ -51,6 +58,7 @@ void resource_LoadResource(char *file_name)
 	struct script_t *(*load_script_fn)(char *file_name, char *script_name);
 
 	struct entity_handle_t entity_handle;
+	struct sound_handle_t sound_handle;
 
 	int success = 0;
 
@@ -79,6 +87,16 @@ void resource_LoadResource(char *file_name)
 
 					case RESOURCE_TYPE_MODEL:
 						if(model_LoadModel(file_name, path_GetNameNoExt(path_GetFileNameFromPath(file_name))) != -1)
+						{
+							success = 1;
+						}
+					break;
+
+					case RESOURCE_TYPE_SOUND:
+
+						sound_handle = sound_LoadSound(file_name, path_GetNameNoExt(path_GetFileNameFromPath(file_name)));
+
+						if(sound_handle.sound_index != INVALID_SOUND_INDEX)
 						{
 							success = 1;
 						}

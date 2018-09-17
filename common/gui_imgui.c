@@ -600,6 +600,11 @@ int gui_ImGuiSliderFloat3(const char *label, float *v, float v_min, float v_max,
 	return ImGui::SliderFloat3(label, v, v_min, v_max, format, power);
 }
 
+int gui_ImGuiSliderFloat4(const char *label, float *v, float v_min, float v_max, const char *format, float power)
+{
+	return ImGui::SliderFloat4(label, v, v_min, v_max, format, power);
+}
+
 int gui_ImGuiSliderAngle(const char *label, float *v_rad, float v_degrees_min, float v_degrees_max)
 {
 	return ImGui::SliderAngle(label, v_rad, v_degrees_min, v_degrees_max);
@@ -798,6 +803,13 @@ int gui_ImGuiIsItemDeactivated()
 int gui_ImGuiIsAnyItemActive()
 {
 	return ImGui::IsAnyItemActive();
+}
+
+vec2_t gui_ImGuiCalcTexSize(const char *text, const char *text_end, int hide_text_after_double_hash, float wrap_width)
+{
+    ImVec2 size;
+    size = ImGui::CalcTextSize(text, text_end, hide_text_after_double_hash, wrap_width);
+    return (vec2_t){size.x, size.y};
 }
 
 /*

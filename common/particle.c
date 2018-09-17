@@ -12,6 +12,7 @@
 #include "c_memory.h"
 #include "camera.h"
 #include "texture.h"
+#include "log.h"
 
 #include "script.h"
 #include "stack_list.h"
@@ -113,6 +114,7 @@ int particle_Init()
 
 	gpu_Write(ps_particle_quad_handle, 0, particle_quad, sizeof(vec4_t) * 4);
 
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 
 	return 1;

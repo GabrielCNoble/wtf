@@ -278,6 +278,7 @@
 		<Unit filename="../common/log.h">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../common/macros.h" />
 		<Unit filename="../common/material.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -381,6 +382,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/script/scr_entity.h" />
+		<Unit filename="../common/script/scr_gui.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/script/scr_gui.h" />
 		<Unit filename="../common/script/scr_math.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -389,6 +394,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/script/scr_particle.h" />
+		<Unit filename="../common/script/scr_resource.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/script/scr_resource.h" />
 		<Unit filename="../common/script/scr_sound.c">
 			<Option compilerVar="CC" />
 		</Unit>

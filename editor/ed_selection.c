@@ -46,6 +46,7 @@ extern portal_t *ptl_portals;
 /* from entity.c */
 //extern int ent_entity_list_cursor;
 extern struct stack_list_t ent_entities[2];
+extern struct stack_list_t ent_triggers;
 
 
 /* from l_main.c */
@@ -160,12 +161,16 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	struct model_t *model;
 	struct waypoint_t *waypoint;
 	struct waypoint_t *waypoints;
+	struct trigger_t *triggers;
+	struct trigger_t *trigger;
 	mesh_t *mesh;
 	portal_t *portal;
 
 	vec3_t right_vector;
 	vec3_t up_vector;
 	vec3_t center;
+
+	bsp_polygon_t *polygon;
 
 
 	struct entity_t *entities;
@@ -228,7 +233,24 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	{
 		value = i;
 		renderer_SetNamedUniform1f("pick_index", *(float *)&value);
-		renderer_DrawVertsIndexed(GL_TRIANGLES, brush->clipped_polygons_index_count, 4, sizeof(vertex_t), brush->clipped_polygons_vertices, brush->clipped_polygons_indexes);
+
+
+		polygon = brush->base_polygons;
+
+		while(polygon)
+		{
+			renderer_Begin(GL_TRIANGLE_FAN);
+			for(j = 0; j < polygon->vert_count; j++)
+			{
+				renderer_Vertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+			}
+			renderer_End();
+
+			polygon = polygon->next;
+		}
+
+
+		//renderer_DrawVertsIndexed(GL_TRIANGLES, brush->base_polygons_index_count, 4, sizeof(vertex_t), brush->base_polygons_vertices, brush->base_polygons_indexes);
 		brush = brush->next;
 		i++;
 	}
@@ -417,6 +439,29 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 		renderer_DrawBox();
 	}
 
+	value = PICK_TRIGGER;
+
+	renderer_SetNamedUniform1f("pick_type", *(float *)&value);
+	renderer_SetModelMatrix(NULL);
+
+	triggers = (struct trigger_t *)ent_triggers.elements;
+	c = ent_triggers.element_count;
+
+	for(i = 0; i < c; i++)
+	{
+		trigger = triggers + i;
+
+		value = i + 1;
+		renderer_SetNamedUniform1f("pick_index", *(float *)&value);
+
+		mat4_t_compose2(&transform, &trigger->orientation, trigger->position, trigger->scale);
+
+		renderer_SetModelMatrix(&transform);
+		renderer_DrawBox();
+	}
+
+
+
 
 
 	renderer_DisableImediateDrawing();
@@ -452,6 +497,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 		case PICK_ENTITY:
 		case PICK_PORTAL:
 		case PICK_WAYPOINT:
+		case PICK_TRIGGER:
 			record.index0 = pick_sample[1] - 1;
 			//printf("pick!\n");
 		break;
@@ -925,6 +971,7 @@ void editor_TranslateSelections(pick_list_t *pick_list, vec3_t direction, float 
 	pick_record_t *records = pick_list->records;
 	struct collision_shape_t *collision_shapes = NULL;
 	struct entity_handle_t entity_handle;
+	struct trigger_t *trigger;
 	brush_t *brush;
 	bsp_polygon_t *polygon;
 	c = pick_list->record_count;
@@ -995,6 +1042,12 @@ void editor_TranslateSelections(pick_list_t *pick_list, vec3_t direction, float 
 				nav_waypoints[records[i].index0].position.y += direction.y * amount;
 				nav_waypoints[records[i].index0].position.z += direction.z * amount;*/
 			break;
+
+			case PICK_TRIGGER:
+				entity_TranslateTrigger(records[i].index0, direction, amount);
+			break;
+
+
 		}
 	}
 
@@ -1154,6 +1207,10 @@ void editor_ScaleSelections(pick_list_t *pick_list, vec3_t axis, float amount)
 				portal_scale_axis.y = axis.y;
 				portal_ScalePortal(records[i].index0, portal_scale_axis, amount);
 			break;
+
+			case PICK_TRIGGER:
+				entity_ScaleTrigger(records[i].index0, axis, amount);
+			break;
 		}
 	}
 }
@@ -1187,7 +1244,7 @@ void editor_CopySelections(pick_list_t *pick_list)
 			case PICK_LIGHT:
 				light_pos = &l_light_positions[records[i].index0];
 				light_parms = &l_light_params[records[i].index0];
-				new_index = light_CreateLight("copy_light", &light_pos->orientation, light_pos->position, vec3_t_c((float)light_parms->r / 255.0, (float)light_parms->g / 255.0, (float)light_parms->b / 255.0), (float)(UNPACK_LIGHT_ENERGY(light_parms->energy)), (float)(UNPACK_LIGHT_RADIUS(light_parms->radius)), light_parms->bm_flags);
+				new_index = light_CreateLight("copy_light", &light_pos->orientation, light_pos->position, vec3_t_c((float)light_parms->r / 255.0, (float)light_parms->g / 255.0, (float)light_parms->b / 255.0), UNPACK_LIGHT_RADIUS(light_parms->radius), UNPACK_LIGHT_ENERGY(light_parms->energy), light_parms->bm_flags);
 				records[i].index0 = new_index;
 			break;
 
@@ -1241,6 +1298,10 @@ void editor_DestroySelection(pick_list_t *pick_list)
 				entity_RemoveEntity(entity_handle);
 				//entity_DestroyEntityIndex(records[i].index0);
 			break;
+
+			case PICK_TRIGGER:
+				entity_DestroyTriggerIndex(records[i].index0);
+			break;
 		}
 	}
 
@@ -1258,6 +1319,7 @@ vec3_t editor_GetCenterOfSelections(pick_list_t *pick_list)
 	center.z = 0.0;
 
 	struct waypoint_t *waypoint;
+	struct trigger_t *trigger;
 	struct entity_t *entity;
 	struct entity_handle_t entity_handle;
 
@@ -1299,11 +1361,15 @@ vec3_t editor_GetCenterOfSelections(pick_list_t *pick_list)
 
 				entity = entity_GetEntityPointerHandle(entity_handle);
 
-				world_transform = entity_GetWorldTransformPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+				if(entity)
+				{
+					world_transform = entity_GetWorldTransformPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
 
-				center.x += world_transform->transform.floats[3][0];
-				center.y += world_transform->transform.floats[3][1];
-				center.z += world_transform->transform.floats[3][2];
+					center.x += world_transform->transform.floats[3][0];
+					center.y += world_transform->transform.floats[3][1];
+					center.z += world_transform->transform.floats[3][2];
+				}
+
 			break;
 
 			case PICK_PORTAL:
@@ -1319,6 +1385,19 @@ vec3_t editor_GetCenterOfSelections(pick_list_t *pick_list)
 				center.x += waypoint->position.x;
 				center.y += waypoint->position.y;
 				center.z += waypoint->position.z;
+			break;
+
+			case PICK_TRIGGER:
+
+				trigger = entity_GetTriggerPointerIndex(pick_list->records[i].index0);
+
+				if(trigger)
+				{
+					center.x += trigger->position.x;
+					center.y += trigger->position.y;
+					center.z += trigger->position.z;
+				}
+
 			break;
 		}
 

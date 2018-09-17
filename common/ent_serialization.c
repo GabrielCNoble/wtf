@@ -13,6 +13,7 @@
 
 extern struct stack_list_t ent_entities[2];
 extern struct stack_list_t ent_components[2][COMPONENT_TYPE_LAST];
+extern struct stack_list_t ent_triggers;
 
 
 #ifdef __cplusplus
@@ -439,15 +440,18 @@ void entity_WriteCollider(void **buffer, struct collider_def_t *collider_def)
 		collider_record_start->type = collider_def->type;
 		strcpy(collider_record_start->name, collider_def->name);
 
+		collider_record_start->collider.collider_data.mass = collider_def->mass;
+
 		switch(collider_def->type)
 		{
 			case COLLIDER_TYPE_CHARACTER_COLLIDER:
 				collider_record_start->collider.collider_data.radius = collider_def->radius;
 				collider_record_start->collider.collider_data.height = collider_def->height;
-				collider_record_start->collider.collider_data.max_slope_angle = collider_def->slope_angle;
-				collider_record_start->collider.collider_data.max_step_height = collider_def->step_height;
+				collider_record_start->collider.collider_data.max_slope_angle = collider_def->max_slope_angle;
+				collider_record_start->collider.collider_data.max_step_height = collider_def->max_step_height;
 				collider_record_start->collider.collider_data.jump_height = 0.0;
 				collider_record_start->collider.collider_data.max_walk_speed = collider_def->max_walk_speed;
+				collider_record_start->collider.collider_data.mass = collider_def->mass;
 			break;
 
 			case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
@@ -505,12 +509,13 @@ void entity_ReadCollider(void **buffer, struct entity_handle_t entity)
 																				  collider_record_start->collider.collider_data.radius,
 																				  collider_record_start->collider.collider_data.max_step_height,
 																				  collider_record_start->collider.collider_data.max_slope_angle,
-																				  collider_record_start->collider.collider_data.max_walk_speed);
+																				  collider_record_start->collider.collider_data.max_walk_speed,
+																				  collider_record_start->collider.collider_data.mass);
 		break;
 
 		case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
 			def = physics_CreateRigidBodyColliderDef(collider_record_start->name);
-
+			def->mass = collider_record_start->collider.collider_data.mass;
 			while(1)
 			{
 				if(!strcmp(in, collision_shape_record_tag))
@@ -568,6 +573,8 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 	struct transform_component_t *child_transform_component;
 
 	struct stack_list_t *list;
+
+	struct entity_prop_t *props;
 
 	int i;
 	int j;
@@ -680,10 +687,12 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 
 			entity_ptr->flags |= ENTITY_FLAG_SERIALIZED;
 
+			props = (struct entity_prop_t *)entity_ptr->props.elements;
+
 			/* Always write props, regardless of the entity having been modified or not... */
-			for(i = 0; i < entity_ptr->prop_count; i++)
+			for(i = 0; i < entity_ptr->props.element_count; i++)
 			{
-				entity_WriteProp((void **)&out, entity_ptr->props + i);
+				entity_WriteProp((void **)&out, props + i);
 			}
 
 			if(entity.def || (entity_ptr->flags & ENTITY_FLAG_MODIFIED))
@@ -996,13 +1005,22 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 {
 	struct entity_section_start_t *section_start;
 	struct entity_section_end_t *section_end;
+	struct trigger_record_t *trigger_record;
 	struct entity_t *entity;
 	struct entity_handle_t handle;
 	struct component_t *component;
 
+	struct trigger_t *triggers;
+	struct trigger_t *trigger;
+
+	struct trigger_filter_t *filters;
+	struct trigger_filter_t *filter;
+
 	struct transform_component_t *transform_component;
 
 	struct stack_list_t *list;
+
+	struct entity_prop_t *props;
 
 	int entity_def_count = 0;
 	int entity_count = 0;
@@ -1016,7 +1034,7 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 	char *out;
 	int out_size = 0;
 
-	out_size = sizeof(struct entity_section_start_t) + sizeof(struct entity_section_start_t);
+	out_size = sizeof(struct entity_section_start_t) + sizeof(struct entity_section_end_t);
 
 
 	/* clear the COMPONENT_FLAG_SERIALIZED from every component... */
@@ -1072,8 +1090,15 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 					}
 				}
 
-				/* props... */
-				out_size += sizeof(struct entity_prop_record_t) * entity->prop_count;
+				props = (struct entity_prop_t *)entity->props.elements;
+
+				for(k = 0; k < entity->props.element_count; k++)
+				{
+					/* props... */
+					out_size += sizeof(struct entity_prop_record_t) + props[k].size;
+				}
+
+
 
 
 				/* nestled transforms... */
@@ -1083,7 +1108,21 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 		}
 	}
 
-	out = memory_Calloc(1, out_size);
+	triggers = (struct trigger_t *)ent_triggers.elements;
+
+	for(i = 0; i < ent_triggers.element_count; i++)
+	{
+		trigger = triggers + i;
+
+		if(trigger->flags & TRIGGER_FLAG_INVALID)
+		{
+			continue;
+		}
+
+        out_size += sizeof(struct trigger_record_t) + sizeof(struct trigger_filter_record_t) * (trigger->trigger_filters.element_count - 1);
+	}
+
+	out = memory_Calloc(2, out_size);
 
 	*buffer = out;
 	*buffer_size = out_size;
@@ -1095,15 +1134,49 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 
 	section_start->entity_count = entity_count;
 	section_start->entity_def_count = entity_def_count;
-/*
-	header->reserved0 = 0;
-	header->reserved1 = 0;
-	header->reserved2 = 0;
-	header->reserved3 = 0;
-	header->reserved4 = 0;
-	header->reserved5 = 0;
-	header->reserved6 = 0;
-	header->reserved7 = 0;*/
+
+
+
+	for(i = 0; i < ent_triggers.element_count; i++)
+	{
+        trigger = triggers + i;
+
+		if(trigger->flags & TRIGGER_FLAG_INVALID)
+		{
+			continue;
+		}
+
+
+        trigger_record = (struct trigger_record_t *)out;
+        out += sizeof(struct trigger_record_t) + sizeof(struct trigger_filter_record_t) * (trigger->trigger_filters.element_count - 1);
+
+        strcpy(trigger_record->tag, trigger_record_tag);
+
+        strcpy(trigger_record->trigger_name, trigger->name);
+
+        if(trigger->event_name)
+		{
+			strcpy(trigger_record->event_name, trigger->event_name);
+		}
+
+		trigger_record->orientation = trigger->orientation;
+		trigger_record->positon = trigger->position;
+		trigger_record->scale = trigger->scale;
+
+		trigger_record->filter_count = trigger->trigger_filters.element_count;
+
+		filters = (struct trigger_filter_t *)trigger->trigger_filters.elements;
+
+		for(j = 0; j < trigger->trigger_filters.element_count; j++)
+		{
+			filter = filters + j;
+			strcpy(trigger_record->filters[j].filter_name, filter->prop_name);
+			trigger_record->filters[j].flags = filter->flag;
+		}
+	}
+
+
+
 
 	for(k = serialize_defs; k >= 0; k--)
 	{
@@ -1127,7 +1200,6 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 					{
 						//if(!(entity->flags & ENTITY_FLAG_ON_DISK))
 						entity_WriteEntity((void **)&out, handle, INVALID_COMPONENT_HANDLE, 1);
-
 					}
 				}
 			}
@@ -1139,6 +1211,10 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 
 	//memset(tail, 0, sizeof(struct entity_section_tail_t));
 	strcpy(section_end->tag, entity_section_end_tag);
+
+
+
+	printf("entity_SerializeEntities - allocd space: %d bytes --- used space: %d bytes\n", out_size, out - (char *)*buffer);
 }
 
 
@@ -1199,7 +1275,7 @@ void entity_CalculateBufferSize(int *buffer_size, struct entity_handle_t entity,
 			}
 		}
 
-		size += sizeof(struct entity_prop_record_t) * entity_ptr->prop_count;
+		size += sizeof(struct entity_prop_record_t) * entity_ptr->props.element_count;
 
 		physics_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
 
@@ -1276,6 +1352,8 @@ void entity_SerializeEntityDef(void **buffer, int *buffer_size, struct entity_ha
 
 	*buffer = out_buffer;
 	*buffer_size = out_size;
+
+	printf("entity_SerializeEntityDef - alloc space: %d bytes --- used space: %d bytes\n", out_size, write_buffer - out_buffer);
 }
 
 
@@ -1290,6 +1368,10 @@ void entity_DeserializeEntities(void **buffer, int deserialize_defs)
 	struct entity_section_end_t *section_end;
 	struct entity_handle_t handle;
 
+
+	struct trigger_record_t *trigger_record;
+	int trigger_index;
+
 	int i;
 
 	in = *buffer;
@@ -1302,6 +1384,21 @@ void entity_DeserializeEntities(void **buffer, int deserialize_defs)
 		{
 			section_start = (struct entity_section_start_t *)in;
 			in += sizeof(struct entity_section_start_t);
+		}
+		if(!strcmp(in, trigger_record_tag))
+		{
+            trigger_record = (struct trigger_record_t *)in;
+			in += sizeof(struct trigger_record_t) + sizeof(struct trigger_filter_record_t) * (trigger_record->filter_count - 1);
+
+			trigger_index = entity_CreateTrigger(&trigger_record->orientation, trigger_record->positon, trigger_record->scale, trigger_record->event_name, trigger_record->trigger_name);
+
+			for(i = 0; i < trigger_record->filter_count; i++)
+			{
+				entity_AddTriggerFilter(trigger_index, trigger_record->filters[i].filter_name);
+			}
+
+			continue;
+
 		}
 		if(!strcmp(in, entity_record_start_tag))
 		{

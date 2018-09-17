@@ -37,7 +37,7 @@ void editor_InitExplorerUI();
 
 void editor_FinishExplorerUI();
 
-void editor_UpdateExplorerUI();
+void editor_UpdateExplorer();
 /*
 *********************************************
 *********************************************
@@ -67,43 +67,6 @@ void editor_ExplorerReadFile(char *directory, char *file_name);
 void editor_ExplorerWriteFile(char *directory, char *file_name);
 
 
-
-
-void editor_OpenExplorerDialogBox(char *text);
-
-void editor_CloseExplorerDialogBox();
-
-void editor_LockExplorerUI();
-
-void editor_UnlockExplorerUI();
-
-/*
-*********************************************
-*********************************************
-*********************************************
-*/
-
-
-
-/*
-*********************************************
-*********************************************
-*********************************************
-*/
-void editor_ExplorerPathField(int enable);
-
-void editor_ExplorerFileNameField(int enable);
-
-void editor_ExplorerMultiFileSelection(int enable);
-/*
-*********************************************
-*********************************************
-*********************************************
-*/
-
-
-
-
 /*
 *********************************************
 *********************************************
@@ -126,14 +89,6 @@ void editor_ClearExplorerExtensionFilters();
 *********************************************
 */
 
-
-
-
-/*
-*********************************************
-*********************************************
-*********************************************
-*/
 
 void editor_AddExplorerFileSelection(char *file);
 

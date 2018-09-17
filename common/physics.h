@@ -29,7 +29,7 @@ struct collider_def_t *physics_CreateColliderDef(char *name);
 
 struct collider_def_t *physics_CreateRigidBodyColliderDef(char *name);
 
-struct collider_def_t *physics_CreateCharacterColliderDef(char *name, float height, float crouch_height, float radius, float step_height, float slope_angle, float max_walk_speed);
+struct collider_def_t *physics_CreateCharacterColliderDef(char *name, float height, float crouch_height, float radius, float step_height, float slope_angle, float max_walk_speed, float mass);
 
 struct collider_def_t *physics_CreateProjectileColliderDef(char *name, float radius, float mass);
 
@@ -85,6 +85,8 @@ void physics_DestroyCollisionShape(void *collision_shape);
 struct collider_handle_t physics_CreateEmptyCollider(int type);
 
 struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t position, vec3_t scale, struct collider_def_t *def, int flags);
+
+struct collider_handle_t physics_CreateTrigger(mat3_t *orientation, vec3_t position, vec3_t scale);
 
 int physics_CopyCollider(int collider_index);
 

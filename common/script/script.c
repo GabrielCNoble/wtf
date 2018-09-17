@@ -11,7 +11,10 @@
 #include "scr_entity.h"
 #include "scr_particle.h"
 #include "scr_world.h"
+#include "scr_gui.h"
+#include "scr_resource.h"
 #include "input.h"
+#include "log.h"
 
 #include "sound.h"
 
@@ -39,13 +42,16 @@ extern "C++"
 asIScriptEngine *scr_virtual_machine = NULL;
 
 int scr_max_contexts = 0;
-int scr_contexts_stack_top = -1;
-asIScriptContext **scr_contexts_stack = NULL;
-struct script_invocation_data_t *scr_invocation_data;
+int scr_current_context_index = -1;
+struct script_context_t *scr_current_context;
+struct script_context_t *scr_contexts;
+//struct script_invocation_data_t *scr_invocation_data;
 
 
 struct script_t *scr_scripts = NULL;
 struct script_t *scr_last_script = NULL;
+
+
 
 
 /* from r_main.c */
@@ -56,7 +62,7 @@ extern int r_height;
 /* from particle.c */
 extern int ps_frame;
 
-
+/*
 
 script_var_t particle_system_script_vars[] =
 {
@@ -65,7 +71,7 @@ script_var_t particle_system_script_vars[] =
 	{"ps_particles", SCRIPT_VAR_TYPE_ARRAY, SCRIPT_VAR_TYPE_STRUCT, "particle_t"},
 	{"ps_particle_system", SCRIPT_VAR_TYPE_HANDLE, SCRIPT_VAR_TYPE_STRUCT, "particle_system_t"},
 };
-
+*/
 
 
 
@@ -104,15 +110,19 @@ int script_Init()
 
 	scr_max_contexts = MAX_SCRIPT_CONTEXTS;
 
-	scr_contexts_stack = (asIScriptContext **)memory_Malloc(sizeof(asIScriptContext *) * scr_max_contexts);
-	scr_invocation_data = (struct script_invocation_data_t *)memory_Malloc(sizeof(struct script_invocation_data_t ) * scr_max_contexts);
+	//scr_contexts_stack = (asIScriptContext **)memory_Malloc(sizeof(asIScriptContext *) * scr_max_contexts);
+	//scr_invocation_data = (struct script_invocation_data_t *)memory_Malloc(sizeof(struct script_invocation_data_t ) * scr_max_contexts);
+
+	scr_contexts = (struct script_context_t *)memory_Malloc(sizeof(struct script_context_t) * scr_max_contexts);
 
 	for(i = 0; i < scr_max_contexts; i++)
 	{
-		scr_contexts_stack[i] = scr_virtual_machine->CreateContext();
+		scr_contexts[i].execution_context = scr_virtual_machine->CreateContext();
 	}
 
-	scr_contexts_stack_top = scr_max_contexts - 1;
+	scr_current_context_index = -1;
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 	return 1;
 }
@@ -131,8 +141,8 @@ void script_Finish()
 	}
 
 	scr_virtual_machine->ShutDownAndRelease();
-	memory_Free(scr_contexts_stack);
-	memory_Free(scr_invocation_data);
+	memory_Free(scr_contexts);
+	//memory_Free(scr_invocation_data);
 }
 
 void script_ScriptPrint(struct script_string_t *fmt)
@@ -266,6 +276,7 @@ void script_RegisterTypesAndFunctions()
 
 
 	scr_virtual_machine->RegisterGlobalFunction("int input_GetKeyStatus(int key)", asFUNCTION(input_GetKeyStatus), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("int input_AnyKeyStatus()", asFUNCTION(input_AnyKeyStatus), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("int input_GetMouseButton(int button)", asFUNCTION(input_GetMouseButton), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("int input_GetMouseStatus()", asFUNCTION(input_GetMouseStatus), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("int input_RegisterKey(int key)", asFUNCTION(input_RegisterKey), asCALL_CDECL);
@@ -385,7 +396,9 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterObjectMethod("array<T>", "T &opIndex(int index)", asFUNCTION(script_array_ElementAt), asCALL_CDECL_OBJFIRST);
 	scr_virtual_machine->RegisterObjectMethod("array<T>", "array<T> @opAssign(array<T> &in other)", asFUNCTION(script_array_OpAssign), asCALL_CDECL_OBJFIRST);
 	scr_virtual_machine->RegisterObjectMethod("array<T>", "void Clear()", asFUNCTION(script_array_Clear), asCALL_CDECL_OBJFIRST);
+	scr_virtual_machine->RegisterObjectMethod("array<T>", "int Count()", asFUNCTION(script_array_Count), asCALL_CDECL_OBJLAST);
 	scr_virtual_machine->RegisterObjectMethod("array<T>", "void Append(? &in element)", asFUNCTION(script_array_Append), asCALL_CDECL_OBJFIRST);
+	scr_virtual_machine->RegisterObjectMethod("array<T>", "void Drop(int index)", asFUNCTION(script_array_Drop), asCALL_CDECL_OBJFIRST);
 	scr_virtual_machine->RegisterObjectProperty("array<T>", "int count", asOFFSET(struct script_array_t, element_count));
 
 
@@ -463,6 +476,9 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("mat3_t &entity_GetOrientation(int local)", asFUNCTION(entity_ScriptGetOrientation), asCALL_CDECL);
     scr_virtual_machine->RegisterGlobalFunction("mat3_t &entity_GetEntityOrientation(entity_handle_t entity, int local)", asFUNCTION(entity_ScriptGetEntityOrientation), asCALL_CDECL);
 
+    scr_virtual_machine->RegisterGlobalFunction("void entity_Translate(vec3_t &in direction)", asFUNCTION(entity_ScriptTranslate), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_TranslateEntity(entity_handle_t entity, vec3_t &in direction)", asFUNCTION(entity_ScriptTranslateEntity), asCALL_CDECL);
+
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Rotate(vec3_t &in axis, float angle, int set)", asFUNCTION(entity_ScriptRotate), asCALL_CDECL);
     scr_virtual_machine->RegisterGlobalFunction("void entity_RotateEntity(entity_handle_t entity, vec3_t &in axis, float angle, int set)", asFUNCTION(entity_ScriptRotateEntity), asCALL_CDECL);
 
@@ -537,6 +553,15 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("int entity_IsEntityValid(entity_handle_t entity)", asFUNCTION(entity_ScriptIsEntityValid), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("int entity_LineOfSightToEntity(entity_handle_t entity)", asFUNCTION(entity_ScriptLineOfSightToEntity), asCALL_CDECL);
 
+
+
+
+	scr_virtual_machine->RegisterGlobalFunction("int entity_GetTrigger(string &in trigger)", asFUNCTION(entity_ScriptGetTrigger), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void entity_SetTriggerPosition(int trigger_index, vec3_t &in position)", asFUNCTION(entity_ScriptSetTriggerPosition), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("int entity_IsTriggered(int trigger_index)", asFUNCTION(entity_ScriptIsTriggered), asCALL_CDECL);
+
+
+
 	/*
 	===============================================
 	===============================================
@@ -556,7 +581,10 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("void world_AppendWorldArrayVarValue(string &in name, ? &in value)", asFUNCTION(world_ScriptAppendWorldArrayVarValue), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void world_ClearWorldArrayVar(string &in name)", asFUNCTION(world_ScriptClearWorldArrayVar), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("array<entity_handle_t> @world_GetEntities()", asFUNCTION(world_ScriptGetEntities), asCALL_CDECL);
-
+	scr_virtual_machine->RegisterGlobalFunction("void world_CallEvent(string &in event_name)", asFUNCTION(world_ScriptCallEvent), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void world_StopCurrentEvent()", asFUNCTION(world_ScriptStopCurrentEvent), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void world_StopAllEvents()", asFUNCTION(world_ScriptStopAllEvents), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void world_ClearWorld()", asFUNCTION(world_ScriptClearWorld), asCALL_CDECL);
 
 	/*
 	===============================================
@@ -565,15 +593,44 @@ void script_RegisterTypesAndFunctions()
 	*/
 
 
+	scr_virtual_machine->RegisterEnum("SOURCE_FLAGS");
+	scr_virtual_machine->RegisterEnumValue("SOURCE_FLAGS", "SOURCE_FLAG_LOOP", SOURCE_FLAG_LOOP);
+	scr_virtual_machine->RegisterEnumValue("SOURCE_FLAGS", "SOURCE_FLAG_RELATIVE", SOURCE_FLAG_RELATIVE);
+	scr_virtual_machine->RegisterEnumValue("SOURCE_FLAGS", "SOURCE_FLAG_FADE_IN", SOURCE_FLAG_FADE_IN);
+	scr_virtual_machine->RegisterEnumValue("SOURCE_FLAGS", "SOURCE_FLAG_FADE_OUT", SOURCE_FLAG_FADE_OUT);
+
+
 	scr_virtual_machine->RegisterObjectType("sound_handle_t", sizeof(struct sound_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
-
 	scr_virtual_machine->RegisterGlobalFunction("sound_handle_t sound_GetSound(string &in name)", asFUNCTION(sound_ScriptGetSound), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("int sound_PlaySound(sound_handle_t sound, vec3_t &in position, float gain, int loop)", asFUNCTION(sound_ScriptPlaySound), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void sound_PauseSound(int sound_source)", asFUNCTION(sound_ScriptPauseSound), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void sound_StopSound(int sound_source)", asFUNCTION(sound_ScriptStopSound), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("int sound_PlaySound(sound_handle_t sound, vec3_t &in position, float gain, int flags)", asFUNCTION(sound_ScriptPlaySound), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void sound_PauseSound(int sound_source, int fade_out)", asFUNCTION(sound_ScriptPauseSound), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void sound_StopSound(int sound_source, int fade_out)", asFUNCTION(sound_ScriptStopSound), asCALL_CDECL);
     scr_virtual_machine->RegisterGlobalFunction("int sound_IsSourcePlaying(int sound_source)", asFUNCTION(sound_ScriptIsSourcePlaying), asCALL_CDECL);
+    scr_virtual_machine->RegisterGlobalFunction("int sound_IsSourceAssigned(int sound_source)", asFUNCTION(sound_ScriptIsSourceAssigned), asCALL_CDECL);
+    scr_virtual_machine->RegisterGlobalFunction("void sound_SetSourcePosition(int sound_source, vec3_t &in position)", asFUNCTION(sound_ScriptSetSourcePosition), asCALL_CDECL);
+
+    /*
+	===============================================
+	===============================================
+	===============================================
+	*/
+
+	scr_virtual_machine->RegisterGlobalFunction("void gui_TextWall(string &in text, float alpha)", asFUNCTION(gui_ScriptTextWall), asCALL_CDECL);
+
+	/*
+	===============================================
+	===============================================
+	===============================================
+	*/
 
 
+	scr_virtual_machine->RegisterGlobalFunction("void resource_LoadResource(string &in name)", asFUNCTION(resource_ScriptLoadResource), asCALL_CDECL);
+
+
+
+	//scr_virtual_machine->RegisterGlobalFunction("void script_Breakpoint()", asFUNCTION(script_BreakPoint), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void script_BeginDebugSection()", asFUNCTION(script_BeginDebugSection), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void script_EndDebugSection()", asFUNCTION(script_EndDebugSection), asCALL_CDECL);
 }
 
 void script_ExecuteScripts(double delta_time)
@@ -587,23 +644,81 @@ void script_ExecuteScripts(double delta_time)
 =========================================================
 */
 
-void *script_PopScriptContext()
+struct script_context_t *script_PopScriptContext()
 {
-	void *context = NULL;
+	struct script_context_t *context = NULL;
 
-	if(scr_contexts_stack_top >= 0)
+	if(scr_current_context_index < scr_max_contexts - 1)
 	{
-		context = scr_contexts_stack[scr_contexts_stack_top];
-		scr_contexts_stack_top--;
+		scr_current_context_index++;
+		context = &scr_contexts[scr_current_context_index];
+		context->entry_point_count = 0;
+
+		scr_current_context = context;
 	}
 
 	return context;
 }
 
-void script_PushScriptContext(void *script_context)
+void script_PushScriptContext()
 {
-	scr_contexts_stack_top++;
-	scr_contexts_stack[scr_contexts_stack_top] = (asIScriptContext *)script_context;
+	scr_current_context_index--;
+
+	if(scr_current_context_index >= 0)
+	{
+		scr_current_context = &scr_contexts[scr_current_context_index];
+	}
+
+}
+
+struct script_context_t *script_GetCurrentContext()
+{
+    return scr_current_context;
+}
+
+
+
+void script_QueueEntryPoint(void *entry_point)
+{
+	struct script_entry_point_t *script_entry_point;
+	struct script_context_t *current_context;
+
+	current_context = script_GetCurrentContext();
+
+	if(current_context->entry_point_count < MAX_SCRIPT_ENTRY_POINTS)
+	{
+		script_entry_point = &current_context->entry_points[current_context->entry_point_count];
+		current_context->entry_point_count++;
+
+		script_entry_point->entry_point = entry_point;
+		script_entry_point->arg_count = 0;
+	}
+}
+
+
+
+void script_PushArg(void *arg, int arg_type)
+{
+	struct script_entry_point_t *script_entry_point;
+	struct script_arg_t *script_arg;
+	struct script_context_t *current_context;
+
+	current_context = script_GetCurrentContext();
+
+
+	//if(scr_entry_point_count)
+	if(current_context->entry_point_count)
+	{
+		script_entry_point = &current_context->entry_points[current_context->entry_point_count - 1];
+
+		if(script_entry_point->arg_count < MAX_SCRIPT_ARGS)
+		{
+			script_arg = &script_entry_point->args[script_entry_point->arg_count];
+			script_arg->type = arg_type;
+			script_arg->arg.address_arg = arg;
+			script_entry_point->arg_count++;
+		}
+	}
 }
 
 
@@ -616,31 +731,12 @@ void script_PushScriptContext(void *script_context)
 struct script_t *script_CreateScript(char *file_name, char *script_name, int script_type_size, int (*get_data_callback)(struct script_t *script), void *(*setup_data_callback)(struct script_t *script, void *data))
 {
 	script_t *script;
-	/*int size;
-
-
-	switch(type)
-	{
-		default:
-		case SCRIPT_TYPE_NONE:
-			size = sizeof(script_t);
-		break;
-
-		case SCRIPT_TYPE_PARTICLE_SYSTEM:
-			size = sizeof(particle_system_script_t);
-		break;
-
-		case SCRIPT_TYPE_AI:
-			size = sizeof(struct ai_script_t);
-		break;
-	}*/
 
 	script = (struct script_t *)memory_Malloc(script_type_size);
 
 	script->next = NULL;
 	script->prev = NULL;
 	script->flags = 0;
-	//script->type = type;
 
 	script->main_entry_point = NULL;
 	script->script_module = NULL;
@@ -850,47 +946,12 @@ struct script_t *script_GetScript(char *script_name)
 	return NULL;
 }
 
-#define MAX_SCRIPT_ENTRY_POINTS 16
+//#define MAX_SCRIPT_ENTRY_POINTS 16
 
-static int scr_entry_point_count = 0;
-static struct script_entry_point_t scr_entry_points[MAX_SCRIPT_ENTRY_POINTS];
-
-
-
-void script_QueueEntryPoint(void *entry_point)
-{
-	struct script_entry_point_t *script_entry_point;
-
-	if(scr_entry_point_count < MAX_SCRIPT_ENTRY_POINTS)
-	{
-		script_entry_point = &scr_entry_points[scr_entry_point_count];
-		script_entry_point->arg_count = 0;
-		script_entry_point->entry_point = entry_point;
-		scr_entry_point_count++;
-	}
-}
+//static int scr_entry_point_count = 0;
+//static struct script_entry_point_t scr_entry_points[MAX_SCRIPT_ENTRY_POINTS];
 
 
-
-void script_PushArg(void *arg, int arg_type)
-{
-	struct script_entry_point_t *script_entry_point;
-	struct script_arg_t *script_arg;
-
-	if(scr_entry_point_count)
-	{
-		script_entry_point = &scr_entry_points[scr_entry_point_count - 1];
-
-		if(script_entry_point->arg_count < MAX_SCRIPT_ARGS)
-		{
-			script_arg = &script_entry_point->args[script_entry_point->arg_count];
-			script_arg->type = arg_type;
-			script_arg->arg.address_arg = arg;
-
-			script_entry_point->arg_count++;
-		}
-	}
-}
 
 
 
@@ -905,6 +966,9 @@ void script_ExecuteScriptImediate(struct script_t *script, void *data)
 	asIScriptFunction *entry_point;
 	asIScriptModule *module;
 	asIScriptContext *context;
+
+	struct script_context_t *script_context;
+	//struct script_entry_point_t *entry_points;
 
 	void *arg_address;
 
@@ -921,15 +985,15 @@ void script_ExecuteScriptImediate(struct script_t *script, void *data)
 			return;
 		}
 
-		context = (asIScriptContext *)script_PopScriptContext();
+		script_context = script_PopScriptContext();
 
-		if(!context)
+		if(!script_context)
 		{
 			printf("script_ExecuteScriptImediate: couldn't allocate a context for script [%s]", script->name);
 			return;
 		}
 
-		scr_entry_point_count = 0;
+		//scr_entry_point_count = 0;
 
 		if(script->setup_data_callback)
 		{
@@ -938,16 +1002,18 @@ void script_ExecuteScriptImediate(struct script_t *script, void *data)
 		else
 		{
 			printf("script_ExecuteScriptImediate: script [%s] has no setup data callback. Executing main entry point\n", script->name);
-			scr_entry_points[0].entry_point = (asIScriptFunction *)script->main_entry_point;
-			scr_entry_points[0].arg_count = 0;
-			scr_entry_point_count++;
+			script_QueueEntryPoint(script->main_entry_point);
 		}
 
-		if(scr_entry_point_count)
+		if(script_context->entry_point_count)
 		{
-			for(i = 0; i < scr_entry_point_count; i++)
+			//entry_points = context->entry_points;
+
+			context = (asIScriptContext *)script_context->execution_context;
+
+			for(i = 0; i < script_context->entry_point_count; i++)
 			{
-				script_entry_point = &scr_entry_points[i];
+				script_entry_point = &script_context->entry_points[i];
 
 				if(script_entry_point->entry_point)
 				{
@@ -964,6 +1030,10 @@ void script_ExecuteScriptImediate(struct script_t *script, void *data)
 
 							case SCRIPT_ARG_TYPE_WORD:
 
+							break;
+
+							case SCRIPT_ARG_TYPE_FLOAT:
+								context->SetArgFloat(j, script_entry_point->args[j].arg.float_arg);
 							break;
 
 							case SCRIPT_ARG_TYPE_ADDRESS:
@@ -987,12 +1057,12 @@ void script_ExecuteScriptImediate(struct script_t *script, void *data)
 				}
 			}
 		}
-		else
-		{
-			printf("script_ExecuteScriptImediate: invalid entry point for script [%s]\n", script->name);
-		}
+		//else
+		//{
+		//	printf("script_ExecuteScriptImediate: invalid entry point for script [%s]\n", script->name);
+		//}
 
-		script_PushScriptContext(context);
+		script_PushScriptContext();
 	}
 }
 
@@ -1002,6 +1072,16 @@ void script_ExecuteScriptImediate(struct script_t *script, void *data)
 void script_RegisterGlobalFunction(char *decl, void *function)
 {
 	scr_virtual_machine->RegisterGlobalFunction(decl, asFUNCTION(function), asCALL_CDECL);
+}
+
+void script_RegisterEnum(char *type)
+{
+	scr_virtual_machine->RegisterEnum(type);
+}
+
+void script_RegisterEnumValue(char *type, char *name, int value)
+{
+	scr_virtual_machine->RegisterEnumValue(type, name, value);
 }
 
 
@@ -1014,6 +1094,39 @@ void *script_GetGlobalVarAddress(char *var, script_t *script)
 	return module->GetAddressOfGlobalVar(module->GetGlobalVarIndexByName(var));
 }
 
+int script_GetFunctionCount(struct script_t *script)
+{
+	asIScriptModule *module;
+
+	if(script)
+	{
+		module = (asIScriptModule *)script->script_module;
+
+		if(module)
+		{
+			return module->GetFunctionCount();
+		}
+	}
+
+	return 0;
+}
+
+void *script_GetFunctionAddressByIndex(int index, struct script_t *script)
+{
+	asIScriptModule *module;
+
+	if(script)
+	{
+        module = (asIScriptModule *)script->script_module;
+
+		if(module)
+		{
+            return (void *)module->GetFunctionByIndex(index);
+		}
+	}
+
+	return NULL;
+}
 
 void *script_GetFunctionAddress(char *function, script_t *script)
 {
@@ -1022,6 +1135,20 @@ void *script_GetFunctionAddress(char *function, script_t *script)
 	module = (asIScriptModule *)script->script_module;
 
 	return module->GetFunctionByName(function);
+}
+
+char *script_GetFunctionName(void *function)
+{
+	asIScriptFunction *f;
+
+	if(function)
+	{
+		f = (asIScriptFunction *)function;
+
+		return (char *)f->GetName();
+	}
+
+	return NULL;
 }
 
 void *script_GetTypeInfo(char *type)
@@ -1107,28 +1234,143 @@ int script_GetTypeSize(void *type_info)
 	return element_size;
 }
 
-int script_GetContextStackTop()
+/*int script_GetContextStackTop()
 {
     return scr_contexts_stack_top;
-}
+}*/
 
-void script_SetCurrentInvocationData(void *data, int size)
+void script_SetCurrentContextData(void *data, int size)
 {
+	struct script_context_t *current_context;
+
+	current_context = script_GetCurrentContext();
+
 	if(data)
 	{
-		memcpy(&scr_invocation_data[scr_contexts_stack_top + 1].data, data, size);
+		memcpy(current_context->execution_data.data, data, size);
 	}
 }
 
-void *script_GetCurrentInvocationDataPointer()
+void *script_GetCurrentContextDataPointer()
 {
-	return &scr_invocation_data[scr_contexts_stack_top + 1].data;
+	struct script_context_t *current_context;
+	current_context = script_GetCurrentContext();
+	return current_context->execution_data.data;
 }
 
-void script_GetCurrentInvocationData(void *data, int size)
+void script_GetCurrentContextData(void *data, int size)
 {
-    memcpy(data, &scr_invocation_data[scr_contexts_stack_top + 1].data, size);
+	struct script_context_t *current_context;
+
+	current_context = script_GetCurrentContext();
+
+    memcpy(data, current_context->execution_data.data, size);
 }
+
+char *script_GetCurrentFunctionName()
+{
+	asIScriptFunction *current_function;
+
+	current_function = (asIScriptFunction *)script_GetCurrentFunction();
+
+	if(current_function)
+	{
+        return (char *)current_function->GetName();
+	}
+
+	return NULL;
+}
+
+void *script_GetCurrentFunction()
+{
+	asIScriptContext *context;
+	struct script_context_t *current_context;
+	asIScriptFunction *current_function;
+
+	current_context = script_GetCurrentContext();
+
+	context = (asIScriptContext *)current_context->execution_context;
+
+	//context = scr_contexts_stack[scr_contexts_stack_top + 1];
+
+	current_function = context->GetFunction();
+
+	//printf("script_GetCurrentFunction: [%s]\n", current_function->GetName());
+
+	return (void *)current_function;
+}
+
+
+
+void script_PrintStack(void *context, int level)
+{
+	asIScriptContext *current_context = (asIScriptContext *)context;
+	asIScriptFunction *current_function;
+
+	int var_count = current_context->GetVarCount(level);
+	int i;
+	int type_id;
+	char *var_name;
+	void *var_address;
+	char *type_str;
+	char *format_str;
+
+	current_function = current_context->GetFunction(level);
+
+	printf("==========================================================\n\n");
+	printf("stack for function [%s] (%d) from script [%s]\n", current_function->GetName(), level, current_function->GetScriptSectionName());
+
+
+	for(i = 0; i < var_count; i++)
+	{
+		type_id = current_context->GetVarTypeId(i, level);
+		var_name = (char *)current_context->GetVarName(i, level);
+		var_address = current_context->GetAddressOfVar(i, level);
+
+		printf("name: %s -- value: ", var_name);
+
+		switch(type_id)
+		{
+			case asTYPEID_INT32:
+				printf("%d", *(int *)var_address);
+			break;
+		}
+
+		printf("\n");
+	}
+
+	printf("==========================================================\n\n");
+}
+
+void script_LineCallback()
+{
+	script_PrintStack(script_GetCurrentContext(), 0);
+}
+
+
+
+
+void script_BeginDebugSection()
+{
+	asIScriptContext *current_context;
+	current_context = (asIScriptContext *)script_GetCurrentContext();
+    current_context->SetLineCallback(asFUNCTION(script_LineCallback), NULL, asCALL_CDECL);
+}
+
+void script_EndDebugSection()
+{
+	asIScriptContext *current_context;
+	current_context = (asIScriptContext *)script_GetCurrentContext();
+    current_context->ClearLineCallback();
+}
+
+
+
+
+/*void script_BreakPoint()
+{
+	printf("breakpoint at: %s\n", script_GetCurrentFunction());
+}*/
 
 #ifdef __cplusplus
 }

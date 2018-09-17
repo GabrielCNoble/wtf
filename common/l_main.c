@@ -87,7 +87,7 @@ struct gpu_light_t *l_gpu_light_buffer;
 
 
 
-extern struct stack_list_t ent_entities;
+extern struct stack_list_t ent_entities[2];
 
 /* from l_cache.c */
 //extern int light_cache_cursor;
@@ -121,6 +121,9 @@ extern struct stack_list_t ent_entities;
 //static int max_shadow_maps = 0;
 unsigned int l_used_shadow_maps = 0;
 struct shadow_map_t *l_shadow_maps = NULL;
+
+
+int l_shadow_maps_resolution = 0;
 
 
 //SDL_Thread *cluster_thread0;
@@ -168,7 +171,7 @@ int light_Init()
 	{
 		l_light_names[i] = memory_Malloc(LIGHT_MAX_NAME_LEN);
 
-		l_light_params[i].visible_triangles = list_create(sizeof(int), 4096, NULL);
+		l_light_params[i].visible_triangles = list_create(sizeof(int), 8192, NULL);
 
 		//l_light_params[i].triangle_indices[0] = list_create(sizeof(int), 128, NULL);
 		//l_light_params[i].triangle_indices[1] = list_create(sizeof(int), 128, NULL);
@@ -183,7 +186,7 @@ int light_Init()
 
 
 
-	CreatePerspectiveMatrix(&l_shadow_map_projection_matrix, (45.17578125 * 3.14159265) / 180.0, 1.0, 0.1, LIGHT_MAX_RADIUS * 10.0, 0.0, 0.0, NULL);
+	CreatePerspectiveMatrix(&l_shadow_map_projection_matrix, (45.17578125 * 3.14159265) / 180.0, 1.0, 0.5, LIGHT_MAX_RADIUS * 10.0, 0.0, 0.0, NULL);
 
 	//visible_light_list_size = MAX_LIGHTS;
 	//visible_light_count = 0;
@@ -191,7 +194,7 @@ int light_Init()
 	//visible_light_positions = malloc(sizeof(light_position_t) * visible_light_list_size);
 	//visible_light_params = malloc(sizeof(light_params_t) * visible_light_list_size);
 
-	glGenFramebuffers(1, &l_shadow_map_frame_buffer);
+	//glGenFramebuffers(1, &l_shadow_map_frame_buffer);
 
 
 	m=mat3_t_id();
@@ -236,22 +239,13 @@ int light_Init()
 	mat4_t_compose(&l_shadow_map_mats[4], &m, vec3_t_c(0.0, 0.0, 0.0));
 
 
-	while(glGetError() != GL_NO_ERROR);
-	glGenTextures(1, &l_cluster_texture);
-	glBindTexture(GL_TEXTURE_3D, l_cluster_texture);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 0);
-	//glTexImage3D(GL_TEXTURE_3D, 0, GL_LUMINANCE32UI_EXT, CLUSTERS_PER_ROW, CLUSTER_ROWS, CLUSTER_LAYERS, 0, GL_LUMINANCE_INTEGER_EXT, GL_UNSIGNED_INT, NULL);
-	glTexImage3D(GL_TEXTURE_3D, 0, GL_R32UI, CLUSTERS_PER_ROW, CLUSTER_ROWS, CLUSTER_LAYERS, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
-	glBindTexture(GL_TEXTURE_3D, 0);
+
 	//printf("cluster texture: %x\n", glGetError());
 
-	while(glGetError() != GL_NO_ERROR);
+	light_SetShadowMapsResolution(SHADOW_MAP_RESOLUTION);
+
+
+	/*while(glGetError() != GL_NO_ERROR);
 	glGenTextures(1, &l_shadow_maps_array);
 	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, l_shadow_maps_array);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -268,7 +262,7 @@ int light_Init()
 	{
 		log_LogMessage(LOG_MESSAGE_ERROR, "light_Init: out of graphics memory!");
 		return 0;
-	}
+	}*/
 
 
 	glGenBuffers(1, &l_light_uniform_buffer);
@@ -276,7 +270,7 @@ int light_Init()
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_light_t) * LIGHT_UNIFORM_BUFFER_SIZE, NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-	l_gpu_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * LIGHT_UNIFORM_BUFFER_SIZE);
+	//l_gpu_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * LIGHT_UNIFORM_BUFFER_SIZE);
 
 
 	//printf("wow:: %x\n", glGetError());
@@ -401,6 +395,8 @@ int light_Init()
 
 	R_DBG_POP_FUNCTION_NAME();
 
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
+
 	return 1;
 
 }
@@ -444,6 +440,52 @@ void light_Finish()
 	glDeleteBuffers(1, &l_light_uniform_buffer);
 	glDeleteTextures(1, &l_shared_shadow_map);
 	//glDeleteTextures(1, &light_indexes_texture);
+}
+
+void light_SetShadowMapsResolution(int resolution)
+{
+	int i;
+
+	int shadow_map_index;
+
+	if(resolution != l_shadow_maps_resolution)
+	{
+		if(l_shadow_maps_array)
+		{
+			glDeleteTextures(1, &l_shadow_maps_array);
+		}
+
+		l_shadow_maps_resolution = resolution;
+
+		glGenTextures(1, &l_shadow_maps_array);
+		glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, l_shadow_maps_array);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_BASE_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_DEPTH_COMPONENT16, l_shadow_maps_resolution, l_shadow_maps_resolution, MAX_VISIBLE_LIGHTS * 6, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+		glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
+
+		shadow_map_index = 0;
+
+		for(i = 0; i < MAX_VISIBLE_LIGHTS; i++)
+		{
+            if(l_used_shadow_maps & (1 << i))
+			{
+                l_light_params[l_shadow_maps[i].light_index].bm_flags |= LIGHT_UPDATE_SHADOW_MAP;
+			}
+		}
+
+
+	}
+}
+
+int light_GetShadowMapsResolution()
+{
+	return l_shadow_maps_resolution;
 }
 
 int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t color, float radius, float energy, int bm_flags)
@@ -1600,7 +1642,7 @@ void light_ClearLightLeaves()
 	int leaf_index;
 	for(i = 0; i < l_light_list_cursor; i++)
 	{
-		//l_light_params[i].leaf = NULL;
+		l_light_params[i].leaf = NULL;
 		l_light_params[i].bm_flags |= LIGHT_MOVED;
 	}
 
@@ -1622,7 +1664,7 @@ void light_EntitiesOnLights()
 
 
 
-
+/*
     entities = (struct entity_t *)ent_entities.elements;
     entity_count = ent_entities.element_count;
 
@@ -1638,7 +1680,7 @@ void light_EntitiesOnLights()
 
 
 
-	}
+	}*/
 
 
 }

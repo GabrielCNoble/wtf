@@ -32,6 +32,8 @@ void script_array_Clear(void *this_pointer);
 
 void script_array_Append(void *this_pointer, void *element);
 
+void script_array_Drop(void *this_pointer, int index);
+
 int script_array_Count(void *this_pointer);
 
 

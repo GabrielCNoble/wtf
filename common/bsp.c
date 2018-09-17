@@ -627,7 +627,7 @@ struct bsp_dleaf_t *bsp_GetCurrentLeaf(struct bsp_pnode_t *node, vec3_t position
 	return NULL;
 }
 
-//#define USE_COMPRESSED_PVS
+//k fl#define USE_COMPRESSED_PVS
 
 unsigned char *bsp_CompressPvs(unsigned char *uncompressed_pvs, int uncompressed_pvs_size, int *compressed_pvs_size)
 {
@@ -1151,12 +1151,12 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
 		}
 
 
-		log_LogMessage(LOG_MESSAGE_NOTIFY, "batches\n");
+		//log_LogMessage(LOG_MESSAGE_NOTIFY, "batches\n");
 
-		for(i = 0; i < w_world_batch_count; i++)
+		/*for(i = 0; i < w_world_batch_count; i++)
 		{
 			log_LogMessage(LOG_MESSAGE_NOTIFY, "start: %d; count: %d; material: %d\n", w_world_batches[i].start, w_world_batches[i].next, w_world_batches[i].material_index);
-		}
+		}*/
 
 		/* write nodes... */
 		node_record = (struct bsp_node_record_t *)out;
@@ -1349,12 +1349,12 @@ void bsp_DeserializeBsp(void **buffer)
 				//}
 			}
 
-			log_LogMessage(LOG_MESSAGE_NOTIFY, "deserialize batches\n");
+			//log_LogMessage(LOG_MESSAGE_NOTIFY, "deserialize batches\n");
 
-			for(i = 0; i < w_world_batch_count; i++)
+			/*for(i = 0; i < w_world_batch_count; i++)
 			{
 				log_LogMessage(LOG_MESSAGE_NOTIFY, "start: %d; count: %d; material: %d\n", w_world_batches[i].start, w_world_batches[i].next, w_world_batches[i].material_index);
-			}
+			}*/
 
 
 
@@ -1445,6 +1445,13 @@ void bsp_DeserializeBsp(void **buffer)
 			in += sizeof(struct bsp_record_end_t);
 
 
+			log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "bsp deserialized succesfully!\nNodes: %d\nLeaves: %d\nTriangles: %d\nBatches: %d",
+																											record_start->node_count,
+																											record_start->leaf_count,
+																											record_start->triangle_count,
+																											record_start->batch_count);
+
+
 			world_Update();
 
 
@@ -1493,6 +1500,9 @@ void bsp_LoadBsp(char *file_name)
     char *file_path;
     file = path_TryOpenFile(file_name);
 
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "bsp_LoadBsp: load file [%s]", file_name);
+
     if(file)
 	{
 		file_buffer_size = path_GetFileSize(file);
@@ -1503,11 +1513,16 @@ void bsp_LoadBsp(char *file_name)
 
 		read_buffer = file_buffer;
 
+		log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "bsp_LoadBsp: deserializing map [%s]", file_name);
+
 		bsp_DeserializeBsp(&read_buffer);
 
 		memory_Free(file_buffer);
 	}
-
+	else
+	{
+		log_LogMessage(LOG_MESSAGE_ERROR, 1, "bsp_LoadBsp: couldn't open file [%s]", file_name);
+	}
 }
 
 

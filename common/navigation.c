@@ -2,6 +2,7 @@
 #include "physics.h"
 #include "c_memory.h"
 #include "containers/list.h"
+#include "log.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +41,9 @@ int navigation_Init()
 
 	nav_closed_list = memory_Malloc(sizeof(struct waypoint_t *) * MAX_WAYPOINTS);
 	nav_open_list = memory_Malloc(sizeof(struct waypoint_t *) * MAX_WAYPOINTS);
+
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
+
 	return 1;
 }
 

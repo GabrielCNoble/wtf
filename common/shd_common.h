@@ -21,6 +21,9 @@ enum SHADER_UNIFORMS
 	UNIFORM_r_height,
 	UNIFORM_r_near,
 	UNIFORM_r_far,
+	UNIFORM_r_clusters_per_row,
+	UNIFORM_r_cluster_rows,
+	UNIFORM_r_cluster_layers,
 	UNIFORM_r_bloom_radius,
 	UNIFORM_cluster_texture,
 	UNIFORM_material_flags,
@@ -62,13 +65,15 @@ typedef struct
 	char *name;
 }named_uniform_t;
 
-typedef struct
+struct shader_t
 {
 
 	char *name;
 	char *file_name;
 
 	unsigned int shader_program;
+	unsigned int vertex_shader;
+	unsigned int fragment_shader;
 
 	unsigned char vertex_position;
 	unsigned char vertex_normal;

@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 
+#include "macros.h"
 #include "ent_common.h"
 #include "stack_list.h"
 
@@ -16,7 +17,28 @@ extern struct entity_t *ent_entity_defs;
 extern struct stack_list_t ent_world_transforms;
 extern struct stack_list_t ent_entity_aabbs;
 
-__attribute__((always_inline)) inline void *entity_GetComponentPointer(struct component_handle_t component)
+static ALWAYS_FORCE_INLINE struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity)
+{
+	struct entity_t *entity_ptr = NULL;
+	int cursor;
+
+	if(entity.entity_index != INVALID_ENTITY_INDEX)
+	{
+		if(entity.entity_index >= 0 && entity.entity_index < ent_entities[entity.def].element_count)
+		{
+			entity_ptr = (struct entity_t *)ent_entities[entity.def].elements + entity.entity_index;
+
+			if(entity_ptr->flags & ENTITY_FLAG_INVALID)
+			{
+				entity_ptr = NULL;
+			}
+		}
+	}
+
+	return entity_ptr;
+}
+
+static ALWAYS_FORCE_INLINE void *entity_GetComponentPointer(struct component_handle_t component)
 {
 	struct stack_list_t *list;
 	if(component.type != COMPONENT_TYPE_NONE)
@@ -27,7 +49,7 @@ __attribute__((always_inline)) inline void *entity_GetComponentPointer(struct co
 	return NULL;
 }
 
-__attribute__((always_inline)) inline void *entity_GetComponentPointerIndex(int index, int type, int def)
+static ALWAYS_FORCE_INLINE void *entity_GetComponentPointerIndex(int index, int type, int def)
 {
 	struct component_handle_t handle;
 
@@ -40,12 +62,12 @@ __attribute__((always_inline)) inline void *entity_GetComponentPointerIndex(int 
 	return entity_GetComponentPointer(handle);
 }
 
-__attribute__((always_inline)) inline struct entity_transform_t *entity_GetWorldTransformPointer(struct component_handle_t component)
+static ALWAYS_FORCE_INLINE struct entity_transform_t *entity_GetWorldTransformPointer(struct component_handle_t component)
 {
 	return (struct entity_transform_t *)((char *)ent_world_transforms.elements + ent_world_transforms.element_size * component.index);
 }
 
-__attribute__((always_inline)) inline struct entity_aabb_t *entity_GetAabbPointer(struct component_handle_t component)
+static ALWAYS_FORCE_INLINE struct entity_aabb_t *entity_GetAabbPointer(struct component_handle_t component)
 {
 	return (struct entity_aabb_t *)((char *)ent_entity_aabbs.elements + ent_entity_aabbs.element_size * component.index);
 }
@@ -71,7 +93,7 @@ __attribute__((always_inline)) inline struct entity_aabb_t *entity_GetAabbPointe
 	return entity_ptr;
 }*/
 
-__attribute__((always_inline)) inline struct entity_t *entity_GetEntityParentPointerHandle(struct entity_handle_t entity)
+static ALWAYS_FORCE_INLINE struct entity_t *entity_GetEntityParentPointerHandle(struct entity_handle_t entity)
 {
 	struct entity_t *entity_ptr = NULL;
 	struct entity_t *parent_entity_ptr = NULL;
@@ -99,7 +121,7 @@ __attribute__((always_inline)) inline struct entity_t *entity_GetEntityParentPoi
 	return parent_entity_ptr;
 }
 
-__attribute__((always_inline)) inline struct entity_t *entity_GetEntityPointerIndex(int entity_index)
+static ALWAYS_FORCE_INLINE struct entity_t *entity_GetEntityPointerIndex(int entity_index)
 {
 	struct entity_t *entity_ptr;
 	int cursor;
@@ -120,7 +142,7 @@ __attribute__((always_inline)) inline struct entity_t *entity_GetEntityPointerIn
 	return NULL;
 }
 
-__attribute__((always_inline)) inline struct entity_t *entity_GetEntityDefPointerIndex(int entity_def_index)
+static ALWAYS_FORCE_INLINE struct entity_t *entity_GetEntityDefPointerIndex(int entity_def_index)
 {
 	struct entity_t *entity_ptr;
 	int cursor;
@@ -141,7 +163,7 @@ __attribute__((always_inline)) inline struct entity_t *entity_GetEntityDefPointe
 	return NULL;
 }
 
-__attribute__((always_inline)) inline struct entity_handle_t entity_GetEntityHandle(char *name, int get_def)
+static ALWAYS_FORCE_INLINE struct entity_handle_t entity_GetEntityHandle(char *name, int get_def)
 {
 	int i;
 	int c;
@@ -176,10 +198,9 @@ __attribute__((always_inline)) inline struct entity_handle_t entity_GetEntityHan
 	return handle;
 }
 
+static struct entity_handle_t entity_GetNestledEntityHandle_Stack[1024];
 
-struct entity_handle_t entity_GetNestledEntityHandle_Stack[1024];
-
-__attribute__((always_inline)) inline struct entity_handle_t entity_GetNestledEntityHandle(struct entity_handle_t parent_entity, char *entity)
+static ALWAYS_FORCE_INLINE struct entity_handle_t entity_GetNestledEntityHandle(struct entity_handle_t parent_entity, char *entity)
 {
 	struct entity_t *entity_ptr;
 	struct transform_component_t *transform;
@@ -237,7 +258,6 @@ __attribute__((always_inline)) inline struct entity_handle_t entity_GetNestledEn
 
 	return (struct entity_handle_t){parent_entity.def, INVALID_ENTITY_INDEX};
 }
-
 #endif
 
 

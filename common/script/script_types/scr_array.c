@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "angelscript.h"
 
@@ -86,12 +87,12 @@ void script_array_AddRef(void *this_pointer)
 	{
 		array->ref_count++;
 
-		assert(array->ref_count < 1000000);
+		//assert(array->ref_count < 1000000);
 
-		if(type_info)
-		{
+		//if(type_info)
+		//{
 			//type_info->AddRef();
-		}
+		//}
 	}
 }
 
@@ -146,7 +147,8 @@ void *script_array_OpAssign(void *this_pointer, void *other)
 	/* not sure why this is needed here, but avoids the
 	script engine calling the array destructor after it
 	was destroyed... */
-    //script_array_AddRef(this_array);
+    script_array_AddRef(this_array);
+    script_array_Release(other_array);
 
 	return this_pointer;
 }
@@ -157,6 +159,8 @@ void script_array_Clear(void *this_pointer)
 
 	array = (struct script_array_t *)this_pointer;
 	array->element_count = 0;
+
+	//printf("clear\n");
 }
 
 void script_array_Append(void *this_pointer, void *element)
@@ -180,7 +184,30 @@ void script_array_Append(void *this_pointer, void *element)
 	memcpy((char *)array->buffer + array->element_size * array->element_count, element, array->element_size);
 
 	array->element_count++;
+
+	//printf("count: %d\n", array->element_count);
+
 }
+
+void script_array_Drop(void *this_pointer, int index)
+{
+    struct script_array_t *array;
+
+    array = (struct script_array_t *)this_pointer;
+
+  //  printf("%d : %d\n", array->element_count, index);
+
+    if(index >= 0 && index < array->element_count)
+	{
+        if(index < array->element_count - 1)
+		{
+            memcpy((char *)array->buffer + index * array->element_size, (char *)array->buffer + (array->element_count - 1) * array->element_size, array->element_size);
+		}
+
+		array->element_count--;
+	}
+}
+
 
 int script_array_Count(void *this_pointer)
 {

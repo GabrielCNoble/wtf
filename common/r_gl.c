@@ -185,9 +185,17 @@ void renderer_CheckFunctionPointers()
     {
 		__glewDrawArraysInstanced = SDL_GL_GetProcAddress("glDrawArraysInstanced");
 
-        __glewDrawArraysInstanced = SDL_GL_GetProcAddress("glDrawArraysInstancedARB");
+		if(!__glewDrawArraysInstanced)
+        {
+            __glewDrawArraysInstanced = SDL_GL_GetProcAddress("glDrawArraysInstancedARB");
+        }
 
-        __glewDrawArraysInstanced = SDL_GL_GetProcAddress("glDrawArraysInstancedEXT");
+        if(!__glewDrawArraysInstanced)
+        {
+            __glewDrawArraysInstanced = SDL_GL_GetProcAddress("glDrawArraysInstancedEXT");
+        }
+
+        //__glewDrawArraysInstanced = SDL_GL_GetProcAddress("glDrawArraysInstancedEXT");
     }
 }
 

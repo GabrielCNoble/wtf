@@ -65,10 +65,36 @@ void OnMapEnter()
 
 	//script_Print("enter map\n");
 
+	world_StopAllEvents();
+
+	world_CallEvent("SpawnPlayer");
+
 }
 
 
-void OnMapUpdate()
+void SpawnPlayer_event()
+{
+    entity_handle_t player_entity;
+    entity_handle_t player_spawn;
+
+    mat3_t orientation;
+    orientation.identity();
+
+    vec3_t spawn_position;
+
+    player_spawn = entity_GetEntity("player spawn", 0);
+    player_entity = entity_GetEntity("player entity2", 1);
+
+    spawn_position = entity_GetEntityPosition(player_spawn, 0);
+
+    entity_SpawnEntity(orientation, spawn_position, vec3_t(1.0, 1.0, 1.0), player_entity, "player entity");
+
+    world_StopCurrentEvent();
+    world_CallEvent("ArenaFight");
+}
+
+
+void ArenaFight_event()
 {
 	//script_Print(world_entities.count);
 	entity_handle_t entity;
@@ -93,7 +119,7 @@ void OnMapUpdate()
 	int z;
 
 
-	/*if(pokey_intro_source < 0 && pokey_loop_source < 0)
+	if(pokey_intro_source < 0 && pokey_loop_source < 0)
 	{
 		pokey_intro_source = sound_PlaySound(pokey_intro, vec3_t(0.0, 0.0, 0.0), 8.0, 0);
 	}
@@ -107,7 +133,7 @@ void OnMapUpdate()
 				pokey_loop_source = sound_PlaySound(pokey_loop, vec3_t(0.0, 0.0, 0.0), 5.0, 1);
 			}
 		}
-	}*/
+	}
 
 	//spawn_point_count = world_GetWorldArrayVarLength("spawn points");
 	spawn_point_count = spawn_points.count;
@@ -158,7 +184,7 @@ void OnMapUpdate()
 
 			//world_ClearWorldArrayVar("alive entities");
 			alive_entities.Clear();
-			enemy_def = entity_GetEntity("enemy entity", 1);
+			enemy_def = entity_GetEntity("enemy entity2", 1);
 			entity_orientation.identity();
 
 			//script_Print("FUCK!\n");
@@ -222,6 +248,12 @@ void OnMapUpdate()
 				world_SetWorldVarValue("wave index", wave_index);
 
 				script_Print("No alive entities left\n");
+
+				/*if(wave_index >= 3)
+				{
+					world_StopCurrentEvent();
+					world_CallEvent("Test");
+				}*/
 			}
 		}
 	}

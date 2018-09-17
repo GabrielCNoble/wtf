@@ -2837,7 +2837,7 @@ int bsp_PvsForLeaf(bsp_leaf_t *leaf, float time_out, int portal_index)
 
 	//w_world_leaves[leaf->leaf_index].pvs = leaf->pvs;
 
-	w_world_leaves[leaf->leaf_index].pvs = bsp_CompressPvs(leaf->pvs, (w_world_leaves_count >> 3), &w_world_leaves[leaf->leaf_index].pvs_lenght);
+	w_world_leaves[leaf->leaf_index].pvs = bsp_CompressPvs(leaf->pvs, 1 + (w_world_leaves_count >> 3), &w_world_leaves[leaf->leaf_index].pvs_lenght);
 
 
 	return -1;

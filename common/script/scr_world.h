@@ -31,4 +31,19 @@ void world_ScriptClearWorldArrayVar(struct script_string_t *name);
 
 void *world_ScriptGetEntities();
 
+void world_ScriptCallEvent(struct script_string_t *event_name);
+
+void world_ScriptStopCurrentEvent();
+
+void world_ScriptStopAllEvents();
+
+
+
+void world_ScriptClearWorld();
+
 #endif // SCR_WORLD_H
+
+
+
+
+

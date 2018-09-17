@@ -12,6 +12,7 @@
 #include "..\..\common\navigation.h"
 #include "..\..\common\containers\stack_list.h"
 #include "..\..\common\material.h"
+#include "bsp_cmp.h"
 #include "..\brush.h"
 
 /* from editor.c */
@@ -22,6 +23,7 @@ extern int ed_3d_handle_transform_mode;
 
 /* from ed_level.c */
 extern int level_editor_draw_brushes;
+extern int level_editor_draw_wireframe_brushes;
 extern int level_editor_draw_grid;
 extern int level_editor_draw_selected;
 extern int level_editor_draw_cursors;
@@ -56,6 +58,14 @@ extern int r_flat_pass_shader;
 extern int r_forward_pass_shader;
 extern int r_blit_texture_shader;
 extern unsigned int r_bbuffer_id;
+
+
+
+/* from world.c */
+extern struct bsp_dleaf_t **w_visible_leaves;
+extern struct bsp_dleaf_t *w_world_leaves;
+extern int w_visible_leaves_count;
+extern vertex_t *w_world_vertices;
 
 
 /* from l_main.c */
@@ -130,7 +140,7 @@ void editor_LevelEditorPostDraw()
 
 	if(level_editor_draw_clipped_polygons)
 	{
-		editor_LevelEditorDrawClippedPolygons();
+		//editor_LevelEditorDrawClippedPolygons();
 	}
 
 	if(level_editor_draw_entities_aabbs)
@@ -187,256 +197,98 @@ void editor_LevelEditorDrawBrushes()
 	{
 		if(!(brush->bm_flags & BRUSH_SUBTRACTIVE))
 		{
-			for(i = 0; i < brush->batch_count; i++)
+			//SDL_LockMutex(brush->brush_mutex);
+
+			if(!SDL_TryLockMutex(brush->brush_mutex))
 			{
+				for(i = 0; i < brush->batch_count; i++)
+				{
 
-				transform_index = stack_list_add(&brush_transforms, NULL);
+					transform_index = stack_list_add(&brush_transforms, NULL);
 
-				brush_draw_transform = (mat4_t *)stack_list_get(&brush_transforms, transform_index);
+					brush_draw_transform = (mat4_t *)stack_list_get(&brush_transforms, transform_index);
 
-				*brush_draw_transform = mat4_t_id();
+					*brush_draw_transform = mat4_t_id();
 
-				brush_draw_transform->floats[3][0] = brush->position.x;
-				brush_draw_transform->floats[3][1] = brush->position.y;
-				brush_draw_transform->floats[3][2] = brush->position.z;
+					brush_draw_transform->floats[3][0] = brush->position.x;
+					brush_draw_transform->floats[3][1] = brush->position.y;
+					brush_draw_transform->floats[3][2] = brush->position.z;
 
-				//renderer_SubmitDrawCommandToView(main_view, &brush_draw_transform, GL_TRIANGLES, brush->batches[i].start + brush->index_start, brush->batches[i].next, brush->batches[i].material_index, 1);
-				renderer_SubmitDrawCommand(brush_draw_transform, GL_TRIANGLES, brush->batches[i].start + brush->index_start, brush->batches[i].next, brush->batches[i].material_index, 1);
+					//renderer_SubmitDrawCommandToView(main_view, &brush_draw_transform, GL_TRIANGLES, brush->batches[i].start + brush->index_start, brush->batches[i].next, brush->batches[i].material_index, 1);
+					renderer_SubmitDrawCommand(brush_draw_transform, GL_TRIANGLES, brush->batches[i].start + brush->index_start, brush->batches[i].next, brush->batches[i].material_index, 1);
+				}
+
+				SDL_UnlockMutex(brush->brush_mutex);
 			}
+
+
 		}
+
 		brush = brush->next;
 	}
-
-	/*brush_draw_transform.floats[0][0] *= -1.0;
-	brush_draw_transform.floats[1][0] *= -1.0;
-	brush_draw_transform.floats[2][0] *= -1.0;*/
-
-	//for(j = 0; j < ptl_portal_list_cursor; j++)
-	//{
-	//	portal = &ptl_portals[j];
-
-	//	brush = brushes;
-
-	//	while(brush)
-	//	{
-	//		if(!(brush->bm_flags & BRUSH_SUBTRACTIVE))
-	//		{
-	//			for(i = 0; i < brush->batch_count; i++)
-	//			{
-					//renderer_SubmitDrawCommandToView(ptl_portals[j].view, &brush_draw_transform, GL_TRIANGLES, brush->batches[i].start + brush->index_start, brush->batches[i].next, brush->batches[i].material_index, 1);
-
-	//				for(k = 0; k < portal->max_recursion; k++)
-	//				{
-						//recursive_view_data = &ptl_portals[j].portal_recursive_views[k];
-	//					recursive_view_data = &portal->portal_recursive_views[k];
-
-	//					for(l = 0; l < recursive_view_data->views_count; l++)
-	//					{
-	//						renderer_SubmitDrawCommand(&recursive_view_data->views[l].view_data, &brush_draw_transform, GL_TRIANGLES, brush->batches[i].start + brush->index_start, brush->batches[i].next, brush->batches[i].material_index, 1);
-	//					}
-
-	//				}
-					//renderer_SubmitDrawCommand(&ptl_portals[j].portal_recursive_views[0].views[0].view_data, &brush_draw_transform, GL_TRIANGLES, brush->batches[i].start + brush->index_start, brush->batches[i].next, brush->batches[i].material_index, 1);
-//				}
-//			}
-
-
-//			brush = brush->next;
-//		}
-//	}
-
-	/*renderer_SetShader(r_flat_pass_shader);
-	renderer_UpdateMatrices();
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->position);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->normal);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->tangent);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->tex_coord);
-
-	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);*/
 
 	renderer_EnableImediateDrawing();
 	renderer_SetShader(r_imediate_color_shader);
 	renderer_SetActiveView(main_view);
 	renderer_SetModelMatrix(NULL);
-	renderer_Color3f(10.0, 0.0, 0.0);
+	//glPolygonOffset(58.0, 20.0);
 
 	brush = brushes;
 	/* subtractive... */
 	while(brush)
 	{
+
+		if(!level_editor_draw_wireframe_brushes)
+		{
+			if(!(brush->bm_flags & BRUSH_SUBTRACTIVE))
+			{
+				brush = brush->next;
+				continue;
+			}
+		}
+
+		//SDL_LockMutex(brush->brush_mutex);
+
 		if(brush->bm_flags & BRUSH_SUBTRACTIVE)
 		{
-			polygon = brush->clipped_polygons;
-
-			while(polygon)
-			{
-				renderer_Begin(GL_LINE_LOOP);
-				for(i = 0; i < polygon->vert_count; i++)
-				{
-					renderer_Vertex3f(polygon->vertices[i].position.x, polygon->vertices[i].position.y, polygon->vertices[i].position.z);
-				}
-				renderer_End();
-
-				polygon = polygon->next;
-			}
+			renderer_Color3f(10.0, 0.0, 0.0);
+	//		glDisable(GL_POLYGON_OFFSET_LINE);
+			glLineWidth(1.0);
+		}
+		else
+		{
+			renderer_Color3f(0.0, 10.0, 0.0);
+	//		glEnable(GL_POLYGON_OFFSET_LINE);
+			glLineWidth(4.0);
 
 		}
+
+		//if(brush->bm_flags & BRUSH_SUBTRACTIVE)
+	//	{
+		//renderer_Color3f(10.0, 0.0, 0.0);
+
+		polygon = brush->clipped_polygons;
+
+		while(polygon)
+		{
+			renderer_Begin(GL_LINE_LOOP);
+			for(i = 0; i < polygon->vert_count; i++)
+			{
+				renderer_Vertex3f(polygon->vertices[i].position.x, polygon->vertices[i].position.y, polygon->vertices[i].position.z);
+			}
+			renderer_End();
+
+			polygon = polygon->next;
+		}
+
+		//SDL_UnlockMutex(brush->brush_mutex);
+		//}
 
 		brush = brush->next;
 	}
 
 	renderer_DisableImediateDrawing();
-
-
-	#if 0
-
-	glDisable(GL_BLEND);
-
-	renderer_SetProjectionMatrix(&active_camera->projection_matrix);
-	renderer_SetViewMatrix(&active_camera->world_to_camera_matrix);
-	renderer_SetModelMatrix(NULL);
-
-
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	glDepthMask(GL_TRUE);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-
-
-
-	renderer_SetShader(r_z_pre_pass_shader);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->position);
-	renderer_UpdateMatrices();
-
-	brush = brushes;
-
-	/* brush z-prepass... */
-	while(brush)
-	{
-		if(brush->bm_flags & BRUSH_INVISIBLE)
-		{
-			brush = brush->next;
-			continue;
-		}
-
-		if(brush->bm_flags & BRUSH_SUBTRACTIVE)
-		{
-			brush = brush->next;
-			continue;
-		}
-
-		if(!brush->clipped_polygons_index_count)
-		{
-			brush = brush->next;
-			continue;
-		}
-
-
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brush->element_buffer);
-		renderer_DrawElements(GL_TRIANGLES, brush->clipped_polygons_index_count, GL_UNSIGNED_INT, 0);
-
-		brush = brush->next;
-	}
-
-	if(r_flat)
-	{
-		renderer_SetShader(r_flat_pass_shader);
-	}
-	else
-	{
-		renderer_SetShader(r_forward_pass_shader);
-	}
-
-	glEnable(GL_CULL_FACE);
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-	renderer_SetProjectionMatrix(&active_camera->projection_matrix);
-	renderer_SetViewMatrix(&active_camera->world_to_camera_matrix);
-	renderer_SetModelMatrix(NULL);
-	renderer_UpdateMatrices();
-
-	renderer_SetUniform1i(UNIFORM_r_width, r_width);
-	renderer_SetUniform1i(UNIFORM_r_height, r_height);
-	renderer_SetUniform1i(UNIFORM_r_frame, r_frame);
-
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->position);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->normal);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->tangent);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->tex_coord);
-
-	brush = brushes;
-
-	/* non-subtractive brushes first... */
-	while(brush)
-	{
-		if(brush->bm_flags & BRUSH_INVISIBLE)
-		{
-			brush = brush->next;
-			continue;
-		}
-
-		if(brush->bm_flags & BRUSH_SUBTRACTIVE)
-		{
-			brush = brush->next;
-			continue;
-		}
-
-		if(!brush->clipped_polygons_index_count)
-		{
-			brush = brush->next;
-			continue;
-		}
-
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brush->element_buffer);
-
-
-		k = brush->batch_count;
-		batch = brush->batches;
-		for(j = 0; j < k; j++)
-		{
-			renderer_SetMaterial(batch[j].material_index);
-			renderer_DrawElements(GL_TRIANGLES, batch[j].next, GL_UNSIGNED_INT, (void *)(batch[j].start * sizeof(int)));
-		}
-
-		brush = brush->next;
-	}
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-	renderer_SetShader(r_flat_pass_shader);
-	renderer_UpdateMatrices();
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->position);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->normal);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->tangent);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &((vertex_t *)0)->tex_coord);
-
-	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
-
-	brush = brushes;
-	/* subtractive... */
-	while(brush)
-	{
-		if(!(brush->bm_flags & BRUSH_SUBTRACTIVE))
-		{
-			brush = brush->next;
-			continue;
-		}
-		k = brush->clipped_polygons_vert_count;
-
-		polygon = brush->clipped_polygons;
-
-		k = brush->start;
-		while(polygon)
-		{
-			//glDrawArrays(GL_LINE_LOOP, k, polygon->vert_count);
-			renderer_DrawArrays(GL_LINE_LOOP, k, polygon->vert_count);
-			k += polygon->vert_count;
-			polygon = polygon->next;
-		}
-		brush = brush->next;
-	}
-
-	#endif
+	//glDisable(GL_POLYGON_OFFSET_LINE);
 }
 
 void editor_LevelEditorDrawGrid()
@@ -561,9 +413,15 @@ void editor_LevelEditorDrawSelected()
 				{
 					case PICK_BRUSH:
 
-
 						brush = record->pointer;
-						polygon = brush->clipped_polygons;
+
+						//SDL_LockMutex(brush->brush_mutex);
+
+						//printf("%d\n", brush->bm_flags & BRUSH_MOVED);
+
+						//polygon = brush->clipped_polygons;
+
+						polygon = brush->base_polygons;
 
 						while(polygon)
 						{
@@ -576,6 +434,8 @@ void editor_LevelEditorDrawSelected()
 
 							polygon = polygon->next;
 						}
+
+						//SDL_UnlockMutex(brush->brush_mutex);
 					break;
 
 					case PICK_WAYPOINT:
@@ -694,19 +554,26 @@ void editor_LevelEditorDrawSelected()
 					}
 
 					brush = record->pointer;
-					polygon = brush->clipped_polygons;
 
-					while(polygon)
+					if(!SDL_TryLockMutex(brush->brush_mutex))
 					{
-						renderer_Begin(GL_TRIANGLE_FAN);
-						for(j = 0; j < polygon->vert_count; j++)
-						{
-							renderer_Vertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
-						}
-						renderer_End();
+						polygon = brush->clipped_polygons;
 
-						polygon = polygon->next;
+						while(polygon)
+						{
+							renderer_Begin(GL_TRIANGLE_FAN);
+							for(j = 0; j < polygon->vert_count; j++)
+							{
+								renderer_Vertex3f(polygon->vertices[j].position.x, polygon->vertices[j].position.y, polygon->vertices[j].position.z);
+							}
+							renderer_End();
+
+							polygon = polygon->next;
+						}
+
+						SDL_UnlockMutex(brush->brush_mutex);
 					}
+
 				}
 
 
@@ -856,17 +723,204 @@ void editor_LevelEditorDrawSpawnPoints()
 
 void editor_LevelEditorDrawLeaves()
 {
+	int i;
+	int c;
+
+	int j;
+
+	struct bsp_dleaf_t *leaf;
+	vertex_t *triangle;
+
+	if(w_world_leaves)
+	{
+
+		if(w_visible_leaves_count)
+		{
+			glLineWidth(2.0);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			glDisable(GL_DEPTH_TEST);
+
+			renderer_SetShader(r_imediate_color_shader);
+			renderer_EnableImediateDrawing();
+
+			renderer_Begin(GL_TRIANGLES);
+			renderer_Color3f(0.2, 0.2, 0.2);
+
+			for(i = w_visible_leaves_count - 1; i >= 0; i--)
+			{
+				leaf = w_visible_leaves[i];
+
+				if(!i)
+				{
+					renderer_Color3f(0.0, 1.0, 0.0);
+				}
+				else
+				{
+					renderer_Color3f(0.2, 0.2, 0.2);
+				}
+
+				for(j = 0; j < leaf->tris_count; j++)
+				{
+					triangle = &w_world_vertices[leaf->tris[j].first_vertex];
+
+					renderer_Vertex3f(triangle->position.x, triangle->position.y, triangle->position.z);
+					triangle++;
+					renderer_Vertex3f(triangle->position.x, triangle->position.y, triangle->position.z);
+					triangle++;
+					renderer_Vertex3f(triangle->position.x, triangle->position.y, triangle->position.z);
+				}
+
+			}
+
+			renderer_End();
+
+
+			leaf = w_visible_leaves[0];
+
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			glEnable(GL_BLEND);
+
+			renderer_Begin(GL_TRIANGLES);
+			renderer_Color4f(0.0, 1.0, 0.0, 0.2);
+
+			for(j = 0; j < leaf->tris_count; j++)
+			{
+				triangle = &w_world_vertices[leaf->tris[j].first_vertex];
+
+				renderer_Vertex3f(triangle->position.x, triangle->position.y, triangle->position.z);
+				triangle++;
+				renderer_Vertex3f(triangle->position.x, triangle->position.y, triangle->position.z);
+				triangle++;
+				renderer_Vertex3f(triangle->position.x, triangle->position.y, triangle->position.z);
+			}
+
+			renderer_End();
+
+
+			renderer_DisableImediateDrawing();
+
+			glEnable(GL_DEPTH_TEST);
+			glDisable(GL_BLEND);
+			glLineWidth(1.0);
+
+		}
+
+
+	}
+
 
 }
 
+void editor_LevelEditorRecursiveDrawWorldPolygons(bsp_node_t *node)
+{
+	bsp_leaf_t *leaf;
+
+	int i;
+
+	bsp_polygon_t *polygon;
+
+    if(node->type == BSP_LEAF)
+	{
+        leaf = (bsp_leaf_t *)node;
+
+        if(!(leaf->bm_flags & BSP_SOLID))
+		{
+			polygon = leaf->polygons;
+
+			while(polygon)
+			{
+				renderer_Begin(GL_LINE_LOOP);
+
+                for(i = 0; i < polygon->vert_count; i++)
+				{
+                    renderer_Vertex3f(polygon->vertices[i].position.x, polygon->vertices[i].position.y, polygon->vertices[i].position.z);
+				}
+
+                renderer_End();
+
+				polygon = polygon->next;
+			}
+		}
+	}
+	else
+	{
+		editor_LevelEditorRecursiveDrawWorldPolygons(node->front);
+		editor_LevelEditorRecursiveDrawWorldPolygons(node->back);
+	}
+
+}
+
+extern bsp_node_t *world_bsp;
+
 void editor_LevelEditorDrawWorldPolygons()
 {
+
+	if(!world_bsp)
+	{
+		return;
+	}
+
+	glLineWidth(1.0);
+
+	renderer_SetShader(r_imediate_color_shader);
+	renderer_EnableImediateDrawing();
+
+	editor_LevelEditorRecursiveDrawWorldPolygons(world_bsp);
+
+	renderer_DisableImediateDrawing();
+	//glLineWidth()
 
 }
 
 void editor_LevelEditorDrawClippedPolygons()
 {
+	brush_t *brush;
+    int i;
+    bsp_polygon_t *polygon;
 
+
+	renderer_SetShader(r_imediate_color_shader);
+    renderer_EnableImediateDrawing();
+
+	brush = brushes;
+
+	renderer_Color3f(1.0, 1.0, 1.0);
+
+	while(brush)
+	{
+		if(!(brush->bm_flags & BRUSH_SUBTRACTIVE))
+		{
+
+			//SDL_LockMutex(brush->brush_mutex);
+
+			if(!SDL_TryLockMutex(brush->brush_mutex))
+			{
+				polygon = brush->clipped_polygons;
+
+				while(polygon)
+				{
+					renderer_Begin(GL_LINE_LOOP);
+
+					for(i = 0; i < polygon->vert_count; i++)
+					{
+						renderer_Vertex3f(polygon->vertices[i].position.x, polygon->vertices[i].position.y, polygon->vertices[i].position.z);
+					}
+
+					renderer_End();
+
+					polygon = polygon->next;
+				}
+
+				SDL_UnlockMutex(brush->brush_mutex);
+			}
+		}
+
+		brush = brush->next;
+	}
+
+
+
+	renderer_DisableImediateDrawing();
 }
 
 void editor_LevelEditorDrawEntitiesAabbs()

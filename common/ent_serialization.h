@@ -3,7 +3,7 @@
 
 
 #include "ent_common.h"
-
+#include "w_common.h"
 
 
 static char entity_section_start_tag[] = "[entity section start]";
@@ -200,6 +200,7 @@ struct collider_record_start_t
 			float max_step_height;
 			float jump_height;
 			float max_walk_speed;
+			float mass;
 
 		}collider_data;
 
@@ -230,6 +231,48 @@ struct collider_record_end_t
 {
 	char tag[(sizeof(collider_record_end_tag) + 3) & (~3)];
 };
+
+
+/*
+*******************************************
+*******************************************
+*******************************************
+*/
+
+
+struct trigger_filter_record_t
+{
+	char filter_name[ENTITY_PROP_NAME_MAX_LEN];
+	int flags;
+};
+
+
+
+static char trigger_record_tag[] = "[trigger record]";
+
+struct trigger_record_t
+{
+	char tag[(sizeof(trigger_record_tag) + 3) & (~3)];
+
+	mat3_t orientation;
+	vec3_t positon;
+	vec3_t scale;
+
+	char trigger_name[ENTITY_TRIGGER_NAME_MAX_LEN];
+	char event_name[WORLD_EVENT_NAME_MAX_LEN];
+	int filter_count;
+	struct trigger_filter_record_t filters[1];
+};
+
+
+
+
+
+/*
+*******************************************
+*******************************************
+*******************************************
+*/
 
 
 

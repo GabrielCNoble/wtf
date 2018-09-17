@@ -90,6 +90,9 @@ uniform mat4 UNIFORM_model_view_matrix;
 uniform int UNIFORM_r_frame;
 uniform int UNIFORM_r_width;
 uniform int UNIFORM_r_height;
+uniform int UNIFORM_r_clusters_per_row;
+uniform int UNIFORM_r_cluster_rows;
+uniform int UNIFORM_r_cluster_layers;
 uniform float UNIFORM_r_near;
 uniform float UNIFORM_r_far;
 

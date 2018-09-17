@@ -158,6 +158,7 @@ int level_editor_state = EDITOR_EDITING;
 
 
 int level_editor_draw_brushes = 1;
+int level_editor_draw_wireframe_brushes = 0;
 int level_editor_draw_grid = 1;
 int level_editor_draw_selected = 1;
 int level_editor_draw_cursors = 1;
@@ -232,6 +233,10 @@ portal_t *level_editor_portals = NULL;
 struct stack_list_t brush_transforms;
 
 
+
+char level_editor_level_name[PATH_MAX] = {0};
+
+
 /************************************************************************************************************/
 /************************************************************************************************************/
 /************************************************************************************************************/
@@ -284,14 +289,18 @@ void editor_LevelEditorInit()
 
 	//camera_t *camera = camera_CreateCamera("entity_camera", vec3(0.0, 0.0, 0.0), &r, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
 
-	struct particle_system_script_t *script = particle_LoadParticleSystemScript("scripts/particle_system.as", "particle_system_test_script");
+	//struct particle_system_script_t *script = particle_LoadParticleSystemScript("scripts/particle_system.as", "particle_system_test_script");
 	//struct script_t *particle_system_script = script_LoadScript("scripts/particle_system.as", "particle_system_test_script");
 
 	//int texture = texture_LoadTexture("Branches0013_1_S.png", "cloud", 0);
 
-	int texture2 = texture_LoadTexture("explosion2.ptx", "explosion", 0);
+	//int texture2 = texture_LoadTexture("explosion2.ptx", "explosion", 0);
 
-	int ps_def = particle_CreateParticleSystemDef("particle system", 1, 120, 1, 0, texture2, script);
+	//int ps_def = particle_CreateParticleSystemDef("particle system", 1, 120, 1, 0, texture2, script);
+
+//	int explosion_texture = texture_LoadTexture("explosion2.ptx", "explosion", 0);
+//	struct particle_system_script_t *ps_script = particle_LoadParticleSystemScript("explosion.pas", "explosion");
+//	particle_CreateParticleSystemDef("explosion", 1, 60, 1, 0, explosion_texture, ps_script);
 
 	//particle_SpawnParticleSystem(vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), &r, ps_def);
 
@@ -368,7 +377,7 @@ void editor_LevelEditorInit()
 
 	//entity = entity_GetNestledEntityHandle(entity, "weapon entity");
 
-    struct world_script_t *world_script = world_LoadScript("test.was", "test");
+    struct world_script_t *world_script = world_LoadScript("map.was", "map");
     world_SetWorldScript(world_script);
 
 
@@ -383,16 +392,47 @@ void editor_LevelEditorInit()
    // sound_PlaySound(sine, vec3_t_c(0.0, 0.0, 0.0), 0.5);
 
 
-	struct sound_handle_t sound = sound_LoadSound("Groaning Ambience.ogg", "music");
+	/*struct sound_handle_t sound = sound_LoadSound("Groaning Ambience.ogg", "music");
 
 
 	sound_LoadSound("explode3.wav", "explosion0");
 	sound_LoadSound("explode4.wav", "explosion1");
 	sound_LoadSound("explode5.wav", "explosion2");
 
+	sound_LoadSound("laser4.wav", "laser");*/
+
 	//sound_LoadSound("pokey.ogg", "pokey");
-	sound_LoadSound("pokey_intro.ogg", "pokey_intro");
+	/*sound_LoadSound("pokey_intro.ogg", "pokey_intro");
 	sound_LoadSound("pokey_loop.ogg", "pokey_loop");
+
+
+	sound_LoadSound("wilhelm.ogg", "death");
+
+	sound_LoadSound("SCREAM_4.ogg", "scream");
+
+	sound_LoadSound("pain0.ogg", "pain");
+
+	sound_LoadSound("doh0.ogg", "doh0");
+	sound_LoadSound("doh1.ogg", "doh1");
+	sound_LoadSound("doh2.ogg", "doh2");
+	sound_LoadSound("doh3.ogg", "doh3");
+	sound_LoadSound("doh4.ogg", "doh4");
+	sound_LoadSound("doh5.ogg", "doh5");
+	sound_LoadSound("doh6.ogg", "doh6");
+	sound_LoadSound("doh7.ogg", "doh7");
+	sound_LoadSound("doh8.ogg", "doh8");
+	sound_LoadSound("doh9.ogg", "doh9");
+	sound_LoadSound("doh10.ogg", "doh10");
+	sound_LoadSound("doh11.ogg", "doh11");
+	sound_LoadSound("doh12.ogg", "doh12");
+	sound_LoadSound("doh13.ogg", "doh13");
+	sound_LoadSound("doh14.ogg", "doh14");
+	sound_LoadSound("doh15.ogg", "doh15");
+	sound_LoadSound("doh16.ogg", "doh16");
+	sound_LoadSound("doh17.ogg", "doh17");
+	sound_LoadSound("doh18.ogg", "doh18");
+	sound_LoadSound("doh19.ogg", "doh19");
+	sound_LoadSound("doh20.ogg", "doh20");*/
 
 	//sound_PlaySound(sound, vec3_t_c(0.0, 0.0, 0.0), 1.0, 0);
 
@@ -476,6 +516,10 @@ void editor_LevelEditorInit()
 	entity_DeserializeEntities(&read_buffer, 0);
 
 	memory_Free(buffer);*/
+
+
+	//int trigger = entity_CreateTrigger(NULL, vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 5.0, 1.0), "Trigger", "trigger");
+	//entity_AddTriggerFilter(trigger, "player");
 }
 
 void editor_LevelEditorFinish()
@@ -516,8 +560,8 @@ void editor_LevelEditorSetup()
 	editor_LevelEditorUISetup();
 	editor_LevelEditorRestoreLevelData();
 
-	editor_SetExplorerReadFileCallback(editor_LevelEditorLoadLevel);
-	editor_SetExplorerWriteFileCallback(editor_LevelEditorSaveLevel);
+	//editor_SetExplorerReadFileCallback(editor_LevelEditorLoadLevel);
+	//editor_SetExplorerWriteFileCallback(editor_LevelEditorSaveLevel);
 }
 
 void editor_LevelEditorShutdown()
@@ -531,7 +575,7 @@ void editor_LevelEditorShutdown()
 	editor_LevelEditorCopyLevelData();
 	editor_LevelEditorClearLevelData();
 
-	editor_ClearExplorerFileCallbacks();
+	//editor_ClearExplorerFileCallbacks();
 
 	camera_Deactivate(level_editor_camera);
 }
@@ -575,6 +619,8 @@ void editor_LevelEditorMain(float delta_time)
 	}
 
 	editor_LevelEditorUpdateUI();
+
+	brush_ProcessBrushes();
 
 }
 
@@ -856,9 +902,6 @@ void editor_LevelEditorEdit(float delta_time)
 
 	if(engine_GetEngineState() & ENGINE_PAUSED)
 	{
-
-		brush_ProcessBrushes();
-
 		if(bm_mouse & MOUSE_OVER_WIDGET)
 			return;
 
@@ -1098,6 +1141,13 @@ void editor_LevelEditorEdit(float delta_time)
 			if(input_GetKeyStatus(SDL_SCANCODE_SPACE) & KEY_JUST_PRESSED)
 			{
 				renderer_ToggleFullscreen();
+			}
+		}
+		else if(input_GetKeyStatus(SDL_SCANCODE_LCTRL) & KEY_PRESSED)
+		{
+            if(input_GetKeyStatus(SDL_SCANCODE_S) & KEY_JUST_PRESSED)
+			{
+
 			}
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_G) & KEY_JUST_PRESSED)
@@ -1559,6 +1609,7 @@ void editor_LevelEditorClearLevelData()
 		brush_count = 0;
 
         entity_RemoveAllEntities();
+        entity_DestroyAllTriggers();
 		navigation_DestroyAllWaypoints();
 		light_DestroyAllLights();
 
@@ -1803,8 +1854,23 @@ void editor_LevelEditorDeserialize(void **buffer)
 }
 
 
+
+void editor_LevelEditorNewLevel()
+{
+	world_Clear(WORLD_CLEAR_FLAG_ALL);
+	brush_DestroyAllBrushes();
+
+    level_editor_has_copied_data = 0;
+    level_editor_need_to_copy_data = 0;
+}
+
+
 int editor_LevelEditorSaveLevel(char *file_path, char *file_name, void **file_buffer, int *file_buffer_size)
 {
+	strcpy(level_editor_level_name, file_path);
+	strcat(level_editor_level_name, "/");
+	strcat(level_editor_level_name, path_AddExtToName(file_name, ".wtf"));
+
 	editor_LevelEditorSerialize(file_buffer, file_buffer_size);
 	return 1;
 }
@@ -1817,6 +1883,10 @@ int editor_LevelEditorLoadLevel(char *path, char *file_name)
 	void *read_buffer;
 
 	FILE *file;
+
+	strcpy(level_editor_level_name, path);
+	strcat(level_editor_level_name, "/");
+	strcat(level_editor_level_name, path_AddExtToName(file_name, ".wtf"));
 
 	if(!strcmp(path_GetFileExtension(file_name), "wtf"))
     {
@@ -1850,20 +1920,30 @@ int editor_LevelEditorLoadLevel(char *path, char *file_name)
 	return 0;
 }
 
-
-
-void editor_LevelEditorNewLevel()
+int editor_LevelEditorExportBsp(char *file_path, char *file_name, void **file_buffer, int *file_buffer_size)
 {
-	world_Clear();
-	brush_DestroyAllBrushes();
+	char full_path[PATH_MAX];
 
-    level_editor_has_copied_data = 1;
-    level_editor_need_to_copy_data = 0;
+	strcpy(full_path, file_path);
+	strcat(full_path, "/");
+	strcat(full_path, path_AddExtToName(file_name, "bsp"));
+	bsp_SaveBsp(full_path);
 
-    editor_LevelEditorClearLevelData();
-
-    level_editor_has_copied_data = 0;
+	return 0;
 }
+
+int editor_LevelEditorImportBsp(char *file_path, char *file_name)
+{
+
+}
+
+
+
+
+
+
+
+
 
 
 

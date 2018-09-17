@@ -96,6 +96,8 @@ void world_VisibleWorld();
 
 
 
+
+
 struct world_var_t *world_AddWorldVar(char *name, int size);
 
 struct world_var_t *world_AddWorldArrayVar(char *name, int elem_size, int max_elements);
@@ -137,14 +139,31 @@ struct world_script_t *world_GetWorldScript();
 
 void world_ExecuteWorldScript();
 
+struct world_event_t *world_GetEventPointer(char *event_name);
 
-void world_AddLeafIndexes(int leaf_index);
+void world_CallEvent(char *event_name);
 
-void world_RemoveLeafIndexes(int leaf_index);
+void world_CallEventIndex(int event_index);
+
+void world_StopEvent(char *event_name);
+
+void world_StopEventIndex(int event_index);
+
+void world_StopAllEvents();
+
+void world_FadeIn();
+
+int world_HasFadedIn();
+
+void world_FadeOut();
+
+int world_HasFadedOut();
+
+void world_ClearBsp();
 
 void world_Update();
 
-void world_Clear();
+void world_Clear(int clear_flags);
 
 
 #ifdef __cplusplus
