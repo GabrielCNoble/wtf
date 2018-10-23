@@ -10146,10 +10146,14 @@
 
 1537063645 n:\files\gabriel noble\compiler\wtf\common\macros.h
 
-1533159335 source:d:\files\gabriel noble\compiler\wtf\common\animation.c
+1540276609 source:d:\files\gabriel noble\compiler\wtf\common\animation.c
 	"animation.h"
+	"ozz/animation/runtime/animation.h"
+	"ozz/animation/runtime/skeleton.h"
+	"ozz/animation/runtime/sampling_job.h"
+	"ozz/animation/runtime/local_to_model_job.h"
 
-1532195196 d:\files\gabriel noble\compiler\wtf\common\animation.h
+1540275434 d:\files\gabriel noble\compiler\wtf\common\animation.h
 
 1537740781 source:d:\files\gabriel noble\compiler\wtf\common\bsp.c
 	<stdio.h>
@@ -10544,18 +10548,8 @@
 1536814903 d:\files\gabriel noble\compiler\wtf\common\sound.h
 	"vector_types.h"
 
-1531740090 d:\files\gabriel noble\compiler\wtf\common\gui.h
+1540307975 d:\files\gabriel noble\compiler\wtf\common\gui.h
 	"gui_common.h"
-	"gui_dropdown.h"
-	"gui_option_list.h"
-	"gui_option.h"
-	"gui_button.h"
-	"gui_widget_bar.h"
-	"gui_checkbox.h"
-	"gui_text_field.h"
-	"gui_slider.h"
-	"gui_surface.h"
-	"gui_item_list.h"
 	"gui_imgui.h"
 
 1531673886 d:\files\gabriel noble\compiler\wtf\common\gui_common.h
@@ -12797,4 +12791,27 @@
 	"containers/list.h"
 
 1540264475 d:\files\gabriel noble\compiler\wtf\common\r_verts.h
+
+1532186828 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\animation\runtime\animation.h
+	"ozz/base/io/archive_traits.h"
+	"ozz/base/platform.h"
+
+1532186828 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\io\archive_traits.h
+	<stdint.h>
+	<cstddef>
+
+1532186828 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\platform.h
+	<stdint.h>
+	<cassert>
+	<cstddef>
+
+1532186828 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\animation\runtime\skeleton.h
+	"ozz/base/io/archive_traits.h"
+	"ozz/base/platform.h"
+
+1532186828 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\animation\runtime\sampling_job.h
+	"ozz/base/platform.h"
+
+1532186828 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\animation\runtime\local_to_model_job.h
+	"ozz/base/platform.h"
 
