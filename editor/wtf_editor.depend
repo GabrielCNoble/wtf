@@ -5067,7 +5067,7 @@
 	"camera_types.h"
 	<limits.h>
 
-1537139916 n:\files\gabriel noble\compiler\wtf\common\shader.h
+1537154960 n:\files\gabriel noble\compiler\wtf\common\shader.h
 	"shd_common.h"
 
 1537134645 n:\files\gabriel noble\compiler\wtf\common\shd_common.h
@@ -5327,7 +5327,7 @@
 	"c_memory.h"
 	<string.h>
 
-1537132620 source:n:\files\gabriel noble\compiler\wtf\common\engine.c
+1537143822 source:n:\files\gabriel noble\compiler\wtf\common\engine.c
 	<stdio.h>
 	<signal.h>
 	"engine.h"
@@ -5950,7 +5950,7 @@
 	"engine.h"
 	"l_globals.h"
 
-1537132425 source:n:\files\gabriel noble\compiler\wtf\common\log.c
+1537143862 source:n:\files\gabriel noble\compiler\wtf\common\log.c
 	"log.h"
 	<stdio.h>
 	<string.h>
@@ -6894,7 +6894,7 @@
 	<string>
 	"scriptarray.h"
 
-1537139770 source:n:\files\gabriel noble\compiler\wtf\common\shader.c
+1537155048 source:n:\files\gabriel noble\compiler\wtf\common\shader.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -7311,7 +7311,7 @@
 	<stdio.h>
 	<stdlib.h>
 
-1536814269 source:n:\files\gabriel noble\compiler\wtf\editor\editor.c
+1537155001 source:n:\files\gabriel noble\compiler\wtf\editor\editor.c
 	<stdio.h>
 	"GL\glew.h"
 	"matrix.h"
@@ -10145,4 +10145,2656 @@
 	"script_types/scr_string.h"
 
 1537063645 n:\files\gabriel noble\compiler\wtf\common\macros.h
+
+1533159335 source:d:\files\gabriel noble\compiler\wtf\common\animation.c
+	"animation.h"
+
+1532195196 d:\files\gabriel noble\compiler\wtf\common\animation.h
+
+1537740781 source:d:\files\gabriel noble\compiler\wtf\common\bsp.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<math.h>
+	<assert.h>
+	"ent_serialization.h"
+	"GL\glew.h"
+	"bsp.h"
+	"w_common.h"
+	"world.h"
+	"camera.h"
+	"material.h"
+	"shader.h"
+	"l_main.h"
+	"input.h"
+	"c_memory.h"
+	"path.h"
+	"log.h"
+	"navigation.h"
+
+1535959956 d:\files\gabriel noble\compiler\wtf\common\ent_serialization.h
+	"ent_common.h"
+	"w_common.h"
+
+1540263106 d:\files\gabriel noble\compiler\wtf\common\ent_common.h
+	"phy_common.h"
+	"model.h"
+	"bsp_common.h"
+	"script/scr_common.h"
+	"nav_common.h"
+	"camera_types.h"
+	"containers/list.h"
+
+1540262896 d:\files\gabriel noble\compiler\wtf\common\phy_common.h
+	"gmath/vector.h"
+	"gmath/matrix.h"
+	"model.h"
+	<limits.h>
+	<stdint.h>
+
+1533165715 d:\files\gabriel noble\compiler\wtf\common\gmath\vector.h
+	<math.h>
+	"matrix_types.h"
+	"vector_types.h"
+
+1506643328 d:\files\gabriel noble\compiler\wtf\common\gmath\matrix_types.h
+	"vector_types.h"
+
+1525444107 d:\files\gabriel noble\compiler\wtf\common\gmath\vector_types.h
+	<stdint.h>
+
+1537740826 d:\files\gabriel noble\compiler\wtf\common\gmath\matrix.h
+	<math.h>
+	"frustum_types.h"
+	"matrix_types.h"
+	"vector.h"
+	<stdlib.h>
+	"matrix.inl"
+
+1526272425 d:\files\gabriel noble\compiler\wtf\common\gmath\frustum_types.h
+
+1506899884 d:\files\gabriel noble\compiler\wtf\common\gmath\matrix.inl
+	"matrix_types.h"
+
+1540262985 d:\files\gabriel noble\compiler\wtf\common\model.h
+	"r_common.h"
+	"r_verts.h"
+	"gmath/vector.h"
+	<stdint.h>
+	<limits.h>
+
+1540262918 d:\files\gabriel noble\compiler\wtf\common\r_common.h
+	"gmath/vector.h"
+	"gmath/matrix.h"
+	"camera_types.h"
+
+1540261591 d:\files\gabriel noble\compiler\wtf\common\gpu.h
+
+1540263007 d:\files\gabriel noble\compiler\wtf\common\bsp_common.h
+	"gmath/vector.h"
+	"model.h"
+	"r_common.h"
+
+1537053932 d:\files\gabriel noble\compiler\wtf\common\script\scr_common.h
+
+1540263086 d:\files\gabriel noble\compiler\wtf\common\nav_common.h
+	"gmath/vector.h"
+
+1540262960 d:\files\gabriel noble\compiler\wtf\common\camera_types.h
+	"gmath/matrix_types.h"
+	"gmath/vector_types.h"
+	"gmath/frustum_types.h"
+
+1535220450 d:\files\gabriel noble\compiler\wtf\common\bsp.h
+	"bsp_common.h"
+
+1537063739 d:\files\gabriel noble\compiler\wtf\common\containers\list.h
+
+1540257626 d:\files\gabriel noble\compiler\wtf\common\w_common.h
+	"scr_common.h"
+
+1501547140 d:\files\gabriel noble\compiler\wtf\common\glew\include\gl\glew.h
+	<stddef.h>
+	<inttypes.h>
+	<stdint.h>
+	<inttypes.h>
+	<Availability.h>
+	<OpenGL/glu.h>
+	<GL/glu.h>
+
+1538185425 d:\files\gabriel noble\compiler\wtf\common\camera.h
+	"camera_types.h"
+	"matrix.h"
+	"vector.h"
+	"frustum.h"
+
+1533147017 d:\files\gabriel noble\compiler\wtf\common\gmath\frustum.h
+	<math.h>
+	"frustum_types.h"
+	"vector_types.h"
+
+1535104871 d:\files\gabriel noble\compiler\wtf\common\material.h
+	"vector_types.h"
+	"r_common.h"
+	"camera_types.h"
+	<limits.h>
+
+1537154960 d:\files\gabriel noble\compiler\wtf\common\shader.h
+	"shd_common.h"
+
+1540145322 d:\files\gabriel noble\compiler\wtf\common\shd_common.h
+
+1538456612 d:\files\gabriel noble\compiler\wtf\common\l_main.h
+	"matrix_types.h"
+	"vector_types.h"
+	"l_common.h"
+
+1540143951 d:\files\gabriel noble\compiler\wtf\common\l_common.h
+	"containers/list.h"
+	"camera_types.h"
+	"bsp_common.h"
+
+1535645463 d:\files\gabriel noble\compiler\wtf\common\input.h
+	"SDL2/SDL_scancode.h"
+	"SDL2/SDL_mouse.h"
+	"SDL2/SDL_keyboard.h"
+	"vector_types.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_scancode.h
+	"SDL_stdinc.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_stdinc.h
+	"SDL_config.h"
+	<sys/types.h>
+	<stdio.h>
+	<stdlib.h>
+	<stddef.h>
+	<stdarg.h>
+	<stdlib.h>
+	<malloc.h>
+	<stddef.h>
+	<stdarg.h>
+	<memory.h>
+	<string.h>
+	<strings.h>
+	<inttypes.h>
+	<stdint.h>
+	<ctype.h>
+	<math.h>
+	<float.h>
+	<iconv.h>
+	"begin_code.h"
+	<alloca.h>
+	<malloc.h>
+	<malloc.h>
+	<malloc.h>
+	<stdlib.h>
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_config.h
+	"SDL_platform.h"
+
+1537734042 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_platform.h
+	"AvailabilityMacros.h"
+	"TargetConditionals.h"
+	<winapifamily.h>
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\begin_code.h
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\close_code.h
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_mouse.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"SDL_video.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_error.h
+	"SDL_stdinc.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_video.h
+	"SDL_stdinc.h"
+	"SDL_pixels.h"
+	"SDL_rect.h"
+	"SDL_surface.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_pixels.h
+	"SDL_stdinc.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_rect.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"SDL_pixels.h"
+	"SDL_rwops.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_rwops.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_surface.h
+	"SDL_stdinc.h"
+	"SDL_pixels.h"
+	"SDL_rect.h"
+	"SDL_blendmode.h"
+	"SDL_rwops.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_blendmode.h
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_keyboard.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"SDL_keycode.h"
+	"SDL_video.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_keycode.h
+	"SDL_stdinc.h"
+	"SDL_scancode.h"
+
+1535643159 d:\files\gabriel noble\compiler\wtf\common\c_memory.h
+	<io.h>
+
+1533747395 d:\files\gabriel noble\compiler\wtf\common\path.h
+	<limits.h>
+	<stdio.h>
+
+1537132256 d:\files\gabriel noble\compiler\wtf\common\log.h
+
+1537133418 source:d:\files\gabriel noble\compiler\wtf\common\c_memory.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<malloc.h>
+	"c_memory.h"
+	"log.h"
+	"SDL2\SDL_mutex.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_mutex.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"begin_code.h"
+	"close_code.h"
+
+1538185517 source:d:\files\gabriel noble\compiler\wtf\common\camera.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"matrix.h"
+	"camera.h"
+	"r_main.h"
+	"r_debug.h"
+	"w_common.h"
+	"material.h"
+	"c_memory.h"
+	"log.h"
+	"GL\glew.h"
+
+1540265376 d:\files\gabriel noble\compiler\wtf\common\r_main.h
+	"r_common.h"
+	"vector.h"
+	"matrix.h"
+	"camera.h"
+
+1535207215 d:\files\gabriel noble\compiler\wtf\common\portal.h
+	"vector.h"
+	"matrix.h"
+	"camera_types.h"
+	"bsp.h"
+	"w_common.h"
+
+1540262855 d:\files\gabriel noble\compiler\wtf\common\r_debug.h
+	"gmath/vector.h"
+	"ent_common.h"
+	"phy_common.h"
+	"camera_types.h"
+
+1534823927 source:d:\files\gabriel noble\compiler\wtf\common\containers\alloc_list.c
+	"alloc_list.h"
+	"c_memory.h"
+	<stdlib.h>
+	<string.h>
+
+1534818886 d:\files\gabriel noble\compiler\wtf\common\containers\alloc_list.h
+	"stack_list.h"
+
+1533163357 d:\files\gabriel noble\compiler\wtf\common\containers\stack_list.h
+	<stdio.h>
+
+1534823936 source:d:\files\gabriel noble\compiler\wtf\common\containers\list.c
+	"list.h"
+	"c_memory.h"
+	<stdlib.h>
+	<string.h>
+
+1534825453 source:d:\files\gabriel noble\compiler\wtf\common\containers\multi_list.c
+	"multi_list.h"
+	"c_memory.h"
+	<stdlib.h>
+	<string.h>
+	<stdarg.h>
+
+1534825293 d:\files\gabriel noble\compiler\wtf\common\containers\multi_list.h
+
+1533962627 source:d:\files\gabriel noble\compiler\wtf\common\containers\stack.c
+	"stack.h"
+	"c_memory.h"
+	<stdlib.h>
+	<string.h>
+
+1533961605 d:\files\gabriel noble\compiler\wtf\common\containers\stack.h
+
+1534775300 source:d:\files\gabriel noble\compiler\wtf\common\containers\stack_list.c
+	"stack_list.h"
+	"c_memory.h"
+	<string.h>
+
+1540265688 source:d:\files\gabriel noble\compiler\wtf\common\engine.c
+	<stdio.h>
+	<signal.h>
+	"engine.h"
+	"c_memory.h"
+	"SDL2\SDL_timer.h"
+	<float.h>
+	<malloc.h>
+	<stdarg.h>
+
+1537740914 d:\files\gabriel noble\compiler\wtf\common\engine.h
+	"r_main.h"
+	"path.h"
+	"shader.h"
+	"input.h"
+	"model.h"
+	"camera.h"
+	"gpu.h"
+	"material.h"
+	"l_main.h"
+	"sound.h"
+	"gui.h"
+	"bsp.h"
+	"font.h"
+	"log.h"
+	"entity.h"
+	"portal.h"
+	"particle.h"
+	"script.h"
+	"navigation.h"
+	"event.h"
+	"resource.h"
+	"world.h"
+	"texture.h"
+
+1536814903 d:\files\gabriel noble\compiler\wtf\common\sound.h
+	"vector_types.h"
+
+1531740090 d:\files\gabriel noble\compiler\wtf\common\gui.h
+	"gui_common.h"
+	"gui_dropdown.h"
+	"gui_option_list.h"
+	"gui_option.h"
+	"gui_button.h"
+	"gui_widget_bar.h"
+	"gui_checkbox.h"
+	"gui_text_field.h"
+	"gui_slider.h"
+	"gui_surface.h"
+	"gui_item_list.h"
+	"gui_imgui.h"
+
+1531673886 d:\files\gabriel noble\compiler\wtf\common\gui_common.h
+	"matrix.h"
+	"vector.h"
+	"SDL2/SDL_surface.h"
+
+1530322363 d:\files\gabriel noble\compiler\wtf\common\gui_dropdown.h
+	"gui_common.h"
+
+1530322423 d:\files\gabriel noble\compiler\wtf\common\gui_option_list.h
+	"gui_common.h"
+
+1530322404 d:\files\gabriel noble\compiler\wtf\common\gui_option.h
+	"gui_common.h"
+
+1530322315 d:\files\gabriel noble\compiler\wtf\common\gui_button.h
+	"gui_common.h"
+
+1530322528 d:\files\gabriel noble\compiler\wtf\common\gui_widget_bar.h
+	"gui_common.h"
+
+1530322343 d:\files\gabriel noble\compiler\wtf\common\gui_checkbox.h
+	"gui_common.h"
+
+1530322510 d:\files\gabriel noble\compiler\wtf\common\gui_text_field.h
+	"gui_common.h"
+
+1530322447 d:\files\gabriel noble\compiler\wtf\common\gui_slider.h
+	"gui_common.h"
+
+1530322465 d:\files\gabriel noble\compiler\wtf\common\gui_surface.h
+	"gui_common.h"
+
+1530322386 d:\files\gabriel noble\compiler\wtf\common\gui_item_list.h
+	"gui_common.h"
+
+1538700921 d:\files\gabriel noble\compiler\wtf\common\gui_imgui.h
+	"imgui.h"
+	"vector.h"
+	<stdarg.h>
+
+1531765385 d:\files\gabriel noble\compiler\wtf\common\imgui\imgui.h
+	"imconfig.h"
+	<float.h>
+	<stdarg.h>
+	<stddef.h>
+	<string.h>
+	<assert.h>
+	"imgui_user.h"
+
+1530316514 d:\files\gabriel noble\compiler\wtf\common\imgui\imconfig.h
+
+1529517238 d:\files\gabriel noble\compiler\wtf\common\font.h
+	"SDL2/SDL_ttf.h"
+	"vector.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_ttf.h
+	"SDL.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl.h
+	"SDL_main.h"
+	"SDL_stdinc.h"
+	"SDL_assert.h"
+	"SDL_atomic.h"
+	"SDL_audio.h"
+	"SDL_clipboard.h"
+	"SDL_cpuinfo.h"
+	"SDL_endian.h"
+	"SDL_error.h"
+	"SDL_events.h"
+	"SDL_filesystem.h"
+	"SDL_joystick.h"
+	"SDL_gamecontroller.h"
+	"SDL_haptic.h"
+	"SDL_hints.h"
+	"SDL_loadso.h"
+	"SDL_log.h"
+	"SDL_messagebox.h"
+	"SDL_mutex.h"
+	"SDL_power.h"
+	"SDL_render.h"
+	"SDL_rwops.h"
+	"SDL_system.h"
+	"SDL_thread.h"
+	"SDL_timer.h"
+	"SDL_version.h"
+	"SDL_video.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_main.h
+	"SDL_stdinc.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_assert.h
+	"SDL_config.h"
+	"begin_code.h"
+	<signal.h>
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_atomic.h
+	"SDL_stdinc.h"
+	"SDL_platform.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_audio.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"SDL_endian.h"
+	"SDL_mutex.h"
+	"SDL_thread.h"
+	"SDL_rwops.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_endian.h
+	"SDL_stdinc.h"
+	<endian.h>
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_thread.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"SDL_atomic.h"
+	"SDL_mutex.h"
+	"begin_code.h"
+	<process.h>
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_clipboard.h
+	"SDL_stdinc.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_cpuinfo.h
+	"SDL_stdinc.h"
+	<intrin.h>
+	<intrin.h>
+	<altivec.h>
+	<mmintrin.h>
+	<mm3dnow.h>
+	<xmmintrin.h>
+	<emmintrin.h>
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_events.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"SDL_video.h"
+	"SDL_keyboard.h"
+	"SDL_mouse.h"
+	"SDL_joystick.h"
+	"SDL_gamecontroller.h"
+	"SDL_quit.h"
+	"SDL_gesture.h"
+	"SDL_touch.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_joystick.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_gamecontroller.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"SDL_rwops.h"
+	"SDL_joystick.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_quit.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_gesture.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"SDL_video.h"
+	"SDL_touch.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_touch.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"SDL_video.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_filesystem.h
+	"SDL_stdinc.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_haptic.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"SDL_joystick.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_hints.h
+	"SDL_stdinc.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_loadso.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_log.h
+	"SDL_stdinc.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_messagebox.h
+	"SDL_stdinc.h"
+	"SDL_video.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_power.h
+	"SDL_stdinc.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_render.h
+	"SDL_stdinc.h"
+	"SDL_rect.h"
+	"SDL_video.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_system.h
+	"SDL_stdinc.h"
+	"SDL_keyboard.h"
+	"SDL_render.h"
+	"SDL_video.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_timer.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"begin_code.h"
+	"close_code.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_version.h
+	"SDL_stdinc.h"
+	"begin_code.h"
+	"close_code.h"
+
+1538587948 d:\files\gabriel noble\compiler\wtf\common\entity.h
+	"ent_common.h"
+	"macros.h"
+	"vector.h"
+	"matrix.h"
+	"model.h"
+	"bsp.h"
+	"physics.h"
+	<limits.h>
+	"entity.inl"
+
+1537063645 d:\files\gabriel noble\compiler\wtf\common\macros.h
+
+1535969841 d:\files\gabriel noble\compiler\wtf\common\physics.h
+	"phy_common.h"
+	"phy_character.h"
+	"phy_projectile.h"
+	"physics.inl"
+
+1531342038 d:\files\gabriel noble\compiler\wtf\common\phy_character.h
+	"phy_common.h"
+
+1531356241 d:\files\gabriel noble\compiler\wtf\common\phy_projectile.h
+	"phy_common.h"
+
+1532737492 d:\files\gabriel noble\compiler\wtf\common\physics.inl
+	"phy_common.h"
+	"physics.h"
+	"stack_list.h"
+	"list.h"
+
+1537734131 d:\files\gabriel noble\compiler\wtf\common\entity.inl
+	<stdio.h>
+	<string.h>
+	"macros.h"
+	"ent_common.h"
+	"stack_list.h"
+
+1534429814 d:\files\gabriel noble\compiler\wtf\common\particle.h
+	"vector.h"
+	"script.h"
+
+1538565982 d:\files\gabriel noble\compiler\wtf\common\script\script.h
+	"scr_common.h"
+	"scr_array.h"
+	"scr_string.h"
+	"angelscript.h"
+
+1536015710 d:\files\gabriel noble\compiler\wtf\common\script\script_types\scr_array.h
+
+1531061359 d:\files\gabriel noble\compiler\wtf\common\script\script_types\scr_string.h
+
+1534166357 d:\files\gabriel noble\compiler\wtf\common\navigation.h
+	"nav_common.h"
+
+1530658176 d:\files\gabriel noble\compiler\wtf\common\event.h
+	"script.h"
+
+1533344693 d:\files\gabriel noble\compiler\wtf\common\resource.h
+
+1537062431 source:d:\files\gabriel noble\compiler\wtf\common\ent_serialization.c
+	"ent_serialization.h"
+	"camera.h"
+	"entity.h"
+	"script.h"
+	"stack_list.h"
+	"c_memory.h"
+	<assert.h>
+	<string.h>
+
+1529643375 source:d:\files\gabriel noble\compiler\wtf\common\event.c
+	"event.h"
+
+1533742999 source:d:\files\gabriel noble\compiler\wtf\common\font.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"font.h"
+	"path.h"
+	"c_memory.h"
+	"SDL2/SDL_surface.h"
+	"GL/glew.h"
+
+1533160068 source:d:\files\gabriel noble\compiler\wtf\common\gmath\fixed.c
+	"fixed.h"
+
+1524494737 d:\files\gabriel noble\compiler\wtf\common\gmath\fixed.h
+	<stdint.h>
+
+1533142087 source:d:\files\gabriel noble\compiler\wtf\common\gmath\frustum.c
+	"frustum.h"
+
+1533484163 source:d:\files\gabriel noble\compiler\wtf\common\gmath\half_float.c
+	"half_float.h"
+
+1533440370 d:\files\gabriel noble\compiler\wtf\common\gmath\half_float.h
+
+1506740012 source:d:\files\gabriel noble\compiler\wtf\common\gmath\line.c
+	"line.h"
+
+1511931542 d:\files\gabriel noble\compiler\wtf\common\gmath\line.h
+	"line_types.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\gmath\line_types.h
+	"vector.h"
+
+1533160096 source:d:\files\gabriel noble\compiler\wtf\common\gmath\matrix.c
+	"matrix.h"
+
+1506740156 source:d:\files\gabriel noble\compiler\wtf\common\gmath\plane.c
+	"plane.h"
+
+1506740150 d:\files\gabriel noble\compiler\wtf\common\gmath\plane.h
+	<math.h>
+	"plane_types.h"
+	"vector.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\gmath\plane_types.h
+	"vector_types.h"
+
+1501554715 source:d:\files\gabriel noble\compiler\wtf\common\gmath\triangle.c
+	"triangle.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\gmath\triangle.h
+	"triangle_types.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\gmath\triangle_types.h
+
+1533166135 source:d:\files\gabriel noble\compiler\wtf\common\gmath\vector.c
+	"vector.h"
+	<assert.h>
+
+1540261605 source:d:\files\gabriel noble\compiler\wtf\common\gpu.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"gpu.h"
+	"vector.h"
+	"log.h"
+	"model.h"
+	"containers/list.h"
+	"containers/stack_list.h"
+	"c_memory.h"
+	"GL\glew.h"
+	"r_debug.h"
+	<assert.h>
+
+1539211335 source:d:\files\gabriel noble\compiler\wtf\common\gui.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"SDL2\SDL_ttf.h"
+	"SDL2\SDL_syswm.h"
+	"GL/glew.h"
+	"gui_imgui.h"
+	"matrix.h"
+	"gui.h"
+	"font.h"
+	"r_main.h"
+	"r_imediate.h"
+	"r_shader.h"
+	"r_gl.h"
+	"input.h"
+	"c_memory.h"
+	"texture.h"
+	"r_imediate.h"
+	"log.h"
+	"imgui.h"
+
+1501554716 d:\files\gabriel noble\compiler\wtf\common\sdl\include\sdl2\sdl_syswm.h
+	"SDL_stdinc.h"
+	"SDL_error.h"
+	"SDL_video.h"
+	"SDL_version.h"
+	"begin_code.h"
+	<windows.h>
+	<Inspectable.h>
+	<X11/Xlib.h>
+	<X11/Xatom.h>
+	<directfb.h>
+	<Cocoa/Cocoa.h>
+	<UIKit/UIKit.h>
+	<mir_toolkit/mir_client_library.h>
+	"close_code.h"
+
+1538185687 d:\files\gabriel noble\compiler\wtf\common\r_shader.h
+	"shader.h"
+
+1540096197 d:\files\gabriel noble\compiler\wtf\common\r_gl.h
+	"r_common.h"
+	"GL/glew.h"
+
+1535102881 d:\files\gabriel noble\compiler\wtf\common\texture.h
+	<limits.h>
+	"tex_common.h"
+
+1534334541 d:\files\gabriel noble\compiler\wtf\common\tex_common.h
+
+1538185645 d:\files\gabriel noble\compiler\wtf\common\r_imediate.h
+	"GL/glew.h"
+	"vector.h"
+	"matrix.h"
+
+1538700949 source:d:\files\gabriel noble\compiler\wtf\common\gui_imgui.c
+	"gui_imgui.h"
+	<stdio.h>
+	"GL/glew.h"
+	"SDL2/SDL.h"
+	"SDL2/SDL_syswm.h"
+	"texture.h"
+	"r_gl.h"
+	"path.h"
+
+1532567175 source:d:\files\gabriel noble\compiler\wtf\common\imgui\imgui.cpp
+	<stb_image.h>
+	"imgui.h"
+	"imgui_internal.h"
+	<ctype.h>
+	<stdio.h>
+	<stddef.h>
+	<stdint.h>
+	"stb_textedit.h"
+	<Windows.h>
+	<windows.h>
+	<imm.h>
+	"imgui_user.inl"
+
+1530316514 d:\files\gabriel noble\compiler\wtf\common\imgui\imgui_internal.h
+	<stdio.h>
+	<stdlib.h>
+	<math.h>
+	<limits.h>
+	"stb_textedit.h"
+
+1530316514 d:\files\gabriel noble\compiler\wtf\common\imgui\stb_textedit.h
+	<string.h>
+
+1530316514 source:d:\files\gabriel noble\compiler\wtf\common\imgui\imgui_draw.cpp
+	"imgui.h"
+	"imgui_internal.h"
+	<stdio.h>
+	<malloc.h>
+	<alloca.h>
+	<stdlib.h>
+	"stb_rect_pack.h"
+	"stb_truetype.h"
+
+1530316514 d:\files\gabriel noble\compiler\wtf\common\imgui\stb_rect_pack.h
+	<stdlib.h>
+	<assert.h>
+
+1530316514 d:\files\gabriel noble\compiler\wtf\common\imgui\stb_truetype.h
+	"stb_truetype.h"
+	<stdio.h>
+	"stb_truetype.h"
+	<math.h>
+	<math.h>
+	<math.h>
+	<math.h>
+	<math.h>
+	<stdlib.h>
+	<assert.h>
+	<string.h>
+	<string.h>
+
+1531710432 source:d:\files\gabriel noble\compiler\wtf\common\imgui\imgui_impl_opengl3.cpp
+	"imgui.h"
+	"imgui_impl_opengl3.h"
+	"GL/glew.h"
+
+1530316513 d:\files\gabriel noble\compiler\wtf\common\imgui\imgui_impl_opengl3.h
+
+1540105429 source:d:\files\gabriel noble\compiler\wtf\common\input.c
+	"input.h"
+	"engine.h"
+	"memory.h"
+	"SDL2\SDL.h"
+
+1535207268 source:d:\files\gabriel noble\compiler\wtf\common\l_cache.c
+	<stdlib.h>
+	<stdio.h>
+	"GL\glew.h"
+	"camera.h"
+	"shader.h"
+	"l_main.h"
+	"l_cache.h"
+	"memory.h"
+	"r_debug.h"
+	"engine.h"
+	"l_globals.h"
+
+1526260636 d:\files\gabriel noble\compiler\wtf\common\l_cache.h
+	"l_common.h"
+
+1538395098 d:\files\gabriel noble\compiler\wtf\common\l_globals.h
+
+1538913938 source:d:\files\gabriel noble\compiler\wtf\common\l_main.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<math.h>
+	<float.h>
+	<limits.h>
+	"GL/glew.h"
+	"SDL2/SDL_thread.h"
+	"SDL2/SDL_mutex.h"
+	"bsp.h"
+	"l_main.h"
+	"l_cache.h"
+	"camera.h"
+	"vector.h"
+	"matrix.h"
+	"shader.h"
+	"gpu.h"
+	"c_memory.h"
+	"r_debug.h"
+	"entity.h"
+	"ent_common.h"
+	"containers/stack_list.h"
+	"engine.h"
+	"l_globals.h"
+
+1537143862 source:d:\files\gabriel noble\compiler\wtf\common\log.c
+	"log.h"
+	<stdio.h>
+	<string.h>
+	<stdarg.h>
+
+1537133577 source:d:\files\gabriel noble\compiler\wtf\common\material.c
+	<stdlib.h>
+	<stdio.h>
+	<string.h>
+	"material.h"
+	"vector.h"
+	"c_memory.h"
+	"texture.h"
+	"path.h"
+	"log.h"
+
+1540262383 source:d:\files\gabriel noble\compiler\wtf\common\model.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<assert.h>
+	<math.h>
+	<float.h>
+	"GL\glew.h"
+	"model.h"
+	"r_verts.h"
+	"path.h"
+	"mpk_file.h"
+	"material.h"
+	"texture.h"
+	"shader.h"
+	"c_memory.h"
+	"r_debug.h"
+	"log.h"
+	"half_float.h"
+	"mpk_file.h"
+	"mpk_read.h"
+	"stack_list.h"
+
+1533960741 d:\files\gabriel noble\compiler\wtf\common\mpk_file.h
+	"model.h"
+	<limits.h>
+
+1533530757 d:\files\gabriel noble\compiler\wtf\common\mpk_read.h
+	"mpk_file.h"
+
+1533743264 source:d:\files\gabriel noble\compiler\wtf\common\mpk_read.c
+	"mpk_read.h"
+	"material.h"
+	"c_memory.h"
+	"path.h"
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+
+1535103037 source:d:\files\gabriel noble\compiler\wtf\common\mpk_write.c
+	"mpk_write.h"
+	"gmath/vector.h"
+	"model.h"
+	"texture.h"
+	"c_memory.h"
+	"material.h"
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<float.h>
+	<math.h>
+
+1533957223 d:\files\gabriel noble\compiler\wtf\common\mpk_write.h
+	"mpk_file.h"
+
+1537132680 source:d:\files\gabriel noble\compiler\wtf\common\navigation.c
+	"navigation.h"
+	"physics.h"
+	"c_memory.h"
+	"containers/list.h"
+	"log.h"
+	<stdlib.h>
+	<string.h>
+	<stdio.h>
+	<float.h>
+
+1540265732 source:d:\files\gabriel noble\compiler\wtf\common\particle.c
+	<stdio.h>
+	<string.h>
+	<stdlib.h>
+	<math.h>
+	<float.h>
+	<assert.h>
+	"matrix.h"
+	"r_verts.h"
+	"particle.h"
+	"c_memory.h"
+	"camera.h"
+	"texture.h"
+	"r_main.h"
+	"log.h"
+	"script.h"
+	"stack_list.h"
+
+1538185470 source:d:\files\gabriel noble\compiler\wtf\common\phy_character.c
+	"phy_character.h"
+	"physics.h"
+	"r_debug.h"
+	"btBulletCollisionCommon.h"
+	"btBulletDynamicsCommon.h"
+	"BulletCollision/CollisionShapes/btCollisionShape.h"
+	"BulletCollision/CollisionShapes/btBoxShape.h"
+	"BulletCollision/CollisionShapes/btCylinderShape.h"
+	"BulletCollision/CollisionShapes/btSphereShape.h"
+	"BulletCollision/CollisionShapes/btCapsuleShape.h"
+	"BulletCollision/CollisionShapes/btCompoundShape.h"
+
+1520525971 d:\files\gabriel noble\compiler\wtf\common\bullet\include\btbulletcollisioncommon.h
+	"BulletCollision/CollisionDispatch/btCollisionWorld.h"
+	"BulletCollision/CollisionDispatch/btCollisionObject.h"
+	"BulletCollision/CollisionShapes/btBoxShape.h"
+	"BulletCollision/CollisionShapes/btSphereShape.h"
+	"BulletCollision/CollisionShapes/btCapsuleShape.h"
+	"BulletCollision/CollisionShapes/btCylinderShape.h"
+	"BulletCollision/CollisionShapes/btConeShape.h"
+	"BulletCollision/CollisionShapes/btStaticPlaneShape.h"
+	"BulletCollision/CollisionShapes/btConvexHullShape.h"
+	"BulletCollision/CollisionShapes/btTriangleMesh.h"
+	"BulletCollision/CollisionShapes/btConvexTriangleMeshShape.h"
+	"BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h"
+	"BulletCollision/CollisionShapes/btScaledBvhTriangleMeshShape.h"
+	"BulletCollision/CollisionShapes/btTriangleMeshShape.h"
+	"BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h"
+	"BulletCollision/CollisionShapes/btCompoundShape.h"
+	"BulletCollision/CollisionShapes/btTetrahedronShape.h"
+	"BulletCollision/CollisionShapes/btEmptyShape.h"
+	"BulletCollision/CollisionShapes/btMultiSphereShape.h"
+	"BulletCollision/CollisionShapes/btUniformScalingShape.h"
+	"BulletCollision/CollisionDispatch/btSphereSphereCollisionAlgorithm.h"
+	"BulletCollision/CollisionDispatch/btDefaultCollisionConfiguration.h"
+	"BulletCollision/CollisionDispatch/btCollisionDispatcher.h"
+	"BulletCollision/BroadphaseCollision/btSimpleBroadphase.h"
+	"BulletCollision/BroadphaseCollision/btAxisSweep3.h"
+	"BulletCollision/BroadphaseCollision/btDbvtBroadphase.h"
+	"LinearMath/btQuaternion.h"
+	"LinearMath/btTransform.h"
+	"LinearMath/btDefaultMotionState.h"
+	"LinearMath/btQuickprof.h"
+	"LinearMath/btIDebugDraw.h"
+	"LinearMath/btSerializer.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisiondispatch\btcollisionworld.h
+	"LinearMath/btVector3.h"
+	"LinearMath/btTransform.h"
+	"btCollisionObject.h"
+	"btCollisionDispatcher.h"
+	"BulletCollision/BroadphaseCollision/btOverlappingPairCache.h"
+	"LinearMath/btAlignedObjectArray.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btvector3.h
+	"btScalar.h"
+	"btMinMax.h"
+	"btAlignedAllocator.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btscalar.h
+	<math.h>
+	<stdlib.h>
+	<float.h>
+	<ppcintrinsics.h>
+	<emmintrin.h>
+	<stdio.h>
+	<assert.h>
+	<assert.h>
+	<spu_printf.h>
+	<assert.h>
+	<smmintrin.h>
+	<tmmintrin.h>
+	<pmmintrin.h>
+	<emmintrin.h>
+	<arm_neon.h>
+	<assert.h>
+	<stdio.h>
+	<assert.h>
+	<arm_neon.h>
+	<arm_neon.h>
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btminmax.h
+	"btScalar.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btalignedallocator.h
+	"btScalar.h"
+
+1538634784 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\bttransform.h
+	"btMatrix3x3.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btmatrix3x3.h
+	"btVector3.h"
+	"btQuaternion.h"
+	<stdio.h>
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btquaternion.h
+	"btVector3.h"
+	"btQuadWord.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btquadword.h
+	"btScalar.h"
+	"btMinMax.h"
+	<altivec.h>
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisiondispatch\btcollisionobject.h
+	"LinearMath/btTransform.h"
+	"LinearMath/btMotionState.h"
+	"LinearMath/btAlignedAllocator.h"
+	"LinearMath/btAlignedObjectArray.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btmotionstate.h
+	"btTransform.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btalignedobjectarray.h
+	"btScalar.h"
+	"btAlignedAllocator.h"
+	<memory.h>
+	<string.h>
+	<new>
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisiondispatch\btcollisiondispatcher.h
+	"BulletCollision/BroadphaseCollision/btDispatcher.h"
+	"BulletCollision/NarrowPhaseCollision/btPersistentManifold.h"
+	"BulletCollision/CollisionDispatch/btManifoldResult.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+	"LinearMath/btAlignedObjectArray.h"
+	"btCollisionCreateFunc.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\broadphasecollision\btdispatcher.h
+	"LinearMath/btScalar.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\narrowphasecollision\btpersistentmanifold.h
+	"LinearMath/btVector3.h"
+	"LinearMath/btTransform.h"
+	"btManifoldPoint.h"
+	"LinearMath/btAlignedAllocator.h"
+
+1530561949 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\narrowphasecollision\btmanifoldpoint.h
+	"LinearMath/btVector3.h"
+	"LinearMath/btTransformUtil.h"
+	"physics_effects/base_level/solver/pfx_constraint_row.h"
+
+1520525971 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\bttransformutil.h
+	"btTransform.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisiondispatch\btmanifoldresult.h
+	"BulletCollision/NarrowPhaseCollision/btPersistentManifold.h"
+	"BulletCollision/NarrowPhaseCollision/btDiscreteCollisionDetectorInterface.h"
+	"LinearMath/btTransform.h"
+	"BulletCollision/CollisionDispatch/btCollisionObjectWrapper.h"
+	"BulletCollision/CollisionDispatch/btCollisionObject.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\narrowphasecollision\btdiscretecollisiondetectorinterface.h
+	"LinearMath/btTransform.h"
+	"LinearMath/btVector3.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisiondispatch\btcollisionobjectwrapper.h
+	"LinearMath/btScalar.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\broadphasecollision\btbroadphaseproxy.h
+	"LinearMath/btScalar.h"
+	"LinearMath/btVector3.h"
+	"LinearMath/btAlignedAllocator.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisiondispatch\btcollisioncreatefunc.h
+	"LinearMath/btAlignedObjectArray.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\broadphasecollision\btoverlappingpaircache.h
+	"btBroadphaseInterface.h"
+	"btBroadphaseProxy.h"
+	"btOverlappingPairCallback.h"
+	"LinearMath/btAlignedObjectArray.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\broadphasecollision\btbroadphaseinterface.h
+	"btBroadphaseProxy.h"
+	"LinearMath/btVector3.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\broadphasecollision\btoverlappingpaircallback.h
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btboxshape.h
+	"btPolyhedralConvexShape.h"
+	"btCollisionMargin.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+	"LinearMath/btVector3.h"
+	"LinearMath/btMinMax.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btpolyhedralconvexshape.h
+	"LinearMath/btMatrix3x3.h"
+	"btConvexInternalShape.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btconvexinternalshape.h
+	"btConvexShape.h"
+	"LinearMath/btAabbUtil2.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btconvexshape.h
+	"btCollisionShape.h"
+	"LinearMath/btVector3.h"
+	"LinearMath/btTransform.h"
+	"LinearMath/btMatrix3x3.h"
+	"btCollisionMargin.h"
+	"LinearMath/btAlignedAllocator.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btcollisionshape.h
+	"LinearMath/btTransform.h"
+	"LinearMath/btVector3.h"
+	"LinearMath/btMatrix3x3.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btcollisionmargin.h
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btaabbutil2.h
+	"btTransform.h"
+	"btVector3.h"
+	"btMinMax.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btsphereshape.h
+	"btConvexInternalShape.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btcapsuleshape.h
+	"btConvexInternalShape.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btcylindershape.h
+	"btBoxShape.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+	"LinearMath/btVector3.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btconeshape.h
+	"btConvexInternalShape.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btstaticplaneshape.h
+	"btConcaveShape.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btconcaveshape.h
+	"btCollisionShape.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+	"btTriangleCallback.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\bttrianglecallback.h
+	"LinearMath/btVector3.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btconvexhullshape.h
+	"btPolyhedralConvexShape.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+	"LinearMath/btAlignedObjectArray.h"
+
+1537740251 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\bttrianglemesh.h
+	"btTriangleIndexVertexArray.h"
+	"LinearMath/btVector3.h"
+	"LinearMath/btAlignedObjectArray.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\bttriangleindexvertexarray.h
+	"btStridingMeshInterface.h"
+	"LinearMath/btAlignedObjectArray.h"
+	"LinearMath/btScalar.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btstridingmeshinterface.h
+	"LinearMath/btVector3.h"
+	"btTriangleCallback.h"
+	"btConcaveShape.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btconvextrianglemeshshape.h
+	"btPolyhedralConvexShape.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btbvhtrianglemeshshape.h
+	"btTriangleMeshShape.h"
+	"btOptimizedBvh.h"
+	"LinearMath/btAlignedAllocator.h"
+	"btTriangleInfoMap.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\bttrianglemeshshape.h
+	"btConcaveShape.h"
+	"btStridingMeshInterface.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btoptimizedbvh.h
+	"BulletCollision/BroadphaseCollision/btQuantizedBvh.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\broadphasecollision\btquantizedbvh.h
+	<stdio.h>
+	<stdlib.h>
+	"LinearMath/btVector3.h"
+	"LinearMath/btAlignedAllocator.h"
+	"LinearMath/btAlignedAllocator.h"
+	"LinearMath/btAlignedObjectArray.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\bttriangleinfomap.h
+	"LinearMath/btHashMap.h"
+	"LinearMath/btSerializer.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\bthashmap.h
+	<string>
+	"btAlignedObjectArray.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btserializer.h
+	"btScalar.h"
+	"btHashMap.h"
+	<memory.h>
+	<string.h>
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btscaledbvhtrianglemeshshape.h
+	"BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btcompoundshape.h
+	"btCollisionShape.h"
+	"LinearMath/btVector3.h"
+	"LinearMath/btTransform.h"
+	"LinearMath/btMatrix3x3.h"
+	"btCollisionMargin.h"
+	"LinearMath/btAlignedObjectArray.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\bttetrahedronshape.h
+	"btPolyhedralConvexShape.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btemptyshape.h
+	"btConcaveShape.h"
+	"LinearMath/btVector3.h"
+	"LinearMath/btTransform.h"
+	"LinearMath/btMatrix3x3.h"
+	"btCollisionMargin.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btmultisphereshape.h
+	"btConvexInternalShape.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+	"LinearMath/btAlignedObjectArray.h"
+	"LinearMath/btAabbUtil2.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisionshapes\btuniformscalingshape.h
+	"btConvexShape.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisiondispatch\btspherespherecollisionalgorithm.h
+	"btActivatingCollisionAlgorithm.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+	"BulletCollision/CollisionDispatch/btCollisionCreateFunc.h"
+	"btCollisionDispatcher.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisiondispatch\btactivatingcollisionalgorithm.h
+	"BulletCollision/BroadphaseCollision/btCollisionAlgorithm.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\broadphasecollision\btcollisionalgorithm.h
+	"LinearMath/btScalar.h"
+	"LinearMath/btAlignedObjectArray.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisiondispatch\btdefaultcollisionconfiguration.h
+	"btCollisionConfiguration.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisiondispatch\btcollisionconfiguration.h
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\broadphasecollision\btsimplebroadphase.h
+	"btOverlappingPairCache.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\broadphasecollision\btaxissweep3.h
+	"LinearMath/btVector3.h"
+	"btOverlappingPairCache.h"
+	"btBroadphaseInterface.h"
+	"btBroadphaseProxy.h"
+	"btOverlappingPairCallback.h"
+	"btDbvtBroadphase.h"
+	"btAxisSweep3Internal.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\broadphasecollision\btdbvtbroadphase.h
+	"BulletCollision/BroadphaseCollision/btDbvt.h"
+	"BulletCollision/BroadphaseCollision/btOverlappingPairCache.h"
+	"LinearMath/btQuickprof.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\broadphasecollision\btdbvt.h
+	"LinearMath/btAlignedObjectArray.h"
+	"LinearMath/btVector3.h"
+	"LinearMath/btTransform.h"
+	"LinearMath/btAabbUtil2.h"
+	<emmintrin.h>
+	<memory.h>
+	<string.h>
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btquickprof.h
+	"btScalar.h"
+	<stdio.h>
+	"btAlignedAllocator.h"
+	<new>
+
+1501554724 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\broadphasecollision\btmultisapbroadphase.h
+	"btBroadphaseInterface.h"
+	"LinearMath/btAlignedObjectArray.h"
+	"btOverlappingPairCache.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btdefaultmotionstate.h
+	"btMotionState.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btidebugdraw.h
+	"btVector3.h"
+	"btTransform.h"
+
+1520525971 d:\files\gabriel noble\compiler\wtf\common\bullet\include\btbulletdynamicscommon.h
+	"btBulletCollisionCommon.h"
+	"BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
+	"BulletDynamics/Dynamics/btSimpleDynamicsWorld.h"
+	"BulletDynamics/Dynamics/btRigidBody.h"
+	"BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h"
+	"BulletDynamics/ConstraintSolver/btHingeConstraint.h"
+	"BulletDynamics/ConstraintSolver/btConeTwistConstraint.h"
+	"BulletDynamics/ConstraintSolver/btGeneric6DofConstraint.h"
+	"BulletDynamics/ConstraintSolver/btSliderConstraint.h"
+	"BulletDynamics/ConstraintSolver/btGeneric6DofSpringConstraint.h"
+	"BulletDynamics/ConstraintSolver/btUniversalConstraint.h"
+	"BulletDynamics/ConstraintSolver/btHinge2Constraint.h"
+	"BulletDynamics/ConstraintSolver/btGearConstraint.h"
+	"BulletDynamics/ConstraintSolver/btFixedConstraint.h"
+	"BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h"
+	"BulletDynamics/Vehicle/btRaycastVehicle.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\dynamics\btdiscretedynamicsworld.h
+	"btDynamicsWorld.h"
+	"LinearMath/btAlignedObjectArray.h"
+	"LinearMath/btThreads.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\dynamics\btdynamicsworld.h
+	"BulletCollision/CollisionDispatch/btCollisionWorld.h"
+	"BulletDynamics/ConstraintSolver/btContactSolverInfo.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btcontactsolverinfo.h
+	"LinearMath/btScalar.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\dynamics\btsimpledynamicsworld.h
+	"btDynamicsWorld.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\dynamics\btrigidbody.h
+	"LinearMath/btAlignedObjectArray.h"
+	"LinearMath/btTransform.h"
+	"BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
+	"BulletCollision/CollisionDispatch/btCollisionObject.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btpoint2pointconstraint.h
+	"LinearMath/btVector3.h"
+	"btJacobianEntry.h"
+	"btTypedConstraint.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btjacobianentry.h
+	"LinearMath/btMatrix3x3.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\bttypedconstraint.h
+	"LinearMath/btScalar.h"
+	"btSolverConstraint.h"
+	"BulletDynamics/Dynamics/btRigidBody.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btsolverconstraint.h
+	"LinearMath/btVector3.h"
+	"LinearMath/btMatrix3x3.h"
+	"btJacobianEntry.h"
+	"LinearMath/btAlignedObjectArray.h"
+	"btSolverBody.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btsolverbody.h
+	"LinearMath/btVector3.h"
+	"LinearMath/btMatrix3x3.h"
+	"LinearMath/btAlignedAllocator.h"
+	"LinearMath/btTransformUtil.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\bthingeconstraint.h
+	"LinearMath/btVector3.h"
+	"btJacobianEntry.h"
+	"btTypedConstraint.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btconetwistconstraint.h
+	"LinearMath/btVector3.h"
+	"btJacobianEntry.h"
+	"btTypedConstraint.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btgeneric6dofconstraint.h
+	"LinearMath/btVector3.h"
+	"btJacobianEntry.h"
+	"btTypedConstraint.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btsliderconstraint.h
+	"LinearMath/btScalar.h"
+	"LinearMath/btVector3.h"
+	"btJacobianEntry.h"
+	"btTypedConstraint.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btgeneric6dofspringconstraint.h
+	"LinearMath/btVector3.h"
+	"btTypedConstraint.h"
+	"btGeneric6DofConstraint.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btuniversalconstraint.h
+	"LinearMath/btVector3.h"
+	"btTypedConstraint.h"
+	"btGeneric6DofConstraint.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\bthinge2constraint.h
+	"LinearMath/btVector3.h"
+	"btTypedConstraint.h"
+	"btGeneric6DofSpring2Constraint.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btgeneric6dofspring2constraint.h
+	"LinearMath/btVector3.h"
+	"btJacobianEntry.h"
+	"btTypedConstraint.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btgearconstraint.h
+	"BulletDynamics/ConstraintSolver/btTypedConstraint.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btfixedconstraint.h
+	"btGeneric6DofSpring2Constraint.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btsequentialimpulseconstraintsolver.h
+	"BulletDynamics/ConstraintSolver/btTypedConstraint.h"
+	"BulletDynamics/ConstraintSolver/btContactSolverInfo.h"
+	"BulletDynamics/ConstraintSolver/btSolverBody.h"
+	"BulletDynamics/ConstraintSolver/btSolverConstraint.h"
+	"BulletCollision/NarrowPhaseCollision/btManifoldPoint.h"
+	"BulletDynamics/ConstraintSolver/btConstraintSolver.h"
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\constraintsolver\btconstraintsolver.h
+	"LinearMath/btScalar.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\vehicle\btraycastvehicle.h
+	"BulletDynamics/Dynamics/btRigidBody.h"
+	"BulletDynamics/ConstraintSolver/btTypedConstraint.h"
+	"btVehicleRaycaster.h"
+	"LinearMath/btAlignedObjectArray.h"
+	"btWheelInfo.h"
+	"BulletDynamics/Dynamics/btActionInterface.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\vehicle\btvehicleraycaster.h
+	"LinearMath/btVector3.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\vehicle\btwheelinfo.h
+	"LinearMath/btVector3.h"
+	"LinearMath/btTransform.h"
+
+1520525970 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletdynamics\dynamics\btactioninterface.h
+	"LinearMath/btScalar.h"
+	"btRigidBody.h"
+
+1538643983 source:d:\files\gabriel noble\compiler\wtf\common\entity.c
+	"entity.h"
+	"ent_serialization.h"
+	"ent_script.h"
+	"r_main.h"
+	"stack_list.h"
+	"list.h"
+	"c_memory.h"
+	"log.h"
+	"physics.h"
+	"script.h"
+	"navigation.h"
+	"engine.h"
+	"world.h"
+	"script.h"
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<float.h>
+	"matrix.h"
+
+1535917119 source:d:\files\gabriel noble\compiler\wtf\common\phy_projectile.c
+	"phy_projectile.h"
+	"physics.h"
+	<stdio.h>
+	<math.h>
+	"btBulletCollisionCommon.h"
+	"btBulletDynamicsCommon.h"
+	"BulletCollision/CollisionShapes/btCollisionShape.h"
+	"BulletCollision/CollisionShapes/btBoxShape.h"
+	"BulletCollision/CollisionShapes/btCylinderShape.h"
+	"BulletCollision/CollisionShapes/btSphereShape.h"
+	"BulletCollision/CollisionShapes/btCapsuleShape.h"
+	"BulletCollision/CollisionShapes/btCompoundShape.h"
+
+1538710283 source:d:\files\gabriel noble\compiler\wtf\common\physics.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"GL\glew.h"
+	"physics.h"
+	"bsp.h"
+	"gpu.h"
+	"c_memory.h"
+	"matrix.h"
+	"log.h"
+	"r_debug.h"
+	"stack_list.h"
+	"list.h"
+	"camera.h"
+	"bullet/include/btBulletCollisionCommon.h"
+	"bullet/include/btBulletDynamicsCommon.h"
+	"bullet/include/BulletCollision/CollisionShapes/btCollisionShape.h"
+	"bullet/include/BulletCollision/CollisionShapes/btBoxShape.h"
+	"bullet/include/BulletCollision/CollisionShapes/btCylinderShape.h"
+	"bullet/include/BulletCollision/CollisionShapes/btSphereShape.h"
+	"bullet/include/BulletCollision/CollisionShapes/btCapsuleShape.h"
+	"bullet/include/BulletCollision/CollisionShapes/btCompoundShape.h"
+	"bullet/include/BulletCollision/NarrowPhaseCollision/btPersistentManifold.h"
+	"bullet/include/BulletCollision/CollisionDispatch/btGhostObject.h"
+
+1520525969 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\collisiondispatch\btghostobject.h
+	"btCollisionObject.h"
+	"BulletCollision/BroadphaseCollision/btOverlappingPairCallback.h"
+	"LinearMath/btAlignedAllocator.h"
+	"BulletCollision/BroadphaseCollision/btOverlappingPairCache.h"
+	"btCollisionWorld.h"
+
+1538259763 source:d:\files\gabriel noble\compiler\wtf\common\path.c
+	"path.h"
+	"log.h"
+	<stdlib.h>
+	<stdio.h>
+	<string.h>
+	<dirent.h>
+	<io.h>
+	"c_memory.h"
+
+1535207309 source:d:\files\gabriel noble\compiler\wtf\common\player.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"player.h"
+	"camera.h"
+	"r_main.h"
+	"input.h"
+	"physics.h"
+	"phy_character.h"
+	"sound.h"
+	"bsp.h"
+	"entity.h"
+	"memory.h"
+	"script.h"
+
+1532728184 d:\files\gabriel noble\compiler\wtf\common\player.h
+	"matrix_types.h"
+	"vector_types.h"
+	"camera_types.h"
+	"model.h"
+	"scr_common.h"
+	"ent_common.h"
+	"physics.h"
+
+1538185795 source:d:\files\gabriel noble\compiler\wtf\common\portal.c
+	<stdio.h>
+	<string.h>
+	<stdlib.h>
+	<math.h>
+	"portal.h"
+	"c_memory.h"
+	"camera.h"
+
+1540103779 source:d:\files\gabriel noble\compiler\wtf\common\r_debug.c
+	"r_debug.h"
+	"r_main.h"
+	"r_imediate.h"
+	"r_shader.h"
+	"camera.h"
+	"c_memory.h"
+	"navigation.h"
+	"portal.h"
+	"physics.h"
+	"engine.h"
+	"gui.h"
+	"l_common.h"
+	"entity.h"
+	"SDL2\SDL.h"
+	"GL\glew.h"
+	<stdio.h>
+	<string.h>
+	"stack_list.h"
+
+1540113139 source:d:\files\gabriel noble\compiler\wtf\common\r_gl.c
+	"r_gl.h"
+	"log.h"
+	"SDL2/SDL.h"
+	"GL/glew.h"
+	<stdio.h>
+	<assert.h>
+
+1538185669 source:d:\files\gabriel noble\compiler\wtf\common\r_imediate.c
+	"r_main.h"
+	"r_imediate.h"
+	"r_shader.h"
+	"r_debug.h"
+	"gpu.h"
+	"c_memory.h"
+	<stdio.h>
+	"vector.h"
+
+1540265404 source:d:\files\gabriel noble\compiler\wtf\common\r_main.c
+	<stdio.h>
+	<string.h>
+	"r_common.h"
+	"r_shader.h"
+	"r_main.h"
+	"r_debug.h"
+	"r_imediate.h"
+	"r_gl.h"
+	"r_vis.h"
+	"r_text.h"
+	"r_verts.h"
+	"stack_list.h"
+	"camera.h"
+	"log.h"
+	"shader.h"
+	"model.h"
+	"world.h"
+	"material.h"
+	"entity.h"
+	"texture.h"
+	"l_main.h"
+	"gui.h"
+	"bsp.h"
+	"c_memory.h"
+	"portal.h"
+	"particle.h"
+	"engine.h"
+	"SDL2\SDL.h"
+	"GL\glew.h"
+
+1525050876 d:\files\gabriel noble\compiler\wtf\common\r_text.h
+	"r_common.h"
+	"font.h"
+	"SDL2\SDL_surface.h"
+	"vector.h"
+
+1536440172 d:\files\gabriel noble\compiler\wtf\common\world.h
+	"w_common.h"
+	"bsp_common.h"
+	"scr_common.h"
+	"camera.h"
+	"portal.h"
+
+1539914408 source:d:\files\gabriel noble\compiler\wtf\common\r_shader.c
+	"r_common.h"
+	"r_shader.h"
+	"r_debug.h"
+	"shader.h"
+	"model.h"
+	"containers/stack_list.h"
+	"GL/glew.h"
+
+1537741131 source:d:\files\gabriel noble\compiler\wtf\common\resource.c
+	"resource.h"
+	"path.h"
+	"ent_common.h"
+	"w_common.h"
+	"world.h"
+	"entity.h"
+	"sound.h"
+	"texture.h"
+	"log.h"
+	<stdio.h>
+	<string.h>
+
+1538187134 source:d:\files\gabriel noble\compiler\wtf\common\script\scr_entity.c
+	"scr_entity.h"
+	"entity.h"
+	"physics.h"
+	"camera.h"
+	"script.h"
+	"r_main.h"
+	<string.h>
+
+1536878647 d:\files\gabriel noble\compiler\wtf\common\script\scr_entity.h
+	"ent_common.h"
+	"scr_string.h"
+	"vector.h"
+
+1538186259 source:d:\files\gabriel noble\compiler\wtf\common\script\scr_gui.c
+	"scr_gui.h"
+	"gui_imgui.h"
+	"vector.h"
+
+1538186246 d:\files\gabriel noble\compiler\wtf\common\script\scr_gui.h
+	"script_types/scr_string.h"
+
+1533924585 source:d:\files\gabriel noble\compiler\wtf\common\script\scr_math.c
+	"scr_math.h"
+	"vector.h"
+	"matrix.h"
+	<stdlib.h>
+
+1533924452 d:\files\gabriel noble\compiler\wtf\common\script\scr_math.h
+	"scr_common.h"
+	"vector_types.h"
+	"matrix_types.h"
+
+1533147108 source:d:\files\gabriel noble\compiler\wtf\common\script\scr_particle.c
+	"scr_particle.h"
+	"particle.h"
+	<stdlib.h>
+
+1531274660 d:\files\gabriel noble\compiler\wtf\common\script\scr_particle.h
+	"script_types/scr_string.h"
+	"vector.h"
+
+1538186305 source:d:\files\gabriel noble\compiler\wtf\common\script\scr_resource.c
+	"scr_resource.h"
+	"resource.h"
+
+1538186294 d:\files\gabriel noble\compiler\wtf\common\script\scr_resource.h
+	"script_types/scr_string.h"
+
+1536778784 source:d:\files\gabriel noble\compiler\wtf\common\script\scr_sound.c
+	"scr_sound.h"
+	"path.h"
+
+1536778767 d:\files\gabriel noble\compiler\wtf\common\script\scr_sound.h
+	"sound.h"
+	"script_types/scr_string.h"
+
+1538186216 source:d:\files\gabriel noble\compiler\wtf\common\script\scr_world.c
+	"scr_world.h"
+	"script.h"
+	"world.h"
+	"ent_common.h"
+	"containers/stack_list.h"
+	"script_types/scr_array.h"
+	"c_memory.h"
+
+1538186195 d:\files\gabriel noble\compiler\wtf\common\script\scr_world.h
+	"script_types/scr_string.h"
+
+1536859615 source:d:\files\gabriel noble\compiler\wtf\common\script\script_types\scr_array.c
+	"scr_array.h"
+	"c_memory.h"
+	"script.h"
+	<stdlib.h>
+	<string.h>
+	<assert.h>
+	<stdio.h>
+	"angelscript.h"
+
+1538566525 d:\files\gabriel noble\compiler\wtf\common\angel\angelscript.h
+	<stddef.h>
+	<stdint.h>
+	<type_traits>
+
+1531061365 source:d:\files\gabriel noble\compiler\wtf\common\script\script_types\scr_string.c
+	"scr_string.h"
+	<string>
+	<stdio.h>
+
+1532807342 source:d:\files\gabriel noble\compiler\wtf\common\script\script_types\scr_typeof.c
+	"scr_typeof.h"
+	"angelscript.h"
+	"script.h"
+	<stdio.h>
+
+1532805410 d:\files\gabriel noble\compiler\wtf\common\script\script_types\scr_typeof.h
+
+1538633069 source:d:\files\gabriel noble\compiler\wtf\common\script\script.c
+	"script.h"
+	"scr_math.h"
+	"scr_types.h"
+	"scr_typeof.h"
+	"scr_sound.h"
+	"vector.h"
+	"c_memory.h"
+	"particle.h"
+	"player.h"
+	"physics.h"
+	"ent_script.h"
+	"scr_particle.h"
+	"scr_world.h"
+	"scr_gui.h"
+	"scr_resource.h"
+	"input.h"
+	"log.h"
+	"sound.h"
+	"path.h"
+	<math.h>
+	<stdio.h>
+	<string.h>
+	"angelscript.h"
+	"scriptstdstring.h"
+	"scriptarray.h"
+
+1532804775 d:\files\gabriel noble\compiler\wtf\common\script\script_types\scr_types.h
+	"scr_common.h"
+	"particle.h"
+
+1512825574 d:\files\gabriel noble\compiler\wtf\common\script\script_types\scriptstdstring.h
+	<angelscript.h>
+	<string>
+
+1499037886 d:\files\gabriel noble\compiler\wtf\common\scriptarray.h
+	<angelscript.h>
+
+1533743534 source:d:\files\gabriel noble\compiler\wtf\common\script\script_types\scr_types.c
+	"scr_types.h"
+	"angelscript.h"
+	"c_memory.h"
+	<stdio.h>
+
+1531062244 source:d:\files\gabriel noble\compiler\wtf\common\script\script_types\scriptstdstring.cpp
+	"scriptstdstring.h"
+	<assert.h>
+	<sstream>
+	<string.h>
+	<stdio.h>
+	<stdlib.h>
+	<locale.h>
+	<unordered_map>
+	<map>
+
+1540265901 source:d:\files\gabriel noble\compiler\wtf\common\shader.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"path.h"
+	"shader.h"
+	"shd_pprc.h"
+	"model.h"
+	"l_common.h"
+	"log.h"
+	"GL\glew.h"
+	"c_memory.h"
+	"r_gl.h"
+	"r_debug.h"
+	"containers/stack_list.h"
+
+1538260423 d:\files\gabriel noble\compiler\wtf\common\shd_pprc.h
+	"shd_common.h"
+
+1538260626 source:d:\files\gabriel noble\compiler\wtf\common\shd_pprc.c
+	<limits.h>
+	<stdlib.h>
+	<stdio.h>
+	<string.h>
+	"shd_pprc.h"
+	"c_memory.h"
+	"log.h"
+	"path.h"
+
+1501554726 source:d:\files\gabriel noble\compiler\wtf\common\soil\image_dxt.c
+	"image_DXT.h"
+	<math.h>
+	<stdlib.h>
+	<string.h>
+	<stdio.h>
+
+1501554726 d:\files\gabriel noble\compiler\wtf\common\soil\image_dxt.h
+
+1501554726 source:d:\files\gabriel noble\compiler\wtf\common\soil\image_helper.c
+	"image_helper.h"
+	<stdlib.h>
+	<math.h>
+
+1501554726 d:\files\gabriel noble\compiler\wtf\common\soil\image_helper.h
+
+1501554726 source:d:\files\gabriel noble\compiler\wtf\common\soil\soil.c
+	<windows.h>
+	<wingdi.h>
+	<GL/gl.h>
+	<OpenGL/gl.h>
+	<Carbon/Carbon.h>
+	<GL/gl.h>
+	"SOIL.h"
+	"stb_image_aug.h"
+	"image_helper.h"
+	"image_DXT.h"
+	<stdlib.h>
+	<string.h>
+
+1501554726 d:\files\gabriel noble\compiler\wtf\common\soil\soil.h
+
+1501554726 d:\files\gabriel noble\compiler\wtf\common\soil\stb_image_aug.h
+	<stdio.h>
+
+1501554726 source:d:\files\gabriel noble\compiler\wtf\common\soil\stb_image_aug.c
+	"stb_image_aug.h"
+	<math.h>
+	<string.h>
+	<stdio.h>
+	<stdlib.h>
+	<memory.h>
+	<assert.h>
+	<stdarg.h>
+	"stbi_DDS_aug.h"
+	"stbi_DDS_aug_c.h"
+
+1501554726 d:\files\gabriel noble\compiler\wtf\common\soil\stbi_dds_aug.h
+
+1501554726 d:\files\gabriel noble\compiler\wtf\common\soil\stbi_dds_aug_c.h
+
+1540110984 source:d:\files\gabriel noble\compiler\wtf\common\sound.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"sound.h"
+	"r_common.h"
+	"r_main.h"
+	"al.h"
+	"alc.h"
+	"efx.h"
+	"camera.h"
+	"c_memory.h"
+	"containers/stack_list.h"
+	"containers/stack.h"
+	"path.h"
+	"log.h"
+	"SDL2\SDL.h"
+	"vorbisfile.h"
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\openal\include\al.h
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\openal\include\alc.h
+
+1501554715 d:\files\gabriel noble\compiler\wtf\common\openal\include\efx.h
+
+1534259954 d:\files\gabriel noble\compiler\wtf\common\vorbis\include\vorbisfile.h
+	<stdio.h>
+	"codec.h"
+
+1534259954 d:\files\gabriel noble\compiler\wtf\common\vorbis\include\codec.h
+	<ogg/ogg.h>
+
+1534188849 d:\files\gabriel noble\compiler\wtf\common\vorbis\include\ogg\ogg.h
+	<stddef.h>
+	"os_types.h"
+
+1497273272 d:\files\gabriel noble\compiler\wtf\common\vorbis\include\ogg\os_types.h
+	<stdint.h>
+	<sys/types.h>
+	<stdint.h>
+	<inttypes.h>
+	<sys/types.h>
+	<inttypes.h>
+	<ogg/config_types.h>
+
+1534018276 source:d:\files\gabriel noble\compiler\wtf\common\tex_ptx.c
+	"tex_ptx.h"
+	"c_memory.h"
+	"path.h"
+	<stdlib.h>
+	<string.h>
+	"soil/stb_image_aug.h"
+
+1534017890 d:\files\gabriel noble\compiler\wtf\common\tex_ptx.h
+
+1540106740 source:d:\files\gabriel noble\compiler\wtf\common\texture.c
+	"texture.h"
+	"tex_ptx.h"
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"path.h"
+	"GL/glew.h"
+	"SOIL.h"
+	"c_memory.h"
+	"r_gl.h"
+	"log.h"
+	"containers/stack_list.h"
+	"IL/ilut.h"
+	"IL/il.h"
+
+1540263343 source:d:\files\gabriel noble\compiler\wtf\common\world.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<math.h>
+	<float.h>
+	"GL\glew.h"
+	"gpu.h"
+	"physics.h"
+	"material.h"
+	"shader.h"
+	"entity.h"
+	"camera.h"
+	"world.h"
+	"model.h"
+	"texture.h"
+	"l_main.h"
+	"l_cache.h"
+	"stack_list.h"
+	"bsp_common.h"
+	"bsp.h"
+	"engine.h"
+	"c_memory.h"
+	"portal.h"
+	"r_debug.h"
+
+1540263354 source:d:\files\gabriel noble\compiler\wtf\editor\brush.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"GL\glew.h"
+	<x86intrin.h>
+	"brush.h"
+	"r_verts.h"
+	"vector.h"
+	"matrix.h"
+	"bsp_cmp.h"
+	"input.h"
+	"material.h"
+	"camera.h"
+	"c_memory.h"
+	"bsp_cmp.h"
+	"..\..\common\r_debug.h"
+
+1540257215 d:\files\gabriel noble\compiler\wtf\editor\brush.h
+	<assert.h>
+	"r_common.h"
+	"matrix_types.h"
+	"vector_types.h"
+	"model.h"
+	"world.h"
+	"bsp_common.h"
+	"SDL2/SDL.h"
+
+1539475751 d:\files\gabriel noble\compiler\wtf\editor\bsp_cmp.h
+	"bsp_common.h"
+	"w_common.h"
+	"brush.h"
+	"SDL2\SDL.h"
+
+1540257756 source:d:\files\gabriel noble\compiler\wtf\editor\bsp_cmp.c
+	"bsp.h"
+	"bsp_cmp.h"
+	"pvs.h"
+	"world.h"
+	"camera.h"
+	"player.h"
+	"engine.h"
+	"physics.h"
+	"c_memory.h"
+	"SDL2\SDL.h"
+	"GL\glew.h"
+	<stdio.h>
+	<stdlib.h>
+	<float.h>
+	<fenv.h>
+
+1539474862 d:\files\gabriel noble\compiler\wtf\editor\pvs.h
+	"bsp_common.h"
+	"bsp_cmp.h"
+
+1540103048 source:d:\files\gabriel noble\compiler\wtf\editor\ed_draw.c
+	"ed_draw.h"
+	"ed_common.h"
+	"camera.h"
+	"r_imediate.h"
+	"r_shader.h"
+	"r_main.h"
+	"GL/glew.h"
+	"ed_globals.h"
+
+1525703768 d:\files\gabriel noble\compiler\wtf\editor\ed_draw.h
+	"vector.h"
+
+1538464640 d:\files\gabriel noble\compiler\wtf\editor\ed_common.h
+	"vector.h"
+
+1540080239 d:\files\gabriel noble\compiler\wtf\editor\ed_globals.h
+
+1538456726 source:d:\files\gabriel noble\compiler\wtf\editor\ed_entity.c
+	"ed_entity.h"
+	"ed_entity_draw.h"
+	"ed_entity_ui.h"
+	<stdio.h>
+	<string.h>
+	"..\ed_common.h"
+	"..\ed_selection.h"
+	"..\editor.h"
+	"..\ed_ui_explorer.h"
+	"..\..\common\camera.h"
+	"..\..\common\gmath\vector.h"
+	"..\..\common\gmath\matrix.h"
+	"..\..\common\input.h"
+	"..\..\common\r_main.h"
+	"..\..\common\entity.h"
+	"..\..\common\model.h"
+	"..\..\common\l_main.h"
+	"..\..\common\c_memory.h"
+	"..\..\common\GLEW\include\GL\glew.h"
+	"..\..\common\path.h"
+
+1533906979 d:\files\gabriel noble\compiler\wtf\editor\ed_entity.h
+	"..\ed_common.h"
+	"..\common\ent_common.h"
+
+1526511754 d:\files\gabriel noble\compiler\wtf\editor\ed_entity_draw.h
+
+1534439127 d:\files\gabriel noble\compiler\wtf\editor\ed_entity_ui.h
+	"ent_common.h"
+
+1534707234 d:\files\gabriel noble\compiler\wtf\editor\ed_selection.h
+	"vector.h"
+	"ed_common.h"
+	"brush.h"
+
+1532577351 d:\files\gabriel noble\compiler\wtf\editor\editor.h
+	"ed_common.h"
+	"ed_in.h"
+	"brush.h"
+
+1516327657 d:\files\gabriel noble\compiler\wtf\editor\ed_in.h
+
+1536812116 d:\files\gabriel noble\compiler\wtf\editor\ed_ui_explorer.h
+
+1540082357 source:d:\files\gabriel noble\compiler\wtf\editor\ed_entity_draw.c
+	"ed_entity_draw.h"
+	"ed_entity.h"
+	"..\ed_common.h"
+	"ed_draw.h"
+	"..\..\common\r_imediate.h"
+	"..\..\common\r_main.h"
+	"..\..\common\r_debug.h"
+	"..\..\common\r_shader.h"
+	"..\..\common\camera.h"
+	"..\..\common\gmath\vector.h"
+	"..\..\common\gmath\matrix.h"
+	"..\..\common\model.h"
+	"..\..\common\entity.h"
+	"..\..\common\physics.h"
+	"..\..\common\GLEW\include\GL\glew.h"
+
+1538457046 source:d:\files\gabriel noble\compiler\wtf\editor\ed_entity_ui.c
+	"ed_entity_ui.h"
+	"..\..\common\gui.h"
+	"..\..\common\GLEW\include\GL\glew.h"
+	"..\..\common\camera.h"
+	"..\..\common\path.h"
+	"..\ed_ui.h"
+	"..\ed_common.h"
+	"..\..\common\containers\stack_list.h"
+	<stdio.h>
+	<string.h>
+	"..\..\common\entity.h"
+	"..\..\common\physics.h"
+	"..\..\common\gmath\vector.h"
+	"..\..\common\gmath\matrix.h"
+	"..\..\common\r_main.h"
+	"..\ed_ui_explorer.h"
+	"ed_entity.h"
+
+1536811938 d:\files\gabriel noble\compiler\wtf\editor\ed_ui.h
+	"gui.h"
+
+1540104950 source:d:\files\gabriel noble\compiler\wtf\editor\ed_level.c
+	"ed_level.h"
+	"ed_level_draw.h"
+	"ed_level_ui.h"
+	"..\..\common\r_main.h"
+	"..\..\common\gmath\matrix.h"
+	"..\..\common\gmath\vector.h"
+	"..\..\common\gui.h"
+	"..\ed_common.h"
+	"..\ed_cursors.h"
+	"..\editor.h"
+	"..\ed_selection.h"
+	"..\brush.h"
+	"..\..\common\camera.h"
+	"..\..\common\input.h"
+	"..\..\common\c_memory.h"
+	"..\..\common\l_main.h"
+	"..\..\common\player.h"
+	"..\..\common\entity.h"
+	"..\..\common\ent_serialization.h"
+	"..\..\common\world.h"
+	"..\..\common\entity.h"
+	"..\..\common\ent_common.h"
+	"..\..\common\bsp.h"
+	"..\..\common\engine.h"
+	"..\..\common\portal.h"
+	"..\..\common\particle.h"
+	"..\..\common\script\script.h"
+	"..\..\common\navigation.h"
+	"..\..\common\resource.h"
+	"..\..\common\sound.h"
+	"..\..\common\containers\stack_list.h"
+	"..\..\common\GLEW\include\GL\glew.h"
+
+1536814519 d:\files\gabriel noble\compiler\wtf\editor\ed_level.h
+	"..\ed_common.h"
+	"..\brush.h"
+
+1526511754 d:\files\gabriel noble\compiler\wtf\editor\ed_level_draw.h
+	"..\brush.h"
+
+1536814626 d:\files\gabriel noble\compiler\wtf\editor\ed_level_ui.h
+	"brush.h"
+
+1525703835 d:\files\gabriel noble\compiler\wtf\editor\ed_cursors.h
+
+1540264899 source:d:\files\gabriel noble\compiler\wtf\editor\ed_level_draw.c
+	"ed_level_draw.h"
+	"ed_level.h"
+	"..\..\common\GLEW\include\GL\glew.h"
+	"..\..\common\camera.h"
+	"..\..\common\shader.h"
+	"..\..\common\l_main.h"
+	"..\..\common\r_imediate.h"
+	"..\..\common\r_shader.h"
+	"..\..\common\r_gl.h"
+	"..\..\common\r_main.h"
+	"..\..\common\portal.h"
+	"..\..\common\navigation.h"
+	"..\..\common\containers\stack_list.h"
+	"..\..\common\material.h"
+	"ed_draw.h"
+	"bsp_cmp.h"
+	"..\brush.h"
+
+1540096452 source:d:\files\gabriel noble\compiler\wtf\editor\ed_level_ui.c
+	"ed_level_ui.h"
+	"..\ed_level.h"
+	"..\..\common\gui.h"
+	"..\ed_common.h"
+	"..\ed_ui.h"
+	"..\ed_ui_explorer.h"
+	"..\..\common\l_main.h"
+	"..\..\common\player.h"
+	"..\..\common\portal.h"
+	"..\..\common\navigation.h"
+	"..\..\common\material.h"
+	"..\..\common\entity.h"
+	"..\..\common\texture.h"
+	"..\common\r_main.h"
+	"..\common\r_gl.h"
+	"..\common\r_shader.h"
+	"..\common\input.h"
+	"..\common\r_imediate.h"
+	"..\brush.h"
+	"..\bsp_cmp.h"
+	"..\pvs.h"
+	"..\common\imgui\imgui.h"
+	"..\..\common\engine.h"
+	"vector.h"
+	"..\..\common\gmath\vector.h"
+	"..\..\common\gmath\matrix.h"
+	"ed_selection.h"
+	<stdio.h>
+	<string.h>
+	<stdlib.h>
+
+1526937798 source:d:\files\gabriel noble\compiler\wtf\editor\ed_name.c
+	"ed_name.h"
+	"ed_common.h"
+
+1526937733 d:\files\gabriel noble\compiler\wtf\editor\ed_name.h
+
+1540263367 source:d:\files\gabriel noble\compiler\wtf\editor\ed_selection.c
+	<string.h>
+	"ed_selection.h"
+	"GL/glew.h"
+	"model.h"
+	"camera.h"
+	"material.h"
+	"brush.h"
+	"entity.h"
+	"l_main.h"
+	"player.h"
+	"input.h"
+	"c_memory.h"
+	"physics.h"
+	"..\..\common\portal.h"
+	"..\..\common\r_main.h"
+	"..\..\common\r_imediate.h"
+	"..\..\common\r_debug.h"
+	"..\..\common\r_shader.h"
+	"..\..\common\r_gl.h"
+	"..\..\common\navigation.h"
+	"..\..\common\containers\stack_list.h"
+	"ed_globals.h"
+	"ed_draw.h"
+
+1538456812 source:d:\files\gabriel noble\compiler\wtf\editor\ed_ui.c
+	<stdio.h>
+	"ed_ui.h"
+	"ed_proj.h"
+	"engine.h"
+	"bsp_cmp.h"
+	"editor.h"
+	"r_main.h"
+	"log.h"
+	"material.h"
+	"texture.h"
+	"..\..\common\script\script.h"
+	"..\..\common\gui.h"
+	"..\..\common\c_memory.h"
+	"GL\glew.h"
+	"ed_ui_explorer.h"
+	"ed_globals.h"
+
+1534786665 d:\files\gabriel noble\compiler\wtf\editor\ed_proj.h
+	<stdint.h>
+	"vector.h"
+	"matrix.h"
+	"camera.h"
+	"brush.h"
+
+1536812092 source:d:\files\gabriel noble\compiler\wtf\editor\ed_ui_explorer.c
+	"ed_ui_explorer.h"
+	"ed_ui.h"
+	"..\..\common\gui.h"
+	"..\..\common\path.h"
+	"..\..\common\c_memory.h"
+	"..\..\common\resource.h"
+	<string.h>
+	<stdio.h>
+	<stdlib.h>
+
+1540096745 source:d:\files\gabriel noble\compiler\wtf\editor\editor.c
+	<stdio.h>
+	"GL\glew.h"
+	"matrix.h"
+	"vector.h"
+	"brush.h"
+	"editor.h"
+	"camera.h"
+	"input.h"
+	"engine.h"
+	"brush.h"
+	"l_main.h"
+	"shader.h"
+	"material.h"
+	"texture.h"
+	"physics.h"
+	"gui.h"
+	"bsp_cmp.h"
+	"bsp.h"
+	"pvs.h"
+	"indirect.h"
+	"player.h"
+	"portal.h"
+	"..\..\common\r_debug.h"
+	"..\..\common\r_gl.h"
+	"c_memory.h"
+	"entity.h"
+	"r_main.h"
+	"r_debug.h"
+	"r_editor.h"
+	"ed_ui.h"
+	"ed_ui_explorer.h"
+	"ed_proj.h"
+	"ed_level.h"
+	"ed_entity.h"
+	"ed_selection.h"
+	"model.h"
+	"entity.h"
+	"ed_globals.h"
+
+1512872003 d:\files\gabriel noble\compiler\wtf\editor\indirect.h
+	"vector.h"
+
+1526263165 d:\files\gabriel noble\compiler\wtf\editor\r_editor.h
+
+1538456834 source:d:\files\gabriel noble\compiler\wtf\editor\indirect.c
+	<stdio.h>
+	"GL\glew.h"
+	"indirect.h"
+	"bsp_common.h"
+	"l_main.h"
+	"camera.h"
+
+1525955227 source:d:\files\gabriel noble\compiler\wtf\editor\main.c
+	"main.h"
+
+1508268281 d:\files\gabriel noble\compiler\wtf\editor\main.h
+	<stdio.h>
+	<stdlib.h>
+	"engine.h"
+	"editor.h"
+
+1539476213 source:d:\files\gabriel noble\compiler\wtf\editor\pvs.c
+	<stdio.h>
+	<stdlib.h>
+	"SDL2\SDL.h"
+	"GL\glew.h"
+	"camera.h"
+	"bsp.h"
+	"bsp_cmp.h"
+	"pvs.h"
+	"l_main.h"
+	"c_memory.h"
+	"log.h"
+
+1517955854 source:d:\files\gabriel noble\compiler\wtf\editor\r_skybox.c
+	"r_common.h"
+	"r_skybox.h"
+
+1513543122 d:\files\gabriel noble\compiler\wtf\editor\r_skybox.h
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\bulletcollision\broadphasecollision\btaxissweep3internal.h
+	"LinearMath/btVector3.h"
+	"btOverlappingPairCache.h"
+	"btBroadphaseInterface.h"
+	"btBroadphaseProxy.h"
+	"btOverlappingPairCallback.h"
+	"btDbvtBroadphase.h"
+	<stdio.h>
+
+1537737675 d:\files\gabriel noble\compiler\wtf\common\bullet\include\linearmath\btthreads.h
+	"btScalar.h"
+
+1538258343 d:\files\gabriel noble\compiler\wtf\common\r_vis.h
+
+1540263326 source:d:\files\gabriel noble\compiler\wtf\common\r_vis.c
+	"r_vis.h"
+	"r_main.h"
+	"r_common.h"
+	"r_debug.h"
+	"l_common.h"
+	"entity.h"
+	"containers/stack_list.h"
+	"bsp.h"
+	"gpu.h"
+	"GL/glew.h"
+	<float.h>
+
+1538213133 source:d:\files\gabriel noble\compiler\wtf\common\r_clustered_forward.c
+	"r_clustered_forward.h"
+	"r_common.h"
+	"r_shader.h"
+
+1538212666 d:\files\gabriel noble\compiler\wtf\common\r_clustered_forward.h
+
+1538262043 source:d:\files\gabriel noble\compiler\wtf\common\r_draw.c
+	"r_draw.h"
+	"r_common.h"
+	"r_main.h"
+	"r_gl.h"
+	"r_shader.h"
+	"model.h"
+	"GL/glew.h"
+
+1538261584 d:\files\gabriel noble\compiler\wtf\common\r_draw.h
+
+1538616473 source:d:\files\gabriel noble\compiler\wtf\common\ent_script.c
+	"ent_script.h"
+	"entity.h"
+	"physics.h"
+	"camera.h"
+	"script.h"
+	"r_main.h"
+	"c_memory.h"
+	<string.h>
+
+1538616336 d:\files\gabriel noble\compiler\wtf\common\ent_script.h
+	"ent_common.h"
+	"scr_string.h"
+	"vector.h"
+
+1540264434 source:d:\files\gabriel noble\compiler\wtf\common\r_verts.c
+	"r_verts.h"
+	"r_debug.h"
+	"GL/glew.h"
+	"containers/stack_list.h"
+	"containers/list.h"
+
+1540264475 d:\files\gabriel noble\compiler\wtf\common\r_verts.h
 

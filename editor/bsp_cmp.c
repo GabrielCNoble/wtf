@@ -1989,6 +1989,56 @@ int bsp_IntersectBsp(bsp_node_t *node, vec3_t start, vec3_t end)
 }
 
 
+bsp_leaf_t *bsp_PointContents(bsp_node_t *bsp, vec3_t point)
+{
+
+    bsp_leaf_t *leaf;
+
+
+    if(!bsp)
+    {
+        return NULL;
+    }
+
+
+    if(bsp->type == BSP_LEAF)
+    {
+        leaf = (bsp_leaf_t *)bsp;
+
+        if(!(leaf->bm_flags & BSP_SOLID))
+        {
+            return leaf;
+        }
+    }
+    else
+    {
+        switch(bsp_ClassifyPoint(point, bsp->splitter->vertices[0].position, bsp->splitter->normal))
+        {
+            case POINT_FRONT:
+                return bsp_PointContents(bsp->front, point);
+            break;
+
+            case POINT_BACK:
+                return bsp_PointContents(bsp->back, point);
+            break;
+
+            case POINT_CONTAINED:
+                leaf = bsp_PointContents(bsp->front, point);
+
+                if(!leaf)
+                {
+                    leaf = bsp_PointContents(bsp->back, point);
+                }
+
+                return leaf;
+            break;
+        }
+    }
+
+    return NULL;
+}
+
+
 
 
 /*
@@ -3727,7 +3777,6 @@ void bsp_TriangulateLeafPolygons(bsp_node_t *node, int *triangle_count)
 
 			while(polygon)
 			{
-
 				bsp_TriangulatePolygon(polygon, &vertices, &vertice_count);
 
 				for(i = 0; i < vertice_count;)
@@ -4708,11 +4757,11 @@ void bsp_CompileBsp(int remove_outside)
 
 	//bsp_BuildCollisionBsp();
 
-	bsp_LockBrushPolygons();
+	//bsp_LockBrushPolygons();
 
 	polygons = brush_BuildPolygonListFromBrushes();
 
-	bsp_UnlockBrushPolygons();
+	//bsp_UnlockBrushPolygons();
 
 	if(!polygons)
 	{

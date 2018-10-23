@@ -80,7 +80,7 @@ void entity_UnparentTransformComponent(struct component_handle_t parent_transfor
 
 void entity_ParentEntityToEntityTransform(struct component_handle_t parent_transform, struct entity_handle_t child);
 
-void entity_UnparentEntityFromEntityTransform(struct component_handle_t parent_transform, struct entity_handle_t child);
+void entity_UnpparentEntityFromEntityTransform(struct component_handle_t parent_transform, struct entity_handle_t child);
 
 
 void entity_ParentEntity(struct entity_handle_t parent, struct entity_handle_t child);
@@ -103,7 +103,9 @@ void entity_RemoveComponent(struct entity_handle_t entity, int component_type);
 
 
 
-void entity_AddProp(struct entity_handle_t entity, char *name, int size);
+int entity_AddProp(struct entity_handle_t entity, char *name, int size);
+
+void entity_AddPropTyped(struct entity_handle_t entity, char *name, int type);
 
 void entity_AddProp1i(struct entity_handle_t entity, char *name);
 
@@ -129,6 +131,8 @@ void entity_SetProp(struct entity_handle_t entity, char *name, void *value);
 void entity_GetProp(struct entity_handle_t entity, char *name, void *value);
 
 struct entity_prop_t *entity_GetPropPointer(struct entity_handle_t entity, char *name);
+
+struct entity_prop_t *entity_GetPropPointerIndex(struct entity_handle_t entity, int prop_index);
 
 
 
@@ -195,7 +199,13 @@ struct entity_source_file_t *entity_GetSourceFile(struct entity_handle_t entity)
 
 void entity_TranslateEntity(struct entity_handle_t entity, vec3_t direction, float amount);
 
-void entity_RotateEntity(int entity_index, vec3_t axis, float amount);
+void entity_SetEntityPosition(struct entity_handle_t entity, vec3_t position);
+
+
+void entity_RotateEntity(struct entity_handle_t entity, vec3_t axis, float amount, int set);
+
+void entity_SetEntityOrientation(struct entity_handle_t entity, mat3_t *orientation);
+
 
 void entity_ScaleEntity(int entity_index, vec3_t axis, float amount);
 

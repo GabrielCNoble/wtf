@@ -99,6 +99,42 @@ void bsp_StopPvsTimer()
 }
 
 
+
+/* number of samples per meter cubed... */
+#define BSP_VIS_SAMPLE_DENSITY 10
+#define BSP_VIS_RESOLUTION 512
+
+void bsp_GenVisProbes(struct bsp_node_t *bsp)
+{
+    vec3_t max;
+    vec3_t min;
+
+    int x_count;
+    int y_count;
+    int z_count;
+
+    struct bsp_vis_probe_t *probes;
+
+    if(bsp)
+    {
+        bsp_BspBounds(bsp, &max, &min);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+}
+
+
+
 int bsp_ClassifyPortalVertex(struct bsp_pnode_t *node, vec3_t point)
 {
 	float d;
@@ -2948,7 +2984,7 @@ int bsp_PvsForLeavesThreadFn(void *data)
 		if(b_stop)
 		{
 			printf("pvs calculation stopped!\n");
-			return;
+			return 0;
 		}
 	}
 

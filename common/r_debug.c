@@ -1,11 +1,17 @@
 #include "r_debug.h"
 #include "r_main.h"
 #include "r_imediate.h"
+#include "r_shader.h"
 #include "camera.h"
 #include "c_memory.h"
 #include "navigation.h"
 #include "portal.h"
 #include "physics.h"
+#include "engine.h"
+
+#include "gui.h"
+
+#include "l_common.h"
 
 #include "entity.h"
 
@@ -24,8 +30,6 @@ extern portal_t *ptl_portals;
 
 /* from physics.c */
 extern struct stack_list_t phy_colliders[COLLIDER_TYPE_LAST];
-//extern int collider_list_cursor;
-//extern collider_t *colliders;
 
 /* from entity.c */
 extern int ent_entity_list_cursor;
@@ -36,9 +40,16 @@ extern struct stack_list_t ent_entity_aabbs;
 
 /* from navigation.c */
 extern struct stack_list_t nav_waypoints;
-//extern int nav_waypoint_count;
-//extern struct waypoint_t *nav_waypoints;
 
+
+/* from light.c */
+//extern int l_light_list_cursor;
+//extern light_position_t *l_light_positions;
+//extern light_params_t *l_light_params;
+
+extern struct stack_list_t l_light_positions;
+extern struct stack_list_t l_light_params;
+extern struct stack_list_t l_light_clusters;
 
 
 
@@ -58,19 +69,48 @@ int r_dbg_draw_bytes_next_in = 0;
 int r_dbg_draw_bytes_next_out = 0;
 void *r_dbg_draw_bytes = NULL;
 
-/* from r_main.c */
 extern int r_debug;
-extern int r_debug_verbose;
-extern int r_debug_draw_portal_outlines;
-extern int r_debug_draw_views;
-extern int r_debug_draw_waypoints;
-extern int r_debug_draw_colliders;
-extern int r_debug_draw_entities;
-extern int r_debug_draw_triggers;
-extern int r_frame;
+int r_debug_verbose = 0;
+int r_debug_draw_portal_outlines = 0;
+int r_debug_draw_views = 0;
+int r_debug_draw_waypoints = 1;
+int r_debug_draw_colliders = 0;
+int r_debug_draw_entities = 0;
+int r_debug_draw_triggers = 0;
+int r_debug_draw_lights = 0;
+int r_debug_draw_lights_screen_bounds = 0;
+int r_debug_draw_clusters = 0;
+int r_debug_draw_bsp_leaves = 0;
+int r_debug_draw_statistics = 0;
+
+extern unsigned int r_visible_lights_count;
+extern unsigned int r_visible_lights[];
+
+extern unsigned int r_visible_leaves_count;
+extern struct bsp_dleaf_t *r_visible_leaves;
+
+
 
 /* from r_imediate.c */
 extern int r_imediate_color_shader;
+int r_cluster_debug_shader;
+
+extern struct framebuffer_t r_cbuffer;
+extern int r_clusters_per_row;
+extern int r_cluster_rows;
+extern int r_cluster_layers;
+extern int r_window_width;
+extern int r_window_height;
+extern int r_width;
+extern int r_height;
+extern int r_frame;
+
+extern unsigned int r_draw_calls;
+extern unsigned int r_material_swaps;
+extern unsigned int r_shader_swaps;
+extern unsigned int r_shader_uniform_updates;
+extern unsigned int r_frame_vert_count;
+
 
 /* from camera.c */
 extern camera_t *cameras;
@@ -88,6 +128,14 @@ vec3_t r_collider_capsule_shape[3][CHARACTER_COLLIDER_CAPSULE_SEGMENTS];
 
 static int r_dbg_function_names_stack_top = -1;
 static char r_dbg_function_names[R_DBG_FUNCTION_NAME_STACK_DEPTH][R_DBG_FUNCTION_NAME_MAX_NAME_LEN];
+
+
+#define R_DEBUG_MAX_TIMERS 32
+
+int r_timers_count = 0;
+struct debug_timer_t r_timers[R_DEBUG_MAX_TIMERS];
+unsigned int r_timestamp_query = 0;
+//unsigned int r_query_objects[R_DEBUG_MAX_TIMERS];
 
 
 __stdcall void renderer_GLReportCallback(GLenum source, GLenum type, GLenum id, GLenum severety, GLsizei length, const GLchar *message, void *parm)
@@ -199,6 +247,14 @@ void renderer_InitDebug()
 	//glEnable(GL_DEBUG_OUTPUT);
 	glDebugMessageCallbackARB((GLDEBUGPROC)renderer_GLReportCallback, 0);
 
+    glGenQueries(1, &r_timestamp_query);
+    //glGenQueries(1, &r_query_object);
+
+	/*for(i = 0; i < R_DEBUG_MAX_TIMERS; i++)
+    {
+        r_timers[i].running = 0;
+    }*/
+
 }
 
 void renderer_FinishDebug()
@@ -215,11 +271,13 @@ void renderer_Debug(int enable, int verbose)
 	{
 		r_debug_verbose = 1;
 		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	}
 	else
 	{
 		r_debug_verbose = 0;
 		glDisable(GL_DEBUG_OUTPUT);
+		glDisable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	}
 }
 
@@ -229,11 +287,13 @@ void renderer_VerboseDebugOutput(int enable)
 	{
 		r_debug_verbose = 1;
 		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	}
 	else
 	{
 		r_debug_verbose = 0;
 		glDisable(GL_DEBUG_OUTPUT);
+		glDisable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	}
 }
 
@@ -345,6 +405,120 @@ void renderer_Draw2dLine(vec2_t from, vec2_t to, vec3_t color, float width, int 
 ==============================================================
 ==============================================================
 */
+
+unsigned int renderer_GetTimeStamp()
+{
+    unsigned int timestamp;
+    glQueryCounter(r_timestamp_query, GL_TIMESTAMP);
+    glGetQueryObjectiv(r_timestamp_query, GL_QUERY_RESULT, &timestamp);
+    return timestamp;
+}
+
+int renderer_StartGpuTimer(const char *timer_name)
+{
+    return renderer_StartTimer(timer_name, 1);
+}
+
+int renderer_StartCpuTimer(const char *timer_name)
+{
+    return renderer_StartTimer(timer_name, 0);
+}
+
+int renderer_StartTimer(const char *timer_name, int gpu_timer)
+{
+    int timer_index = -1;
+
+    struct debug_timer_t *timer;
+
+    R_DBG_PUSH_FUNCTION_NAME();
+
+    if(r_debug)
+    {
+        if(r_timers_count < R_DEBUG_MAX_TIMERS)
+        {
+            timer_index = r_timers_count;
+            timer = &r_timers[timer_index];
+            r_timers_count++;
+
+            timer->name = timer_name;
+            timer->frame = r_frame;
+            timer->gpu_timer = gpu_timer && 1;
+
+            if(gpu_timer)
+            {
+                //glBeginQueryIndexed(GL_TIME_ELAPSED, timer_index, r_query_objects[timer_index]);
+                timer->start_time_stamp = renderer_GetTimeStamp();
+            }
+            else
+            {
+                timer->start_time = engine_GetCurrentDeltaTime();
+            }
+        }
+    }
+
+    R_DBG_POP_FUNCTION_NAME();
+
+    return timer_index;
+}
+
+void renderer_StopTimer(int timer_index)
+{
+    struct debug_timer_t *timer;
+    unsigned long timestamp = 0;
+
+    R_DBG_PUSH_FUNCTION_NAME();
+
+    if(r_debug)
+    {
+        if(timer_index >= 0 && timer_index < R_DEBUG_MAX_TIMERS)
+        {
+            timer = &r_timers[timer_index];
+
+            if(timer->frame == r_frame)
+            {
+                if(timer->gpu_timer)
+                {
+                    timestamp = renderer_GetTimeStamp();
+                    timer->delta_time = (float)(timestamp - timer->start_time_stamp) / 1000000.0;
+                    //glEndQueryIndexed(GL_TIME_ELAPSED, timer_index);
+                    //glGetQueryObjectiv(r_query_objects[timer_index], GL_QUERY_RESULT, &elapsed);
+                    //timer->delta_time = (float)elapsed /1000000.0;
+                }
+                else
+                {
+                    timer->delta_time = engine_GetCurrentDeltaTime() - timer->start_time;
+                }
+
+                timer->frame = -1;
+            }
+        }
+    }
+
+    R_DBG_POP_FUNCTION_NAME();
+}
+
+void renderer_StopAllTimers()
+{
+    int i;
+
+    for(i = 0; i < R_DEBUG_MAX_TIMERS; i++)
+    {
+        //renderer_StopTimer(i);
+    }
+
+    r_timers_count = 0;
+}
+
+
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
+
+
+void renderer_StopTimer(int timer_index);
 
 void renderer_DrawBox()
 {
@@ -534,6 +708,7 @@ void renderer_DrawSphere(float radius, int sub_divs)
 
 void renderer_DrawPortalsOulines()
 {
+    #if 0
 	int i;
 	int j;
 	int k;
@@ -757,6 +932,8 @@ void renderer_DrawPortalsOulines()
 	glPointSize(1.0);
 	//renderer_DisableImediateDrawing();
 
+	#endif
+
 }
 
 void renderer_DrawPortalViews()
@@ -766,8 +943,8 @@ void renderer_DrawPortalViews()
 
 void renderer_DrawViews()
 {
-	camera_t *view;
-	camera_t *active_view;
+	view_def_t *view;
+	view_def_t *active_view;
 	mat4_t view_transform;
 
 	vec3_t near_color;
@@ -781,12 +958,12 @@ void renderer_DrawViews()
 	view = cameras;
 	float far;
 
-	active_view = camera_GetActiveCamera();
+	//active_view = camera_GetActiveCamera();
 
-	//renderer_SetShader(r_imediate_color_shader);
-	//renderer_SetProjectionMatrix(&active_view->view_data.projection_matrix);
-	renderer_SetViewMatrix(&active_view->view_data.view_matrix);
-	//renderer_SetModelMatrix(NULL);
+	active_view = renderer_GetActiveView();
+
+	renderer_SetShader(r_imediate_color_shader);
+	renderer_SetModelMatrix(NULL);
 
 	//renderer_EnableImediateDrawing();
 	glPointSize(8.0);
@@ -904,6 +1081,9 @@ void renderer_DrawWaypoints()
 	struct waypoint_t *waypoints;
 	struct waypoint_t *waypoint;
 	struct waypoint_t *linked_waypoint;
+
+
+	renderer_SetShader(r_imediate_color_shader);
 	renderer_SetModelMatrix(NULL);
 
 
@@ -980,6 +1160,7 @@ void renderer_DrawColliders()
 
 	//colliders
 
+	renderer_SetShader(r_imediate_color_shader);
 	renderer_SetModelMatrix(NULL);
 
 	for(type = 0; type < COLLIDER_TYPE_LAST; type++)
@@ -1086,6 +1267,7 @@ void renderer_DrawEntities()
 
 	glEnable(GL_POINT_SMOOTH);
 	//glPointSize(8.0);
+	renderer_SetShader(r_imediate_color_shader);
 	renderer_SetModelMatrix(NULL);
 
 	c = ent_entities[0].element_count;
@@ -1187,6 +1369,10 @@ void renderer_DrawTriggers()
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     //glDisable(GL_CULL_FACE);
     //renderer_Color3f(1.0, 1.0, 0.0);
+
+    renderer_SetShader(r_imediate_color_shader);
+	renderer_SetModelMatrix(NULL);
+
 	glEnable(GL_BLEND);
 
     for(i = 0; i < c; i++)
@@ -1220,6 +1406,167 @@ void renderer_DrawTriggers()
 	glCullFace(GL_BACK);
 }
 
+void renderer_DrawLights()
+{
+    int i;
+    int c;
+
+    c = l_light_positions.element_count;
+
+    struct light_position_data_t *position;
+    struct light_params_data_t *params;
+    struct light_cluster_data_t *cluster;
+
+    float color[3] = {0.0};
+
+    renderer_SetShader(r_imediate_color_shader);
+	renderer_SetModelMatrix(NULL);
+
+
+	glEnable(GL_POINT_SMOOTH);
+
+	renderer_Begin(GL_POINTS);
+    glPointSize(14.0);
+    renderer_Color3f(0.5, 0.5, 1.0);
+
+    for(i = 0; i < c; i++)
+    {
+        position = (struct light_position_data_t *)l_light_positions.elements + i;
+
+        if(position->flags & LIGHT_INVALID)
+        {
+            continue;
+        }
+
+        renderer_Vertex3f(position->position.x, position->position.y, position->position.z);
+    }
+
+    renderer_End();
+
+
+	renderer_Begin(GL_POINTS);
+    glPointSize(8.0);
+
+    for(i = 0; i < c; i++)
+    {
+        position = (struct light_position_data_t *)l_light_positions.elements + i;
+
+        if(position->flags & LIGHT_INVALID)
+        {
+            continue;
+        }
+
+        params = (struct light_params_data_t *)l_light_params.elements + i;
+
+
+        color[0] = (float)params->r / 255.0;
+        color[1] = (float)params->g / 255.0;
+        color[2] = (float)params->b / 255.0;
+
+        renderer_Color3f(color[0], color[1], color[2]);
+        renderer_Vertex3f(position->position.x, position->position.y, position->position.z);
+    }
+
+    renderer_End();
+
+    glPointSize(1.0);
+    glDisable(GL_POINT_SMOOTH);
+}
+
+void renderer_DrawClusters()
+{
+    int i;
+    int c;
+
+    view_def_t *active_view;
+    active_view = renderer_GetActiveView();
+
+    renderer_SetShader(r_cluster_debug_shader);
+    renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_cbuffer.depth_attachment);
+    renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
+    renderer_SetDefaultUniform1f(UNIFORM_r_near, active_view->frustum.znear);
+    renderer_SetDefaultUniform1f(UNIFORM_r_far, active_view->frustum.zfar);
+    //renderer_SetDefaultUniform1i(UNIFORM_r_clusters_per_row, r_clusters_per_row);
+    //renderer_SetDefaultUniform1i(UNIFORM_r_cluster_rows, r_cluster_rows);
+    //renderer_SetDefaultUniform1i(UNIFORM_r_cluster_layers, r_cluster_layers);
+    renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
+    renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
+    renderer_BindClusterTexture();
+
+
+
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+
+    //glPointSize(16.0);
+
+    //renderer_Begin(GL_POINTS);
+    //renderer_Color3f(1.0, 0.0, 0.0);
+    //renderer_Vertex3f(0.0, 0.0, -0.5);
+    //renderer_End();
+
+    //glPointSize(1.0);
+
+    renderer_Rectf(-1.0, -1.0, 1.0, 1.0);
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+}
+
+void renderer_DrawStatistics()
+{
+
+    int i;
+
+    const char *timer_type;
+
+    gui_ImGuiPushStyleVarf(ImGuiStyleVar_WindowRounding, 0.0);
+    gui_ImGuiSetNextWindowBgAlpha(0.0);
+    gui_ImGuiSetNextWindowPos(vec2(0.0, 0.0), 0, vec2(0.0, 0.0));
+    gui_ImGuiSetNextWindowFocus();
+    gui_ImGuiBegin("Statistics", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs);
+
+    gui_ImGuiText("Screen size: %d x %d\n", r_window_width, r_window_height);
+    gui_ImGuiText("Renderer resolution: %d x %d\n", r_width, r_height);
+    gui_ImGuiText("Frame: %d\n", r_frame);
+    gui_ImGuiText("Draw calls: %d\n", r_draw_calls);
+    gui_ImGuiText("Shader swaps: %d\n", r_shader_swaps);
+    gui_ImGuiText("Uniform updates: %d\n", r_shader_uniform_updates);
+    gui_ImGuiText("Drawn verts: %d\n", r_frame_vert_count);
+
+    if(r_timers_count)
+    {
+        gui_ImGuiText("Timers:\n");
+
+        for(i = 0; i < r_timers_count; i++)
+        {
+            if(r_timers[i].frame == -1)
+            {
+                if(r_timers[i].gpu_timer)
+                {
+                    timer_type = "GPU";
+                }
+                else
+                {
+                    timer_type = "CPU";
+                }
+
+                gui_ImGuiText("%s (%s): %f ms\n", r_timers[i].name, timer_type, r_timers[i].delta_time);
+            }
+
+        }
+    }
+
+
+    gui_ImGuiEnd();
+
+    gui_ImGuiPopStyleVar();
+}
+
 /*
 ==============================================================
 ==============================================================
@@ -1237,16 +1584,18 @@ void renderer_DrawDebug()
 	point_dbg_draw_data_t *point_data;
 	line_dbg_draw_data_t *line_data;
 	line_2d_dbg_draw_data_t *line_2d_data;
-	camera_t *active_camera;
+	view_def_t *active_view;
+
+    active_view = renderer_GetActiveView();
+
+	//active_camera = camera_GetActiveCamera();
 
 
-	active_camera = camera_GetActiveCamera();
-
-	renderer_SetShader(r_imediate_color_shader);
-	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
-	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
-	renderer_SetModelMatrix(NULL);
 	renderer_EnableImediateDrawing();
+
+    renderer_SetProjectionMatrix(&active_view->view_data.projection_matrix);
+	renderer_SetViewMatrix(&active_view->view_data.view_matrix);
+
 
 
 	/*if(r_debug_draw_portal_outlines)
@@ -1254,10 +1603,7 @@ void renderer_DrawDebug()
 		renderer_DrawPortalsOulines();
 	}*/
 
-	if(!r_debug)
-	{
-		return;
-	}
+
 
 
 	if(r_debug_draw_views)
@@ -1284,6 +1630,24 @@ void renderer_DrawDebug()
 	{
 		renderer_DrawTriggers();
 	}
+
+	if(r_debug_draw_lights)
+    {
+        renderer_DrawLights();
+    }
+
+    if(r_debug_draw_clusters)
+    {
+        renderer_DrawClusters();
+    }
+
+    if(r_debug_draw_statistics)
+    {
+        renderer_DrawStatistics();
+    }
+
+    renderer_SetShader(r_imediate_color_shader);
+	renderer_SetModelMatrix(NULL);
 
 	while(r_dbg_debug_cmd_next_out != r_dbg_debug_cmd_next_in)
 	{
@@ -1363,8 +1727,8 @@ void renderer_DrawDebug()
 				renderer_Vertex3f(line_2d_data->to.x, line_2d_data->to.y, 0.0);
 				renderer_End();
 
-				renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
-				renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+				renderer_SetProjectionMatrix(&active_view->view_data.projection_matrix);
+				renderer_SetViewMatrix(&active_view->view_data.view_matrix);
 
 				glLineWidth(1.0);
 
@@ -1377,6 +1741,8 @@ void renderer_DrawDebug()
 
 	renderer_DisableImediateDrawing();
 
+	renderer_StopAllTimers();
+	//r_timers_count = 0;
 }
 
 

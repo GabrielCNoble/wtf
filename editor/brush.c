@@ -4,8 +4,10 @@
 
 #include "GL\glew.h"
 
+#include <x86intrin.h>
+
 #include "brush.h"
-#include "gpu.h"
+#include "r_verts.h"
 #include "vector.h"
 #include "matrix.h"
 #include "bsp_cmp.h"
@@ -13,16 +15,61 @@
 #include "material.h"
 #include "camera.h"
 #include "c_memory.h"
+#include "bsp_cmp.h"
 
 #include "..\..\common\r_debug.h"
 
-#define malloc ((void *)0)
+/*#define malloc ((void *)0)
 #define calloc ((void *)0)
 #define free ((void *)0)
-#define strdup ((void *)0)
+#define strdup ((void *)0)*/
 
 
 
+
+vertex_t cube_brush_vertices[] =
+{
+    /* +Z */
+    {{-1.0, 1.0, 1.0}, { 0.0, 0.0, 1.0}, { 1.0, 0.0, 0.0}, {0.0, 1.0}},
+    {{-1.0,-1.0, 1.0}, { 0.0, 0.0, 1.0}, { 1.0, 0.0, 0.0}, {0.0, 0.0}},
+    {{ 1.0,-1.0, 1.0}, { 0.0, 0.0, 1.0}, { 1.0, 0.0, 0.0}, {1.0, 0.0}},
+    {{ 1.0, 1.0, 1.0}, { 0.0, 0.0, 1.0}, { 1.0, 0.0, 0.0}, {1.0, 1.0}},
+
+
+    /* +X */
+    {{ 1.0, 1.0, 1.0}, { 1.0, 0.0, 0.0}, { 0.0, 0.0, 1.0}, {0.0, 1.0}},
+	{{ 1.0,-1.0, 1.0}, { 1.0, 0.0, 0.0}, { 0.0, 0.0, 1.0}, {0.0, 0.0}},
+	{{ 1.0,-1.0,-1.0}, { 1.0, 0.0, 0.0}, { 0.0, 0.0, 1.0}, {1.0, 0.0}},
+	{{ 1.0, 1.0,-1.0}, { 1.0, 0.0, 0.0}, { 0.0, 0.0, 1.0}, {1.0, 1.0}},
+
+
+    /* -Z */
+	{{ 1.0, 1.0,-1.0}, { 0.0, 0.0,-1.0}, { -1.0, 0.0,0.0}, {0.0, 1.0}},
+	{{ 1.0,-1.0,-1.0}, { 0.0, 0.0,-1.0}, { -1.0, 0.0,0.0}, {0.0, 0.0}},
+	{{-1.0,-1.0,-1.0}, { 0.0, 0.0,-1.0}, { -1.0, 0.0,0.0}, {1.0, 0.0}},
+	{{-1.0, 1.0,-1.0}, { 0.0, 0.0,-1.0}, { -1.0, 0.0,0.0}, {1.0, 1.0}},
+
+
+    /* -X */
+	{{-1.0, 1.0,-1.0}, {-1.0, 0.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 1.0}},
+	{{-1.0,-1.0,-1.0}, {-1.0, 0.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0}},
+	{{-1.0,-1.0, 1.0}, {-1.0, 0.0, 0.0}, {0.0, 0.0, -1.0}, {1.0, 0.0}},
+	{{-1.0, 1.0, 1.0}, {-1.0, 0.0, 0.0}, {0.0, 0.0, -1.0}, {1.0, 1.0}},
+
+
+    /* +Y */
+	{{-1.0, 1.0, 1.0}, { 0.0, 1.0, 0.0}, { 1.0, 0.0, 0.0}, {0.0, 1.0}},
+	{{ 1.0, 1.0, 1.0}, { 0.0, 1.0, 0.0}, { 1.0, 0.0, 0.0}, {0.0, 0.0}},
+	{{ 1.0, 1.0,-1.0}, { 0.0, 1.0, 0.0}, { 1.0, 0.0, 0.0}, {1.0, 0.0}},
+	{{-1.0, 1.0,-1.0}, { 0.0, 1.0, 0.0}, { 1.0, 0.0, 0.0}, {1.0, 1.0}},
+
+
+    /* -Y */
+	{{-1.0,-1.0,-1.0}, { 0.0,-1.0, 0.0}, { -1.0,0.0, 0.0}, {0.0, 1.0}},
+	{{ 1.0,-1.0,-1.0}, { 0.0,-1.0, 0.0}, { -1.0,0.0, 0.0}, {0.0, 0.0}},
+	{{ 1.0,-1.0, 1.0}, { 0.0,-1.0, 0.0}, { -1.0,0.0, 0.0}, {1.0, 0.0}},
+	{{-1.0,-1.0, 1.0}, { 0.0,-1.0, 0.0}, { -1.0,0.0, 0.0}, {1.0, 1.0}},
+};
 
 
 vec3_t cube_bmodel_verts[] =
@@ -153,11 +200,18 @@ static unsigned int element_buffer;
 int brush_count = 0;
 brush_t *brushes = NULL;
 brush_t *last_brush = NULL;
+
+
+brush_t *invalid_brushes = NULL;
+brush_t *last_invalid_brushes = NULL;
+
+
 int unique_brush_index = 0;
 
 struct brush_t *last_updated_brush = NULL;
 struct brush_t *last_updated_against = NULL;
 int check_intersection = 2;
+
 
 void brush_Init()
 {
@@ -171,9 +225,9 @@ void brush_Init()
 
 	check_intersection = 2;
 
-	brush_thread = SDL_CreateThread(brush_ProcessBrushesAsync, "brush_ProcessBrushes", NULL);
+	//brush_thread = SDL_CreateThread(brush_ProcessBrushesAsync, "brush_ProcessBrushes", NULL);
 
-	brush_delete_mutex = SDL_CreateMutex();
+	//brush_delete_mutex = SDL_CreateMutex();
 }
 
 void brush_Finish()
@@ -195,6 +249,9 @@ void brush_Finish()
 	glDeleteBuffers(1, &element_buffer);
 }
 
+
+#if 0
+
 void brush_ProcessBrushes()
 {
 	int i;
@@ -204,6 +261,8 @@ void brush_ProcessBrushes()
 	//brush_ClipBrushes();
 }
 
+#endif
+
 void brush_UpdateAllBrushes()
 {
 	last_updated_brush = NULL;
@@ -211,83 +270,6 @@ void brush_UpdateAllBrushes()
 	check_intersection = 1;
 }
 
-brush_t *brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short type, short b_subtractive)
-{
-
-	//printf("start of brush_CreateBrush\n");
-
-	brush_t *brush = NULL;
-	int brush_index = 0;
-	int i = 0;
-	int c = 0;
-	int default_group = 0;
-	float *vertex_positions = NULL;
-	float *vertex_normals = NULL;
-	int vertex_count = 0;
-	int triangle_count = 0;
-	int index_count = 0;
-	int alloc_handle = -1;
-	int polygon_count = 0;
-	int material = -1;
-	int *b = NULL;
-	int *indexes = NULL;
-	vertex_t *polygon_vertices = NULL;
-
-	bsp_polygon_t *polygons = NULL;
-	bsp_polygon_t *polygon = NULL;
-
-	vec3_t p;
-	vec3_t v;
-
-	R_DBG_PUSH_FUNCTION_NAME();
-
-
-
-	brush = brush_CreateEmptyBrush();
-
-	brush->type = type;
-	brush->position = position;
-	brush->scale = scale;
-	brush->orientation = *orientation;
-	brush->bm_flags |= BRUSH_CLIP_POLYGONS;
-
-	if(b_subtractive)
-	{
-		brush->bm_flags |= BRUSH_SUBTRACTIVE;
-	}
-
-	switch(type)
-	{
-		case BRUSH_CUBE:
-		case BRUSH_CYLINDER:
-
-			brush_AllocBaseVertices(brush, 24, NULL);
-			brush_AllocBasePolygons(brush, 6);
-
-			for(i = 0; i < 24; i++)
-			{
-				brush->base_polygons_vertices[i].position = cube_bmodel_verts[i];
-				brush->base_polygons_vertices[i].normal = cube_bmodel_normals[i >> 2];
-				brush->base_polygons_vertices[i].tex_coord = cube_bmodel_tex_coords[i];
-			}
-
-			for(i = 0; i < 6; i++)
-			{
-				brush_AddPolygonToBrush(brush, NULL, cube_bmodel_normals[i], vec2(1.0, 1.0), 4, -1);
-			}
-
-			brush_LinkPolygonsToVertices(brush);
-		break;
-
-
-	}
-
-	brush_FinalizeBrush(brush, 1);
-
-	R_DBG_POP_FUNCTION_NAME();
-
-	return brush;
-}
 
 brush_t *brush_CreateEmptyBrush()
 {
@@ -388,6 +370,208 @@ brush_t *brush_CreateEmptyBrush()
 }
 
 
+brush_t *brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short type, short b_subtractive)
+{
+	brush_t *brush = NULL;
+
+	vertex_t *polygon_vertices;
+	int i = 0;
+	int c = 0;
+
+	R_DBG_PUSH_FUNCTION_NAME();
+
+
+
+	brush = brush_CreateEmptyBrush();
+
+	brush->type = type;
+	brush->position = position;
+	brush->scale = scale;
+	brush->orientation = *orientation;
+	brush->bm_flags |= BRUSH_CLIP_POLYGONS;
+
+	if(b_subtractive)
+	{
+		brush->bm_flags |= BRUSH_SUBTRACTIVE;
+	}
+
+	switch(type)
+	{
+		case BRUSH_CUBE:
+		case BRUSH_CYLINDER:
+
+			brush_AllocBaseVertices(brush, 24, NULL);
+			brush_AllocBasePolygons(brush, 6);
+
+			for(i = 0; i < 6; i++)
+            {
+                polygon_vertices = cube_brush_vertices + i * 4;
+                brush_AddPolygonToBrush(brush, polygon_vertices, polygon_vertices->normal, vec2(1.0, 1.0), 4, -1);
+            }
+		break;
+	}
+
+	brush_FinalizeBrush(brush, 1);
+
+	R_DBG_POP_FUNCTION_NAME();
+
+	return brush;
+}
+
+
+
+brush_t *brush_CopyBrush(brush_t *src)
+{
+	brush_t *brush = NULL;
+	int i = 0;
+	bsp_polygon_t *polygon = NULL;
+
+
+	R_DBG_PUSH_FUNCTION_NAME();
+
+
+	brush = brush_CreateEmptyBrush();
+
+	brush->type = src->type;
+	brush->position = src->position;
+	brush->scale = src->scale;
+	brush->orientation = src->orientation;
+	brush->bm_flags = src->bm_flags | BRUSH_CLIP_POLYGONS;
+
+	brush_AllocBaseVertices(brush, src->base_polygons_vert_count, NULL);
+	brush_AllocBasePolygons(brush, src->base_polygons_count);
+
+	for(i = 0; i < src->base_polygons_count; i++)
+    {
+        polygon = src->base_polygons + i;
+        brush_AddPolygonToBrush(brush, polygon->vertices, polygon->normal, polygon->tiling, polygon->vert_count, polygon->material_index);
+    }
+
+	brush_FinalizeBrush(brush, 0);
+
+	R_DBG_POP_FUNCTION_NAME();
+
+	return brush;
+}
+
+void brush_DestroyBrush(brush_t *brush)
+{
+	bsp_polygon_t *polygon;
+	bsp_polygon_t *next;
+	bsp_edge_t *edge;
+	bsp_edge_t *next_edge;
+	brush_t *other;
+	SDL_mutex *mutex;
+	intersection_record_t *intersection_record;
+	intersection_record_t *next_intersection_record;
+	int brush_index;
+
+	if(brush->type == BRUSH_INVALID)
+		return;
+
+
+	R_DBG_PUSH_FUNCTION_NAME();
+
+	//SDL_LockMutex(brush_delete_mutex);
+
+	mutex = brush->brush_mutex;
+
+	SDL_LockMutex(mutex);
+
+	if(brush->type != BRUSH_BOUNDS)
+	{
+		bsp_DeleteSolidBsp(brush->brush_bsp, 0);
+
+		//if(brush->triangle_groups)
+		if(brush->batches)
+		{
+			brush_DecBrushMaterialsRefCount(brush);
+		}
+
+		memory_Free(brush->base_polygons_vertices);
+		memory_Free(brush->batches);
+		memory_Free(brush->base_polygons);
+		memory_Free(brush->clipped_polygons_indexes);
+
+		edge = brush->edges;
+
+		while(edge)
+		{
+			next_edge = edge->next;
+			memory_Free(edge);
+			edge = next_edge;
+		}
+
+		renderer_Free(brush->handle);
+//		glDeleteBuffers(1, &brush->element_buffer);
+	}
+
+	intersection_record = brush->intersection_records;
+
+	while(intersection_record)
+	{
+		next_intersection_record = intersection_record->next;
+		brush_RemoveIntersectionRecord(intersection_record->intersecting_brush, brush, 1);
+		intersection_record = next_intersection_record;
+	}
+
+	last_updated_brush = NULL;
+	last_updated_against = NULL;
+	check_intersection = 1;
+
+	if(brush == brushes)
+	{
+		brushes = brushes->next;
+		if(brushes)
+		{
+			brushes->prev = NULL;
+		}
+	}
+	else
+	{
+		brush->prev->next = brush->next;
+
+		if(brush->next)
+		{
+			brush->next->prev = brush->prev;
+		}
+		else
+		{
+			last_brush = last_brush->prev;
+		}
+	}
+
+	brush_count--;
+
+	memory_Free(brush);
+
+	SDL_UnlockMutex(mutex);
+	SDL_DestroyMutex(mutex);
+
+	R_DBG_POP_FUNCTION_NAME();
+}
+
+void brush_DestroyBrushIndex(int brush_index)
+{
+	//brush_DestroyBrush(&brushes[brush_index]);
+}
+
+void brush_DestroyAllBrushes()
+{
+	int i;
+
+	while(brushes)
+	{
+		last_brush = brushes->next;
+		brush_DestroyBrush(brushes);
+		brushes = last_brush;
+	}
+
+	brush_count = 0;
+}
+
+
+
 void brush_InitializeBrush(brush_t *brush, mat3_t *orientation, vec3_t position, vec3_t scale, int type, int vertice_count, int polygon_count)
 {
 	if(brush && vertice_count > 0 && polygon_count > 0)
@@ -419,37 +603,9 @@ void brush_FinalizeBrush(brush_t *brush, int transform_base_vertices)
 
 	if(brush)
 	{
-
-		//brush_BuildBatches(brush);
-
-		//brush->handle = gpu_AllocAlign(sizeof(vertex_t) * brush->max_vertexes, sizeof(vertex_t));
-		//brush->handle = gpu_AllocVerticesAlign(sizeof(compact_vertex_t ) * brush->max_vertexes, sizeof(compact_vertex_t));
-		//brush->start = gpu_GetAllocStart(brush->handle) / sizeof(compact_vertex_t);
-
 		bsp_TriangulatePolygonsIndexes(brush->base_polygons, &indexes, &index_count);
 		model_CalculateTangentsIndexes(brush->base_polygons_vertices, indexes, index_count);
 		memory_Free(indexes);
-
-
-		//brush->handle = gpu_AllocVerticesAlign(sizeof(struct c_vertex_t ) * brush->max_vertexes, sizeof(struct c_vertex_t ));
-		//brush->start = gpu_GetAllocStart(brush->handle) / sizeof(struct c_vertex_t );
-
-		//brush->handle = gpu_AllocVerticesAlign(sizeof(struct compact_vertex_t ) * brush->max_vertexes, sizeof(struct compact_vertex_t ));
-		//brush->start = gpu_GetAllocStart(brush->handle) / sizeof(struct compact_vertex_t );
-
-		//brush->index_handle = gpu_AllocIndexesAlign(sizeof(int) * brush->max_vertexes, sizeof(int));
-		//brush->index_start = gpu_GetAllocStart(brush->index_handle) / sizeof(int);
-
-
-        //if(brush->handle.alloc_index )
-
-
-
-		//glGenBuffers(1, &brush->element_buffer);
-		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, brush->element_buffer);
-		//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * brush->max_vertexes, NULL, GL_DYNAMIC_DRAW);
-		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
 
 		if(transform_base_vertices)
 		{
@@ -717,239 +873,6 @@ void brush_DecBrushMaterialsRefCount(brush_t *brush)
 	}
 }
 
-
-
-brush_t *brush_CopyBrush(brush_t *src)
-{
-
-	//printf("start of brush_CreateBrush\n");
-
-	brush_t *brush = NULL;
-	int brush_index = 0;
-	int i = 0;
-	int c = 0;
-	int default_group = 0;
-	float *vertex_positions = NULL;
-	float *vertex_normals = NULL;
-	int vertex_count = 0;
-	int triangle_count = 0;
-	int index_count = 0;
-	int alloc_handle = -1;
-	int polygon_count = 0;
-	int material = -1;
-	int *b = NULL;
-	int *indexes = NULL;
-	vertex_t *polygon_vertices = NULL;
-
-	bsp_polygon_t *polygons = NULL;
-	bsp_polygon_t *polygon = NULL;
-
-	vec3_t p;
-	vec3_t v;
-
-
-	R_DBG_PUSH_FUNCTION_NAME();
-
-
-	brush = brush_CreateEmptyBrush();
-
-	brush->type = src->type;
-	brush->position = src->position;
-	brush->scale = src->scale;
-	brush->orientation = src->orientation;
-	brush->bm_flags = src->bm_flags | BRUSH_CLIP_POLYGONS;
-
-	/*if(src->bm_flags & BRUSH_SUBTRACTIVE)
-	{
-		brush->bm_flags |= BRUSH_SUBTRACTIVE;
-	}*/
-
-	/*switch(type)
-	{
-		case BRUSH_CUBE:
-		case BRUSH_CYLINDER:*/
-
-	brush_AllocBaseVertices(brush, src->base_polygons_vert_count, NULL);
-	brush_AllocBasePolygons(brush, src->base_polygons_count);
-
-
-	for(i = 0; i < src->base_polygons_vert_count; i++)
-	{
-		brush->base_polygons_vertices[i] = src->base_polygons_vertices[i];
-	}
-
-	for(i = 0; i < src->base_polygons_count; i++)
-	{
-		brush_AddPolygonToBrush(brush, NULL, src->base_polygons[i].normal, src->base_polygons[i].tiling, src->base_polygons[i].vert_count, src->base_polygons[i].material_index);
-	}
-
-
-			/*for(i = 0; i < 24; i++)
-			{
-				brush->base_polygons_vertices[i].position = cube_bmodel_verts[i];
-				brush->base_polygons_vertices[i].normal = cube_bmodel_normals[i >> 2];
-				brush->base_polygons_vertices[i].tex_coord = cube_bmodel_tex_coords[i];
-			}
-
-			for(i = 0; i < 6; i++)
-			{
-				brush_AddPolygonToBrush(brush, NULL, cube_bmodel_normals[i], 4, -1);
-			}*/
-
-
-
-
-	brush_LinkPolygonsToVertices(brush);
-	bsp_TriangulatePolygonsIndexes(brush->base_polygons, &indexes, &index_count);
-	model_CalculateTangentsIndexes(brush->base_polygons_vertices, indexes, index_count);
-	memory_Free(indexes);
-		//break;
-
-
-	//}
-
-	brush_FinalizeBrush(brush, 0);
-
-	R_DBG_POP_FUNCTION_NAME();
-
-	return brush;
-}
-
-void brush_DestroyBrush(brush_t *brush)
-{
-	bsp_polygon_t *polygon;
-	bsp_polygon_t *next;
-	bsp_edge_t *edge;
-	bsp_edge_t *next_edge;
-	brush_t *other;
-	intersection_record_t *intersection_record;
-	intersection_record_t *next_intersection_record;
-	int brush_index;
-
-	if(brush->type == BRUSH_INVALID)
-		return;
-
-
-	R_DBG_PUSH_FUNCTION_NAME();
-
-	//SDL_LockMutex(brush_delete_mutex);
-
-	SDL_LockMutex(brush->brush_mutex);
-
-	if(brush->type != BRUSH_BOUNDS)
-	{
-		bsp_DeleteSolidBsp(brush->brush_bsp, 0);
-
-		//if(brush->triangle_groups)
-		if(brush->batches)
-		{
-			brush_DecBrushMaterialsRefCount(brush);
-		}
-
-		memory_Free(brush->base_polygons_vertices);
-		memory_Free(brush->batches);
-		memory_Free(brush->base_polygons);
-		memory_Free(brush->clipped_polygons_indexes);
-
-		edge = brush->edges;
-
-		while(edge)
-		{
-			next_edge = edge->next;
-			memory_Free(edge);
-			edge = next_edge;
-		}
-
-		gpu_Free(brush->handle);
-//		glDeleteBuffers(1, &brush->element_buffer);
-	}
-
-	intersection_record = brush->intersection_records;
-
-	while(intersection_record)
-	{
-		next_intersection_record = intersection_record->next;
-		brush_RemoveIntersectionRecord(intersection_record->intersecting_brush, brush, 1);
-		intersection_record = next_intersection_record;
-	}
-
-
-
-	/*if(brush == last_updated_brush)
-	{
-		last_updated_brush = brush->next;
-		check_intersection = 1;
-	}
-
-	if(brush == last_updated_against)
-	{
-		last_updated_against = brush->next;
-		check_intersection = 1;
-	}*/
-
-	last_updated_brush = NULL;
-	last_updated_against = NULL;
-	check_intersection = 1;
-
-	if(brush == brushes)
-	{
-		brushes = brushes->next;
-		if(brushes)
-		{
-			brushes->prev = NULL;
-		}
-	}
-	else
-	{
-		brush->prev->next = brush->next;
-
-		if(brush->next)
-		{
-			brush->next->prev = brush->prev;
-		}
-		else
-		{
-			last_brush = last_brush->prev;
-		}
-	}
-
-	SDL_UnlockMutex(brush->brush_mutex);
-
-	brush_count--;
-
-	SDL_DestroyMutex(brush->brush_mutex);
-
-	memory_Free(brush);
-
-	//SDL_UnlockMutex(brush_delete_mutex);
-
-	R_DBG_POP_FUNCTION_NAME();
-
-	//brush_index = brush - brushes;
-
-	//free_position_stack_top++;
-
-	//free_position_stack[free_position_stack_top] = brush_index;
-}
-
-void brush_DestroyBrushIndex(int brush_index)
-{
-	//brush_DestroyBrush(&brushes[brush_index]);
-}
-
-void brush_DestroyAllBrushes()
-{
-	int i;
-
-	while(brushes)
-	{
-		last_brush = brushes->next;
-		brush_DestroyBrush(brushes);
-		brushes = last_brush;
-	}
-
-	brush_count = 0;
-}
 
 
 void brush_CreateCylinder(int base_vertexes, int *vert_count, float **vertices, float **normals)
@@ -1240,15 +1163,15 @@ void brush_UploadBrushVertices(brush_t *brush)
 	R_DBG_PUSH_FUNCTION_NAME();
 
 
-	if(brush->clipped_polygons_vert_count > gpu_GetAllocSize(brush->handle) / sizeof(struct compact_vertex_t))
+	if(brush->clipped_polygons_vert_count > renderer_GetAllocSize(brush->handle) / sizeof(struct compact_vertex_t))
 	{
-		if(gpu_IsAllocValid(brush->handle))
+		if(renderer_IsAllocValid(brush->handle))
 		{
-			gpu_Free(brush->handle);
+			renderer_Free(brush->handle);
 		}
 
-		brush->handle = gpu_AllocVerticesAlign(sizeof(struct compact_vertex_t) * brush->clipped_polygons_vert_count, sizeof(struct compact_vertex_t));
-		brush->start = gpu_GetAllocStart(brush->handle) / sizeof(struct compact_vertex_t);
+		brush->handle = renderer_AllocVerticesAlign(sizeof(struct compact_vertex_t) * brush->clipped_polygons_vert_count, sizeof(struct compact_vertex_t));
+		brush->start = renderer_GetAllocStart(brush->handle) / sizeof(struct compact_vertex_t);
 	}
 
 
@@ -1273,7 +1196,7 @@ void brush_UploadBrushVertices(brush_t *brush)
 	//gpu_Write(brush->handle, 0, brush->clipped_polygons_vertices, sizeof(vertex_t) * brush->clipped_polygons_vert_count);
 	//gpu_Write(brush->handle, 0, compact_vertices, sizeof(struct c_vertex_t ) * brush->clipped_polygons_vert_count);
 
-	gpu_Write(brush->handle, 0, compact_vertices, sizeof(struct compact_vertex_t ) * brush->clipped_polygons_vert_count);
+	renderer_Write(brush->handle, 0, compact_vertices, sizeof(struct compact_vertex_t ) * brush->clipped_polygons_vert_count);
 
 	memory_Free(compact_vertices);
 	memory_Free(vertices);
@@ -1305,21 +1228,21 @@ void brush_UploadBrushIndexes(brush_t *brush)
 
 
 
-	if(brush->clipped_polygons_index_count > gpu_GetAllocSize(brush->index_handle) / sizeof(int))
+	if(brush->clipped_polygons_index_count > renderer_GetAllocSize(brush->index_handle) / sizeof(int))
 	{
-		if(gpu_IsAllocValid(brush->index_handle))
+		if(renderer_IsAllocValid(brush->index_handle))
 		{
-			gpu_Free(brush->index_handle);
+			renderer_Free(brush->index_handle);
 		}
 
-		brush->index_handle = gpu_AllocIndexesAlign(sizeof(int) * brush->clipped_polygons_index_count, sizeof(int));
-		brush->index_start = gpu_GetAllocStart(brush->index_handle) / sizeof(int);
+		brush->index_handle = renderer_AllocIndexesAlign(sizeof(int) * brush->clipped_polygons_index_count, sizeof(int));
+		brush->index_start = renderer_GetAllocStart(brush->index_handle) / sizeof(int);
 	}
 
 
 
 
-	b = (int *)gpu_MapAlloc(brush->index_handle, GL_WRITE_ONLY) + brush->index_start;
+	b = (int *)renderer_MapAlloc(brush->index_handle, GL_WRITE_ONLY) + brush->index_start;
 
 	first_index = 0;
 	c = brush->batch_count;
@@ -1350,7 +1273,7 @@ void brush_UploadBrushIndexes(brush_t *brush)
 		first_index += k;
 	}
 
-	gpu_UnmapAlloc(brush->index_handle);
+	renderer_UnmapAlloc(brush->index_handle);
 
 	R_DBG_POP_FUNCTION_NAME();
 	//glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
@@ -1607,6 +1530,8 @@ bsp_polygon_t *brush_BuildPolygonListFromBrushes()
 	bsp_polygon_t *last_polygon = NULL;
 
 	brush = brushes;
+
+	brush_ClipBrushes(0, 1);
 
 	while(brush)
 	{
@@ -1953,14 +1878,23 @@ void brush_SetAllInvisible()
 
 
 
+void brush_UpdateBrushes()
+{
+    brush_GenTexCoords();
+    brush_ClipBrushes(1, 0);
+    brush_UploadBrushes();
+}
 
 
-void brush_ClipBrushes()
+void brush_ClipBrushes(int subtractive_only, int force_reupdate)
 {
 	int i;
 	int j;
 	int k;
 	int c;
+
+	unsigned long long start;
+	unsigned long long end;
 
 	int first_clip;
 	bsp_polygon_t *polygon;
@@ -1974,16 +1908,31 @@ void brush_ClipBrushes()
 	//#define INTESECTION_CHECK_COUNT 6
 	//#define CLIP_COUNT 4
 
-	brush = brushes;
+
+
+	//start = __rdtsc();
+
+	if(force_reupdate)
+    {
+        brush = brushes;
+
+        while(brush)
+        {
+            brush->bm_flags |= BRUSH_MOVED | BRUSH_CLIP_POLYGONS;
+            brush = brush->next;
+        }
+    }
+
+    brush = brushes;
 
 	while(brush)
 	{
 		//SDL_LockMutex(brush->brush_mutex);
 
-		if(!process_brushes)
+		/*if(!process_brushes)
 		{
 			return;
-		}
+		}*/
 
 		brush2 = brushes;
 
@@ -1994,10 +1943,10 @@ void brush_ClipBrushes()
 			while(brush2)
 			{
 
-				if(!process_brushes)
+				/*if(!process_brushes)
 				{
 					return;
-				}
+				}*/
 
 				if(brush2 == brush)
 				{
@@ -2033,10 +1982,10 @@ void brush_ClipBrushes()
 			while(brush2)
 			{
 
-				if(!process_brushes)
+				/*if(!process_brushes)
 				{
 					return;
-				}
+				}*/
 
 				if(brush2 == brush)
 				{
@@ -2083,25 +2032,32 @@ void brush_ClipBrushes()
 		brush = brush->next;
 	}
 
+	//end = __rdtsc();
+
+	//printf("check intersection: %llu\n", end - start);
+
 	brush = brushes;
+
+
+	//start = __rdtsc();
 
 	while(brush)
 	{
 
-		SDL_LockMutex(brush->brush_mutex);
+		//SDL_LockMutex(brush->brush_mutex);
 
-		if(!process_brushes)
+		/*if(!process_brushes)
 		{
 			SDL_UnlockMutex(brush->brush_mutex);
 			return;
-		}
+		}*/
 
 
 
 		if(!(brush->bm_flags & BRUSH_CLIP_POLYGONS))
 		{
 
-			SDL_UnlockMutex(brush->brush_mutex);
+			//SDL_UnlockMutex(brush->brush_mutex);
 
 			/* this brush didn't touch any other brush this check, so
 			skip it... */
@@ -2126,52 +2082,52 @@ void brush_ClipBrushes()
 
 		while(record)
 		{
+
 			brush2 = record->intersecting_brush;
 
-			if(!process_brushes)
+			/*if(!process_brushes)
 			{
 				SDL_UnlockMutex(brush->brush_mutex);
 				return;
-			}
+			}*/
 
-			//SDL_LockMutex(brush2->brush_mutex);
-
-			//brush2->bm_flags |= BRUSH_CLIP_POLYGONS;
-
-			if(first_clip)
-			{
-				if(brush->bm_flags & BRUSH_HAS_PREV_CLIPS)
-				{
-					/* this brush was touching another brush last time
-					we checked, which means its clipped polygons are
-					not an alias from its base polygons, and so we
-					need to get rid of them here to avoid leaks... */
-					bsp_DeletePolygonsContiguous(brush->clipped_polygons);
-				}
+			if((brush2->bm_flags & BRUSH_SUBTRACTIVE) || (!subtractive_only))
+            {
+                if(first_clip)
+                {
+                    if(brush->bm_flags & BRUSH_HAS_PREV_CLIPS)
+                    {
+                        /* this brush was touching another brush last time
+                        we checked, which means its clipped polygons are
+                        not an alias from its base polygons, and so we
+                        need to get rid of them here to avoid leaks... */
+                        bsp_DeletePolygonsContiguous(brush->clipped_polygons);
+                    }
 
 
-				/* we're going to clip those polygons, so aliasing them is not enough... */
-				brush->clipped_polygons = bsp_DeepCopyPolygonsContiguous(brush->base_polygons);
-			}
+                    /* we're going to clip those polygons, so aliasing them is not enough... */
+                    brush->clipped_polygons = bsp_DeepCopyPolygonsContiguous(brush->base_polygons);
+                }
 
-			if(brush2->bm_flags & BRUSH_SUBTRACTIVE)
-			{
-				brush->clipped_polygons = bsp_ClipContiguousPolygonsToBsp(CSG_OP_SUBTRACTION, brush2->brush_bsp, brush->brush_bsp, brush->clipped_polygons, brush2->base_polygons, 0);
-			}
-			else
-			{
-				brush->clipped_polygons = bsp_ClipContiguousPolygonsToBsp(CSG_OP_UNION, brush2->brush_bsp, NULL, brush->clipped_polygons, NULL, 0);
-			}
+                if(brush2->bm_flags & BRUSH_SUBTRACTIVE)
+                {
+                    brush->clipped_polygons = bsp_ClipContiguousPolygonsToBsp(CSG_OP_SUBTRACTION, brush2->brush_bsp, brush->brush_bsp, brush->clipped_polygons, brush2->base_polygons, 0);
+                }
+                else
+                {
+                    brush->clipped_polygons = bsp_ClipContiguousPolygonsToBsp(CSG_OP_UNION, brush2->brush_bsp, NULL, brush->clipped_polygons, NULL, 0);
+                }
 
-			first_clip = 0;
+                first_clip = 0;
 
-			//SDL_UnlockMutex(brush2->brush_mutex);
+                //SDL_UnlockMutex(brush2->brush_mutex);
 
-			/* this brush is inside another brush... */
-			if(!brush->clipped_polygons)
-			{
-				break;
-			}
+                /* this brush is inside another brush... */
+                if(!brush->clipped_polygons)
+                {
+                    break;
+                }
+            }
 
 			record = record->next;
 		}
@@ -2248,17 +2204,17 @@ void brush_ClipBrushes()
 		}
 
 
-		if(brush->update_count > 0)
+		/*if(brush->update_count > 0)
 		{
 			brush->update_count--;
-		}
+		}*/
 
-		if(!brush->update_count)
+		//if(!brush->update_count)
 		{
 			brush->bm_flags &= ~(BRUSH_MOVED | BRUSH_CLIP_POLYGONS);
 		}
 
-		SDL_UnlockMutex(brush->brush_mutex);
+		//SDL_UnlockMutex(brush->brush_mutex);
 
 		brush = brush->next;
 
@@ -2271,6 +2227,11 @@ void brush_ClipBrushes()
 			//}
 	}
 
+
+	//end = __rdtsc();
+
+	//printf("clip: %llu\n", end - start);
+
 	//	last_updated_brush = brush;
 
 
@@ -2281,7 +2242,7 @@ void brush_ClipBrushes()
 	//}
 }
 
-void brush_UpdateTexCoords()
+void brush_GenTexCoords()
 {
     brush_t *brush;
 
@@ -2321,7 +2282,6 @@ void brush_UpdateTexCoords()
 	{
 
 		//SDL_LockMutex(brush->brush_mutex);
-
 		if(brush->bm_flags & BRUSH_USE_WORLD_SPACE_TEX_COORDS)
 		{
 			if(brush->bm_flags & BRUSH_MOVED)
@@ -2518,8 +2478,10 @@ void brush_UploadBrushes()
 }
 
 
+#if 0
 int brush_ProcessBrushesAsync(void *data)
 {
+    #if 0
 	static int r = 0;
 	//SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
 	while(process_brushes)
@@ -2529,16 +2491,17 @@ int brush_ProcessBrushesAsync(void *data)
 
 		if(process_brushes > 1)
 		{
-
 			bsp_LockBrushPolygons();
-
 			brush_UpdateTexCoords();
 			brush_ClipBrushes();
-
 			bsp_UnlockBrushPolygons();
 		}
 	}
+
+	#endif
 }
+
+#endif
 
 int brush_CheckBrushIntersection(brush_t *a, brush_t *b)
 {

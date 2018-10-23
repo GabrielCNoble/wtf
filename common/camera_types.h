@@ -2,11 +2,11 @@
 #define CAMERA_TYPES_H
 
 //#include "scenegraph.h"
-#include "matrix_types.h"
-#include "vector_types.h"
-#include "frustum_types.h"
-#include "bsp.h"
-#include "r_common.h"
+#include "gmath/matrix_types.h"
+#include "gmath/vector_types.h"
+#include "gmath/frustum_types.h"
+//#include "bsp.h"
+//#include "r_common.h"
 //#include "framebuffer.h"
 
 #define CLUSTERS_PER_ROW 32

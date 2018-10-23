@@ -1,6 +1,6 @@
 /*
 	This file exists to allow for quick addition
-	and name changes of every global variable used 
+	and name changes of every global variable used
 	by the editor. MAIN_EDITOR_FILE should
 	NOT be defined anywhere or the vars won't
 	have external linkage, which won't allow them
@@ -12,8 +12,8 @@
 #ifdef MAIN_EDITOR_FILE
 	#define EDITOR_GLOBAL(x) x
 #else
-	#define EDITOR_GLOBAL(x) extern x	
-#endif							 
+	#define EDITOR_GLOBAL(x) extern x
+#endif
 
 /* shaders... */
 EDITOR_GLOBAL(int ed_brush_pick_shader);
@@ -44,9 +44,6 @@ EDITOR_GLOBAL(float ed_3d_rotation_handle_angles_lut[ROTATION_HANDLE_DIVS][2]);
 //EDITOR_GLOBAL(unsigned int ed_pick_depth_texture_id);
 
 EDITOR_GLOBAL(struct framebuffer_t ed_pick_framebuffer);
-
-EDITOR_GLOBAL(unsigned int ed_cursors_framebuffer_id);
-EDITOR_GLOBAL(unsigned int ed_cursors_color_texture_id);
-EDITOR_GLOBAL(unsigned int ed_cursors_depth_texture_id);
+EDITOR_GLOBAL(struct framebuffer_t ed_cursors_framebuffer);
 
 

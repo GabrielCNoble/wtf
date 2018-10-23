@@ -3,6 +3,11 @@
 
 #include "shader.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 
 void renderer_SetShader(int shader_index);
 
@@ -65,6 +70,16 @@ struct shader_t *renderer_GetActiveShaderPointer();
 
 void renderer_SetCurrentVertexFormat(int format);
 
+
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

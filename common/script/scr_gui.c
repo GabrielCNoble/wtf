@@ -7,6 +7,11 @@
 extern int r_window_width;
 extern int r_window_height;
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 
 void gui_ScriptTextWall(struct script_string_t *text, float alpha)
 {
@@ -47,3 +52,7 @@ void gui_ScriptTextWall(struct script_string_t *text, float alpha)
     gui_ImGuiPopStyleColor();
     gui_ImGuiPopFont();
 }
+
+#ifdef __cplusplus
+}
+#endif

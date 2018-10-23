@@ -73,6 +73,13 @@ typedef struct pvs_for_leaf_stack_t
 }pvs_for_leaf_stack_t;
 
 
+
+
+void bsp_GenVisSamples(struct bsp_node_t *bsp);
+
+
+
+
 int bsp_ClassifyPortalVertex(struct bsp_pnode_t *node, vec3_t point);
 
 int bsp_ClassifyPortal(struct bsp_pnode_t *node, bsp_portal_t *portal);

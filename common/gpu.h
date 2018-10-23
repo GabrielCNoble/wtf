@@ -1,6 +1,8 @@
 #ifndef GPU_H
 #define GPU_H
 
+#if 0
+
 typedef struct
 {
 	int size;
@@ -120,8 +122,12 @@ void gpu_BindGpuHeap();
 void gpu_UnbindGpuHeap();
 
 
+
+
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 
 

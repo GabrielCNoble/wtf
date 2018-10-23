@@ -115,7 +115,7 @@ void gui_ImGuiAddFontFromFileTTF(const char *file_name, float size_pixels)
 		font_texture = (unsigned int )io.Fonts->TexID;
 
 		glDeleteTextures(1, &font_texture);
-		font_texture = renderer_GenGLTexture(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
+		font_texture = renderer_GenGLTexture(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0, 1);
 
 		io.Fonts->GetTexDataAsRGBA32(&font_tex_pixels, &font_tex_width, &font_tex_height);
 
@@ -229,6 +229,11 @@ void gui_ImGuiSetNextWindowPos(vec2_t pos, int cond, vec2_t pivot)
 void gui_ImGuiSetNextWindowSize(vec2_t size, int cond)
 {
 	ImGui::SetNextWindowSize(ImVec2(size.x, size.y), cond);
+}
+
+void gui_ImGuiSetNextWindowFocus()
+{
+    ImGui::SetNextWindowFocus();
 }
 
 void gui_ImGuiSetNextWindowBgAlpha(float alpha)

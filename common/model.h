@@ -2,10 +2,11 @@
 #define MODEL_H
 
 #include "r_common.h"
-#include "vector.h"
+#include "r_verts.h"
+#include "gmath/vector.h"
 //#include "w_common.h"
 
-#include "gpu.h"
+//#include "gpu.h"
 
 #include <stdint.h>
 #include <limits.h>

@@ -34,10 +34,11 @@
 			<Add directory="../common/containers" />
 			<Add directory="../common/script" />
 			<Add directory="../common/script/script_types" />
-			<Add directory='&quot;level editor&quot;' />
-			<Add directory='&quot;entity editor&quot;' />
-			<Add directory='&quot;material editor&quot;' />
 			<Add directory="../common/vorbis/include" />
+			<Add directory="../common/ozz/include" />
+			<Add directory='&quot;material editor&quot;' />
+			<Add directory='&quot;entity editor&quot;' />
+			<Add directory='&quot;level editor&quot;' />
 		</Compiler>
 		<Linker>
 			<Add option="-m32" />
@@ -57,6 +58,10 @@
 			<Add library="vorbisfile" />
 			<Add library="vorbis" />
 			<Add library="ogg" />
+			<Add library="ozz_base" />
+			<Add library="ozz_animation" />
+			<Add library="ozz_geometry" />
+			<Add library="ozz_options" />
 			<Add directory="../common/SDL/lib/mingw" />
 			<Add directory="../common/OPENAL/Win32" />
 			<Add directory="../common/GLEW/lib" />
@@ -69,6 +74,7 @@
 			<Add directory="../common/ozz/animation/runtime" />
 			<Add directory="../common/ozz/animation/offline" />
 			<Add directory="../common/vorbis/lib" />
+			<Add directory="../common/ozz/lib" />
 		</Linker>
 		<Unit filename="../common/animation.c">
 			<Option compilerVar="CPP" />
@@ -131,6 +137,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/ent_common.h" />
+		<Unit filename="../common/ent_script.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/ent_script.h" />
 		<Unit filename="../common/ent_serialization.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -373,15 +383,19 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/r_shader.h" />
+		<Unit filename="../common/r_verts.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_verts.h" />
+		<Unit filename="../common/r_vis.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_vis.h" />
 		<Unit filename="../common/resource.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/resource.h" />
 		<Unit filename="../common/script/scr_common.h" />
-		<Unit filename="../common/script/scr_entity.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/script/scr_entity.h" />
 		<Unit filename="../common/script/scr_gui.c">
 			<Option compilerVar="CC" />
 		</Unit>

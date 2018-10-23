@@ -5,6 +5,8 @@
 #include "scr_array.h"
 #include "scr_string.h"
 
+#include "angelscript.h"
+
 
 #ifdef __cplusplus
 extern "C"
@@ -65,6 +67,10 @@ void script_ExecuteScriptImediate(struct script_t *script, void *data);
 
 void script_RegisterGlobalFunction(char *decl, void *function);
 
+void script_RegisterObjectType(char *decl, int size, int flags);
+
+void script_RegisterObjectProperty(char *type, char *decl, int offset);
+
 void script_RegisterEnum(char *type);
 
 void script_RegisterEnumValue(char *type, char *name, int value);
@@ -91,7 +97,7 @@ int script_GetTypeSize(void *type_info);
 
 int script_GetContextStackTop();
 
-void script_SetCurrentInvocationData(void *data, int size);
+void script_SetCurrentContextData(void *data, int size);
 
 void *script_GetCurrentContextDataPointer();
 

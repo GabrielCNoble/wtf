@@ -26,15 +26,15 @@ struct shader_conditional
 {
 	int type;
 	char *value;
-	
+
 	int start;
 	int end;
-	
+
 	struct shader_conditional *nestled;
 	struct shader_conditional *last_nestled;
-	
+
 	struct shader_conditional *parent;
-	
+
 	struct shader_conditional *next;
 };
 
@@ -79,7 +79,7 @@ void shader_DeleteConditional(char **text, int *cursor, struct shader_conditiona
 ===================================================
 */
 
-int shader_Include(char **text, int cursor);
+int shader_Include(char **text, int *cursor);
 
 int shader_Define(char **text, int *cursor);
 

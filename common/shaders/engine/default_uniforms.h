@@ -7,7 +7,8 @@
 
 #ifdef MASSACRE_FRAGMENT_SHADER
 
-	#define LIGHT_UNIFORM_BUFFER_SIZE 32
+	#define R_LIGHT_UNIFORM_BUFFER_SIZE 32
+	#define R_BSP_UNIFORM_BUFFER_SIZE 512
 
 	#define SHADOW_MAP_RESOLUTION 512
 	#define SHARED_SHADOW_MAP_HEIGHT 8192
@@ -39,7 +40,7 @@
 	#define MATERIAL_TRANSLUCENT (1<<9)
 
 
-	struct light_params_fields
+	struct gpu_light_t
 	{
 		vec4 forward_axis;
 		vec4 position_radius;
@@ -49,25 +50,28 @@
 		float proj_param_b;
 		int shadow_map;
 	};
-	
-	struct bsp_node_t
-	{
-		vec4 normal_dist;
-		unsigned int children[2];
-		int align0;
-		int aling1;
-	};
 
 
-	layout(std140) uniform light_params_uniform_block
+    struct gpu_bsp_node_t
+    {
+        vec4 normal_dist;
+        unsigned int children[2];
+        int node_count;
+        int align1;
+    };
+
+
+	layout(std140) uniform r_lights_uniform_block
 	{
-		light_params_fields light_params[LIGHT_UNIFORM_BUFFER_SIZE];
+		gpu_light_t r_lights[R_LIGHT_UNIFORM_BUFFER_SIZE];
 	};
-	
-	layout(std140) uniform world_bsp_uniform
+
+	layout(std140) uniform r_bsp_uniform_block
 	{
-		bsp_node_t world_bsp[1024];
+        gpu_bsp_node_t r_bsp[R_BSP_UNIFORM_BUFFER_SIZE];
 	};
+
+	uniform int UNIFORM_r_bsp_node_count;
 
 	uniform sampler2D UNIFORM_texture_sampler0;
 	uniform sampler2D UNIFORM_texture_sampler1;

@@ -5,6 +5,7 @@
 
 #include "shd_pprc.h"
 #include "c_memory.h"
+#include "log.h"
 #include "path.h"
 
 
@@ -42,7 +43,7 @@ void shader_Preprocess(char **text)
 				   text_str[text_cursor + 8] == ' ')
 				{
 					//text_cursor += 7;
-					shader_Include(&text_str, text_cursor);
+					shader_Include(&text_str, &text_cursor);
 					break;
 				}
 				else if(text_str[text_cursor + 1] == 'd' &&
@@ -686,7 +687,7 @@ void shader_DeleteConditional(char **text, int *cursor, struct shader_conditiona
 */
 
 
-int shader_Include(char **text, int cursor)
+int shader_Include(char **text, int *cursor)
 {
 	int old_text_include_end;
 	int old_text_include_start;
@@ -706,7 +707,7 @@ int shader_Include(char **text, int cursor)
 	FILE *file = NULL;
 
 	old_text = *text;
-	old_text_include_end = cursor;
+	old_text_include_end = *cursor;
 
 	/* skip the whole #define directive... */
 	while(old_text[old_text_include_end] != ' ' &&
@@ -749,9 +750,11 @@ int shader_Include(char **text, int cursor)
 		{
 			file_path = path_GetPathToFile(file_name);
 
-			if(!file_name)
+			if(!file_path)
 			{
-				printf("shader_Include: couldn't find file %s!\n", file_name);
+				//printf("shader_Include: couldn't find file %s!\n", file_name);
+				log_LogMessage(LOG_MESSAGE_ERROR, 1, "shader_Include: couldn't file file [%s]", file_name);
+				*cursor = old_text_include_end;
 				return 0;
 			}
 
@@ -783,7 +786,7 @@ int shader_Include(char **text, int cursor)
 
 		*cursor = old_text_include_start;*/
 
-		old_text_include_start = cursor;
+		old_text_include_start = *cursor;
 
 		/* copy everything before the directive... */
 		for(k = 0; k < old_text_include_start; k++)

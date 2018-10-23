@@ -1,8 +1,9 @@
 #ifndef R_COMMON_H
 #define R_COMMON_H
 
-#include "vector.h"
-#include "matrix.h"
+#include "gmath/vector.h"
+#include "gmath/matrix.h"
+#include "camera_types.h"
 
 
 #define RENDERER_MIN_WIDTH 800
@@ -20,7 +21,12 @@
 #define R_CLUSTER_HEIGHT 64
 
 #define R_LIGHT_UNIFORM_BUFFER_BINDING 0
-#define R_WORLD_BSP_UNIFORM_BUFFER_BINDING 2
+#define R_BSP_UNIFORM_BUFFER_BINDING 2
+
+#define R_MAX_VISIBLE_LIGHTS 32
+#define R_MAX_BSP_NODES 512
+#define R_MAX_VISIBLE_LEAVES 512
+#define R_MAX_VISIBLE_ENTITIES 4096
 
 
 enum INIT_MODE
@@ -34,6 +40,26 @@ enum WINDOW_FLAGS
 {
 	WINDOW_FULLSCREEN = 1,
 };
+
+
+
+
+enum R_CAPABILITIES
+{
+    R_CLEAR_COLOR_BUFFER,
+    R_Z_PRE_PASS,
+    R_SHADOW_PASS,
+    R_BLOOM,
+    R_TONEMAP,
+    R_FLAT,
+    R_WIREFRAME,
+    R_FULLSCREEN,
+    R_DEBUG,
+    R_VERBOSE_DEBUG,
+};
+
+
+
 
 enum RENDERER_CALLBACK_TYPE
 {
@@ -54,6 +80,14 @@ enum RENDERER_STAGE
 	RENDERER_DRAW_FRAME,
 	RENDERER_DRAW_GUI,
 	RENDERER_STAGE_COUNT
+};
+
+enum RENDERER_TYPE
+{
+    RENDERER_TYPE_FOWARD,
+    RENDERER_TYPE_DEFERRED,
+    RENDERER_TYPE_CLUSTERED_FORWARD,
+    RENDERER_TYPE_CLUSTERED_DEFERRED,
 };
 
 enum RENDERER_TEXTURES
@@ -127,7 +161,16 @@ struct batch_t
 	int material_index;
 };
 
-#define FRAMEBUFFER_MAX_COLOR_ATTACHMENTS 3
+
+struct cluster_t
+{
+	unsigned int light_indexes_bm;
+	/*unsigned int time_stamp;
+	int align1;
+	int align2;*/
+};
+
+#define R_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS 3
 
 
 struct framebuffer_attachment_t
@@ -142,16 +185,16 @@ struct framebuffer_attachment_t
 struct framebuffer_t
 {
 	unsigned int framebuffer_id;
-	//unsigned int color_attachments[FRAMEBUFFER_MAX_COLOR_ATTACHMENTS];
 
 	struct
 	{
 		int handle;
 		int format;
 		int internal_format;
+		int samples;
 		int type;
 
-	}color_attachments[FRAMEBUFFER_MAX_COLOR_ATTACHMENTS];
+	}color_attachments[R_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS];
 
 	unsigned int depth_attachment;
 	unsigned int stencil_attachment;
@@ -168,6 +211,34 @@ typedef struct
 {
 
 }tex_unit_t;
+
+
+typedef camera_t view_def_t;
+
+
+
+
+struct gpu_light_t
+{
+	vec4_t forward_axis;
+	vec4_t position_radius;
+	vec4_t color_energy;
+	int bm_flags;
+	float proj_param_a;
+	float proj_param_b;
+	int shadow_map;
+};
+
+struct gpu_bsp_node_t
+{
+	vec4_t normal_dist;
+	unsigned int children[2];
+	int node_count;
+	int align1;
+};
+
+
+
 
 #endif
 

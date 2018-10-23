@@ -15,7 +15,7 @@ int spawn_timer = 0;
 int fire_timer = 10;
 int gun = 0;
 
-void main()
+void OnUpdate()
 {
 	component_handle_t camera_transform;
 	entity_handle_t camera_entity;

@@ -7,14 +7,17 @@
 #include "r_debug.h"
 #include "r_imediate.h"
 #include "r_gl.h"
+#include "r_vis.h"
 #include "r_text.h"
+#include "r_verts.h"
+//#include "r_draw.h"
 
 #include "stack_list.h"
 
 //#include "..\editor\level editor\ed_level_draw.h"
 
 #include "camera.h"
-#include "player.h"
+//#include "player.h"
 #include "log.h"
 #include "shader.h"
 //#include "physics.h"
@@ -24,12 +27,12 @@
 #include "entity.h"
 #include "texture.h"
 #include "l_main.h"
-#include "l_cache.h"
+//#include "l_cache.h"
 //#include "brush.h"
 //#include "editor.h"
 #include "gui.h"
 #include "bsp.h"
-#include "log.h"
+//#include "log.h"
 #include "c_memory.h"
 #include "portal.h"
 #include "particle.h"
@@ -49,19 +52,21 @@ SDL_GLContext context;
 
 //int r_active_shader = -1;
 
-unsigned int r_gbuffer_id = 0;
-unsigned int r_gbuffer_color = 0;
-unsigned int r_gbuffer_normal = 0;
-unsigned int r_gbuffer_depth = 0;
+//unsigned int r_gbuffer_id = 0;
+//unsigned int r_gbuffer_color = 0;
+//unsigned int r_gbuffer_normal = 0;
+//unsigned int r_gbuffer_depth = 0;
 
 
 struct framebuffer_t r_cbuffer;
 struct framebuffer_t r_bbuffer;
+struct framebuffer_t r_sbuffer;
 
-unsigned int r_pbuffer_id = 0;
-unsigned int r_pbuffer_color = 0;
-unsigned int r_pbuffer_depth = 0;
+//unsigned int r_pbuffer_id = 0;
+//unsigned int r_pbuffer_color = 0;
+//unsigned int r_pbuffer_depth = 0;
 
+unsigned int r_default_vao;
 
 
 int r_z_pre_pass_shader;
@@ -69,6 +74,7 @@ int r_forward_pass_shader;
 int r_forward_pass_no_shadow_shader;
 int r_particle_forward_pass_shader;
 int r_flat_pass_shader;
+int r_wireframe_pass_shader;
 int r_geometry_pass_shader;
 int r_shade_pass_shader;
 int r_stencil_lights_pass_shader;
@@ -90,17 +96,17 @@ vec3_t r_clear_color = {0.0, 0.0, 0.0};
 
 /* from world.c */
 //extern unsigned int world_element_buffer;
-extern int w_world_index_handle;
-extern int *w_index_buffer;
+//extern int w_world_index_handle;
+//extern int *w_index_buffer;
 extern int w_world_batch_count;
 extern struct batch_t *w_world_batches;
-extern int w_world_start;
+//extern int w_world_start;
 extern int w_world_index_start;
-extern int w_world_vertices_count;
-extern int w_world_leaves_count;
-extern struct bsp_dleaf_t *w_world_leaves;
-extern int w_visible_lights_count;
-extern unsigned short w_visible_lights[];
+//extern int w_world_vertices_count;
+//extern int w_world_leaves_count;
+//extern struct bsp_dleaf_t *w_world_leaves;
+//extern int w_visible_lights_count;
+//extern unsigned short w_visible_lights[];
 
 
 
@@ -123,31 +129,34 @@ extern material_t *mat_materials;
 extern struct stack_list_t tex_textures;
 
 /* from shader.c */
-extern struct shader_t *shaders;
+//extern struct shader_t *shaders;
 
 
 
 
 /* from gui.c */
-extern widget_t *widgets;
-extern widget_t *last_widget;
-extern widget_t *top_widget;
-extern mat4_t gui_projection_matrix;
+//extern widget_t *widgets;
+//extern widget_t *last_widget;
+//extern widget_t *top_widget;
+//extern mat4_t gui_projection_matrix;
 
 
-#include "l_globals.h"
+//#include "l_globals.h"
 
+//extern int l_light_list_cursor;
+//extern light_params_t *l_light_params;
+//extern light_position_t *l_light_positions;
 
 
 
 /* from player.c */
-extern player_count;
-extern player_t *players;
-extern player_t *active_player;
+//extern player_count;
+//extern player_t *players;
+//extern player_t *active_player;
 
 
-extern int ptl_portal_list_cursor;
-extern portal_t *ptl_portals;
+//extern int ptl_portal_list_cursor;
+//extern portal_t *ptl_portals;
 
 
 
@@ -163,6 +172,8 @@ static void (*renderer_PreShadingRegisteredFunction[MAX_RENDER_FUNCTIONS])(void)
 static void (*renderer_PostShadingRegisteredFunction[MAX_RENDER_FUNCTIONS])(void);
 static void (*renderer_WindowResizeCallback[MAX_RENDER_FUNCTIONS])(void);
 static void (*renderer_RendererResolutionChangeCallback[MAX_RENDER_FUNCTIONS])(void);
+//void (*renderer_DrawWorld)() = NULL;
+//void (*renderer_DrawOpaque)() = NULL;
 
 unsigned int r_frame = 0;
 
@@ -190,27 +201,27 @@ static draw_command_t *r_translucent_draw_cmds = NULL;*/
 
 
 
-unsigned int r_bloom_fbs[3];
-unsigned int r_bloom_texs[2][3];
-int r_bloom_radius[3] = {2.0, 4.0, 8.0};
+//unsigned int r_bloom_fbs[3];
+//unsigned int r_bloom_texs[2][3];
+//int r_bloom_radius[3] = {2.0, 4.0, 8.0};
 
 
 
 
-unsigned int r_intensity_id = 0;
-unsigned int r_intensity_color = 0;
+//unsigned int r_intensity_id = 0;
+//unsigned int r_intensity_color = 0;
 
-unsigned int r_intensity_half_id = 0;
-unsigned int r_intensity_half_horizontal_color = 0;
-unsigned int r_intensity_half_vertical_color = 0;
+//unsigned int r_intensity_half_id = 0;
+//unsigned int r_intensity_half_horizontal_color = 0;
+//unsigned int r_intensity_half_vertical_color = 0;
 
-unsigned int r_intensity_quarter_id = 0;
-unsigned int r_intensity_quarter_horizontal_color = 0;
-unsigned int r_intensity_quarter_vertical_color = 0;
+//unsigned int r_intensity_quarter_id = 0;
+//unsigned int r_intensity_quarter_horizontal_color = 0;
+//unsigned int r_intensity_quarter_vertical_color = 0;
 
-unsigned int r_intensity_eight_id = 0;
-unsigned int r_intensity_eight_horizontal_color = 0;
-unsigned int r_intensity_eight_vertical_color = 0;
+//unsigned int r_intensity_eight_id = 0;
+//unsigned int r_intensity_eight_horizontal_color = 0;
+//unsigned int r_intensity_eight_vertical_color = 0;
 
 
 int r_width = 0;
@@ -218,6 +229,12 @@ int r_height = 0;
 int r_window_width = 0;
 int r_window_height = 0;
 int r_window_flags = 0;
+
+int r_clusters_per_row = 0;
+int r_cluster_rows = 0;
+int r_cluster_layers = 0;
+struct cluster_t *r_clusters = NULL;
+unsigned int r_cluster_texture;
 
 int r_msaa_samples = 1;
 int r_msaa_supported = 1;
@@ -228,20 +245,16 @@ int r_query_stages = 0;
 int r_bloom = 1;
 int r_tonemap = 1;
 int r_draw_gui = 1;
+int r_clear_colorbuffer = 1;
 
-int r_deferred = 0;
+//int r_deferred = 0;
 
 int r_flat = 0;
-int r_wireframe = 1;
-
+int r_wireframe = 0;
 int r_debug = 1;
-int r_debug_verbose = 0;
-int r_debug_draw_portal_outlines = 1;
-int r_debug_draw_views = 1;
-int r_debug_draw_waypoints = 1;
-int r_debug_draw_colliders = 1;
-int r_debug_draw_entities = 1;
-int r_debug_draw_triggers = 1;
+
+
+
 
 int r_max_portal_recursion_level = 3;
 
@@ -256,30 +269,27 @@ mat4_t r_view_projection_matrix;
 mat4_t r_model_view_matrix;
 mat4_t r_model_view_projection_matrix;
 
-camera_t *r_active_view = NULL;
-camera_t *r_main_view = NULL;
+view_def_t *r_active_view = NULL;
+//camera_t *r_main_view = NULL;
 
 
 unsigned int r_cluster_texture = 0;
 unsigned int r_light_uniform_buffer = 0;
-unsigned int r_world_bsp_uniform_buffer = 0;
+unsigned int r_bsp_uniform_buffer = 0;
 struct gpu_light_t *r_light_buffer = NULL;
 struct gpu_bsp_node_t *r_bsp_buffer = NULL;
+int r_bsp_node_count = 0;
 
 
-extern camera_t *active_camera;
-extern camera_t *main_view;
+//extern camera_t *active_camera;
+//extern camera_t *main_view;
 
-int r_draw_calls = 0;
-int r_material_swaps = 0;
-int r_shader_swaps = 0;
-int r_shader_uniform_updates = 0;
-unsigned long r_frame_vert_count = 0;
+unsigned int r_draw_calls = 0;
+unsigned int r_material_swaps = 0;
+unsigned int r_shader_swaps = 0;
+unsigned int r_shader_uniform_updates = 0;
+unsigned int r_frame_vert_count = 0;
 
-int r_clusters_per_row = 0;
-int r_cluster_rows = 0;
-int r_cluster_layers = 0;
-cluster_t *r_clusters = NULL;
 
 unsigned int r_shadow_map_framebuffer = 0;
 unsigned int r_shadow_map_array = 0;
@@ -290,8 +300,26 @@ unsigned int r_force_shadow_map_update = 0;
 int r_frame_clamping = 0;
 
 
+unsigned int r_visible_lights_count = 0;
+unsigned int r_visible_lights[W_MAX_WORLD_LIGHTS];
+
+struct list_t r_visible_entities;
+
+//unsigned int r_visible_entities_count = 0;
+//struct entity_handle_t r_visible_entities[R_MAX_VISIBLE_ENTITIES];
+
+unsigned int r_visible_leaves_count = 0;
+struct bsp_dleaf_t **r_visible_leaves;
 
 
+
+view_def_t r_default_view;
+
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 
 int renderer_Init(int width, int height, int init_mode)
@@ -333,11 +361,16 @@ int renderer_Init(int width, int height, int init_mode)
 	//r_active_shader = -1;
 
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+	//SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+	//SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+	//SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+	//SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+	//SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG | SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 1);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG | SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+    //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 1);
 
 	window = SDL_CreateWindow("wtf editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, r_width, r_height, r_window_flags);
 	context = SDL_GL_CreateContext(window);
@@ -361,7 +394,28 @@ int renderer_Init(int width, int height, int init_mode)
 	log_LogMessage(LOG_MESSAGE_NONE, 0, "Window resolution: %d x %d", r_width, r_height);
 
 
+    /*glGenVertexArrays(1, &r_default_vao);
+    glBindVertexArray(r_default_vao);*/
+
+
     renderer_CheckFunctionPointers();
+
+    renderer_SetActiveView(NULL);
+
+    r_default_view.bm_flags = 0;
+    r_default_view.fov_y = 0.68;
+    r_default_view.world_orientation = mat3_t_id();
+    r_default_view.world_position = vec3_t_c(0.0, 0.0, 0.0);
+    r_default_view.zoom = 1.0;
+    r_default_view.x_shift = 0.0;
+    r_default_view.y_shift = 0.0;
+
+    r_default_view.width = r_window_width;
+    r_default_view.height = r_window_height;
+
+    CreatePerspectiveMatrix(&r_default_view.view_data.projection_matrix, r_default_view.fov_y, (float)r_default_view.width / (float)r_default_view.height, 0.1, 500.0, 0.0, 0.0, &r_default_view.frustum);
+    renderer_ComputeActiveViewMatrix();
+
 
 
 	glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -373,8 +427,6 @@ int renderer_Init(int width, int height, int init_mode)
 	//glDepthFunc(GL_LESS);
 	glStencilMask(0xff);
 
-
-
 	log_LogMessage(LOG_MESSAGE_NONE, 0, "GLSL version: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
 	log_LogMessage(LOG_MESSAGE_NONE, 0, "OpenGL version: %s", glGetString(GL_VERSION));
 	log_LogMessage(LOG_MESSAGE_NONE, 0, "Vendor: %s", glGetString(GL_VENDOR));
@@ -385,28 +437,32 @@ int renderer_Init(int width, int height, int init_mode)
 	r_cbuffer.framebuffer_id = 0;
 	r_bbuffer.framebuffer_id = 0;
 
+	//renderer_SetRenderer(RENDERER_TYPE_CLUSTERED_FORWARD);
+
 	renderer_SetRendererResolution(r_width, r_height, 1);
 
 
-
+    /* uniform buffer accessed by the clustered forward pass... */
 	glGenBuffers(1, &r_light_uniform_buffer);
 	glBindBuffer(GL_UNIFORM_BUFFER, r_light_uniform_buffer);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS, NULL, GL_DYNAMIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_light_t) * R_MAX_VISIBLE_LIGHTS, NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 
-	glGenBuffers(1, &r_world_bsp_uniform_buffer);
-	glBindBuffer(GL_UNIFORM_BUFFER, r_world_bsp_uniform_buffer);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_bsp_node_t) * W_MAX_BSP_NODES, NULL, GL_DYNAMIC_DRAW);
+    /* uniform buffer accessed during hybrid ray-traced shadows and reflections... */
+	glGenBuffers(1, &r_bsp_uniform_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, r_bsp_uniform_buffer);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_bsp_node_t) * R_MAX_BSP_NODES, NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-	r_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS);
-	r_bsp_buffer = memory_Malloc(sizeof(struct gpu_bsp_node_t) * W_MAX_BSP_NODES);
+
+	r_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * R_MAX_VISIBLE_LIGHTS);
+	r_bsp_buffer = memory_Malloc(sizeof(struct gpu_bsp_node_t) * R_MAX_BSP_NODES);
 
 
 
 
-
+    r_visible_entities = list_create(sizeof(struct entity_handle_t), 512, NULL);
 
 
 	//r_draw_groups = malloc(sizeof(draw_group_t) * MAX_MATERIALS);
@@ -438,17 +494,20 @@ int renderer_Init(int width, int height, int init_mode)
 
 	glGenQueries(1, &query_object);
 
+    renderer_InitVerts();
 	renderer_InitImediateDrawing();
 	renderer_InitDebug();
-	renderer_VerboseDebugOutput(0);
 
+	renderer_Enable(R_DEBUG);
+	renderer_Enable(R_VERBOSE_DEBUG);
 
-	renderer_SetShadowMapResolution(512);
+	//renderer_VerboseDebugOutput(1);
+
+	//renderer_SetShadowMapResolution(512);
 
 	//renderer_Debug(1, 1);
 
 	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
-
 	return 1;
 }
 
@@ -468,6 +527,7 @@ void renderer_Finish()
 
 	renderer_FinishDebug();
 	renderer_FinishImediateDrawing();
+	renderer_FinishVerts();
 	//memory_Free(r_translucent_draw_cmds);
 	//memory_Free(r_translucent_draw_groups);
 
@@ -479,7 +539,7 @@ void renderer_Finish()
 
 
 
-void renderer_SetDiffuseTexture(int texture_index)
+void renderer_BindDiffuseTexture(int texture_index)
 {
 	unsigned int gl_handle;
 
@@ -500,7 +560,7 @@ void renderer_SetDiffuseTexture(int texture_index)
 	//renderer_SetUniform1i(UNIFORM_texture_sampler0, 0);
 }
 
-void renderer_SetNormalTexture(int texture_index)
+void renderer_BindNormalTexture(int texture_index)
 {
 	unsigned int gl_handle;
 
@@ -520,7 +580,7 @@ void renderer_SetNormalTexture(int texture_index)
 	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler1, 1);
 }
 
-void renderer_SetShadowTexture()
+void renderer_BindShadowTexture()
 {
 	//glActiveTexture(GL_TEXTURE2);
 	//glBindTexture(GL_TEXTURE_2D, l_shared_shadow_map);
@@ -529,7 +589,7 @@ void renderer_SetShadowTexture()
 	renderer_BindTextureTexUnit(GL_TEXTURE5, GL_TEXTURE_CUBE_MAP_ARRAY, r_shadow_map_array);
 }
 
-void renderer_SetClusterTexture()
+void renderer_BindClusterTexture()
 {
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_3D, r_cluster_texture);
@@ -547,7 +607,9 @@ sets a texture by it's ENGINE HANDLE...
 
 ======================
 */
-void renderer_SetTexture(int texture_unit, int texture_target, int texture_index)
+
+
+void renderer_BindTexture(int texture_unit, int texture_target, int texture_index)
 {
 	int gl_texture;
 
@@ -562,16 +624,15 @@ void renderer_SetTexture(int texture_unit, int texture_target, int texture_index
 
 	texture = (struct texture_t *)tex_textures.elements + texture_index;
 
-	if(texture->bm_flags & TEXTURE_INVALID)
+	/*if(texture->bm_flags & TEXTURE_INVALID)
 	{
 		texture_index = -1;
-	}
+	}*/
 
 	gl_texture = texture->gl_handle;
 	glActiveTexture(texture_unit);
 	glBindTexture(texture_target, gl_texture);
 }
-
 
 
 
@@ -590,12 +651,6 @@ void renderer_BindTextureTexUnit(int texture_unit, int texture_target, int textu
 }
 
 
-int renderer_BindTexture(int texture_target, int texture)
-{
-	/*glActiveTexture(texture_unit);
-	glBindTexture(texture_target, texture);*/
-}
-
 void renderer_SetClearColor(float r, float g, float b)
 {
 	r_clear_color.r = r;
@@ -606,8 +661,12 @@ void renderer_SetClearColor(float r, float g, float b)
 void renderer_SetUniformBuffers()
 {
 	R_DBG_PUSH_FUNCTION_NAME();
+	//int cpu_timer = renderer_StartCpuTimer("renderer_SetUniformBuffers");
+    //int gpu_timer = renderer_StartGpuTimer("renderer_SetUniformBuffers");
 	glBindBufferBase(GL_UNIFORM_BUFFER, R_LIGHT_UNIFORM_BUFFER_BINDING, r_light_uniform_buffer);
-	glBindBufferBase(GL_UNIFORM_BUFFER, R_WORLD_BSP_UNIFORM_BUFFER_BINDING, r_world_bsp_uniform_buffer);
+	glBindBufferBase(GL_UNIFORM_BUFFER, R_BSP_UNIFORM_BUFFER_BINDING, r_bsp_uniform_buffer);
+	//renderer_StopTimer(cpu_timer);
+	//renderer_StopTimer(gpu_timer);
 	R_DBG_POP_FUNCTION_NAME();
 }
 
@@ -827,13 +886,13 @@ void renderer_SetMaterial(int material_index)
 
 		if(material->diffuse_texture != -1)
 		{
-			renderer_SetDiffuseTexture(material->diffuse_texture);
+			renderer_BindDiffuseTexture(material->diffuse_texture);
 			texture_flags |= MATERIAL_USE_DIFFUSE_TEXTURE;
 		}
 
 		if(material->normal_texture != -1)
 		{
-			renderer_SetNormalTexture(material->normal_texture);
+			renderer_BindNormalTexture(material->normal_texture);
 			texture_flags |= MATERIAL_USE_NORMAL_TEXTURE;
 
 			texture = (struct texture_t *)tex_textures.elements + material->normal_texture;
@@ -856,6 +915,11 @@ void renderer_SetMaterial(int material_index)
 
 		r_material_swaps++;
 	}
+}
+
+void renderer_SetMaterialColor(vec4_t color)
+{
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color.floats);
 }
 
 
@@ -1163,8 +1227,9 @@ void renderer_SetRendererResolution(int width, int height, int samples)
 	if(!r_cbuffer.framebuffer_id)
 	{
 		r_cbuffer = renderer_CreateFramebuffer(r_width, r_height);
-		renderer_AddAttachment(&r_cbuffer, GL_COLOR_ATTACHMENT0, GL_RGBA16F);
-		renderer_AddAttachment(&r_cbuffer, GL_DEPTH_ATTACHMENT, 0);
+		renderer_AddAttachment(&r_cbuffer, GL_COLOR_ATTACHMENT0, GL_RGBA16F, 1, GL_LINEAR);
+		renderer_AddAttachment(&r_cbuffer, GL_COLOR_ATTACHMENT1, GL_RGBA8, 1, GL_LINEAR);
+		renderer_AddAttachment(&r_cbuffer, GL_DEPTH_STENCIL_ATTACHMENT, 0, 1, GL_NEAREST);
 	}
 	else
 	{
@@ -1174,8 +1239,9 @@ void renderer_SetRendererResolution(int width, int height, int samples)
 	if(!r_bbuffer.framebuffer_id)
 	{
 		r_bbuffer = renderer_CreateFramebuffer(r_width, r_height);
-		renderer_AddAttachment(&r_bbuffer, GL_COLOR_ATTACHMENT0, GL_RGBA8);
-		renderer_AddAttachment(&r_bbuffer, GL_DEPTH_ATTACHMENT, 0);
+		renderer_AddAttachment(&r_bbuffer, GL_COLOR_ATTACHMENT0, GL_RGBA8, 1, GL_LINEAR);
+		renderer_ShareAttachment(&r_cbuffer, &r_bbuffer, GL_DEPTH_ATTACHMENT);
+		//renderer_AddAttachment(&r_bbuffer, GL_DEPTH_ATTACHMENT, 0, 1);
 	}
 	else
 	{
@@ -1204,7 +1270,7 @@ void renderer_SetRendererResolution(int width, int height, int samples)
 			memory_Free(r_clusters);
 		}
 
-		r_clusters = memory_Calloc(r_clusters_per_row * r_cluster_rows * r_cluster_layers, sizeof(cluster_t));
+		r_clusters = memory_Calloc(r_clusters_per_row * r_cluster_rows * r_cluster_layers, sizeof(struct cluster_t));
 
 		if(r_cluster_texture)
 		{
@@ -1226,484 +1292,6 @@ void renderer_SetRendererResolution(int width, int height, int samples)
 }
 
 
-
-
-
-void renderer_UpdateGeometryBuffer()
-{
-
-	/*int r_gbuffer_color_setup_status;
-	int r_gbuffer_normal_setup_status;
-	int r_gbuffer_depth_setup_status;
-
-
-	int r_gbuffer_color_attach_status;
-	int r_gbuffer_normal_attach_status;
-	int r_gbuffer_depth_attach_status;
-	int r_gbuffer_stencil_attach_status;
-
-	if(!r_gbuffer_id)
-	{
-		glGenFramebuffers(1, &r_gbuffer_id);
-		glGenTextures(1, &r_gbuffer_color);
-		glGenTextures(1, &r_gbuffer_normal);
-		glGenTextures(1, &r_gbuffer_depth);
-	}
-
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_gbuffer_id);
-
-
-	while(glGetError() != GL_NO_ERROR);
-	glBindTexture(GL_TEXTURE_2D, r_gbuffer_color);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, r_width, r_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-	r_gbuffer_color_setup_status = glGetError();
-
-
-	while(glGetError() != GL_NO_ERROR);
-	glBindTexture(GL_TEXTURE_2D, r_gbuffer_normal);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, r_width, r_height, 0, GL_RGBA, GL_FLOAT, NULL);
-	r_gbuffer_normal_setup_status = glGetError();
-
-
-	while(glGetError() != GL_NO_ERROR);
-	glBindTexture(GL_TEXTURE_2D, r_gbuffer_depth);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, r_width, r_height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-	r_gbuffer_depth_setup_status = glGetError();
-
-
-	while(glGetError() != GL_NO_ERROR);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r_gbuffer_color, 0);
-	r_gbuffer_color_attach_status = glGetError();
-
-	while(glGetError() != GL_NO_ERROR);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, r_gbuffer_normal, 0);
-	r_gbuffer_normal_attach_status = glGetError();
-
-	while(glGetError() != GL_NO_ERROR);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, r_gbuffer_depth, 0);
-	r_gbuffer_depth_attach_status = glGetError();
-
-	while(glGetError() != GL_NO_ERROR);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, r_gbuffer_depth, 0);
-	r_gbuffer_stencil_attach_status = glGetError();
-
-
-	if(r_gbuffer_color_setup_status != GL_NO_ERROR)
-	{
-		printf("renderer_GeometryBuffer: r_gbuffer_color setup failed: %x\n", r_gbuffer_color_setup_status);
-	}
-
-	if(r_gbuffer_normal_setup_status != GL_NO_ERROR)
-	{
-		printf("renderer_GeometryBuffer: r_gbuffer_normal setup failed: %x\n", r_gbuffer_normal_setup_status);
-	}
-
-	if(r_gbuffer_depth_setup_status != GL_NO_ERROR)
-	{
-		printf("renderer_GeometryBuffer: r_gbuffer_depth setup failed: %x\n", r_gbuffer_depth_setup_status);
-	}
-
-
-
-
-	if(r_gbuffer_color_attach_status != GL_NO_ERROR)
-	{
-		printf("renderer_GeometryBuffer: r_gbuffer_color attachment to framebuffer failed: %x\n", r_gbuffer_color_attach_status);
-	}
-
-	if(r_gbuffer_normal_attach_status != GL_NO_ERROR)
-	{
-		printf("renderer_GeometryBuffer: r_gbuffer_normal attachment to framebuffer failed: %x\n", r_gbuffer_normal_attach_status);
-	}
-
-	if(r_gbuffer_depth_attach_status != GL_NO_ERROR)
-	{
-		printf("renderer_GeometryBuffer: r_gbuffer_depth depth component attachment to framebuffer failed: %x\n", r_gbuffer_depth_attach_status);
-	}
-
-	if(r_gbuffer_stencil_attach_status != GL_NO_ERROR)
-	{
-		printf("renderer_GeometryBuffer: r_gbuffer_depth stencil component attachment to framebuffer failed: %x\n", r_gbuffer_stencil_attach_status);
-	}
-
-
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);*/
-}
-
-
-
-
-void renderer_UpdateColorbuffer()
-{
-	int target;
-	int error;
-
-	int i;
-	int j;
-
-	if(!r_cbuffer.framebuffer_id)
-	{
-		//r_cbuffer = renderer_CreateFramebuffer(r_width, r_height);
-		//renderer_AddAttachment(&r_cbuffer, GL_COLOR_ATTACHMENT0, GL_RGBA16F);
-		//renderer_AddAttachment(&r_cbuffer, GL_DEPTH_ATTACHMENT, 0);
-
-		//glGenFramebuffers(1, &r_cbuffer_id);
-		//glGenFramebuffers(1, &r_bbuffer_id);
-
-		/*glGenFramebuffers(1, &r_intensity_half_id);
-		glGenFramebuffers(1, &r_intensity_quarter_id);
-		glGenFramebuffers(1, &r_intensity_eight_id);*/
-
-		/*glGenFramebuffers(1, &r_intensity_id);
-
-		for(i = 0; i < 3; i++)
-		{
-			glGenFramebuffers(1, &r_bloom_fbs[i]);
-		}
-
-		glGenTextures(1, &r_intensity_color);
-		glBindTexture(GL_TEXTURE_2D, r_intensity_color);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-
-		for(j = 0; j < 2; j++)
-		{
-			for(i = 0; i < 3; i++)
-			{
-				glGenTextures(1, &r_bloom_texs[j][i]);
-				glBindTexture(GL_TEXTURE_2D, r_bloom_texs[j][i]);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-			}
-		}*/
-
-
-
-
-
-	/*	glGenTextures(1, &r_cbuffer_color);
-		glBindTexture(GL_TEXTURE_2D, r_cbuffer_color);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-
-
-		glGenTextures(1, &r_cbuffer_depth);
-		glBindTexture(GL_TEXTURE_2D, r_cbuffer_depth);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);*/
-
-
-
-
-
-
-		//glGenTextures(1, &r_bbuffer_color);
-		//glBindTexture(GL_TEXTURE_2D, r_bbuffer_color);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-
-		//glGenTextures(1, &r_bbuffer_depth);
-		//glBindTexture(GL_TEXTURE_2D, r_bbuffer_depth);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-
-
-
-		/*glGenTextures(1, &r_intensity_half_horizontal_color);
-		glGenTextures(1, &r_intensity_half_vertical_color);
-		glGenTextures(1, &r_intensity_quarter_horizontal_color);
-		glGenTextures(1, &r_intensity_quarter_vertical_color);
-		glGenTextures(1, &r_intensity_eight_horizontal_color);
-		glGenTextures(1, &r_intensity_eight_vertical_color);*/
-	}
-	else
-	{
-	//	renderer_ResizeFramebuffer(&r_cbuffer, r_width, r_height);
-	//	renderer_ResizeFra
-	}
-
-
-	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_cbuffer_id);
-	//glBindTexture(GL_TEXTURE_2D, r_cbuffer_color);
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, r_width, r_height, 0, GL_RGBA, GL_FLOAT, NULL);
-	//glBindTexture(GL_TEXTURE_2D, r_cbuffer_depth);
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, r_width, r_height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-	//glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r_cbuffer_color, 0);
-	//glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, r_cbuffer_depth, 0);
-	//glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, r_cbuffer_depth, 0);
-
-	//if(glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-	//{
-	//	printf("renderer_UpdateColorbuffer: r_cbuffer not complete!\n");
-	//}
-
-
-//	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer_id);
-//	glBindTexture(GL_TEXTURE_2D, r_bbuffer_color);
-//	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, r_width, r_height, 0, GL_RGBA, GL_FLOAT, NULL);
-//	glBindTexture(GL_TEXTURE_2D, r_bbuffer_depth);
-//	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, r_width, r_height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-//	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r_bbuffer_color, 0);
-//	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, r_bbuffer_depth, 0);
-//	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, r_bbuffer_depth, 0);
-
-//	if(glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-//	{
-//		printf("renderer_UpdateColorbuffer: r_bbuffer not complete!\n");
-//	}
-
-
-
-/*	glBindTexture(GL_TEXTURE_2D, r_intensity_color);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, r_width, r_height, 0, GL_RGBA, GL_FLOAT, NULL);
-
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_intensity_id);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r_intensity_color, 0);
-
-	for(i = 0; i < 3; i++)
-	{
-		for(j = 0; j < 2; j++)
-		{
-			glBindTexture(GL_TEXTURE_2D, r_bloom_texs[j][i]);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, r_width >> (1 + i), r_height >> (1 + i), 0, GL_RGBA, GL_FLOAT, NULL);
-		}
-
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bloom_fbs[i]);
-		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r_bloom_texs[0][i], 0);
-		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, r_bloom_texs[1][i], 0);
-
-	}
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);*/
-}
-
-
-
-void renderer_UpdatePortalbuffer()
-{
-	int target;
-	int error;
-	if(!r_pbuffer_id)
-	{
-		glGenFramebuffers(1, &r_pbuffer_id);
-
-		glGenTextures(1, &r_pbuffer_color);
-		glBindTexture(GL_TEXTURE_2D, r_pbuffer_color);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-
-		glGenTextures(1, &r_pbuffer_depth);
-		glBindTexture(GL_TEXTURE_2D, r_pbuffer_depth);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-
-	}
-
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_pbuffer_id);
-
-	glBindTexture(GL_TEXTURE_2D, r_pbuffer_color);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, r_width, r_height, 0, GL_RGBA, GL_FLOAT, NULL);
-	glBindTexture(GL_TEXTURE_2D, r_pbuffer_depth);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, r_width, r_height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r_pbuffer_color, 0);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, r_pbuffer_depth, 0);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, r_pbuffer_depth, 0);
-
-	if(glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-	{
-		printf("renderer_UpdateColorbuffer: r_pbuffer not complete!\n");
-	}
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-}
-
-
-
-void renderer_BindGeometryBuffer(int clear, int read)
-{
-	int color_attachments[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-
-
-	if(read)
-	{
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, r_gbuffer_id);
-		glReadBuffer(GL_COLOR_ATTACHMENT0);
-	}
-	else
-	{
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_gbuffer_id);
-		glDrawBuffers(2, color_attachments);
-	}
-
-	glViewport(0, 0, r_width, r_height);
-
-	if(clear)
-	{
-		glClearColor(0.0, 0.0, 0.0, 0.0);
-		glClearDepth(1.0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	}
-
-
-}
-
-
-
-
-void renderer_BindColorbuffer(int clear, int read)
-{
-	/*glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_cbuffer_id);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);*/
-
-	if(read)
-	{
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, r_cbuffer.framebuffer_id);
-		glReadBuffer(GL_COLOR_ATTACHMENT0);
-	}
-	else
-	{
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_cbuffer.framebuffer_id);
-		glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	}
-
-	/*if(r_msaa_samples > 1)
-	{
-		glEnable(GL_MULTISAMPLE);
-	}
-	else
-	{
-		glDisable(GL_MULTISAMPLE);
-	}*/
-	//glDisable(GL_MULTISAMPLE);
-	glViewport(0, 0, r_width, r_height);
-
-	if(clear)
-	{
-		glClearColor(r_clear_color.r, r_clear_color.g, r_clear_color.b, 0.0);
-		glClearDepth(1.0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	}
-
-
-}
-
-void renderer_BindBackbuffer(int clear, int read)
-{
-
-	if(read)
-	{
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, r_bbuffer.framebuffer_id);
-		glReadBuffer(GL_COLOR_ATTACHMENT0);
-	}
-	else
-	{
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer.framebuffer_id);
-		glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	}
-
-	glViewport(0, 0, r_width, r_height);
-
-
-	if(clear)
-	{
-		glClearColor(0.0, 0.0, 0.0, 0.0);
-		glClearDepth(1.0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	}
-}
-
-void renderer_BindWindowBuffer(int clear, int read)
-{
-	if(read)
-	{
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-		glReadBuffer(GL_BACK);
-	}
-	else
-	{
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-		glDrawBuffer(GL_BACK);
-	}
-
-	glViewport(0, 0, r_window_width, r_window_height);
-
-
-	if(clear)
-	{
-		glClearColor(0.0, 0.0, 0.0, 0.0);
-		glClearDepth(1.0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	}
-}
-
-
-
 int renderer_GetFullscreen()
 {
     return (r_window_flags & SDL_WINDOW_FULLSCREEN_DESKTOP) && 1;
@@ -1715,15 +1303,16 @@ void renderer_Fullscreen(int enable)
 	int w;
 	int h;
 	SDL_DisplayMode display_mode;
+	SDL_Rect display_bounds;
 
 	if(enable)
 	{
 		if(r_window_flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
 			return;
 
-		SDL_GetDisplayMode(0, 0, &display_mode);
-		r_window_width = display_mode.w;
-		r_window_height = display_mode.h;
+		SDL_GetDisplayBounds(0, &display_bounds);
+		r_window_width = display_bounds.w;
+		r_window_height = display_bounds.h;
 		r_window_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 		//SDL_SetWindowSize(window, r_window_width, r_window_height);
 		//SDL_SetWindowFullscreen(window, r_window_flags);
@@ -1772,7 +1361,7 @@ void renderer_Multisample(int enable)
 		r_msaa_samples = 4;
 	}
 
-	renderer_UpdateColorbuffer();
+//	renderer_UpdateColorbuffer();
 }
 
 void renderer_ToggleMultisample()
@@ -1786,7 +1375,7 @@ void renderer_ToggleMultisample()
 		renderer_Multisample(1);
 	}
 }
-
+/*
 void renderer_DeferredRenderer(int enable)
 {
 	if(enable)
@@ -1797,7 +1386,7 @@ void renderer_DeferredRenderer(int enable)
 	{
 		r_deferred = 0;
 	}
-}
+}*/
 
 void renderer_Fullbright(int enable)
 {
@@ -1817,7 +1406,7 @@ void renderer_SetShadowMapResolution(int resolution)
 int i;
 
 	int shadow_map_index;
-
+/*
 	if(resolution != r_shadow_map_resolution)
 	{
 
@@ -1856,7 +1445,7 @@ int i;
 
 			//glBindFramebuffer(GL_READ_FRAMEBUFFER, r_shadow_map_framebuffer);
 		}
-	}
+	}*/
 }
 
 int renderer_GetShadowMapResolution()
@@ -1886,6 +1475,17 @@ int renderer_GetFrameRateClamping()
 {
 	return r_frame_clamping;
 }
+/*
+void renderer_SetRenderer(int renderer)
+{
+    switch(renderer)
+    {
+        case RENDERER_TYPE_CLUSTERED_FORWARD:
+            renderer_DrawWorld = renderer_DrawWorldClustererdForward;
+            renderer_DrawOpaque = renderer_DrawOpaqueClusteredForward;
+        break;
+    }
+}*/
 
 
 
@@ -1926,20 +1526,82 @@ void renderer_ClearRegisteredCallbacks()
 ====================================================================
 */
 
-void renderer_SetActiveView(camera_t *view)
+void renderer_SetActiveView(view_def_t *view)
 {
-	r_active_view = view;
-	active_camera = view;
 
-	renderer_SetProjectionMatrix(&view->view_data.projection_matrix);
-	renderer_SetViewMatrix(&view->view_data.view_matrix);
+    if(!view)
+    {
+        r_active_view = &r_default_view;
+    }
+    else
+    {
+        r_active_view = view;
+    }
+
+	renderer_SetProjectionMatrix(&r_active_view->view_data.projection_matrix);
+	renderer_SetViewMatrix(&r_active_view->view_data.view_matrix);
 }
 
+view_def_t *renderer_GetActiveView()
+{
+    return r_active_view;
+}
+
+view_def_t *renderer_GetView(char *name)
+{
+    return (view_def_t *)camera_GetCamera(name);
+}
+
+void renderer_ComputeViewMatrix(view_def_t *view)
+{
+
+	view->view_data.view_matrix.floats[0][0] = view->world_orientation.floats[0][0];
+	view->view_data.view_matrix.floats[1][0] = view->world_orientation.floats[0][1];
+	view->view_data.view_matrix.floats[2][0] = view->world_orientation.floats[0][2];
+
+	view->view_data.view_matrix.floats[3][0] =  (-view->world_position.floats[0]) * view->view_data.view_matrix.floats[0][0]	+
+										  		(-view->world_position.floats[1]) * view->view_data.view_matrix.floats[1][0]	+
+										  		(-view->world_position.floats[2]) * view->view_data.view_matrix.floats[2][0];
+
+
+
+	view->view_data.view_matrix.floats[0][1] = view->world_orientation.floats[1][0];
+	view->view_data.view_matrix.floats[1][1] = view->world_orientation.floats[1][1];
+	view->view_data.view_matrix.floats[2][1] = view->world_orientation.floats[1][2];
+
+	view->view_data.view_matrix.floats[3][1] =  (-view->world_position.floats[0]) * view->view_data.view_matrix.floats[0][1]	+
+										  		(-view->world_position.floats[1]) * view->view_data.view_matrix.floats[1][1]	+
+										  		(-view->world_position.floats[2]) * view->view_data.view_matrix.floats[2][1];
+
+
+
+
+	view->view_data.view_matrix.floats[0][2] = view->world_orientation.floats[2][0];
+	view->view_data.view_matrix.floats[1][2] = view->world_orientation.floats[2][1];
+	view->view_data.view_matrix.floats[2][2] = view->world_orientation.floats[2][2];
+
+	view->view_data.view_matrix.floats[3][2] =  (-view->world_position.floats[0]) * view->view_data.view_matrix.floats[0][2]	+
+										 		(-view->world_position.floats[1]) * view->view_data.view_matrix.floats[1][2]	+
+										  		(-view->world_position.floats[2]) * view->view_data.view_matrix.floats[2][2];
+
+
+	view->view_data.view_matrix.floats[0][3] = 0.0;
+	view->view_data.view_matrix.floats[1][3] = 0.0;
+	view->view_data.view_matrix.floats[2][3] = 0.0;
+	view->view_data.view_matrix.floats[3][3] = 1.0;
+}
+
+void renderer_ComputeActiveViewMatrix()
+{
+    renderer_ComputeViewMatrix(r_active_view);
+}
+
+/*
 void renderer_SetMainView(camera_t *view)
 {
 	r_main_view = view;
 	main_view = view;
-}
+}*/
 
 void renderer_SetupView(camera_t *view)
 {
@@ -2249,19 +1911,30 @@ void renderer_SetViewVisibleWorld(view_data_t *view_data)
 ====================================================================
 */
 
-void renderer_OpenFrame()
+void renderer_StartFrame()
 {
-	//renderer_BindBackbuffer();
-	//glClearColor(0.0, 0.0, 0.0, 1.0);
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	//renderer_UpdateDrawGroups();
+    //int cpu_timer = renderer_StartCpuTimer("renderer_StartFrame");
+    renderer_ComputeActiveViewMatrix();
+    renderer_VisibleWorld();
+    renderer_VisibleLights();
+    renderer_VisibleEntities();
 
-	r_draw_calls = 0;
-	r_material_swaps = 0;
-	r_shader_swaps = 0;
-	r_shader_uniform_updates = 0;
-	r_frame_vert_count = 0;
-	r_draw_cmds_count = 0;
+    int mask = GL_DEPTH_BUFFER_BIT;
+
+    if(r_clear_colorbuffer)
+    {
+        mask |= GL_COLOR_BUFFER_BIT;
+    }
+
+    renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, &r_cbuffer);
+    glClearColor(r_clear_color.r, r_clear_color.g, r_clear_color.b, 1.0);
+	glClear(mask);
+
+	//gpu_BindGpuHeap();
+
+	renderer_EnableVertexReads();
+
+	//renderer_StopTimer(cpu_timer);
 }
 
 void renderer_DrawFrame()
@@ -2271,47 +1944,33 @@ void renderer_DrawFrame()
 
 	float s;
 	float e;
+    int timer;
 
-
-	gpu_BindGpuHeap();
-	//light_BindCache();
-
+    renderer_StartFrame();
 	renderer_SetUniformBuffers();
-
-	if(r_draw_shadow_maps)
-	{
-		renderer_DrawShadowMaps();
-	}
-
-
-	renderer_BindColorbuffer(1, 0);
-
-	if(r_z_prepass)
-	{
-		renderer_ZPrePass();
-	}
-
-	renderer_DrawWorld();
 
 	for(i = 0; i < pre_shading_render_function_count; i++)
 	{
 		renderer_PreShadingRegisteredFunction[i]();
 	}
 
+    if(r_z_prepass)
+    {
+        renderer_ZPrePass();
+    }
 
 	renderer_SortDrawCommands();
-	renderer_DrawOpaque();
-	renderer_DrawTranslucent();
-	renderer_DrawParticles();
-	gpu_UnbindGpuHeap();
-	light_UnbindCache();
+
+    renderer_DrawWorld();
+
+    renderer_DrawParticles();
 
 	//if(r_bloom && (!r_flat))
 	//{
 	//	renderer_DrawBloom();
 	//}
 
-	if(r_tonemap && (!r_flat))
+	if(r_tonemap && (!r_flat) && (!r_wireframe))
 	{
 		renderer_Tonemap();
 	}
@@ -2331,46 +1990,31 @@ void renderer_DrawFrame()
 	}
 
 	renderer_BlitBackbuffer();
+
 	gui_DrawGUI();
+	renderer_EndFrame();
 }
 
 
 
-void renderer_CloseFrame()
+void renderer_EndFrame()
 {
-	/*#ifdef QUERY_STAGES
-	renderer_BeginTimeElapsedQuery();
-	#endif*/
+	//glDisable(GL_MULTISAMPLE);
 
-	float s;
-	float e;
-	int err;
+	//gpu_UnbindGpuHeap();
 
-	/*while((err = glGetError()) != GL_NO_ERROR)
-	{
-		printf("%x\n", err);
-	}*/
-	//s = engine_GetDeltaTime();
+	renderer_DisableVertexReads();
 
-//	printf("draw calls: %d	shader swaps: %d		material swaps: %d\n", r_draw_calls, r_shader_swaps, r_material_swaps);
-
-	glDisable(GL_MULTISAMPLE);
 	SDL_GL_SwapWindow(window);
 	r_frame++;
 
-	//printf("renderer_CloseFrame\n");
 
-	//#ifdef QUERY_STAGES
-	//renderer_EndTimeElapsedQuery(RENDERER_SWAP_BUFFERS_STAGE);
-	//renderer_ReportQueryResults();
-//	#endif
-
-
-	//e = engine_GetDeltaTime();
-
-	//printf("%f\n", e - s);
-
-
+	r_draw_calls = 0;
+	r_material_swaps = 0;
+	r_shader_swaps = 0;
+	r_shader_uniform_updates = 0;
+	r_frame_vert_count = 0;
+	r_draw_cmds_count = 0;
 }
 
 
@@ -2382,8 +2026,9 @@ void renderer_ZPrePass()
 
 	int i;
 	int c;
-	camera_t *active_camera = camera_GetActiveCamera();
-	material_t *material;
+//	camera_t *active_camera = camera_GetActiveCamera();
+    view_def_t *active_view = renderer_GetActiveView();
+	//material_t *material;
 	//mat4_t transform;
 	//mat4_t temp_transform;
 	//mat4_t camera_transform;
@@ -2415,13 +2060,16 @@ void renderer_ZPrePass()
 //	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_element_buffer);
 	//shader_UseShader(z_pre_pass_shader);
 
+	//int cpu_timer = renderer_StartCpuTimer("renderer_ZPrePass");
+	//int gpu_timer = renderer_StartGpuTimer("renderer_ZPrePass");
+
 	glDepthFunc(GL_LESS);
 
 	renderer_SetShader(r_z_pre_pass_shader);
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->position);
 
-	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
-	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+	renderer_SetProjectionMatrix(&active_view->view_data.projection_matrix);
+	renderer_SetViewMatrix(&active_view->view_data.view_matrix);
 	renderer_SetModelMatrix(NULL);
 
 	renderer_UpdateMatrices();
@@ -2438,53 +2086,50 @@ void renderer_ZPrePass()
 	}
 
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-}
 
+	//renderer_StopTimer(cpu_timer);
+	//renderer_StopTimer(gpu_timer);
+}
 
 void renderer_DrawWorld()
 {
-	camera_t *active_camera = camera_GetActiveCamera();
-	//triangle_group_t *triangle_group;
-	struct batch_t *batch;
-	int i;
-	int c;
 
-	float s;
-	float e;
+    view_def_t *active_view;
+    int i;
+    int j;
+    int c;
 
-	glDepthFunc(GL_EQUAL);
+    struct batch_t *batch;
+    int draw_cmd_count;
+    draw_command_t *draw_cmds;
+
+    int draw_count = 0;
 
 
-	glViewport(0, 0, r_width, r_height);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+    active_view = renderer_GetActiveView();
 
-	glDepthMask(GL_FALSE);
+    //int cpu_timer = renderer_StartCpuTimer("renderer_ForwardPass");
+    //int gpu_timer = renderer_StartGpuTimer("renderer_ForwardPass");
 
-	c = w_world_batch_count;
-
-	if(r_flat)
+    if(r_flat)
 	{
 		renderer_SetShader(r_flat_pass_shader);
 	}
 	else
 	{
-		if(r_draw_shadow_maps)
-		{
-			renderer_SetShader(r_forward_pass_shader);
-			renderer_SetShadowTexture();
-		}
-		else
-		{
-			renderer_SetShader(r_forward_pass_no_shadow_shader);
-		}
 
-		renderer_SetClusterTexture();
-
-
-		renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
-		renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
-		renderer_SetDefaultUniform1i(UNIFORM_r_frame, r_frame);
+	    if(r_wireframe)
+        {
+            renderer_SetShader(r_wireframe_pass_shader);
+        }
+        else
+        {
+            renderer_SetShader(r_forward_pass_shader);
+            renderer_BindClusterTexture();
+            renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
+            renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
+            renderer_SetDefaultUniform1i(UNIFORM_r_frame, r_frame);
+        }
 	}
 
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->position);
@@ -2492,92 +2137,141 @@ void renderer_DrawWorld()
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->tangent);
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->tex_coord);
 
-	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
-	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+	renderer_SetProjectionMatrix(&active_view->view_data.projection_matrix);
+	renderer_SetViewMatrix(&active_view->view_data.view_matrix);
 	renderer_SetModelMatrix(NULL);
 	renderer_UpdateMatrices();
 
-	for(i = 0; i < c; i++)
-	{
-		batch = &w_world_batches[i];
-		renderer_SetMaterial(batch->material_index);
-		renderer_DrawElements(GL_TRIANGLES, batch->next, GL_UNSIGNED_INT, (void *)((batch->start + w_world_index_start) * sizeof(int)));
-	}
 
-	glDepthMask(GL_TRUE);
-	glDepthFunc(GL_LEQUAL);
+
+    /* draw static geometry... */
+	c = w_world_batch_count;
+
+	if(r_wireframe)
+    {
+        glDepthFunc(GL_LEQUAL);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        renderer_SetMaterialColor(vec4(0.0, 0.0, 1.0, 1.0));
+
+        for(i = 0; i < c; i++)
+        {
+            batch = &w_world_batches[i];
+            renderer_DrawElements(GL_TRIANGLES, batch->next, GL_UNSIGNED_INT, (void *)((batch->start + w_world_index_start) * sizeof(int)));
+        }
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
+    else
+    {
+        glDepthFunc(GL_EQUAL);
+        //glDepthMask(GL_FALSE);
+
+        for(i = 0; i < c; i++)
+        {
+            batch = &w_world_batches[i];
+            renderer_SetMaterial(batch->material_index);
+            renderer_DrawElements(GL_TRIANGLES, batch->next, GL_UNSIGNED_INT, (void *)((batch->start + w_world_index_start) * sizeof(int)));
+        }
+
+        //glDepthMask(GL_TRUE);
+    }
+
+    glDepthFunc(GL_LESS);
+
+	if(r_wireframe)
+    {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+        renderer_SetMaterialColor(vec4(0.0, 1.0, 0.0, 1.0));
+        /* draw movable geometry... */
+        for(i = 0; i < r_draw_command_group_count; i++)
+        {
+            draw_cmd_count = r_draw_command_groups[i].draw_cmds_count;
+            draw_cmds = r_draw_command_groups[i].draw_cmds;
+
+            for(j = 0; j < draw_cmd_count; j++)
+            {
+                renderer_SetModelMatrix(draw_cmds[j].transform);
+                renderer_UpdateMatrices();
+
+                if(draw_cmds[j].flags & DRAW_COMMAND_FLAG_INDEXED_DRAW)
+                {
+                    renderer_DrawElements(draw_cmds[j].draw_mode, draw_cmds[j].count, GL_UNSIGNED_INT, (void *)(draw_cmds[j].start * sizeof(int)));
+                }
+                else
+                {
+                    renderer_DrawArrays(draw_cmds[j].draw_mode, draw_cmds[j].start, draw_cmds[j].count);
+                }
+            }
+        }
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
+    else
+    {
+        /* draw movable geometry... */
+        for(i = 0; i < r_draw_command_group_count; i++)
+        {
+            renderer_SetMaterial(r_draw_command_groups[i].material_index);
+            draw_cmd_count = r_draw_command_groups[i].draw_cmds_count;
+            draw_cmds = r_draw_command_groups[i].draw_cmds;
+
+            for(j = 0; j < draw_cmd_count; j++)
+            {
+                renderer_SetModelMatrix(draw_cmds[j].transform);
+                renderer_UpdateMatrices();
+
+                if(draw_cmds[j].flags & DRAW_COMMAND_FLAG_INDEXED_DRAW)
+                {
+                    renderer_DrawElements(draw_cmds[j].draw_mode, draw_cmds[j].count, GL_UNSIGNED_INT, (void *)(draw_cmds[j].start * sizeof(int)));
+                }
+                else
+                {
+                    renderer_DrawArrays(draw_cmds[j].draw_mode, draw_cmds[j].start, draw_cmds[j].count);
+                }
+            }
+        }
+    }
+
+
+
+	//renderer_StopTimer(cpu_timer);
+	//renderer_StopTimer(gpu_timer);
 }
 
 
 
-void renderer_DrawOpaque()
+void renderer_Tonemap()
 {
-	//camera_t *active_camera = camera_GetActiveCamera();
-	mat4_t view_projection_matrix;
-	mat4_t model_matrix;
-	int i;
-	int j;
-	int draw_cmd_count;
-	unsigned int draw_mode;
-	unsigned int vert_start;
-	unsigned int vert_count;
-	float s;
-	float e;
 
-	draw_command_t *draw_cmds;
+    //int cpu_timer = renderer_StartCpuTimer("renderer_Tonemap");
+    //int gpu_timer = renderer_StartGpuTimer("renderer_Tonemap");
 
-	if(r_flat)
-	{
-		renderer_SetShader(r_flat_pass_shader);
-	}
-	else
-	{
+	renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, &r_bbuffer);
+	//renderer_BindFramebuffer(GL_READ_FRAMEBUFFER, &r_cbuffer);
 
-		if(r_draw_shadow_maps)
-		{
-			renderer_SetShader(r_forward_pass_shader);
-			renderer_SetShadowTexture();
-		}
-		else
-		{
-			renderer_SetShader(r_forward_pass_no_shadow_shader);
-		}
+	//glClear(GL_COLOR_BUFFER_BIT);
+	//glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_width, r_height, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
-		renderer_SetClusterTexture();
-		renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
-		renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
-		renderer_SetDefaultUniform1i(UNIFORM_r_frame, r_frame);
-	}
+	renderer_SetShader(r_tonemap_shader);
+	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_cbuffer.color_attachments[0].handle);
+	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
 
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &(((struct compact_vertex_t *)0)->position));
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_NORMAL, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(struct compact_vertex_t), &(((struct compact_vertex_t *)0)->normal));
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TANGENT, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(struct compact_vertex_t), &(((struct compact_vertex_t *)0)->tangent));
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_TEX_COORDS, 2, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &(((struct compact_vertex_t *)0)->tex_coord));
+	//glEnable(GL_TEXTURE_2D);
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(GL_FALSE);
 
-	for(i = 0; i < r_draw_command_group_count; i++)
-	{
-		renderer_SetMaterial(r_draw_command_groups[i].material_index);
-		draw_cmd_count = r_draw_command_groups[i].draw_cmds_count;
-		draw_cmds = r_draw_command_groups[i].draw_cmds;
+	renderer_EnableImediateDrawing();
+	renderer_Rectf(-1.0, -1.0, 1.0, 1.0);
+	renderer_DisableImediateDrawing();
 
-		for(j = 0; j < draw_cmd_count; j++)
-		{
-			renderer_SetModelMatrix(draw_cmds[j].transform);
-			renderer_UpdateMatrices();
+	//glDisable(GL_TEXTURE_2D);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
 
-			if(draw_cmds[j].flags & DRAW_COMMAND_FLAG_INDEXED_DRAW)
-			{
-				renderer_DrawElements(draw_cmds[j].draw_mode, draw_cmds[j].count, GL_UNSIGNED_INT, (void *)(draw_cmds[j].start * sizeof(int)));
-			}
-			else
-			{
-				renderer_DrawArrays(draw_cmds[j].draw_mode, draw_cmds[j].start, draw_cmds[j].count);
-			}
-		}
-	}
-
+	//renderer_StopTimer(cpu_timer);
+	//renderer_StopTimer(gpu_timer);
 }
-
 
 void renderer_DrawTranslucent()
 {
@@ -2588,6 +2282,7 @@ void renderer_DrawTranslucent()
 
 void renderer_DrawShadowMaps()
 {
+    #if 0
 	camera_t *active_camera = camera_GetActiveCamera();
 	//triangle_group_t *triangle_group;
 	light_position_t *pos;
@@ -2692,6 +2387,8 @@ void renderer_DrawShadowMaps()
 	glCullFace(GL_BACK);
 
 	R_DBG_POP_FUNCTION_NAME();
+
+	#endif
 }
 
 
@@ -2699,19 +2396,20 @@ void renderer_DrawParticles()
 {
 	int i;
 	int c;
-	camera_t *active_camera;
+	//camera_t *active_camera;
 	struct particle_system_t *ps;
 	struct particle_system_t *particle_systems;
 
-	active_camera = camera_GetActiveCamera();
+//	active_camera = camera_GetActiveCamera();
+    view_def_t *active_view = renderer_GetActiveView();
 
 	renderer_SetShader(r_particle_forward_pass_shader);
-	renderer_SetClusterTexture();
+	renderer_BindClusterTexture();
 	renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
 	renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
 
-	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
-	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+	renderer_SetProjectionMatrix(&active_view->view_data.projection_matrix);
+	renderer_SetViewMatrix(&active_view->view_data.view_matrix);
 	renderer_SetModelMatrix(NULL);
 	renderer_UpdateMatrices();
 
@@ -2741,7 +2439,7 @@ void renderer_DrawParticles()
 		}
 
 		//renderer_SetTexture(GL_TEXTURE0, GL_TEXTURE_2D, ps->texture);
-		renderer_SetTexture(GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, ps->texture);
+		renderer_BindTexture(GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, ps->texture);
 		renderer_SetDefaultUniform4fv(UNIFORM_particle_positions, ps->particle_count, (float *)ps->particle_positions);
 		renderer_SetDefaultUniform1iv(UNIFORM_particle_frames, ps->particle_count, ps->particle_frames);
 		renderer_SetDefaultUniform1i(UNIFORM_texture_array_sampler0, 0);
@@ -2760,776 +2458,13 @@ void renderer_DrawParticles()
 
 void renderer_DrawGUI()
 {
-	#if 0
-	widget_t *w;
-	widget_t *selected;
-
-	int widget_stack_top = -1;
-	int b_do_top = 0;
-	widget_t *widget_stack[128];
-	button_t *button;
-	checkbox_t *checkbox;
-	dropdown_t *dropdown;
-	option_list_t *options;
-	option_t *option;
-	widget_bar_t *bar;
-	text_field_t *field;
-	slider_t *slider;
-	wsurface_t *surface;
-	item_list_t *list;
-
-	short x = 0;
-	short y = 0;
-	float y_offset;
-
-
-/*	#ifdef QUERY_STAGES
-	renderer_BeginTimeElapsedQuery();
-	#endif*/
-
-	renderer_BindWindowBuffer(0, 0);
-
-	CreateOrthographicMatrix(&gui_projection_matrix, -(r_window_width >> 1), r_window_width >> 1, r_window_height >> 1, -(r_window_height >> 1), -10.0, 10.0, NULL);
-
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadMatrixf(&gui_projection_matrix.floats[0][0]);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	//glUseProgram(0);
-	renderer_SetShader(-1);
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_BLEND);
-	glDisable(GL_TEXTURE_2D);
-	glEnable(GL_SCISSOR_TEST);
-	glActiveTexture(GL_TEXTURE0);
-
-
-
-
-	w = last_widget;
-
-	_do_top:
-
-	while(w)
-	{
-
-		if(w->bm_flags & WIDGET_INVISIBLE)
-			goto _advance_widget;
-
-
-		if(w->bm_flags & WIDGET_OUT_OF_BOUNDS)
-			goto _advance_widget;
-
-
-
-		/*if(w->bm_flags & WIDGET_IGNORE_EDGE_CLIPPING)
-			glDisable(GL_STENCIL_TEST);
-		else
-			glEnable(GL_STENCIL_TEST);*/
-
-		if(w->bm_flags & WIDGET_SHOW_NAME)
-		{
-			renderer_BlitSurface(w->rendered_name, w->x + x - w->w + r_window_width * 0.5 + 1, w->y + y + w->h + 18.0 + r_window_height * 0.5 - 2);
-		}
-
-		switch(w->type)
-		{
-			case WIDGET_BASE:
-
-				selected = NULL;
-
-				renderer_PushScissorRect((int)((x + w->x - w->w) + r_window_width * 0.5) - 1, (int)((y + w->y - w->h) + r_window_height * 0.5) - 1, ((int)w->w) * 2 + 1, ((int)w->h) * 2 + 1, 1);
-
-				if(w->parent)
-				{
-					if(w->parent->type == WIDGET_ITEM_LIST)
-					{
-						list = (item_list_t *)w->parent;
-
-						if(list->flags & ITEM_LIST_DOUBLE_CLICK_SELECTION)
-						{
-							selected = list->selected_item;
-						}
-
-					}
-				}
-
-
-				if(selected == w)
-				{
-					glColor3f(0.2, 0.2, 1.0);
-				}
-				else if(!(w->bm_flags & WIDGET_NO_HIGHLIGHT))
-				{
-					if(w->bm_flags & WIDGET_MOUSE_OVER || (w->edge_flags & (WIDGET_RIGHT_EDGE_GRABBED |
-																			WIDGET_LEFT_EDGE_GRABBED |
-																			WIDGET_TOP_EDGE_GRABBED |
-																		    WIDGET_BOTTOM_EDGE_GRABBED)))
-					{
-						glColor3f(0.5, 0.5, 0.5);
-					}
-					else
-					{
-						glColor3f(0.4, 0.4, 0.4);
-					}
-				}
-
-				else
-				{
-					glColor3f(0.4, 0.4, 0.4);
-				}
-
-				glRectf(w->x - w->w + x, w->y - w->h + y, w->x + w->w + x, w->y + w->h + y);
-
-				if(w->edge_flags & (WIDGET_MOUSE_OVER_RIGHT_EDGE | WIDGET_RIGHT_EDGE_GRABBED))
-				{
-					glColor3f(0.7, 0.7, 0.7);
-					glRectf(w->x + w->w + x - WIDGET_BORDER_WIDTH, w->y - w->h + y, w->x + w->w + x, w->y + w->h + y);
-				}
-				/*else if(w->left_edge_of)
-				{
-					glColor3f(0.3, 0.3, 0.3);
-					glRectf(w->x + w->w + x - WIDGET_BORDER_WIDTH, w->y - w->h + y, w->x + w->w + x, w->y + w->h + y);
-				}*/
-
-				if(w->edge_flags & (WIDGET_MOUSE_OVER_LEFT_EDGE | WIDGET_LEFT_EDGE_GRABBED))
-				{
-					glColor3f(0.7, 0.7, 0.7);
-					glRectf(w->x - w->w + x, w->y - w->h + y, w->x - w->w + x + WIDGET_BORDER_WIDTH, w->y + w->h + y);
-				}
-
-				if(w->edge_flags & (WIDGET_MOUSE_OVER_TOP_EDGE | WIDGET_TOP_EDGE_GRABBED))
-				{
-					glColor3f(0.7, 0.7, 0.7);
-					glRectf(w->x - w->w + x, w->y + w->h + y - WIDGET_BORDER_WIDTH, w->x + w->w + x, w->y + w->h + y);
-				}
-
-				if(w->edge_flags & (WIDGET_MOUSE_OVER_BOTTOM_EDGE | WIDGET_BOTTOM_EDGE_GRABBED))
-				{
-					glColor3f(0.7, 0.7, 0.7);
-					glRectf(w->x - w->w + x, w->y - w->h + y, w->x + w->w + x, w->y - w->h + y + WIDGET_BORDER_WIDTH);
-				}
-
-				if(w->bm_flags & WIDGET_DRAW_OUTLINE)
-				{
-					glColor3f(0.0, 0.0, 0.0);
-					glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-					glRectf(w->x - w->w + x, w->y - w->h + y, w->x + w->w + x, w->y + w->h + y);
-					glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-				}
-
-				/*if(w->bm_flags & WIDGET_SHOW_NAME)
-				{
-					renderer_BlitSurface(w->rendered_name, w->x + x - w->w + r_window_width * 0.5 + 1, w->y + y + w->h + 18.0 + r_window_height * 0.5 - 2);
-				}*/
-
-
-				if(w->nestled)
-				{
-					x += w->x;
-					y += w->y;
-
-					widget_stack_top++;
-					widget_stack[widget_stack_top] = w;
-					w = w->last_nestled;
-					continue;
-				}
-			break;
-
-			case WIDGET_ITEM_LIST:
-
-				/*glBegin(GL_QUADS);
-				glColor3f(0.4, 0.4, 0.4);
-				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-				glEnd();*/
-
-				renderer_PushScissorRect((int)((x + w->x - w->w) + r_window_width * 0.5) - 1, (int)((y + w->y - w->h) + r_window_height * 0.5) - 1, ((int)w->w) * 2 + 1, ((int)w->h) * 2 + 1, 1);
-
-				glColor3f(0.4, 0.4, 0.4);
-				glRectf(x + w->x - w->w, y + w->y - w->h, x + w->x + w->w, y + w->y + w->h);
-
-				/*if(w->bm_flags & WIDGET_SHOW_NAME)
-				{
-					renderer_BlitSurface(w->rendered_name, w->x + x - w->w + r_window_width * 0.5 + 1, w->y + y + w->h + 18.0 + r_window_height * 0.5 - 2);
-				}*/
-
-
-				if(w->nestled)
-				{
-
-					x += w->x;
-					y += w->y;
-
-					widget_stack_top++;
-					widget_stack[widget_stack_top] = w;
-					w = w->last_nestled;
-					continue;
-				}
-			break;
-
-			case WIDGET_BUTTON:
-				button = (button_t *)w;
-				//glBegin(GL_QUADS);
-
-				renderer_PushScissorRect((int)((x + w->x - w->w) + r_window_width * 0.5) - 1, (int)((y + w->y - w->h) + r_window_height * 0.5) - 1, ((int)w->w) * 2 + 1, ((int)w->h) * 2 + 1, 1);
-
-				if(button->bm_button_flags & BUTTON_PRESSED)
-				{
-					glColor3f(0.35, 0.35, 0.35);
-				}
-				else
-				{
-					if(w->bm_flags & WIDGET_MOUSE_OVER)
-					{
-						glColor3f(0.5, 0.5, 0.5);
-					}
-					else
-					{
-						glColor3f(0.4, 0.4, 0.4);
-					}
-				}
-
-				//glRectf(w->x + w->w, w->y - w->h, w->x - w->w, w->y + w->h);
-				glRectf(x + w->x - w->w, y + w->y - w->h, x + w->x + w->w, y + w->y + w->h);
-				/*glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-				glEnd();*/
-
-				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-				glColor3f(0.0, 0.0 ,0.0);
-				glRectf(x + w->x - w->w, y + w->y - w->h, x + w->x + w->w, y + w->y + w->h);
-				/*glBegin(GL_QUADS);
-				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-				glEnd();*/
-
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-				renderer_BlitSurface(button->rendered_text, w->x + x - w->w + r_window_width * 0.5 + 1, w->y + y + w->h + r_window_height * 0.5 - 2);
-
-				renderer_PopScissorRect();
-
-			break;
-
-			case WIDGET_SLIDER:
-				slider = (slider_t *)w;
-
-				//glBegin(GL_QUADS);
-
-				/*if(button->bm_button_flags & BUTTON_PRESSED)
-				{
-					glColor3f(0.35, 0.35, 0.35);
-				}
-				else
-				{*/
-				if(w->bm_flags & WIDGET_MOUSE_OVER)
-				{
-					glColor3f(0.5, 0.5, 0.5);
-				}
-				else
-				{
-					glColor3f(0.4, 0.4, 0.4);
-				}
-				//}
-
-				//glRectf(w->x + w->w, w->y - w->h, w->x - w->w, w->y + w->h);
-				glRectf(x + w->x - w->w, y + w->y - w->h, x + w->x + w->w, y + w->y + w->h);
-
-				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-				glColor3f(0.0, 0.0, 0.0);
-				glRectf(x + w->x - w->w, y + w->y - w->h, x + w->x + w->w, y + w->y + w->h);
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-
-				glColor3f(0.25, 0.25, 0.25);
-				glPointSize(SLIDER_HANDLE_SIZE);
-
-				glBegin(GL_POINTS);
-				glVertex3f(x + w->x - w->w + w->w * (1.0 - slider->slider_position) * 2.0, y + w->y, 0.0);
-				glEnd();
-
-				/*if(w->bm_flags & WIDGET_SHOW_NAME)
-				{
-					renderer_BlitSurface(w->rendered_name, w->x + x - w->w + r_window_width * 0.5 + 1, w->y + y + w->h + 18.0 + r_window_height * 0.5 - 2);
-				}*/
-
-			break;
-
-			case WIDGET_CHECKBOX:
-				checkbox = (checkbox_t *)w;
-
-				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-				glColor3f(0.4, 0.4, 0.4);
-				glLineWidth(2.0);
-				glRectf(x + w->x - w->w, y + w->y - w->h, x + w->x + w->w, y + w->y + w->h);
-				/*glBegin(GL_QUADS);
-				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-				glEnd();*/
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-				glLineWidth(1.0);
-
-				if(checkbox->bm_checkbox_flags & CHECKBOX_CHECKED)
-				{
-					glColor3f(0.9, 0.9, 0.9);
-					glRectf(x + w->x - w->w, y + w->y - w->h, x + w->x + w->w, y + w->y + w->h);
-					/*glBegin(GL_QUADS);
-					glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-					glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-					glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-					glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-					glEnd();*/
-				}
-			break;
-
-			case WIDGET_DROPDOWN:
-				dropdown = (dropdown_t *)w;
-
-				renderer_PushScissorRect((int)((x + w->x - w->w) + r_window_width * 0.5) - 1, (int)((y + w->y - w->h) + r_window_height * 0.5) - 1, ((int)w->w) * 2 + 1, ((int)w->h) * 2 + 1, 1);
-
-				if(dropdown->bm_dropdown_flags & DROPDOWN_DROPPED)
-				{
-					glColor3f(0.35, 0.35, 0.35);
-				}
-				else
-				{
-					if(w->bm_flags & WIDGET_MOUSE_OVER)
-					{
-						glColor3f(0.5, 0.5, 0.5);
-					}
-					else
-					{
-						glColor3f(0.4, 0.4, 0.4);
-					}
-
-				}
-
-				/*glBegin(GL_QUADS);
-				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-				glEnd();*/
-
-				glRectf(x + w->x - w->w, y + w->y - w->h, x + w->x + w->w, y + w->y + w->h);
-
-				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-				glColor3f(0.0, 0.0, 0.0);
-
-				/*glBegin(GL_QUADS);
-				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-				glEnd();*/
-
-				glRectf(x + w->x - w->w, y + w->y - w->h, x + w->x + w->w, y + w->y + w->h);
-
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-				renderer_BlitSurface(dropdown->rendered_text, w->x + x - w->w + r_window_width * 0.5 + 1, w->y + y + w->h + r_window_height * 0.5 - 2);
-
-				renderer_PopScissorRect();
-
-				if(w->nestled)
-				{
-					if(dropdown->bm_dropdown_flags & DROPDOWN_DROPPED)
-					{
-						x += w->x;
-						y += w->y;
-
-						widget_stack_top++;
-						widget_stack[widget_stack_top] = w;
-						w = w->last_nestled;
-						continue;
-					}
-
-				}
-
-
-
-			break;
-
-			case WIDGET_OPTION_LIST:
-
-				options = (option_list_t *)w;
-
-				/*glBegin(GL_QUADS);
-				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-				glEnd();*/
-
-				renderer_PushScissorRect((int)((x + w->x - w->w) + r_window_width * 0.5) - 1, (int)((y + w->y - w->h) + r_window_height * 0.5) - 1, ((int)w->w) * 2 + 1, ((int)w->h) * 2 + 1, 0);
-
-				if(options->bm_option_list_flags & OPTION_LIST_SCROLLER)
-				{
-					glColor3f(0.3, 0.3, 0.3);
-					glRectf(w->x + w->w + x - 10, w->y - w->h + y, w->x + w->w + x, w->y + w->h + y);
-
-					/*y_offset = ((float)(options->y_offset / OPTION_HEIGHT) / (float)(options->option_count));
-					printf("%f\n", y_offset);
-
-					y_offset = y_offset * options->widget.h - OPTION_HEIGHT;
-
-
-					glColor3f(0.25, 0.25, 0.25);
-					glRectf(w->x + w->w + x - 10, w->y + w->h + y - 15 - y_offset, w->x + w->w + x, w->y + w->h + y - y_offset);*/
-
-					/*glBegin(GL_QUADS);
-					glVertex3f(w->x + w->w + x - 10, w->y + w->h + y, 0.0);
-					glVertex3f(w->x + w->w + x - 10, w->y - w->h + y, 0.0);
-					glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-					glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-					glEnd();*/
-				}
-
-
-
-				if(w->bm_flags & WIDGET_DRAW_OUTLINE)
-				{
-					glColor3f(0.0, 0.0, 0.0);
-					glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-					glRectf(w->x - w->w + x, w->y - w->h + y, w->x + w->w + x, w->y + w->h + y);
-					glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-				}
-
-				if(w->nestled)
-				{
-					x += w->x;
-					y += w->y;
-
-					widget_stack_top++;
-					widget_stack[widget_stack_top] = w;
-					w = w->last_nestled;
-					continue;
-				}
-
-				renderer_PopScissorRect();
-
-			break;
-
-			case WIDGET_OPTION:
-				option = (option_t *)w;
-				options = (option_list_t *)w->parent;
-
-				renderer_PushScissorRect((int)((x + w->x - w->w) + r_window_width * 0.5) - 1, (int)((y + w->y - w->h) + r_window_height * 0.5) - 1, ((int)w->w) * 2 + 1, ((int)w->h) * 2 + 1, 1);
-				//printf("%d\n", option->widget.bm_flags  & WIDGET_OUT_OF_BOUNDS);
-
-				//if(w->bm_flags & WIDGET_MOUSE_OVER)
-				if(option == (option_t *)options->selected_option)
-				{
-					glColor3f(0.2, 0.2, 1.0);
-				}
-				else if(option == (option_t *)options->active_option)
-				{
-					glColor3f(0.5, 0.5, 0.5);
-				}
-				else
-				{
-					glColor3f(0.4, 0.4, 0.4);
-				}
-
-				glRectf(w->x - w->w + x, w->y - w->h + y, w->x + w->w + x, w->y + w->h + y);
-
-				/*glBegin(GL_QUADS);
-				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-				glEnd();*/
-
-				if(!(options->bm_option_list_flags & OPTION_LIST_NO_OPTION_DIVISIONS))
-				{
-					glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-					glColor3f(0.0, 0.0, 0.0);
-					glRectf(x + w->x - w->w, y + w->y - w->h, x + w->x + w->w, y + w->y + w->h);
-					/*glBegin(GL_QUADS);
-					glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-					glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-					glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-					glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-					glEnd();*/
-					glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-				}
-
-				//glEnable(GL_SCISSOR_TEST);
-
-				renderer_DrawRenderedString(option->rendered_string, w->x + x - w->w, w->y + y + w->h);
-
-				//glDisable(GL_SCISSOR_TEST);
-
-				if(w->nestled)
-				{
-					if(option == (option_t *)options->selected_option)
-					{
-						glColor3f(1.0, 1.0, 1.0);
-					}
-					else if(option == (option_t *)options->active_option)
-					{
-						glColor3f(0.7, 0.7, 0.7);
-					}
-					else
-					{
-						glColor3f(0.2, 0.2 ,0.2);
-					}
-
-					glBegin(GL_TRIANGLES);
-					glVertex3f(w->x + w->w + x, w->y + y, 0.0);
-					glVertex3f(w->x + w->w + x - 15.0, w->y + w->h + y - 5.0, 0.0);
-					glVertex3f(w->x + w->w + x - 15.0, w->y - w->h + y + 5.0, 0.0);
-					glEnd();
-
-					if(option == (option_t *)options->active_option)
-					{
-						x += w->x;
-						y += w->y;
-
-						widget_stack_top++;
-						widget_stack[widget_stack_top] = w;
-						w = w->last_nestled;
-						continue;
-					}
-
-				}
-
-				renderer_PopScissorRect();
-
-			break;
-
-			case WIDGET_BAR:
-				bar = (widget_bar_t *)w;
-
-
-				renderer_PushScissorRect((int)((x + w->x - w->w) + r_window_width * 0.5), (int)((y + w->y - w->h) + r_window_height * 0.5), ((int)w->w) * 2 + 1, ((int)w->h) * 2 + 1, 1);
-					/*if(button->bm_button_flags & BUTTON_PRESSED)
-					{
-						glColor3f(0.35, 0.35, 0.35);
-					}
-					else
-					{
-						if(w->bm_flags & WIDGET_MOUSE_OVER)
-						{
-							glColor3f(0.5, 0.5, 0.5);
-						}
-						else
-						{
-							glColor3f(0.4, 0.4, 0.4);
-						}
-					}*/
-
-					//glRectf(w->x + w->w, w->y - w->h, w->x - w->w, w->y + w->h);
-
-				if(w->bm_flags & WIDGET_MOUSE_OVER)
-				{
-					glColor3f(0.5, 0.5, 0.5);
-				}
-				else
-				{
-					glColor3f(0.4, 0.4, 0.4);
-				}
-
-				/*glBegin(GL_QUADS);
-				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-				glEnd();*/
-				glRectf(x + w->x - w->w, y + w->y - w->h, x + w->x + w->w, y + w->y + w->h);
-
-				if(w->nestled)
-				{
-					x += w->x;
-					y += w->y;
-
-					widget_stack_top++;
-					widget_stack[widget_stack_top] = w;
-					w = w->last_nestled;
-					continue;
-				}
-
-				renderer_PopScissorRect();
-
-				/*glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-				glColor3f(0.0, 0.0 ,0.0);
-					glBegin(GL_QUADS);
-					glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-					glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-					glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-					glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-					glEnd();
-
-					glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);*/
-
-
-
-			break;
-
-			case WIDGET_TEXT_FIELD:
-
-				field = (text_field_t *)w;
-
-				renderer_PushScissorRect((int)((x + w->x - w->w) + r_window_width * 0.5) - 1, (int)((y + w->y - w->h) + r_window_height * 0.5) - 1, ((int)w->w) * 2 + 1, ((int)w->h) * 2 + 1, 1);
-
-				if(w->bm_flags & WIDGET_MOUSE_OVER)
-				{
-					glColor3f(0.4, 0.4, 0.4);
-				}
-				else
-				{
-					glColor3f(0.3, 0.3, 0.3);
-				}
-
-
-
-				/*glBegin(GL_QUADS);
-				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-				glEnd();*/
-
-				glRectf(x + w->x - w->w, y + w->y - w->h, x + w->x + w->w, y + w->y + w->h);
-
-				if(field->bm_text_field_flags & TEXT_FIELD_CURSOR_VISIBLE)
-				{
-					glColor3f(1.0, 1.0, 1.0);
-					glBegin(GL_QUADS);
-					glVertex3f(w->x - w->w + x, w->y + w->h + y - 1.0, 0.0);
-					glVertex3f(w->x - w->w + x, w->y - w->h + y + 1.0, 0.0);
-					glVertex3f(w->x - w->w + x + 2.0, w->y - w->h + y + 1.0, 0.0);
-					glVertex3f(w->x - w->w + x + 2.0, w->y + w->h + y - 1.0, 0.0);
-					glEnd();
-				}
-
-				if(field->bm_text_field_flags & TEXT_FIELD_DRAW_TEXT_SELECTED)
-				{
-					glColor3f(0.6, 0.6, 0.6);
-					glBegin(GL_QUADS);
-					glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-					glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-					glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-					glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-					glEnd();
-				}
-
-				//glEnable(GL_SCISSOR_TEST);
-				//glScissor((x + w->x - w->w) + r_window_width * 0.5, (y + w->y - w->h) + r_window_height * 0.5, w->w * 2.0, w->h * 2.0);
-				//renderer_PushScissorRect((int)((x + w->x - w->w) + r_window_width * 0.5), (int)((y + w->y - w->h) + r_window_height * 0.5), ((int)w->w) * 2, ((int)w->h) * 2, 1);
-				renderer_DrawRenderedString(field->rendered_string, w->x + x - w->w, w->y + y + w->h);
-				renderer_PopScissorRect();
-				//glDisable(GL_SCISSOR_TEST);
-
-				//renderer_BlitSurface(field->rendered_text, w->x + x - w->w + r_window_width * 0.5 + 1, w->y + y + w->h + r_window_height * 0.5 - 2);
-
-			break;
-
-
-			case WIDGET_SURFACE:
-				surface = (wsurface_t *)w;
-
-
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, surface->color_texture);
-
-
-				glEnable(GL_TEXTURE_2D);
-				glColor3f(0.6, 0.6, 0.6);
-				glBegin(GL_QUADS);
-
-				glTexCoord2f(0.0, 1.0);
-				glVertex3f(w->x - w->w + x, w->y + w->h + y, 0.0);
-
-				glTexCoord2f(0.0, 0.0);
-				glVertex3f(w->x - w->w + x, w->y - w->h + y, 0.0);
-
-				glTexCoord2f(1.0, 0.0);
-				glVertex3f(w->x + w->w + x, w->y - w->h + y, 0.0);
-
-				glTexCoord2f(1.0, 1.0);
-				glVertex3f(w->x + w->w + x, w->y + w->h + y, 0.0);
-
-				glEnd();
-				glDisable(GL_TEXTURE_2D);
-			break;
-		}
-
-
-		/* If this is the top widget, and everything
-		nestled in it was already processed, quit the loop
-		to avoid rerendering anything on the list... */
-		/*if(b_do_top && widget_stack_top < 0)
-		{
-			break;
-		}*/
-
-		_advance_widget:
-
-		w = w->prev;
-
-		if(!w)
-		{
-			if(widget_stack_top >= 0)
-			{
-				renderer_PopScissorRect();
-				w = widget_stack[widget_stack_top];
-				x -= w->x;
-				y -= w->y;
-				widget_stack_top--;
-				goto _advance_widget;
-			}
-		}
-
-	}
-
-
-	renderer_ClearScissorRectStack();
-	//renderer_DrawCachedString(0, -500, 0);
-
-	/* All the list (excluding the top widget) have been
-	drawn, so repeat the loop just for the top widget
-	(and any eventual nestled widget)... */
-	/*if(!b_do_top)
-	{
-		b_do_top = 1;
-		w = top_widget;
-		goto _do_top;
-	}*/
-
-	glMatrixMode(GL_PROJECTION);
-	glPopMatrix();
-	glMatrixMode(GL_MODELVIEW);
-
-	glEnable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_SCISSOR_TEST);
-
-	#endif
-
-
-
-/*	#ifdef QUERY_STAGES
-	renderer_EndTimeElapsedQuery(RENDERER_DRAW_GUI);
-	#endif*/
-
 
 }
 
 
 void renderer_DrawBloom()
 {
+    #if 0
 	int i;
 
 
@@ -3621,6 +2556,8 @@ void renderer_DrawBloom()
 	glEnable(GL_CULL_FACE);
 
 	renderer_DisableImediateDrawing();
+
+	#endif
 }
 
 void renderer_DrawSkyBox()
@@ -3738,13 +2675,16 @@ void renderer_BlitColorbuffer()
 	//glBindFramebuffer(GL_READ_FRAMEBUFFER, r_cbuffer_id);
 	//glReadBuffer(GL_COLOR_ATTACHMENT0);
 
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer.framebuffer_id);
+	/*glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer.framebuffer_id);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	glViewport(0, 0, r_width, r_height);
 
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, r_cbuffer.framebuffer_id);
-	glReadBuffer(GL_COLOR_ATTACHMENT0);
+	glReadBuffer(GL_COLOR_ATTACHMENT0);*/
+
+	renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, &r_bbuffer);
+	renderer_BindFramebuffer(GL_READ_FRAMEBUFFER, &r_cbuffer);
 
 	//while(glGetError() != GL_NO_ERROR);
 	glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_width, r_height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
@@ -3754,10 +2694,17 @@ void renderer_BlitColorbuffer()
 
 void renderer_BlitBackbuffer()
 {
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	glDrawBuffer(GL_BACK);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glViewport(0, 0, r_window_width, r_window_height);
+	renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, NULL);
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+
+    //renderer_BindFramebuffer(GL_READ_FRAMEBUFFER, &r_bbuffer);
+
+
+    //glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_width, r_height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+
+	//glViewport(0, 0, r_window_width, r_window_height);
 
 	/*renderer_SetProjectionMatrix(NULL);
 	renderer_SetViewMatrix(NULL);
@@ -3766,20 +2713,16 @@ void renderer_BlitBackbuffer()
 
 	//while(glGetError() != GL_NO_ERROR);
 
+//	glDisable(GL_DEPTH_TEST);
+
+	renderer_EnableImediateDrawing();
 	renderer_SetShader(r_blit_texture_shader);
 	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_bbuffer.color_attachments[0].handle);
 	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
-
-	//renderer_UpdateMatrices();
-
-	//glEnable(GL_BLEND);
-
-	renderer_EnableImediateDrawing();
-
-	//renderer_Color4f(1.0, 1.0, 1.0, r_fade_value);
 	renderer_Rectf(-1.0, -1.0, 1.0, 1.0);
-
 	renderer_DisableImediateDrawing();
+
+//	glEnable(GL_DEPTH_TEST);
 
 	//glDisable(GL_BLEND);
 
@@ -3795,6 +2738,9 @@ void renderer_BlitBackbuffer()
 	//while(glGetError() != GL_NO_ERROR);
 	//glBlitFramebuffer(0, 0, r_width - 1, r_height - 1, 0, 0, r_window_width - 1, r_window_height - 1, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 	//printf("renderer_BlitBackbuffer: %x\n", glGetError());
+
+	//renderer_StopTimer(cpu_timer);
+	//renderer_StopTimer(gpu_timer);
 }
 
 
@@ -4361,417 +3307,97 @@ void renderer_RecursiveDrawPortalsViews(portal_t *portal, int viewing_portal_ind
 
 
 
-void renderer_Tonemap()
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
+void renderer_Enable(int cap)
 {
+    switch(cap)
+    {
+        case R_CLEAR_COLOR_BUFFER:
+            r_clear_colorbuffer = 1;
+        break;
 
+        case R_Z_PRE_PASS:
+            r_z_prepass = 1;
+        break;
 
-	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	//glDrawBuffer(GL_BACK);
+        case R_TONEMAP:
+            r_tonemap = 1;
+        break;
 
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_bbuffer.framebuffer_id);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+        case R_BLOOM:
+            r_bloom = 1;
+        break;
 
-	//renderer_BindBackbuffer(1, 0);
-	//renderer_BindColorbuffer(0, 1);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, r_cbuffer.framebuffer_id);
-	glReadBuffer(GL_COLOR_ATTACHMENT0);
+        case R_WIREFRAME:
+            r_wireframe = 1;
+        break;
 
-	glViewport(0, 0, r_width, r_height);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        case R_FLAT:
+            r_flat = 1;
+        break;
 
-	//while(glGetError() != GL_NO_ERROR);
-	glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_width, r_height, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
-	//glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_width, r_height, GL_STENCIL_BUFFER_BIT, GL_NEAREST);
-	//printf("renderer_Tonemap: %x\n", glGetError());
+        case R_DEBUG:
+            r_debug = 1;
+        break;
 
-	renderer_SetShader(r_tonemap_shader);
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_cbuffer.color_attachments[0].handle);
-	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
+        case R_VERBOSE_DEBUG:
+            renderer_VerboseDebugOutput(1);
+        break;
 
-	glEnable(GL_TEXTURE_2D);
-	glDisable(GL_DEPTH_TEST);
-	glDepthMask(GL_FALSE);
-
-	renderer_EnableImediateDrawing();
-	renderer_Rectf(-1.0, -1.0, 1.0, 1.0);
-	renderer_DisableImediateDrawing();
-
-	//glColor4f(1.0, 1.0, 1.0, 1.0);
-	//glRectf(-1.0, -1.0, 1.0, 1.0);
-
-	glDisable(GL_TEXTURE_2D);
-	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE);
-
-
-
-
-
-
-	//glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_window_width, r_window_height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-
-
-
-
+        case R_FULLSCREEN:
+            renderer_Fullscreen(1);
+        break;
+    }
 }
 
-void renderer_Shade()
+void renderer_Disable(int cap)
 {
-/*	renderer_BindColorbuffer(1, 0);
-	renderer_SetShader(r_shade_pass_shader);
+    switch(cap)
+    {
+        case R_CLEAR_COLOR_BUFFER:
+            r_clear_colorbuffer = 0;
+        break;
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, r_gbuffer_color);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, r_gbuffer_normal);
+        case R_Z_PRE_PASS:
+            r_z_prepass = 0;
+        break;
 
-	renderer_SetUniform1i(UNIFORM_texture_sampler0, 0);
-	renderer_SetUniform1i(UNIFORM_texture_sampler1, 1);
-	renderer_SetUniform1i(UNIFORM_r_width, r_width);
-	renderer_SetUniform1i(UNIFORM_r_height, r_height);
+        case R_TONEMAP:
+            r_tonemap = 0;
+        break;
 
-	renderer_SetClusterTexture();
+         case R_BLOOM:
+            r_bloom = 0;
+        break;
 
-	glDepthMask(GL_FALSE);
-	glBegin(GL_QUADS);
-	glColor3f(1.0, 1.0, 1.0);
-	glVertex3f(-1.0, 1.0, 0.0);
-	glVertex3f(-1.0, -1.0, 0.0);
-	glVertex3f(1.0, -1.0, 0.0);
-	glVertex3f(1.0, 1.0, 0.0);
-	glEnd();
-	glDepthMask(GL_TRUE);
+        case R_WIREFRAME:
+            r_wireframe = 0;
+        break;
 
+        case R_FLAT:
+            r_flat = 0;
+        break;
 
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, r_gbuffer_id);
-	glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_window_width, r_height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+        case R_DEBUG:
+            r_debug = 0;
+        break;
 
-	glActiveTexture(GL_TEXTURE0);		*/
+        case R_VERBOSE_DEBUG:
+            renderer_VerboseDebugOutput(0);
+        break;
+
+        case R_FULLSCREEN:
+            renderer_Fullscreen(0);
+        break;
+    }
 }
 
-
-void renderer_DrawWorldDeferred()
-{
-	#if 0
-	camera_t *active_camera = camera_GetActiveCamera();
-	triangle_group_t *triangle_group;
-	material_t *material;
-	light_position_t *pos;
-	light_params_t *parms;
-	mat4_t camera_to_world_matrix;
-	mat4_t camera_to_light_matrix;
-	mat4_t mat;
-	GLenum draw_buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-	int i;
-	int c = brush_count;
-
-	int j;
-	int k;
-	int light_index;
-
-	int l;
-	int m;
-
-	int *next;
-	int start;
-	int cache_index;
-
-	int *r;
-
-	float color[] = {1.0, 1.0, 1.0, 1.0};
-
-
-
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, geometry_framebuffer);
-	glDrawBuffers(2, (const GLenum *)&draw_buffers);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-	glViewport(0, 0, r_width, r_height);
-
-	shader_UseShader(geometry_pass_shader);
-	shader_SetCurrentShaderUniform1i(UNIFORM_TEXTURE_FLAGS, 0);
-
-	glLoadMatrixf(&active_camera->world_to_camera_matrix.floats[0][0]);
-
-	//while(glGetError() != GL_NO_ERROR);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_element_buffer);
-
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, light_cache_element_buffer);
-	c = world_triangle_group_count;
-
-	//k = visible_light_count;
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-	//glEnable(GL_BLEND);
-	glEnable(GL_STENCIL_TEST);
-	glStencilFunc(GL_ALWAYS, 0x1, 0xff);
-	glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
-	//glDepthMask(GL_TRUE);
-
-
-	c = world_triangle_group_count;
-
-	for(i = 0; i < c; i++)
-	{
-		triangle_group = &world_triangle_groups[i];
-		material = &materials[triangle_group->material_index];
-
-		color[0] = (float)material->r / 255.0;
-		color[1] = (float)material->g / 255.0;
-		color[2] = (float)material->b / 255.0;
-			//color[3] = (float)material->a / 255.0;
-		color[3] = 1.0;
-		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
-
-		glDrawElements(GL_TRIANGLES, triangle_group->next, GL_UNSIGNED_INT, (void *)(triangle_group->start * sizeof(int)));
-	}
-	//}
-
-	//printf("%x\n", glGetError());
-
-	//glDisable(GL_BLEND);
-	//glDisable(GL_STENCIL_TEST);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	/*glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	glDrawBuffer(GL_BACK);*/
-
-	#endif
-}
-
-
-
-
-
-
-#if 0
-/* old deferred path... */
-void renderer_Shade()
-{
-	int i;
-	int c;
-
-
-	unsigned int elapsed;
-	float ms_elapsed;
-	int light_index;
-	int cache_index;
-	camera_t *active_camera = camera_GetActiveCamera();
-	light_position_t *pos;
-	light_params_t *parms;
-	mat4_t camera_to_world_matrix;
-	mat4_t world_to_light_matrix;
-	mat4_t camera_to_light_matrix;
-	/*glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadIdentity();*/
-
-	//glUseProgram(0);
-
-
-	glLoadIdentity();
-
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	glDrawBuffer(GL_BACK);
-
-
-
-
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, geometry_framebuffer);
-	glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_window_width, r_window_height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-	glClear(GL_STENCIL_BUFFER_BIT);
-	glViewport(0, 0, r_window_width, r_window_height);
-
-
-	glEnable(GL_STENCIL_TEST);
-	glStencilFunc(GL_ALWAYS, 0, 0xff);
-	glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
-	glStencilOpSeparate(GL_BACK, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
-
-	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_BLEND);
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	glDepthMask(GL_FALSE);
-	glDisable(GL_CULL_FACE);
-	//glDisable(GL_DEPTH_TEST);
-
-
-	//glBindBuffer(GL_ARRAY_BUFFER, stencil_meshes);
-	shader_UseShader(stencil_lights_pass_shader);
-	shader_SetCurrentVertexAttribPointer(ATTRIB_VERTEX_POSITION, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-
-	c = visible_light_count;
-	glLoadIdentity();
-
-
-	glBeginQuery(GL_TIME_ELAPSED, query_object);
-
-	for(i = 0; i < c; i++)
-	{
-		light_index = visible_lights[i];
-		light_SetLight(light_index);
-
-		glDrawArrays(GL_TRIANGLES, 0, light_stencil_mesh_vert_count);
-
-		/*glCullFace(GL_BACK);
-		glDrawArrays(GL_TRIANGLES, 0, light_stencil_mesh_vert_count);
-
-		glCullFace(GL_FRONT);
-		glDrawArrays(GL_TRIANGLES, 0, light_stencil_mesh_vert_count);	*/
-
-	}
-
-	glEndQuery(GL_TIME_ELAPSED);
-	glGetQueryObjectuiv(query_object, GL_QUERY_RESULT, &elapsed);
-	ms_elapsed = (float)elapsed / 1000000.0;
-
-	printf("stecil mask: %f    ", ms_elapsed);
-
-
-
-
-
-	glBindBuffer(GL_ARRAY_BUFFER, gpu_heap);
-	glCullFace(GL_BACK);
-
-
-
-
-	glStencilFunc(GL_NOTEQUAL, 0, 0xff);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-
-	shader_UseShader(shading_pass_shader);
-
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, normal_buffer);
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, depth_buffer);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, albedo_buffer);
-
-	glActiveTexture(GL_TEXTURE5);
-	glBindTexture(GL_TEXTURE_3D, cluster_texture);
-
-	shader_SetCurrentShaderUniform1i(UNIFORM_TEXTURE_SAMPLER0, 0);
-	shader_SetCurrentShaderUniform1i(UNIFORM_TEXTURE_SAMPLER1, 1);
-	shader_SetCurrentShaderUniform1i(UNIFORM_TEXTURE_SAMPLER2, 2);
-	shader_SetCurrentShaderUniform1i(UNIFORM_CLUSTER_TEXTURE, 5);
-	shader_SetCurrentShaderUniform1i(UNIFORM_WIDTH, r_width);
-	shader_SetCurrentShaderUniform1i(UNIFORM_HEIGHT, r_height);
-	shader_SetCurrentShaderUniform1i(UNIFORM_FRAME, r_frame);
-
-	glDisable(GL_DEPTH_TEST);
-	glDepthMask(GL_FALSE);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_ONE, GL_ONE);
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glBeginQuery(GL_TIME_ELAPSED, query_object);
-	//for(i = 0; i < c; i++)
-	{
-		/*light_index = visible_lights[i];
-		light_SetLight(light_index);
-
-		pos = &light_positions[light_index];
-		parms = &light_params[light_index];
-
-		cache_index = parms->cache;
-
-		if(parms->bm_flags & LIGHT_GENERATE_SHADOWS)
-		{
-			world_to_light_matrix.floats[3][0] = -pos->position.x;
-			world_to_light_matrix.floats[3][1] = -pos->position.y;
-			world_to_light_matrix.floats[3][2] = -pos->position.z;
-
-			mat4_t_mult_fast(&camera_to_light_matrix, &camera_to_world_matrix, &world_to_light_matrix);
-			shader_SetCurrentShaderUniformMatrix4f(UNIFORM_CAMERA_TO_LIGHT_MATRIX, &camera_to_light_matrix.floats[0][0]);
-			shader_SetCurrentShaderUniform1i(UNIFORM_TEXTURE_CUBE_SAMPLER0, 5);
-			glBindTexture(GL_TEXTURE_CUBE_MAP, light_cache_shadow_maps[light_cache[cache_index].offset]);
-		}*/
-
-		/*glBegin(GL_QUADS);
-		glTexCoord2f(0.0, 1.0);
-		glVertex3f(-1.0, 1.0, -0.1);
-		glTexCoord2f(0.0, 0.0);
-		glVertex3f(-1.0,-1.0, -0.1);
-		glTexCoord2f(1.0, 0.0);
-		glVertex3f( 1.0,-1.0, -0.1);
-		glTexCoord2f(1.0, 1.0);
-		glVertex3f( 1.0, 1.0, -0.1);
-		glEnd();*/
-		glRectf(-1.0, -1.0, 1.0, 1.0);
-	}
-
-	glEndQuery(GL_TIME_ELAPSED);
-	glGetQueryObjectuiv(query_object, GL_QUERY_RESULT, &elapsed);
-	ms_elapsed = (float)elapsed / 1000000.0;
-
-	printf("shading: %f\n", ms_elapsed);
-
-	glActiveTexture(GL_TEXTURE0);
-
-	glDisable(GL_STENCIL_TEST);
-	glDisable(GL_BLEND);
-	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE);
-	/*glBegin(GL_QUADS);
-	glVertex3f(-1.0, 1.0, -0.1);
-	glVertex3f(-1.0,-1.0, -0.1);
-	glVertex3f( 1.0,-1.0, -0.1);
-	glVertex3f( 1.0, 1.0, -0.1);
-	glEnd();*/
-
-	/*glMatrixMode(GL_PROJECTION);
-	glPopMatrix();*/
-
-	glPopMatrix();
-
-}
-
-#endif
-
-
-
-
-void renderer_BeginTimeElapsedQuery()
-{
-	#ifdef QUERY_STAGES
-	glBeginQuery(GL_TIME_ELAPSED, query_object);
-	#endif
-}
-
-void renderer_EndTimeElapsedQuery(int stage_index)
-{
-	#ifdef QUERY_STAGES
-	unsigned int elapsed;
-	glEndQuery(GL_TIME_ELAPSED);
-	glGetQueryObjectuiv(query_object, GL_QUERY_RESULT, &elapsed);
-	query_results[stage_index] = (float)elapsed / 1000000.0;
-	#endif
-}
-
-
-void renderer_ReportQueryResults()
-{
-	#ifdef QUERY_STAGES
-	int i;
-
-	for(i = 0; i < RENDERER_STAGE_COUNT; i++)
-	{
-		if(query_results[i] >= 0.0)
-		{
-			printf("%s: %f	", stage_str[i], query_results[i]);
-		}
-		query_results[i] = -1.0;
-
-	}
-
-	printf("\n");
-
-	#endif
-
-}
-
+/*
 void renderer_StartGpuTimer()
 {
 	glBeginQuery(GL_TIME_ELAPSED, query_object);
@@ -4784,17 +3410,14 @@ float renderer_StopGpuTimer()
 	glGetQueryObjectuiv(query_object, GL_QUERY_RESULT, &elapsed);
 	return (float)elapsed / 1000000.0;
 }
+*/
 
 
-void renderer_GetWindowSize(int *w, int *h)
-{
-	*w = r_width;
-	*h = r_height;
+
+
+#ifdef __cplusplus
 }
-
-
-
-
+#endif
 
 
 

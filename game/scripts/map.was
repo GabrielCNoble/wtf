@@ -89,7 +89,7 @@ void enumerate_spawn_points(string &in prop)
 	array<entity_handle_t> world_entities;
 	int i;
 
-	world_entities = world_GetEntities();
+	world_entities = entity_GetEntities();
 	spawn_points.Clear();
 
 	//script_Print("world entities :" + world_entities.Count() + "\n");
@@ -237,7 +237,7 @@ void Text_event()
 		{
 			if(text_alpha < 1.0)
 			{
-				text_alpha += 0.008;
+				text_alpha += 0.08;
 			}
 			else
 			{
@@ -248,7 +248,7 @@ void Text_event()
 		{
 			if(text_alpha > 0.0)
 			{
-				text_alpha -= 0.008;
+				text_alpha -= 0.08;
 			}
 			else
 			{
@@ -606,27 +606,12 @@ void Elevator_event()
 	{
 		entity_SetEntityProp1i(elevator, "state", ELEVATOR_STATE_ASCENDING);
 	}
-	//else if(entity_IsTriggered(first_stop_trigger) != 0)
-	//{
-		/* if we got to the bottom of the shaft for the first time... */
-	//	entity_SetEntityProp1i(elevator, "state", ELEVATOR_STATE_ASCEND_WITH_PLAYER_ONLY);
-	//}
-	//else if(entity_IsTriggered(no_return_trigger) != 0)
-	//{
+
 	elevator_state = entity_GetEntityProp1i(elevator, "state");
-
-	//	if(elevator_state == ELEVATOR_STATE_ASCEND_WITH_PLAYER_ONLY)
-	//	{
-	//		entity_SetEntityProp1i(elevator, "state", ELEVATOR_STATE_NO_RETURN);
-	//	}
-
-	//}
-
-
 
 	if(elevator_state == ELEVATOR_STATE_DESCENDING)
 	{
-		elevator_position = entity_GetEntityPosition(elevator, 0);
+		elevator_position = entity_GetEntityPosition(elevator, 1);
 
 		if(elevator_position.y > -1.0)
 		{
@@ -638,41 +623,9 @@ void Elevator_event()
 		entity_TranslateEntity(elevator, vec3_t(0.0, 0.12, 0.0));
 	}
 
+	elevator_position = entity_GetEntityPosition(elevator, 1);
 
-	//if(elevator_state == ELEVATOR_STATE_ASCEND_WITH_PLAYER_ONLY)
-	//{
-	//	if(entity_IsTriggered(run_elevator) != 0)
-	//	{
-	//		entity_TranslateEntity(elevator, vec3_t(0.0, 0.12, 0.0));
-	//	}
-	//	else
-	//	{
-	//		elevator_position = entity_GetEntityPosition(elevator, 0);
-	//		if(elevator_position.y > -1.0)
-	//		{
-	//			entity_TranslateEntity(elevator, vec3_t(0.0, -0.12, 0.0));
-	//		}
-	//	}
-	//}
-	//else if(elevator_state == ELEVATOR_STATE_FORCE_DESCENT_TO_BOTTOM)
-	//{
-//		/* make sure the elevator goes all the way down in the first time to
-//		avoid the player getting stuck... */
-//		elevator_position = entity_GetEntityPosition(elevator, 0);
-
-//		if(elevator_position.y > 0.0)
-//		{
-//			entity_TranslateEntity(elevator, vec3_t(0.0, -0.12, 0.0));
-//		}
-//	}
-//	else if(elevator_state == ELEVATOR_STATE_NO_RETURN)
-//	{
-//		entity_TranslateEntity(elevator, vec3_t(0.0, 0.12, 0.0));
-//	}
-
-	elevator_position = entity_GetEntityPosition(elevator, 0);
-
-	entity_SetTriggerPosition(run_elevator, elevator_position + vec3_t(0.0, 0.5, 0.0));
+	entity_SetTriggerPosition(run_elevator, elevator_position + vec3_t(0.0, 0.8, 0.0));
 }
 
 

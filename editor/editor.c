@@ -72,14 +72,14 @@ extern int r_window_height;
 extern int r_draw_gui;
 
 /* from light.c */
-extern light_position_t *visible_light_positions;
-extern light_params_t *visible_light_params;
-extern light_position_t *l_light_positions;
-extern light_params_t *l_light_params;
-extern char **l_light_names;
-extern int visible_light_count;
-extern int l_light_list_cursor;
-extern int l_light_count;
+//extern light_position_t *visible_light_positions;
+//extern light_params_t *visible_light_params;
+//extern light_position_t *l_light_positions;
+//extern light_params_t *l_light_params;
+//extern char **l_light_names;
+//extern int visible_light_count;
+//extern int l_light_list_cursor;
+//extern int l_light_count;
 
 
 
@@ -158,8 +158,8 @@ int scale_handle_model_count;
 //int ed_handle_3d_tranform_mode = HANDLE_3D_TRANFORM_LOCAL;
 
 
-light_params_t *ed_selected_light_params;
-light_position_t *ed_selected_light_position;
+//light_params_t *ed_selected_light_params;
+//light_position_t *ed_selected_light_position;
 
 
 brush_t *ed_selected_brush;
@@ -295,14 +295,14 @@ void editor_Init(int argc, char *argv[])
 	//path_AddSearchPath("textures/world", SEARCH_PATH_TEXTURE);
 
 	//ed_draw_cursors_shader = shader_LoadShader("editor/draw_cursors");
-	ed_pick_brush_face_shader = shader_LoadShader("editor/pick_brush_face");
+	ed_pick_brush_face_shader = shader_LoadShader("editor/pick_brush_face", "pick brush face");
 	//ed_brush_pick_shader = shader_LoadShader("editor/brush_pick");
 	//ed_light_pick_shader = shader_LoadShader("editor/light_pick");
 	//ed_spawn_point_pick_shader = shader_LoadShader("editor/spawn_point_pick");
-	ed_brush_dist_shader = shader_LoadShader("editor/brush_dist");
+	ed_brush_dist_shader = shader_LoadShader("editor/brush_dist", "brush dist");
 	//ed_forward_pass_brush_shader = shader_LoadShader("editor/forward_pass_brush");
-	ed_model_thumbnail_shader = shader_LoadShader("editor/model_thumbnail");
-	ed_pick_shader = shader_LoadShader("editor/pick");
+	//ed_model_thumbnail_shader = shader_LoadShader("editor/model_thumbnail");
+	ed_pick_shader = shader_LoadShader("editor/pick", "pick");
 
 
 	int model_index;// = model_LoadModel("portal_gun6.mpk", "portal gun");
@@ -423,8 +423,12 @@ void editor_Init(int argc, char *argv[])
 	//glGenTextures(1, &ed_pick_depth_texture_id);
 
 	ed_pick_framebuffer = renderer_CreateFramebuffer(1920, 1080);
-	renderer_AddAttachment(&ed_pick_framebuffer, GL_COLOR_ATTACHMENT0, GL_RGBA32F);
-	renderer_AddAttachment(&ed_pick_framebuffer, GL_DEPTH_ATTACHMENT, 0);
+	renderer_AddAttachment(&ed_pick_framebuffer, GL_COLOR_ATTACHMENT0, GL_RGBA32F, 1, GL_LINEAR);
+	renderer_AddAttachment(&ed_pick_framebuffer, GL_DEPTH_ATTACHMENT, 0, 1, GL_NEAREST);
+
+	ed_cursors_framebuffer = renderer_CreateFramebuffer(r_window_width, r_window_height);
+	renderer_AddAttachment(&ed_cursors_framebuffer, GL_COLOR_ATTACHMENT0, GL_RGBA8, 1, GL_LINEAR);
+	renderer_AddAttachment(&ed_cursors_framebuffer, GL_DEPTH_STENCIL_ATTACHMENT, 0, 1, GL_NEAREST);
 
 
 	//while(glGetError() != GL_NO_ERROR);
@@ -443,7 +447,7 @@ void editor_Init(int argc, char *argv[])
 	}*/
 
 
-	///glBindTexture(GL_TEXTURE_2D, ed_pick_depth_texture_id);
+	//glBindTexture(GL_TEXTURE_2D, ed_pick_depth_texture_id);
 	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -459,7 +463,7 @@ void editor_Init(int argc, char *argv[])
 
 
 
-	glGenFramebuffers(1, &ed_cursors_framebuffer_id);
+	/*glGenFramebuffers(1, &ed_cursors_framebuffer_id);
 	glGenTextures(1, &ed_cursors_color_texture_id);
 	glGenTextures(1, &ed_cursors_depth_texture_id);
 
@@ -486,12 +490,12 @@ void editor_Init(int argc, char *argv[])
 
 	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ed_cursors_color_texture_id, 0);
 	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, ed_cursors_depth_texture_id, 0);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, ed_cursors_depth_texture_id, 0);
+	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, ed_cursors_depth_texture_id, 0);*/
 
 	//glClear(GL_COLOR_BUFFER_BIT);
 
 
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
 
 
@@ -541,10 +545,11 @@ void editor_Finish()
 	//glDeleteTextures(1, &ed_pick_depth_texture_id);
 
 	renderer_DestroyFramebuffer(&ed_pick_framebuffer);
+	renderer_DestroyFramebuffer(&ed_cursors_framebuffer);
 
-	glDeleteFramebuffers(1, &ed_cursors_framebuffer_id);
+	/*glDeleteFramebuffers(1, &ed_cursors_framebuffer_id);
 	glDeleteTextures(1, &ed_cursors_color_texture_id);
-	glDeleteTextures(1, &ed_cursors_depth_texture_id);
+	glDeleteTextures(1, &ed_cursors_depth_texture_id);*/
 
 	//memory_Free(ed_selections);
 

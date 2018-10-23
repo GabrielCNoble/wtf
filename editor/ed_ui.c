@@ -31,8 +31,8 @@ extern material_t *materials;
 extern char **material_names;
 
 /* from l_main.c */
-extern light_params_t *light_params;
-extern light_position_t *light_positions;
+//extern light_params_t *light_params;
+//extern light_position_t *light_positions;
 
 /* from texture.c */
 //extern int texture_count;
@@ -96,8 +96,8 @@ extern char ed_full_project_name[];
 extern char *ed_handle_3d_mode_str;
 //extern light_ptr_t selected_light;
 extern int selected_type;
-extern light_params_t *ed_selected_light_params;
-extern light_position_t *ed_selected_light_position;
+//extern light_params_t *ed_selected_light_params;
+//extern light_position_t *ed_selected_light_position;
 extern brush_t *ed_selected_brush;
 extern int ed_selected_brush_polygon_index;
 

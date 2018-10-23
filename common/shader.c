@@ -43,6 +43,7 @@ extern int r_forward_pass_shader;
 extern int r_forward_pass_no_shadow_shader;
 extern int r_particle_forward_pass_shader;
 extern int r_flat_pass_shader;
+extern int r_wireframe_pass_shader;
 extern int r_geometry_pass_shader;
 extern int r_shade_pass_shader;
 extern int r_stencil_lights_pass_shader;
@@ -55,6 +56,9 @@ extern int r_tonemap_shader;
 extern int r_blit_texture_shader;
 extern int r_portal_shader;
 extern int r_forward_pass_portal_shader;
+extern int r_cluster_debug_shader;
+
+//extern int r_clustered_forward_pass_shader;
 
 extern int r_gui_shader;
 
@@ -99,6 +103,7 @@ int shader_Init()
 	SHADER_UNIFORM(UNIFORM_r_cluster_rows, GL_INT);
 	SHADER_UNIFORM(UNIFORM_r_cluster_layers, GL_INT);
 	SHADER_UNIFORM(UNIFORM_r_bloom_radius, GL_INT);
+	SHADER_UNIFORM(UNIFORM_r_bsp_node_count, GL_INT);
 	SHADER_UNIFORM(UNIFORM_cluster_texture, GL_UNSIGNED_INT_SAMPLER_3D);
 	SHADER_UNIFORM(UNIFORM_material_flags, GL_UNSIGNED_INT);
 	SHADER_UNIFORM(UNIFORM_projection_matrix, GL_FLOAT_MAT4);
@@ -115,32 +120,36 @@ int shader_Init()
 	//shaders = memory_Malloc(sizeof(shader_t ) * shader_list_size);
 	//free_position_stack = memory_Malloc(sizeof(int) * shader_list_size);
 
-	r_z_pre_pass_shader = shader_LoadShader("engine/z_pre_pass");
-	r_forward_pass_shader = shader_LoadShader("engine/forward_pass");
+	r_z_pre_pass_shader = shader_LoadShader("engine/z_pre_pass", "z prepass");
+	r_forward_pass_shader = shader_LoadShader("engine/forward_pass", "forward pass");
+    //r_clustered_forward_pass_shader = shader_LoadShader("engine/clustered_forward", "clustered forward");
 
     shader_AddDefine("NO_SHADOWS", NULL, 1);
-	r_forward_pass_no_shadow_shader = shader_LoadShader("engine/forward_pass");
+	r_forward_pass_no_shadow_shader = shader_LoadShader("engine/forward_pass", "forward pass no shadows");
 	shader_DropDefine("NO_SHADOWS", 1);
 
-	r_particle_forward_pass_shader = shader_LoadShader("engine/particle_forward_pass");
-	r_forward_pass_portal_shader = shader_LoadShader("engine/forward_pass_portal");
-	r_flat_pass_shader = shader_LoadShader("engine/flat_pass");
+	r_particle_forward_pass_shader = shader_LoadShader("engine/particle_forward_pass", "particle forward pass");
+	//r_forward_pass_portal_shader = shader_LoadShader("engine/forward_pass_portal", "portal forward pass");
+	r_flat_pass_shader = shader_LoadShader("engine/flat_pass", "flat pass");
+	r_wireframe_pass_shader = shader_LoadShader("engine/wireframe_pass", "wireframe pass");
 	//r_geometry_pass_shader = shader_LoadShader("engine/geometry_pass");
 	//r_shade_pass_shader = shader_LoadShader("engine/shade_pass");
-	r_stencil_lights_pass_shader = shader_LoadShader("engine/stencil_light_pass");
-	r_shadow_pass_shader = shader_LoadShader("engine/shadow_pass");
-	r_skybox_shader = shader_LoadShader("engine/skybox");
+	//r_stencil_lights_pass_shader = shader_LoadShader("engine/stencil_light_pass");
+	r_shadow_pass_shader = shader_LoadShader("engine/shadow_pass", "shadow pass");
+	//r_skybox_shader = shader_LoadShader("engine/skybox");
 
-	r_bloom0_shader = shader_LoadShader("engine/bloom0");
-	r_bloom1_shader = shader_LoadShader("engine/bloom1");
-	r_tonemap_shader = shader_LoadShader("engine/tonemap");
+	r_bloom0_shader = shader_LoadShader("engine/bloom0", "bloom pass 0");
+	r_bloom1_shader = shader_LoadShader("engine/bloom1", "bloom pass 1");
+	r_tonemap_shader = shader_LoadShader("engine/tonemap", "tonemap pass");
 
-	r_blit_texture_shader = shader_LoadShader("engine/blit_texture");
-	r_portal_shader = shader_LoadShader("engine/portal");
+	r_blit_texture_shader = shader_LoadShader("engine/blit_texture", "blit texture");
+	//r_portal_shader = shader_LoadShader("engine/portal");
 
-	r_gui_shader = shader_LoadShader("engine/gui/gui");
+	r_gui_shader = shader_LoadShader("engine/gui/gui", "gui");
 
-	r_imediate_color_shader = shader_LoadShader("engine/imediate draw/imediate_color");
+	r_imediate_color_shader = shader_LoadShader("engine/imediate draw/imediate_color", "imediate color");
+
+	r_cluster_debug_shader = shader_LoadShader("engine/cluster_debug", "cluster debug");
 
 	//shader_LoadShader("engine/include_test");
 
@@ -201,7 +210,8 @@ void shader_GetShaderDefaultUniformsLocations(struct shader_t *shader)
 	unsigned int uniform_type;
 	char *uniform_type_str;
 
-	printf("**************************\nshader [%s] uniforms:\n", shader->name);
+	//log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "**************************");
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "shader_GetShaderDefaultUniformsLocations: shader [%s] uniforms:", shader->name);
 
 	for(i = 0; i < UNIFORM_LAST_UNIFORM; i++)
 	{
@@ -210,26 +220,30 @@ void shader_GetShaderDefaultUniformsLocations(struct shader_t *shader)
 		shader->default_uniforms[i].location = uniform_location;
 		shader->default_uniforms[i].type = GL_NONE;
 
-		if(shader->default_uniforms[i].location != 0xffff)
+		if(shader->default_uniforms[i].location != 0xffffffff)
 		{
 			//glGetActiveUniformsiv(shader->shader_program, 1, &uniform_location, GL_UNIFORM_TYPE, &uniform_type);
 			//shader->default_uniforms[i].type = uniform_type;
 			shader->default_uniforms[i].type = default_uniform_types[i];
 
 
-			printf("default uniform [%s (%s)] at [%d]\n", default_uniforms[i], renderer_GetGLEnumString(shader->default_uniforms[i].type), shader->default_uniforms[i].location);
+			log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "shader_GetShaderDefaultUniformsLocations: default uniform [%s (%s)] at [%d]", default_uniforms[i], renderer_GetGLEnumString(shader->default_uniforms[i].type), shader->default_uniforms[i].location);
 		}
 	}
 
 
-	if((i = glGetUniformBlockIndex(shader->shader_program, "light_params_uniform_block")) != GL_INVALID_INDEX)
+	if((i = glGetUniformBlockIndex(shader->shader_program, "r_lights_uniform_block")) != GL_INVALID_INDEX)
 	{
 		glUniformBlockBinding(shader->shader_program, i, R_LIGHT_UNIFORM_BUFFER_BINDING);
-		//printf("default uniform [%s] at %d\n",  i);
 	}
 
+	if((i = glGetUniformBlockIndex(shader->shader_program, "r_bsp_uniform_block")) != GL_INVALID_INDEX)
+    {
+        glUniformBlockBinding(shader->shader_program, i, R_BSP_UNIFORM_BUFFER_BINDING);
+    }
 
-	printf("**************************\n");
+
+	//log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "**************************\n");
 }
 
 int shader_FindShaderNamedUniformIndex(struct shader_t *shader, char *uniform_name)
@@ -467,6 +481,7 @@ int shader_CompileShaderSource(struct shader_t *shader, char **vertex_shader_sou
 	vertex_source = *vertex_shader_source;
 	fragment_source = *fragment_shader_source;
 
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "shader_CompileShaderSource: compiling shader [%s]", shader->name);
 
 	shader_AddDefine("MASSACRE_VERTEX_SHADER", NULL, 1);
 	shader_Preprocess(&vertex_source);
@@ -484,7 +499,7 @@ int shader_CompileShaderSource(struct shader_t *shader, char **vertex_shader_sou
 		//error_log = malloc(error_log_len);
 		shader_log = memory_Malloc(shader_log_len);
 		glGetShaderInfoLog(shader->vertex_shader, shader_log_len, NULL, shader_log);
-		printf("********************************************\n[%s] shader vertex shader compilation stage info log:\n%s\n", shader->name, shader_log);
+		log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "shader_CompileShaderSource: [%s] shader vertex shader compilation stage info log:\n%s", shader->name, shader_log);
 		memory_Free(shader_log);
 	}
 
@@ -492,9 +507,6 @@ int shader_CompileShaderSource(struct shader_t *shader, char **vertex_shader_sou
 	{
 		return 0;
 	}
-
-
-
 
 	shader_AddDefine("MASSACRE_FRAGMENT_SHADER", NULL, 1);
 	shader_Preprocess(&fragment_source);
@@ -512,7 +524,7 @@ int shader_CompileShaderSource(struct shader_t *shader, char **vertex_shader_sou
 		//error_log = malloc(error_log_len);
 		shader_log = memory_Malloc(shader_log_len);
 		glGetShaderInfoLog(shader->fragment_shader, shader_log_len, NULL, shader_log);
-		printf("********************************************\n[%s] shader fragment shader compilation stage info log:\n%s\n", shader->name, shader_log);
+		log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "shader_CompileShaderSource: [%s] shader fragment shader compilation stage info log:\n%s", shader->name, shader_log);
 		memory_Free(shader_log);
 	}
 
@@ -532,7 +544,7 @@ int shader_CompileShaderSource(struct shader_t *shader, char **vertex_shader_sou
 	{
 		shader_log = memory_Malloc(shader_log_len);
 		glGetProgramInfoLog(shader->shader_program, shader_log_len, NULL, shader_log);
-		printf("********************************************\n[%s] shader link stage info log:\n%s\n", shader->name, shader_log);
+		log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "shader_CompileShaderSource: [%s] shader link stage info log:\n%s", shader->name, shader_log);
 		memory_Free(shader_log);
 	}
 
@@ -549,12 +561,14 @@ int shader_CompileShaderSource(struct shader_t *shader, char **vertex_shader_sou
 
 	shader_GetShaderDefaultUniformsLocations(shader);
 
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "shader_CompileShaderSource: shader [%s] compiled successfully", shader->name);
+
 	return 1;
 }
 
 
 
-int shader_LoadShader(char *file_name)
+int shader_LoadShader(char *file_name, char *shader_name)
 {
 	int shader_index = -1;
 	struct shader_t *shader;
@@ -563,10 +577,15 @@ int shader_LoadShader(char *file_name)
 	char *fragment_shader_source;
 
 
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "shader_LoadShader: loading shader [%s]", shader_name);
+
+
     if(shader_LoadShaderSource(file_name, &vertex_shader_source, &fragment_shader_source))
 	{
-        shader_index = shader_CreateEmptyShader(file_name);
+        shader_index = shader_CreateEmptyShader(shader_name);
         shader = shader_GetShaderPointerIndex(shader_index);
+
+        shader->file_name = memory_Strdup(file_name);
 
 		if(!shader_CompileShaderSource(shader, &vertex_shader_source, &fragment_shader_source))
 		{
@@ -574,598 +593,45 @@ int shader_LoadShader(char *file_name)
 			shader_index = -1;
 		}
 
-		shader->file_name = memory_Strdup(file_name);
-
         memory_Free(vertex_shader_source);
         memory_Free(fragment_shader_source);
 	}
 
-	return shader_index;
-
-
-
-	#if 0
-
-	FILE *f;
-	shader_t *shader;
-	int *itemp;
-
-	unsigned int vertex_shader_object;
-	unsigned int fragment_shader_object;
-	unsigned int shader_program;
-	unsigned int uniform_type;
-	unsigned int uniform_location;
-	unsigned int uniform_size;
-
-	int shader_index;
-	int status;
-	int error_log_len;
-	int i;
-
-	unsigned long file_size;
-
-	char *vertex_shader_source;
-	char *fragment_shader_source;
-	char *error_log;
-	char *uniform_type_str;
-
-	char vertex_shader_file_name[128];
-	char fragment_shader_file_name[128];
-	char *shader_file_full_path;
-
-	//int uniform_type;
-	//int uniform_size;
-
-
-
-
-	strcpy(vertex_shader_file_name, file_name);
-	strcat(vertex_shader_file_name, ".vert");
-
-	shader_file_full_path = path_GetPathToFile(vertex_shader_file_name);
-
-	/*strcpy(shader_file_full_path, shader_base_path);
-	strcat(shader_file_full_path, "\\");
-	strcat(shader_file_full_path, vertex_shader_file_name);*/
-
-	if(!(f = fopen(shader_file_full_path, "r")))
+	if(shader_index == -1)
 	{
-		//printf("shader_LoadShader: couldn't load vertex shader file for shader %s!!\n", file_name);
-		log_LogMessage(LOG_MESSAGE_ERROR, 1, "shader_LoadShader: couldn't load vertex shader file for shader %s!!\n", file_name);
-		return -1;
-	}
-
-	fseek(f, 0, SEEK_END);
-	file_size = ftell(f);
-	rewind(f);
-
-	//vertex_shader_source = calloc(file_size + 2, 1);
-	vertex_shader_source = memory_Calloc(file_size + 2, 1);
-	fread(vertex_shader_source, 1, file_size, f);
-	vertex_shader_source[file_size - 1] = '\0';
-	vertex_shader_source[file_size] = '\0';
-	fclose(f);
-
-	shader_AddDefine("MASSACRE_VERTEX_SHADER", NULL, 1);
-	shader_Preprocess(&vertex_shader_source);
-	shader_DropDefine("MASSACRE_VERTEX_SHADER", 1);
-
-
-	vertex_shader_object = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertex_shader_object, 1, (const GLchar **)&vertex_shader_source, NULL);
-	glCompileShader(vertex_shader_object);
-	glGetShaderiv(vertex_shader_object, GL_COMPILE_STATUS, &status);
-	//free(vertex_shader_source);
-	memory_Free(vertex_shader_source);
-
-	glGetShaderiv(vertex_shader_object, GL_INFO_LOG_LENGTH, &error_log_len);
-
-	if(error_log_len > 0)
-	{
-		//error_log = malloc(error_log_len);
-		error_log = memory_Malloc(error_log_len);
-		glGetShaderInfoLog(vertex_shader_object, error_log_len, NULL, error_log);
-		printf("********************************************\n[%s] shader vertex shader compilation stage info log:\n%s\n", file_name, error_log);
-		//free(error_log);
-		memory_Free(error_log);
-	}
-
-
-	if(!status)
-	{
-		glDeleteShader(vertex_shader_object);
-		log_LogMessage(LOG_MESSAGE_ERROR, 1, "********************************************\n[%s] shader vertex shader compilation stage info log:\n%s\n", file_name, error_log);
-		return -1;
-	}
-
-
-	strcpy(fragment_shader_file_name, file_name);
-	strcat(fragment_shader_file_name, ".frag");
-
-/*	strcpy(shader_file_full_path, shader_base_path);
-	strcat(shader_file_full_path, "\\");
-	strcat(shader_file_full_path, fragment_shader_file_name);*/
-
-	shader_file_full_path = path_GetPathToFile(fragment_shader_file_name);
-
-	if(!(f = fopen(shader_file_full_path, "r")))
-	{
-		//printf("shader_LoadShadear: couldn't load fragment shader file for shader %s!!\n", file_name);
-		log_LogMessage(LOG_MESSAGE_ERROR, 1, "shader_LoadShader: couldn't load fragment shader file for shader %s!!\n", file_name);
-		return -1;
-	}
-
-	fseek(f, 0, SEEK_END);
-	file_size = ftell(f);
-	rewind(f);
-
-	//fragment_shader_source = calloc(file_size + 2, 1);
-	fragment_shader_source = memory_Calloc(file_size + 2, 1);
-	fread(fragment_shader_source, 1, file_size, f);
-	fragment_shader_source[file_size - 1] = '\0';
-	fragment_shader_source[file_size] = '\0';
-	fclose(f);
-
-	shader_AddDefine("MASSACRE_FRAGMENT_SHADER", NULL, 1);
-	shader_Preprocess(&fragment_shader_source);
-	shader_DropDefine("MASSACRE_FRAGMENT_SHADER", 1);
-
-	fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragment_shader_object, 1, (const GLchar **)&fragment_shader_source, NULL);
-	glCompileShader(fragment_shader_object);
-	glGetShaderiv(fragment_shader_object, GL_COMPILE_STATUS, &status);
-	memory_Free(fragment_shader_source);
-	//free(fragment_shader_source);
-
-	glGetShaderiv(fragment_shader_object, GL_INFO_LOG_LENGTH, &error_log_len);
-
-	if(error_log_len > 0)
-	{
-		//error_log = malloc(error_log_len);
-		error_log = memory_Malloc(error_log_len);
-		glGetShaderInfoLog(fragment_shader_object, error_log_len, NULL, error_log);
-		printf("********************************************\n[%s] shader fragment shader compilation stage info log:\n%s\n", file_name, error_log);
-		//free(error_log);
-		memory_Free(error_log);
-	}
-
-
-	if(!status)
-	{
-		//glGetShaderiv(fragment_shader_object, GL_INFO_LOG_LENGTH, &error_log_len);
-		//error_log = malloc(error_log_len);
-		//glGetShaderInfoLog(fragment_shader_object, error_log_len, NULL, error_log);
-		//printf("Error compiling %s fragment shader!\n%s\n", file_name, error_log);
-		//free(error_log);
-		glDeleteShader(vertex_shader_object);
-		glDeleteShader(fragment_shader_object);
-		log_LogMessage(LOG_MESSAGE_ERROR, 1, "********************************************\n[%s] shader fragment shader compilation stage info log:\n%s\n", file_name, error_log);
-		return -1;
-	}
-
-
-
-	shader_program = glCreateProgram();
-
-	glAttachShader(shader_program, vertex_shader_object);
-	glAttachShader(shader_program, fragment_shader_object);
-
-/*
-	glBindAttribLocation(shader_program, 0, "vertex_position");
-	glBindAttribLocation(shader_program, 1, "vertex_normal");
-	glBindAttribLocation(shader_program, 2, "vertex_tangent");
-	glBindAttribLocation(shader_program, 3, "vertex_tex_coords");
-	glBindAttribLocation(shader_program, 4, "vertex_color");*/
-
-
-	glLinkProgram(shader_program);
-
-	/* flag those shaders for deletion, so they
-	get deleted once the shader program object gets
-	deleted... */
-	//glDeleteShader(vertex_shader_object);
-//	glDeleteShader(fragment_shader_object);
-
-	glGetProgramiv(shader_program, GL_LINK_STATUS, &status);
-
-	glGetProgramiv(shader_program, GL_INFO_LOG_LENGTH, &error_log_len);
-
-	if(error_log_len > 0)
-	{
-		//error_log = malloc(error_log_len);
-		error_log = memory_Malloc(error_log_len);
-		glGetProgramInfoLog(shader_program, error_log_len, NULL, error_log);
-		printf("********************************************\n[%s] shader link stage info log:\n%s\n", file_name, error_log);
-		memory_Free(error_log);
-		//free(error_log);
-	}
-
-
-	if(!status)
-	{
-		glDeleteShader(vertex_shader_object);
-		glDeleteShader(fragment_shader_object);
-		glDeleteProgram(shader_program);
-		log_LogMessage(LOG_MESSAGE_ERROR, 1, "********************************************\n[%s] shader link stage info log:\n%s\n", file_name, error_log);
-		return -1;
-	}
-
-
-
-
-
-
-	if(free_position_stack_top >= 0)
-	{
-		shader_index = free_position_stack[free_position_stack_top];
-		free_position_stack_top--;
+		log_LogMessage(LOG_MESSAGE_ERROR, 1, "shader_LoadShader: couldn't load shader [%s]\n", shader_name);
 	}
 	else
 	{
-		shader_index = shader_count++;
-		if(shader_index >= shader_list_size)
-		{
-			//shader = malloc(sizeof(shader_t ) * (shader_list_size + 16));
-			shader = memory_Malloc(sizeof(shader_t ) * (shader_list_size + 16));
-			memcpy(shader, shaders, sizeof(shader_t) * shader_list_size);
-			memory_Free(shaders);
-			//free(shaders);
-
-			shaders = shader;
-			shader_list_size += 16;
-		}
+		log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "shader_LoadShader: shader [%s] loaded successfully\n", shader_name);
 	}
-
-
-
-
-
-	shader = &shaders[shader_index];
-	shader->shader_program = shader_program;
-	//shader->name = strdup(file_name);
-	shader->name = memory_Strdup(file_name);
-	shader->file_name = memory_Strdup(file_name);
-	//shader->file_name = strdup(file_name);
-
-
-	/*glBindAttribLocation(shader->shader_program, 0, "vertex_position");
-	glBindAttribLocation(shader->shader_program, 1, "vertex_normal");
-	glBindAttribLocation(shader->shader_program, 2, "vertex_tangent");
-	glBindAttribLocation(shader->shader_program, 3, "vertex_tex_coords");
-	glBindAttribLocation(shader->shader_program, 4, "vertex_color");*/
-
-	shader->vertex_position = glGetAttribLocation(shader->shader_program, "vertex_position");
-	shader->vertex_normal = glGetAttribLocation(shader->shader_program, "vertex_normal");
-	shader->vertex_tangent = glGetAttribLocation(shader->shader_program, "vertex_tangent");
-	shader->vertex_tex_coords = glGetAttribLocation(shader->shader_program, "vertex_tex_coords");
-	shader->vertex_color = glGetAttribLocation(shader->shader_program, "vertex_color");
-
-
-/*	shader->vertex_position = 0;
-	shader->vertex_normal = 1;
-	shader->vertex_tangent = 2;
-	shader->vertex_tex_coords = 3;
-	shader->vertex_color = 4;*/
-
-
-//	shader->uniforms = memory_Malloc(sizeof(uniform_t ) * UNIFORM_LAST_UNIFORM, "shader_LoadShader");
-
-
-	shader->default_uniforms = memory_Malloc(sizeof(uniform_t) * UNIFORM_LAST_UNIFORM);
-
-	shader_GetShaderDefaultUniformsLocations(shader);
-
-	shader->named_uniforms = NULL;
-	shader->named_uniforms_list_cursor = 0;
-	shader->named_uniforms_list_size = 0;
-
-	shader->bm_flags = 0;
-
-
-	if((i = glGetUniformBlockIndex(shader->shader_program, "light_params_uniform_block")) != GL_INVALID_INDEX)
-	{
-		glUniformBlockBinding(shader->shader_program, i, R_LIGHT_UNIFORM_BUFFER_BINDING);
-		//printf("found light_params_uniform_block! %d\n", i);
-	}
-
-	//if((i = glGetUniformBlockIndex(shader->shader_program, "test_block")) != GL_INVALID_INDEX)
-	//{
-	//	glUniformBlockBinding(shader->shader_program, i, TEST_UNIFORM_BUFFER_BINDING);
-		//printf("found test_block! %d\n", i);
-	//}
-
-	//printf("SHADER %s\n", file_name);
-
-	/*if((i = glGetUniformBlockIndex(shader->shader_program, "cluster_uniform_block")) != GL_INVALID_INDEX)
-	{
-		glUniformBlockBinding(shader->shader_program, i, LIGHT_CLUSTER_UNIFORM_BUFFER_BINDING);
-		printf("found cluster_uniform_block! %d\n", i);
-	}*/
-
-	/*if((i = glGetUniformBlockIndex(shader->shader_program, "material_params_uniform_block")) != GL_INVALID_INDEX)
-	{
-		glUniformBlockBinding(shader->shader_program, i, 2);
-	}*/
-
 
 	return shader_index;
-
-	#endif
 
 }
 
 
 void shader_ReloadShader(int shader_index)
 {
-	#if 0
-	FILE *f;
-	shader_t *shader;
-	int *itemp;
+    struct shader_t *shader;
+    char *vertex_shader_source;
+    char *fragment_shader_source;
 
-	unsigned int vertex_shader_object;
-	unsigned int fragment_shader_object;
-	unsigned int shader_program;
+    shader = shader_GetShaderPointerIndex(shader_index);
 
-	int status;
-	int error_log_len;
-	int i;
-
-	unsigned long file_size;
-	int uniform_type;
-	int uniform_size;
-
-	char *vertex_shader_source;
-	char *fragment_shader_source;
-	char *error_log;
-
-	char vertex_shader_file_name[128];
-	char fragment_shader_file_name[128];
-	//char shader_file_full_path[512];
-	char *shader_file_full_path;
-
-
-	if(shader_index < 0 || shader_index >= shader_count)
+    if(shader)
 	{
-		//printf("shader_ReloadShader: bad shader index [%d]\n", shader_index);
-		log_LogMessage(LOG_MESSAGE_ERROR, 1, "shader_ReloadShader: bad shader index [%d]\n", shader_index);
-		return;
-	}
-
-	shader = &shaders[shader_index];
-
-	if(shader->bm_flags & SHADER_INVALID)
-	{
-		//printf("shader_ReloadShader: invalid shader [%d]\n", shader_index);
-		log_LogMessage(LOG_MESSAGE_ERROR, 1, "shader_ReloadShader: invalid shader [%d]\n", shader_index);
-		return;
-	}
-
-	strcpy(vertex_shader_file_name, shader->file_name);
-	strcat(vertex_shader_file_name, ".vert");
-
-	//strcpy(shader_file_full_path, shader_base_path);
-	//strcat(shader_file_full_path, "\\");
-	//strcat(shader_file_full_path, vertex_shader_file_name);
-
-	shader_file_full_path = path_GetPathToFile(vertex_shader_file_name);
-
-	if(!(f = fopen(shader_file_full_path, "r")))
-	{
-		//printf("shader_ReloadShader: couldn't load vertex shader file [%s] for shader [%s]\n", shader->file_name, shader->name);
-		log_LogMessage(LOG_MESSAGE_ERROR, 1, "shader_ReloadShader: couldn't load vertex shader file [%s] for shader [%s]\n", shader->file_name, shader->name);
-		return;
-	}
-
-	fseek(f, 0, SEEK_END);
-	file_size = ftell(f);
-	rewind(f);
-
-	//vertex_shader_source = calloc(file_size + 2, 1);
-	vertex_shader_source = memory_Calloc(file_size + 2, 1);
-	fread(vertex_shader_source, 1, file_size, f);
-	vertex_shader_source[file_size - 1] = '\0';
-	vertex_shader_source[file_size] = '\0';
-	fclose(f);
-
-	shader_AddDefine("MASSACRE_VERTEX_SHADER", NULL, 1);
-	shader_Preprocess(&vertex_shader_source);
-	shader_DropDefine("MASSACRE_VERTEX_SHADER", 1);
-
-
-	vertex_shader_object = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertex_shader_object, 1, (const GLchar **)&vertex_shader_source, NULL);
-	glCompileShader(vertex_shader_object);
-	glGetShaderiv(vertex_shader_object, GL_COMPILE_STATUS, &status);
-	//free(vertex_shader_source);
-	memory_Free(vertex_shader_source);
-
-	glGetShaderiv(vertex_shader_object, GL_INFO_LOG_LENGTH, &error_log_len);
-
-	if(error_log_len > 0)
-	{
-		//error_log = malloc(error_log_len);
-		error_log = memory_Malloc(error_log_len);
-		glGetShaderInfoLog(vertex_shader_object, error_log_len, NULL, error_log);
-		printf("********************************************\n[%s] shader vertex shader compilation stage info log:\n%s\n", shader->file_name, error_log);
-		//free(error_log);
-		memory_Free(error_log);
-	}
-
-
-	if(!status)
-	{
-		glDeleteShader(vertex_shader_object);
-		return;
-	}
-
-
-	strcpy(fragment_shader_file_name, shader->file_name);
-	strcat(fragment_shader_file_name, ".frag");
-
-	//strcpy(shader_file_full_path, shader_base_path);
-	//strcat(shader_file_full_path, "\\");
-	//strcat(shader_file_full_path, fragment_shader_file_name);
-
-	shader_file_full_path = path_GetPathToFile(fragment_shader_file_name);
-
-	if(!(f = fopen(shader_file_full_path, "r")))
-	{
-		printf("shader_ReloadShader: couldn't load fragment shader file [%s] for shader [%s]\n", shader->file_name, shader->name);
-		return;
-	}
-
-	fseek(f, 0, SEEK_END);
-	file_size = ftell(f);
-	rewind(f);
-
-	//fragment_shader_source = calloc(file_size + 2, 1);
-	fragment_shader_source = memory_Calloc(file_size + 2, 1);
-	fread(fragment_shader_source, 1, file_size, f);
-	fragment_shader_source[file_size - 1] = '\0';
-	fragment_shader_source[file_size] = '\0';
-	fclose(f);
-
-	shader_AddDefine("MASSACRE_FRAGMENT_SHADER", NULL, 1);
-	shader_Preprocess(&fragment_shader_source);
-	shader_DropDefine("MASSACRE_FRAGMENT_SHADER", 1);
-
-	fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragment_shader_object, 1, (const GLchar **)&fragment_shader_source, NULL);
-	glCompileShader(fragment_shader_object);
-	glGetShaderiv(fragment_shader_object, GL_COMPILE_STATUS, &status);
-	//free(fragment_shader_source);
-	memory_Free(fragment_shader_source);
-
-	glGetShaderiv(fragment_shader_object, GL_INFO_LOG_LENGTH, &error_log_len);
-
-	if(error_log_len > 0)
-	{
-		//error_log = malloc(error_log_len);
-		error_log = memory_Malloc(error_log_len);
-		glGetShaderInfoLog(fragment_shader_object, error_log_len, NULL, error_log);
-		printf("********************************************\n[%s] shader fragment shader compilation stage info log:\n%s\n", shader->file_name, error_log);
-		//free(error_log);
-		memory_Free(error_log);
-	}
-
-
-	if(!status)
-	{
-		glDeleteShader(vertex_shader_object);
-		glDeleteShader(fragment_shader_object);
-		return;
-	}
-
-
-	shader_program = glCreateProgram();
-
-	glAttachShader(shader_program, vertex_shader_object);
-	glAttachShader(shader_program, fragment_shader_object);
-	glLinkProgram(shader_program);
-
-	/* flag those shaders for deletion, so they
-	get deleted once the shader program object gets
-	deleted... */
-	glDeleteShader(vertex_shader_object);
-	glDeleteShader(fragment_shader_object);
-
-	glGetProgramiv(shader_program, GL_LINK_STATUS, &status);
-
-	glGetProgramiv(shader_program, GL_INFO_LOG_LENGTH, &error_log_len);
-
-	if(error_log_len > 0)
-	{
-		//error_log = malloc(error_log_len);
-		error_log = memory_Malloc(error_log_len);
-		glGetProgramInfoLog(shader_program, error_log_len, NULL, error_log);
-		printf("********************************************\n[%s] shader link stage info log:\n%s\n", shader->file_name, error_log);
-		//free(error_log);
-		memory_Free(error_log);
-	}
-
-
-	if(!status)
-	{
-		glDeleteShader(vertex_shader_object);
-		glDeleteShader(fragment_shader_object);
-		glDeleteProgram(shader_program);
-		return;
-	}
-
-
-	glDeleteProgram(shader->shader_program);
-
-
-
-	/*if(free_position_stack_top >= 0)
-	{
-		shader_index = free_position_stack[free_position_stack_top--];
-	}
-	else
-	{
-		shader_index = shader_count++;
-		if(shader_index >= shader_list_size)
+		if(shader->file_name)
 		{
-			shader = malloc(sizeof(shader_t ) * (shader_list_size + 16));
-			memcpy(shader, shaders, sizeof(shader_t) * shader_list_size);
-			free(shaders);
+			if(shader_LoadShaderSource(shader->file_name, &vertex_shader_source, &fragment_shader_source))
+			{
+                shader_CompileShaderSource(shader, &vertex_shader_source, &fragment_shader_source);
 
-			shaders = shader;
-			shader_list_size += 16;
+				memory_Free(vertex_shader_source);
+				memory_Free(fragment_shader_source);
+			}
 		}
-	}*/
-
-
-
-
-
-	//shader = &shaders[shader_index];
-	shader->shader_program = shader_program;
-	//shader->name = strdup(file_name);
-
-	shader->vertex_position = glGetAttribLocation(shader->shader_program, "vertex_position");
-	shader->vertex_normal = glGetAttribLocation(shader->shader_program, "vertex_normal");
-	shader->vertex_tangent = glGetAttribLocation(shader->shader_program, "vertex_tangent");
-	shader->vertex_tex_coords = glGetAttribLocation(shader->shader_program, "vertex_tex_coords");
-
-	shader_GetShaderDefaultUniformsLocations(shader);
-
-	shader->bm_flags = 0;
-
-	//printf("%s: %d %d %d\n", file_name, shader->width, shader->height, shader->cluster_texture);
-
-	/*if((i = glGetUniformBlockIndex(shader->shader_program, "camera_params_uniform_block")) != GL_INVALID_INDEX)
-	{
-		glUniformBlockBinding(shader->shader_program, i, 0);
-	}*/
-
-	if((i = glGetUniformBlockIndex(shader->shader_program, "light_params_uniform_block")) != GL_INVALID_INDEX)
-	{
-		glUniformBlockBinding(shader->shader_program, i, LIGHT_PARAMS_UNIFORM_BUFFER_BINDING);
-		printf("found light_params_uniform_block! %d\n", i);
 	}
-
-	if((i = glGetUniformBlockIndex(shader->shader_program, "test_block")) != GL_INVALID_INDEX)
-	{
-		glUniformBlockBinding(shader->shader_program, i, TEST_UNIFORM_BUFFER_BINDING);
-		printf("found test_block! %d\n", i);
-	}
-
-	/*if((i = glGetUniformBlockIndex(shader->shader_program, "cluster_uniform_block")) != GL_INVALID_INDEX)
-	{
-		glUniformBlockBinding(shader->shader_program, i, LIGHT_CLUSTER_UNIFORM_BUFFER_BINDING);
-		printf("found cluster_uniform_block! %d\n", i);
-	}*/
-
-	/*if((i = glGetUniformBlockIndex(shader->shader_program, "material_params_uniform_block")) != GL_INVALID_INDEX)
-	{
-		glUniformBlockBinding(shader->shader_program, i, 2);
-	}*/
-
-
-	return;
-
-	#endif
 }
 
 
@@ -1219,139 +685,16 @@ void shader_HotReload()
 
 	printf("****************** SHADER HOT RELOAD ******************\n");
 
-	/*for(i = 0; i < shader_count; i++)
+	for(i = 0; i < shd_shaders.element_count; i++)
 	{
 		shader_ReloadShader(i);
-	}*/
+	}
 
 	printf("****************** SHADER HOT RELOAD ******************\n\n");
 
 }
 
 
-/*void shader_UseShader(int shader_index)
-{
-	shader_t *shader;
-
-	if(r_active_shader == shader_index)
-		return;
-
-	r_active_shader = shader_index;
-
-	if(shader_index < 0)
-	{
-		glUseProgram(0);
-	}
-
-
-	shader = &shaders[shader_index];
-	glUseProgram(shader->shader_program);
-
-	glEnableVertexAttribArray(shader->vertex_position);
-	glVertexAttribPointer(shader->vertex_position, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), (void *)0);
-
-	if(shader->vertex_normal != 255)
-	{
-		glEnableVertexAttribArray(shader->vertex_normal);
-		glVertexAttribPointer(shader->vertex_normal, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), (void *)&(((vertex_t *)0)->normal));
-	}
-
-	if(shader->vertex_tangent != 255)
-	{
-		glEnableVertexAttribArray(shader->vertex_tex_coords);
-		glVertexAttribPointer(shader->vertex_tex_coords, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), (void *)&(((vertex_t *)0)->tex_coord));
-	}
-
-
-
-
-
-
-
-}*/
-
-#if 0
-
-void shader_SetCurrentShaderUniform1i(int uniform, int value)
-{
-	if(uniform < UNIFORM_LAST_UNIFORM && uniform >= 0)
-	{
-		glUniform1i(uniform, value);
-	}
-
-
-}
-
-void shader_SetCurrentShaderUniform1f(int uniform, float value)
-{
-	/*switch(uniform)
-	{
-		case UNIFORM_WIDTH:
-			uniform = shaders[r_active_shader].width;
-		break;
-
-		case UNIFORM_HEIGHT:
-			uniform = shaders[r_active_shader].height;
-		break;
-
-		default:
-			return;
-	}
-
-	glUniform1f(uniform, value);*/
-}
-
-void shader_SetCurrentShaderUniform4fv(int uniform, float *value)
-{
-	/*switch(uniform)
-	{
-		case UNIFORM_ACTIVE_CAMERA_POSITION:
-			uniform = shaders[r_active_shader].active_camera_position;
-		break;
-
-		default:
-			return;
-	}
-
-	glUniform4fv(uniform, 1, value);*/
-}
-
-void shader_SetCurrentShaderUniformMatrix4fv(int uniform, float *value)
-{
-	/*switch(uniform)
-	{
-		case UNIFORM_CAMERA_TO_LIGHT_MATRIX:
-			uniform = shaders[r_active_shader].camera_to_light_matrix;
-		break;
-
-		default:
-			return;
-		break;
-	}
-
-	glUniformMatrix4fv(uniform, 1, GL_FALSE, value);*/
-}
-
-
-void shader_SetCurrentShaderVertexAttribPointer(int attrib, int size, int type, int normalized, int stride, void *pointer)
-{
-	/*int att;
-	switch(attrib)
-	{
-		case ATTRIB_VERTEX_POSITION:
-			att = shaders[r_active_shader].vertex_position;
-		break;
-
-		default:
-			return;
-		break;
-	}
-
-	glVertexAttribPointer(att, size, type, normalized, stride, (const void *)pointer);*/
-}
-
-
-#endif
 
 
 

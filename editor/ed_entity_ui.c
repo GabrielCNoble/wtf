@@ -18,6 +18,8 @@
 #include "..\..\common\gmath\vector.h"
 #include "..\..\common\gmath\matrix.h"
 
+#include "..\..\common\r_main.h"
+
 #include "..\ed_ui_explorer.h"
 
 #include "ed_entity.h"
@@ -385,7 +387,7 @@ int editor_EntityEditorSetModelComponentValue(struct entity_handle_t entity)
 	return keep_open;
 }
 
-editor_EntityEditorSetPhysicsComponentValue(struct entity_handle_t entity)
+int editor_EntityEditorSetPhysicsComponentValue(struct entity_handle_t entity)
 {
 	int keep_open = 2;
 
@@ -721,7 +723,8 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 
 	vec3_t position;
 
-	active_camera = camera_GetActiveCamera();
+//	active_camera = camera_GetActiveCamera();
+    active_camera = (camera_t *)renderer_GetActiveView();
 
 	char checked = 0;
 

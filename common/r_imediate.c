@@ -45,6 +45,10 @@ int r_imediate_inverse_relative_vert_index = 0;
 /* from r_shader.c */
 extern int r_current_vertex_format;
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 void renderer_InitImediateDrawing()
 {
@@ -475,6 +479,10 @@ void renderer_DrawVertsIndexed(GLenum mode, int count, int size, int stride, voi
 ==============================================================
 ==============================================================
 */
+
+#ifdef __cplusplus
+}
+#endif
 
 
 

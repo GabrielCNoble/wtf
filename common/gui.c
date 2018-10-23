@@ -16,6 +16,7 @@
 #include "font.h"
 //#include "renderer.h"
 #include "r_main.h"
+#include "r_imediate.h"
 #include "r_shader.h"
 #include "r_gl.h"
 #include "input.h"
@@ -105,7 +106,7 @@ void gui_ImGuiInit()
 
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
-	font_texture = renderer_GenGLTexture(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
+	font_texture = renderer_GenGLTexture(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0, 1);
 
 	glBindTexture(GL_TEXTURE_2D, font_texture);
 	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
@@ -2313,6 +2314,9 @@ void gui_DrawGUI()
 	//scale.floats[3][0] = -r_window_width * 0.5;
 	//scale.floats[3][1] = r_window_height * 0.5;
 
+    gui_ImGuiRender();
+
+    //return ;
 
 	renderer_EnableImediateDrawing();
 	renderer_SetShader(r_gui_shader);
@@ -2397,8 +2401,6 @@ void gui_DrawGUI()
 
 
 #ifdef __cplusplus
-}
-}
 }
 #endif
 

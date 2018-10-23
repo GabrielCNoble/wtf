@@ -23,8 +23,7 @@ int shader_LoadShaderSource(char *file_name, char **vertex_shader_source, char *
 
 int shader_CompileShaderSource(struct shader_t *shader, char **vertex_shader_source, char **fragment_shader_source);
 
-
-int shader_LoadShader(char *file_name);
+int shader_LoadShader(char *file_name, char *shader_name);
 
 void shader_ReloadShader(int shader_index);
 
@@ -35,20 +34,6 @@ struct shader_t *shader_GetShaderPointerIndex(int shader_index);
 void shader_DeleteShaderIndex(int shader_index);
 
 void shader_HotReload();
-
-void shader_DeleteShaderByIndex(int shader_index);
-
-//void shader_UseShader(int shader_index);
-
-void shader_SetCurrentShaderUniform1i(int uniform, int value);
-
-void shader_SetCurrentShaderUniform1f(int uniform, float value);
-
-void shader_SetCurrentShaderUniform4fv(int uniform, float *value);
-
-void shader_SetCurrentShaderUniformMatrix4fv(int uniform, float *value);
-
-void shader_SetCurrentShaderVertexAttribPointer(int attrib, int size, int type, int normalized, int stride, void *pointer);
 
 
 #endif

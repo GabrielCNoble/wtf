@@ -1,4 +1,4 @@
-#version 400 compatibility  
+#version 400 compatibility
 
 #include "engine/default_clustered_forward.h"
 

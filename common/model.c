@@ -8,7 +8,7 @@
 #include "GL\glew.h"
 
 #include "model.h"
-#include "gpu.h"
+#include "r_verts.h"
 #include "path.h"
 #include "mpk_file.h"
 #include "material.h"
@@ -233,11 +233,11 @@ int model_LoadModel(char *file_name, char *model_name)
 		//model->vertice_buffer_handle = gpu_AllocVerticesAlign(sizeof(struct c_vertex_t) * model->vert_count, sizeof(struct c_vertex_t));
 		//model->vert_buffer_start = gpu_GetAllocStart(model->vertice_buffer_handle) / sizeof(struct c_vertex_t);
 
-		model->vertice_buffer_handle = gpu_AllocVerticesAlign(sizeof(struct compact_vertex_t) * model->vert_count, sizeof(struct compact_vertex_t));
-		model->vert_buffer_start = gpu_GetAllocStart(model->vertice_buffer_handle) / sizeof(struct compact_vertex_t);
+		model->vertice_buffer_handle = renderer_AllocVerticesAlign(sizeof(struct compact_vertex_t) * model->vert_count, sizeof(struct compact_vertex_t));
+		model->vert_buffer_start = renderer_GetAllocStart(model->vertice_buffer_handle) / sizeof(struct compact_vertex_t);
 
-		model->indice_buffer_handle = gpu_AllocIndexesAlign(sizeof(int) * out_params.out_indices_count, sizeof(int));
-		indice_buffer_start = gpu_GetAllocStart(model->indice_buffer_handle) / sizeof(int);
+		model->indice_buffer_handle = renderer_AllocIndexesAlign(sizeof(int) * out_params.out_indices_count, sizeof(int));
+		indice_buffer_start = renderer_GetAllocStart(model->indice_buffer_handle) / sizeof(int);
 
 		indices_count = 0;
 
@@ -270,7 +270,7 @@ int model_LoadModel(char *file_name, char *model_name)
 			indices_count += model->lods[i].lod_indice_count;
 		}
 
-		gpu_Write(model->indice_buffer_handle, 0, model->indices, sizeof(int) * indices_count);
+		renderer_Write(model->indice_buffer_handle, 0, model->indices, sizeof(int) * indices_count);
 
 		max_extents.x = FLT_MIN;
 		max_extents.y = FLT_MIN;
@@ -315,7 +315,7 @@ int model_LoadModel(char *file_name, char *model_name)
 		//compact_vertices = model_ConvertVertices2(model->vertices, model->vert_count);
 		compact_vertices = model_ConvertVertices(model->vertices, model->vert_count);
         //gpu_Write(model->vertice_buffer_handle, 0, compact_vertices, sizeof(struct c_vertex_t) * model->vert_count);
-        gpu_Write(model->vertice_buffer_handle, 0, compact_vertices, sizeof(struct compact_vertex_t) * model->vert_count);
+        renderer_Write(model->vertice_buffer_handle, 0, compact_vertices, sizeof(struct compact_vertex_t) * model->vert_count);
 
 	}
 	else

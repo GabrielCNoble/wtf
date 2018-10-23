@@ -5,6 +5,7 @@
 #include "world.h"
 #include "entity.h"
 #include "sound.h"
+#include "texture.h"
 #include "log.h"
 
 #include <stdio.h>

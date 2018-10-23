@@ -77,6 +77,8 @@ void mat2_t_invert(mat2_t *mat);
 
 void mat4_t_compose(mat4_t *result, mat3_t *Orientation, vec3_t Position);
 
+void mat4_t_compose2(mat4_t *result, mat3_t *orientation, vec3_t position, vec3_t scale);
+
 void mat3_t_compose(mat3_t *result, vec3_t vec);
 
 static inline void MultiplyVector4(mat4_t *mat, vec4_t *vec);

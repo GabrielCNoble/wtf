@@ -1,5 +1,6 @@
 #include "entity.h"
 #include "ent_serialization.h"
+#include "ent_script.h"
 #include "r_main.h"
 
 #include "stack_list.h"
@@ -13,10 +14,16 @@
 
 #include "engine.h"
 
+#include "world.h"
+
+#include "script.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
+
+#include "matrix.h"
 
 
 /* from world.c */
@@ -39,8 +46,8 @@ extern int r_frame;
 
 //struct entity_def_t *ent_entity_defs = NULL;
 
-int ent_visible_entities_count = 0;
-int ent_visible_entities_indexes[MAX_VISIBLE_ENTITIES];
+//int ent_visible_entities_count = 0;
+//int ent_visible_entities_indexes[MAX_VISIBLE_ENTITIES];
 
 
 
@@ -203,8 +210,122 @@ int entity_Init()
 
 	id_rot = mat3_t_id();
 
-
 	ent_triggers = stack_list_create(sizeof(struct trigger_t), 128, NULL);
+
+
+    script_RegisterEnum("COMPONENT_TYPES");
+    script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_TRANSFORM", COMPONENT_TYPE_TRANSFORM);
+    script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_PHYSICS", COMPONENT_TYPE_PHYSICS);
+    script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_MODEL", COMPONENT_TYPE_MODEL);
+    script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_LIGHT", COMPONENT_TYPE_LIGHT);
+    script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_CAMERA", COMPONENT_TYPE_CAMERA);
+    script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_LIFE", COMPONENT_TYPE_LIFE);
+    script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_NAVIGATION", COMPONENT_TYPE_NAVIGATION);
+
+
+    script_RegisterObjectType("entity_handle_t", sizeof(struct entity_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
+    script_RegisterObjectType("component_handle_t", sizeof(struct component_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
+    script_RegisterObjectType("collider_handle_t", sizeof(struct collider_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
+    script_RegisterObjectType("entity_contact_t", sizeof(struct entity_contact_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
+
+
+    script_RegisterObjectProperty("entity_contact_t", "entity_handle_t entity", (int)(&((struct entity_contact_t *)0)->entity));
+    script_RegisterObjectProperty("entity_contact_t", "vec3_t position", (int)(&((struct entity_contact_t *)0)->position));
+
+
+    script_RegisterGlobalFunction("void entity_Jump(float jump_force)", entity_ScriptJump);
+    script_RegisterGlobalFunction("void entity_Move(vec3_t &in direction)", entity_ScriptMove);
+    script_RegisterGlobalFunction("void entity_FindPath(vec3_t &in to)", entity_ScriptFindPath);
+    script_RegisterGlobalFunction("int entity_GetWaypointDirection(vec3_t &out direction)", entity_ScriptGetWaypointDirection);
+
+
+    script_RegisterGlobalFunction("vec3_t &entity_GetPosition(int local)", entity_ScriptGetPosition);
+    script_RegisterGlobalFunction("vec3_t &entity_GetEntityPosition(entity_handle_t entity, int local)", entity_ScriptGetEntityPosition);
+
+
+    script_RegisterGlobalFunction("mat3_t &entity_GetOrientation(int local)", entity_ScriptGetOrientation);
+    script_RegisterGlobalFunction("mat3_t &entity_GetEntityOrientation(entity_handle_t entity, int local)", entity_ScriptGetEntityOrientation);
+
+
+    script_RegisterGlobalFunction("void entity_Translate(vec3_t &in direction)", entity_ScriptTranslate);
+    script_RegisterGlobalFunction("void entity_TranslateEntity(entity_handle_t entity, vec3_t &in direction)", entity_ScriptTranslateEntity);
+
+
+    script_RegisterGlobalFunction("void entity_Rotate(vec3_t &in axis, float angle, int set)", entity_ScriptRotate);
+    script_RegisterGlobalFunction("void entity_RotateEntity(entity_handle_t entity, vec3_t &in ais, float angle, int set)", entity_ScriptRotateEntity);
+
+
+    script_RegisterGlobalFunction("void entity_SetEntityVelocity(entity_handle_t entity, vec3_t &in velocity)", entity_ScriptSetEntityVelocity);
+
+
+    script_RegisterGlobalFunction("int entity_GetLife()", entity_ScriptGetLife);
+
+
+    script_RegisterGlobalFunction("entity_handle_t entity_GetCurrentEntity()", entity_ScriptGetCurrentEntity);
+
+
+    script_RegisterGlobalFunction("component_handle_t entity_GetComponent(int component_index)", entity_ScriptGetComponent);
+    script_RegisterGlobalFunction("component_handle_t entity_GetEntityComponent(entity_handle_t entity, int component_index)", entity_ScriptGetEntityComponent);
+    script_RegisterGlobalFunction("entity_handle_t entity_GetEntity(string &in name, int get_def)", entity_ScriptGetEntity);
+    script_RegisterGlobalFunction("entity_handle_t entity_GetEntityDef(string &in name)", entity_ScriptGetEntityDef);
+
+
+    script_RegisterGlobalFunction("entity_handle_t entity_GetChildEntity(string &in entity)", entity_ScriptGetChildEntity);
+    script_RegisterGlobalFunction("entity_handle_t entity_GetEntityChildEntity(entity_handle_t entity, string &in name)", entity_ScriptGetEntityChildEntity);
+
+
+    script_RegisterGlobalFunction("entity_handle_t entity_SpawnEntity(mat3_t &in orientation, vec3_t &in position, vec3_t &in scale, entity_handle_t def, string &in name)", entity_ScriptSpawnEntity);
+
+
+    script_RegisterGlobalFunction("void entity_Die()", entity_ScriptDie);
+    script_RegisterGlobalFunction("void entity_DIEYOUMOTHERFUCKER()", entity_ScriptDie);
+
+
+    script_RegisterGlobalFunction("void entity_SetCameraAsActive(component_handle_t camera)", entity_ScriptSetCameraAsActive);
+
+
+    script_RegisterGlobalFunction("void entity_SetComponentValue(component_handle_t component, string &in field_name, ? &in value)", entity_ScriptSetComponentValue);
+    script_RegisterGlobalFunction("void entity_GetComponentValue(component_handle_t component, string &in field_name, ? &out value)", entity_ScriptGetComponentValue);
+    script_RegisterGlobalFunction("void entity_SetComponentValue3f(component_handle_t component, string &in field_name, vec3_t &in value)", entity_ScriptSetComponentValue3f);
+    script_RegisterGlobalFunction("void entity_GetComponentValue3f(component_handle_t component, string &in field_name, vec3_t &out value)", entity_ScriptGetComponentValue3f);
+    script_RegisterGlobalFunction("void entity_SetComponentValue33f(component_handle_t component, string &in field_name, mat3_t &in value)", entity_ScriptSetComponentValue33f);
+
+
+    script_RegisterGlobalFunction("void entity_AddEntityProp(entity_handle_t entity, string &in name, ? &in type)", entity_ScriptAddEntityProp);
+    script_RegisterGlobalFunction("void entity_AddEntityProp1i(entity_handle_t entity, string &in name)", entity_ScriptAddEntityProp1i);
+    script_RegisterGlobalFunction("void entity_AddEntityProp1f(entity_handle_t entity, string &in name)", entity_ScriptAddEntityProp1f);
+    script_RegisterGlobalFunction("void entity_AddEntityProp3f(entity_handle_t entity, string &in name)", entity_ScriptAddEntityProp3f);
+    script_RegisterGlobalFunction("void entity_RemoveEntityProp(entity_handle_t entity, string &in name)", entity_ScriptRemoveEntityProp);
+
+
+    script_RegisterGlobalFunction("void entity_SetEntityProp1i(entity_handle_t entity, string &in name, int value)", entity_ScriptSetEntityPropValue1i);
+    script_RegisterGlobalFunction("int entity_GetEntityProp1i(entity_handle_t entity, string &in name)", entity_ScriptGetEntityPropValue1i);
+    script_RegisterGlobalFunction("int entity_IncEntityProp1i(entity_handle_t entity, string &in name)", entity_ScriptIncEntityPropValue1i);
+    script_RegisterGlobalFunction("int entity_DecEntityProp1i(entity_handle_t entity, string &in name)", entity_ScriptDecEntityPropValue1i);
+    script_RegisterGlobalFunction("void entity_SetEntityProp3f(entity_handle_t entity, string &in name, vec3_t &in value)", entity_ScriptSetEntityPropValue3f);
+    script_RegisterGlobalFunction("vec3_t &entity_GetEntityProp3f(entity_handle_t entity, string &in name)", entity_ScriptGetEntityPropValue3f);
+
+
+    script_RegisterGlobalFunction("void entity_SetEntityProp(entity_handle_t entity, string &in name, ? &in value)", entity_ScriptSetEntityPropValue);
+    script_RegisterGlobalFunction("void entity_GetEntityProp(entity_handle_t entity, string &in name, ? &out value)", entity_ScriptGetEntityPropValue);
+
+
+    script_RegisterGlobalFunction("int entity_EntityHasProp(entity_handle_t entity, string &in name)", entity_ScriptEntityHasProp);
+
+
+    script_RegisterGlobalFunction("int entity_IsEntityValid(entity_handle_t entity)", entity_ScriptIsEntityValid);
+    script_RegisterGlobalFunction("int entity_LineOfSightToEntity(entity_handle_t entity)", entity_ScriptLineOfSightToEntity);
+
+
+    script_RegisterGlobalFunction("int entity_GetTrigger(string &in trigger)", entity_ScriptGetTrigger);
+    script_RegisterGlobalFunction("void entity_SetTriggerPosition(int trigger_index, vec3_t &in position)", entity_ScriptSetTriggerPosition);
+    script_RegisterGlobalFunction("int entity_IsTriggered(int trigger_index)", entity_ScriptIsTriggered);
+
+
+    script_RegisterGlobalFunction("array<entity_handle_t> @entity_GetEntities()", entity_ScriptGetEntities);
+
+
+
 
 	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
@@ -268,9 +389,10 @@ struct component_handle_t entity_AllocComponent(int component_type, int alloc_fo
 	handle.type = COMPONENT_TYPE_NONE;
 	handle.index = 0;
 
-	list = entity_ListForType(component_type, alloc_for_def);
-
+	//list = entity_ListForType(component_type, alloc_for_def);
 	alloc_for_def = alloc_for_def && 1;
+
+	list = &ent_components[alloc_for_def][component_type];
 
 	if(list)
 	{
@@ -345,7 +467,8 @@ void entity_DeallocComponent(struct component_handle_t component)
 	struct component_t *component_ptr;
 	struct camera_component_t *camera_component;
 
-	list = entity_ListForType(component.type, component.def);
+	//list = entity_ListForType(component.type, component.def);
+	list = &ent_components[component.def][component.type];
 
 	if(list)
 	{
@@ -909,7 +1032,7 @@ void entity_RemoveComponent(struct entity_handle_t entity, int component_type)
 	}
 }
 
-void entity_AddProp(struct entity_handle_t entity, char *name, int size)
+int entity_AddProp(struct entity_handle_t entity, char *name, int size)
 {
 	struct entity_prop_t *props;
 	struct entity_prop_t *prop;
@@ -917,7 +1040,7 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 
 	//int size;
 
-	int prop_index;
+	int prop_index = -1;
 
 	int i;
 
@@ -925,7 +1048,7 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 
 	if(size <= 0)
 	{
-		return;
+		return -1;
 	}
 
 	if(entity_ptr)
@@ -952,7 +1075,7 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 				{
 					/* don't add a prop if the requested name and size
 					is the same of an existing one... */
-					return;
+					return prop_index;
 				}
 
 				break;
@@ -982,46 +1105,65 @@ void entity_AddProp(struct entity_handle_t entity, char *name, int size)
 		prop->size = size;
 		prop->memory = memory_Malloc((prop->size + 3) & (~3));
 	}
+
+	return prop_index;
+}
+
+void entity_AddPropTyped(struct entity_handle_t entity, char *name, int type)
+{
+    struct entity_prop_t *prop;
+    int prop_index;
+
+    if(type >= ENTITY_PROP_TYPE_INT && type < ENTITY_PROP_TYPE_LAST)
+    {
+        prop_index = entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[type]);
+
+        if(prop_index > -1)
+        {
+            prop = entity_GetPropPointerIndex(entity, prop_index);
+            prop->type = type;
+        }
+    }
 }
 
 void entity_AddProp1i(struct entity_handle_t entity, char *name)
 {
-	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_INT]);
+    entity_AddPropTyped(entity, name, ENTITY_PROP_TYPE_INT);
 }
 
 void entity_AddProp1f(struct entity_handle_t entity, char *name)
 {
-	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_FLOAT]);
+    entity_AddPropTyped(entity, name, ENTITY_PROP_TYPE_FLOAT);
 }
 
 void entity_AddProp2f(struct entity_handle_t entity, char *name)
 {
-	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_VEC2]);
+	entity_AddPropTyped(entity, name, ENTITY_PROP_TYPE_VEC2);
 }
 
 void entity_AddProp3f(struct entity_handle_t entity, char *name)
 {
-	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_VEC3]);
+	entity_AddPropTyped(entity, name, ENTITY_PROP_TYPE_VEC3);
 }
 
 void entity_AddProp4f(struct entity_handle_t entity, char *name)
 {
-	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_VEC4]);
+	entity_AddPropTyped(entity, name, ENTITY_PROP_TYPE_VEC4);
 }
 
 void entity_AddProp22f(struct entity_handle_t entity, char *name)
 {
-	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_MAT2]);
+	entity_AddPropTyped(entity, name, ENTITY_PROP_TYPE_MAT2);
 }
 
 void entity_AddProp33f(struct entity_handle_t entity, char *name)
 {
-	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_MAT3]);
+	entity_AddPropTyped(entity, name, ENTITY_PROP_TYPE_MAT3);
 }
 
 void entity_AddProp44f(struct entity_handle_t entity, char *name)
 {
-	entity_AddProp(entity, name, ENTITY_PROP_TYPES_SIZES[ENTITY_PROP_TYPE_MAT4]);
+	entity_AddPropTyped(entity, name, ENTITY_PROP_TYPE_MAT4);
 }
 
 
@@ -1123,6 +1265,23 @@ struct entity_prop_t *entity_GetPropPointer(struct entity_handle_t entity, char 
 	}
 
 	return NULL;
+}
+
+struct entity_prop_t *entity_GetPropPointerIndex(struct entity_handle_t entity, int prop_index)
+{
+    struct entity_t *entity_ptr;
+
+    entity_ptr = entity_GetEntityPointerHandle(entity);
+
+    if(entity_ptr)
+    {
+        if(prop_index >= 0 && prop_index < entity_ptr->props.element_count)
+        {
+            return (struct entity_prop_t *)entity_ptr->props.elements + prop_index;
+        }
+    }
+
+    return NULL;
 }
 
 /*
@@ -2212,6 +2371,10 @@ struct entity_source_file_t *entity_GetSourceFile(struct entity_handle_t entity)
 }
 
 
+
+
+
+
 void entity_TranslateEntity(struct entity_handle_t entity, vec3_t direction, float amount)
 {
 	struct entity_t *entity_ptr;
@@ -2247,27 +2410,82 @@ void entity_TranslateEntity(struct entity_handle_t entity, vec3_t direction, flo
 	}
 }
 
-void entity_RotateEntity(int entity_index, vec3_t axis, float amount)
+void entity_SetEntityPosition(struct entity_handle_t entity, vec3_t position)
 {
-	/*struct entity_t *entity;
+    struct entity_t *entity_ptr;
+    struct transform_component_t *transform;
+    struct physics_component_t *collider;
+
+    entity_ptr = entity_GetEntityPointerHandle(entity);
+
+    if(entity_ptr)
+    {
+        transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+
+        transform->position.x = position.x;
+        transform->position.y = position.y;
+        transform->position.z = position.z;
+
+        transform->flags |= ENTITY_FLAG_HAS_MOVED;
+
+        collider = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
+
+        if(collider)
+        {
+            physics_SetColliderPosition(collider->collider.collider_handle, transform->position);
+        }
+    }
+}
 
 
-	if(entity_index >= 0 && entity_index < ent_entity_list_cursor)
-	{
-		entity = &ent_entities[entity_index];
 
-		if(!(entity->flags & ENTITY_INVALID))
-		{
-			mat3_t_rotate(&entity->orientation, axis, amount, 0);
-			entity->flags |= ENTITY_HAS_MOVED;
 
-			if(entity->collider_index > -1)
-			{
-				physics_SetColliderOrientation(entity->collider_index, &entity->orientation);
-			}
+void entity_RotateEntity(struct entity_handle_t entity, vec3_t axis, float amount, int set)
+{
+	struct entity_t *entity_ptr;
+	struct transform_component_t *transform;
+	struct physics_component_t *physics;
 
-		}
-	}*/
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+
+	if(entity_ptr)
+    {
+        transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+        mat3_t_rotate(&transform->orientation, axis, amount, set);
+
+        transform->flags |= ENTITY_FLAG_HAS_MOVED;
+
+        physics = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
+
+        if(physics)
+        {
+            physics_SetColliderOrientation(physics->collider.collider_handle, &transform->orientation);
+        }
+    }
+}
+
+void entity_SetEntityOrientation(struct entity_handle_t entity, mat3_t *orientation)
+{
+    struct entity_t *entity_ptr;
+	struct transform_component_t *transform;
+	struct physics_component_t *physics;
+
+	entity_ptr = entity_GetEntityPointerHandle(entity);
+
+	if(entity_ptr)
+    {
+        transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+        transform->orientation = *orientation;
+
+        transform->flags |= ENTITY_FLAG_HAS_MOVED;
+
+        physics = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
+
+        if(physics)
+        {
+            physics_SetColliderOrientation(physics->collider.collider_handle, &transform->orientation);
+        }
+    }
 }
 
 #define ENTITY_MIN_SCALE 0.01
@@ -2912,9 +3130,6 @@ void entity_UpdateTransformComponents()
 				{
 					mat3_t_mult(&rotation, &local_transform->orientation, &collider->orientation);
 					mat4_t_compose2(&world_transform->transform, &rotation, collider->position, local_transform->scale);
-
-
-
 				}
 				else
 				{
@@ -3580,7 +3795,7 @@ void *entity_SetupScriptDataCallback(struct script_t *script, void *script_contr
 
 			}
 
-			script_QueueEntryPoint(entity_script->script.main_entry_point);
+			script_QueueEntryPoint(entity_script->on_update_entry_point);
 		}
 	}
 
@@ -3600,6 +3815,7 @@ int entity_GetScriptDataCallback(struct script_t *script)
 	entity_script->on_spawn_entry_point = script_GetFunctionAddress("OnSpawn", script);
 	entity_script->on_die_entry_point = script_GetFunctionAddress("OnDie", script);
 	entity_script->on_collision_entry_point = script_GetFunctionAddress("OnCollision", script);
+	entity_script->on_update_entry_point = script_GetFunctionAddress("OnUpdate", script);
 
 	entity_script->collided_array = script_GetGlobalVarAddress("collided_entities", script);
 

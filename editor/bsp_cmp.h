@@ -145,7 +145,11 @@ typedef struct bsp_triangle_t
 
 }bsp_triangle_t;
 
-
+struct bsp_vis_probe_t
+{
+    vec3_t position;
+    int valid;
+};
 
 
 typedef struct bsp_edge_t
@@ -276,6 +280,8 @@ void bsp_CountNodesAndLeaves(bsp_node_t *bsp, int *leaves, int *nodes);
 
 int bsp_IntersectBsp(bsp_node_t *node, vec3_t start, vec3_t end);
 
+bsp_leaf_t *bsp_PointContents(bsp_node_t *bsp, vec3_t point);
+
 
 /*
 ===============================================================================
@@ -288,6 +294,8 @@ int bsp_IntersectBsp(bsp_node_t *node, vec3_t start, vec3_t end);
 /* engine specific kludge... */
 
 bsp_polygon_t *bsp_DeepCopyPolygonsContiguous(bsp_polygon_t *src);
+
+void bsp_DeletePolygonsContiguous(bsp_polygon_t *polygons);
 
 void bsp_TriangulatePolygon(bsp_polygon_t *polygon, vertex_t **vertices, int *vertex_count);
 

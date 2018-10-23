@@ -15,6 +15,7 @@
 #include "..\common\r_gl.h"
 #include "..\common\r_shader.h"
 #include "..\common\input.h"
+#include "..\common\r_imediate.h"
 #include "..\brush.h"
 #include "..\bsp_cmp.h"
 #include "..\pvs.h"
@@ -26,6 +27,8 @@
 
 #include "..\..\common\gmath\vector.h"
 #include "..\..\common\gmath\matrix.h"
+
+#include "ed_selection.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -240,8 +243,8 @@ void editor_LevelEditorWaypointOptionsMenuCallback(widget_t *widget)
 void editor_LevelEditorUIInit()
 {
 	ed_level_editor_brush_uv_menu_framebuffer = renderer_CreateFramebuffer(ed_level_editor_brush_uv_window_size.x, ed_level_editor_brush_uv_window_size.y);
-	renderer_AddAttachment(&ed_level_editor_brush_uv_menu_framebuffer, GL_COLOR_ATTACHMENT0, GL_RGBA32F);
-	renderer_AddAttachment(&ed_level_editor_brush_uv_menu_framebuffer, GL_DEPTH_ATTACHMENT, 0);
+	renderer_AddAttachment(&ed_level_editor_brush_uv_menu_framebuffer, GL_COLOR_ATTACHMENT0, GL_RGBA32F, 1, GL_LINEAR);
+	renderer_AddAttachment(&ed_level_editor_brush_uv_menu_framebuffer, GL_DEPTH_ATTACHMENT, 0, 1, GL_NEAREST);
 }
 
 void editor_LevelEditorUIFinish()
@@ -778,6 +781,7 @@ void editor_LevelEditorEntityDefsMenu()
 
 void editor_LevelEditorLightWindow(int light_index)
 {
+    #if 0
 	light_ptr_t light_ptr;
 	pick_record_t *pick;
 
@@ -827,6 +831,8 @@ void editor_LevelEditorLightWindow(int light_index)
 			//break;
 		//}
 	}
+
+	#endif
 }
 
 void editor_LevelEditorBrushWindow(struct brush_t *brush)

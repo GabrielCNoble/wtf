@@ -302,10 +302,12 @@ int path_SetDir(char *dir)
 
 	pth_dir_element_count = 0;
 
-	current_dir_len = strlen(current_dir->dd_name);
-	strcpy(pth_current_directory, path_FormatPath(current_dir->dd_name));
-	pth_current_directory[current_dir_len - 2] = '\0';
-	printf("path_SetDir: dir set to %s\n", pth_current_directory);
+	//current_dir_len = strlen(current_dir->dd_name);
+	//strcpy(pth_current_directory, path_FormatPath(current_dir->dd_name));
+	current_dir_len = strlen(dir);
+	strcpy(pth_current_directory, path_FormatPath(dir));
+	//pth_current_directory[current_dir_len - 2] = '\0';
+	//printf("path_SetDir: dir set to %s\n", pth_current_directory);
 
 
 	element = readdir(current_dir);

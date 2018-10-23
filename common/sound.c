@@ -4,6 +4,9 @@
 
 #include "sound.h"
 
+#include "r_common.h"
+#include "r_main.h"
+
 #include "al.h"
 #include "alc.h"
 #include "efx.h"
@@ -705,6 +708,7 @@ int sound_EmitSoundCommand(int type, int source)
     int command_index;
     int source_index;
 	struct sound_command_t *sound_command;
+
 	//struct sound_t *sound_ptr;
 
 	command_index = snd_next_in_sound_command;
@@ -776,6 +780,7 @@ void sound_PauseSound(int sound_source, int fade_out)
 
 	source = sound_GetSoundSourcePointer(sound_source);
 
+
 	if(source)
 	{
 		if(fade_out)
@@ -797,6 +802,7 @@ void sound_ResumeSound(int sound_source, int fade_in)
 
 	source = sound_GetSoundSourcePointer(sound_source);
 
+
     if(source)
 	{
 		if(fade_in)
@@ -817,6 +823,7 @@ void sound_StopSound(int sound_source, int fade_out)
 	struct sound_source_t *source;
 
 	source = sound_GetSoundSourcePointer(sound_source);
+
 
 	if(source)
 	{
@@ -840,6 +847,7 @@ int sound_IsSourcePlaying(int sound_source)
 
     source = sound_GetSoundSourcePointer(sound_source);
 
+
     if(source)
 	{
 		flags = (source->flags & SOURCE_FLAG_PLAYING) && 1;
@@ -859,6 +867,7 @@ int sound_IsSourceAssigned(int sound_source)
 
     source = sound_GetSoundSourcePointer(sound_source);
 
+
     if(source)
 	{
 		flags =  (source->flags & SOURCE_FLAG_ASSIGNED) && 1;
@@ -876,6 +885,7 @@ void sound_SetSourcePosition(int sound_source, vec3_t position)
     struct sound_source_t *source;
 
     source = sound_GetSoundSourcePointer(sound_source);
+
 
     if(source)
     {
@@ -904,12 +914,14 @@ void sound_StopAllSounds()
 
 void sound_ProcessSound()
 {
-	camera_t *active_camera = camera_GetActiveCamera();
+//	camera_t *active_camera = camera_GetActiveCamera();
+
+    view_def_t *active_view = renderer_GetActiveView();
 
 	vec3_t orientation[2];
 
-	orientation[0] = active_camera->world_orientation.f_axis;
-	orientation[1] = active_camera->world_orientation.u_axis;
+	orientation[0] = active_view->world_orientation.f_axis;
+	orientation[1] = active_view->world_orientation.u_axis;
 
 	orientation[0].x = -orientation[0].x;
 	orientation[0].y = -orientation[0].y;
@@ -917,7 +929,7 @@ void sound_ProcessSound()
 
 
 
-	alListener3f(AL_POSITION, active_camera->world_position.x, active_camera->world_position.y, active_camera->world_position.z);
+	alListener3f(AL_POSITION, active_view->world_position.x, active_view->world_position.y, active_view->world_position.z);
 	alListenerfv(AL_ORIENTATION, &orientation[0].floats[0]);
 }
 

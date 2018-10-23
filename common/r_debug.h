@@ -1,7 +1,7 @@
 #ifndef R_DEBUG_H
 #define R_DEBUG_H
 
-#include "vector.h"
+#include "gmath/vector.h"
 
 #include "ent_common.h"
 #include "phy_common.h"
@@ -102,6 +102,17 @@ typedef struct
 }verts_dbg_draw_data_t;
 
 
+struct debug_timer_t
+{
+    const char *name;
+    unsigned int start_time_stamp;
+    float start_time;
+    float delta_time;
+    int frame;
+    int gpu_timer;
+};
+
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -120,6 +131,24 @@ void renderer_DrawPoint(vec3_t position, vec3_t color, float size, int smooth, i
 void renderer_DrawLine(vec3_t from, vec3_t to, vec3_t color, float width, int persistent);
 
 void renderer_Draw2dLine(vec2_t from, vec2_t to, vec3_t color, float width, int persistent);
+
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
+unsigned int renderer_GetTimeStamp();
+
+int renderer_StartGpuTimer(const char *timer_name);
+
+int renderer_StartCpuTimer(const char *timer_name);
+
+int renderer_StartTimer(const char *timer_name, int gpu_timer);
+
+void renderer_StopTimer(int timer_index);
+
+void renderer_StopAllTimers();
 
 /*
 ==============================================================
@@ -157,6 +186,15 @@ void renderer_DrawColliders();
 void renderer_DrawEntities();
 
 void renderer_DrawTriggers();
+
+void renderer_DrawLights();
+
+void renderer_DrawClusters();
+
+void renderer_DrawStatistics();
+
+
+
 
 
 

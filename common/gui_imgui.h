@@ -95,6 +95,8 @@ void gui_ImGuiSetNextWindowPos(vec2_t pos, int cond, vec2_t pivot);
 
 void gui_ImGuiSetNextWindowSize(vec2_t size, int cond);
 
+void gui_ImGuiSetNextWindowFocus();
+
 void gui_ImGuiSetNextWindowBgAlpha(float alpha);
 
 /*

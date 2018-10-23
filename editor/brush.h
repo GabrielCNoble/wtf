@@ -101,6 +101,7 @@ typedef struct brush_t
 	int clipped_polygon_count;
 	int clipped_polygons_vert_count;
 	struct bsp_polygon_t *clipped_polygons;
+
 	vertex_t *clipped_polygons_vertices;
 	int *clipped_polygons_indexes;
 	int clipped_polygons_index_count;
@@ -151,15 +152,22 @@ void brush_Init();
 
 void brush_Finish();
 
-void brush_ProcessBrushes();
+//void brush_ProcessBrushes();
 
 void brush_UpdateAllBrushes();
 
 
+brush_t *brush_CreateEmptyBrush();
 
 brush_t *brush_CreateBrush(vec3_t position, mat3_t *orientation, vec3_t scale, short type, short b_subtractive);
 
-brush_t *brush_CreateEmptyBrush();
+brush_t *brush_CopyBrush(brush_t *src);
+
+void brush_DestroyBrush(brush_t *brush);
+
+void brush_DestroyBrushIndex(int brush_index);
+
+void brush_DestroyAllBrushes();
 
 
 void brush_InitializeBrush(brush_t *brush, mat3_t *orientation, vec3_t position, vec3_t scale, int type, int vertice_count, int polygon_count);
@@ -183,13 +191,7 @@ void brush_DecBrushMaterialsRefCount(brush_t *brush);
 
 
 
-brush_t *brush_CopyBrush(brush_t *src);
 
-void brush_DestroyBrush(brush_t *brush);
-
-void brush_DestroyBrushIndex(int brush_index);
-
-void brush_DestroyAllBrushes();
 
 void brush_CreateCylinder(int base_vertexes, int *vert_count, float **vertices, float **normals);
 
@@ -230,9 +232,14 @@ void brush_SetAllInvisible();
 
 
 
-void brush_ClipBrushes();
 
-void brush_UpdateTexCoords();
+
+
+void brush_UpdateBrushes();
+
+void brush_ClipBrushes(int subtractive_only, int force_reupdate);
+
+void brush_GenTexCoords();
 
 void brush_UploadBrushes();
 

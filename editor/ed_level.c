@@ -71,12 +71,12 @@ extern struct batch_t *w_world_batches;
 
 
 /* from l_main.c */
-extern int l_light_list_cursor;
-extern int l_light_list_size;
-extern int l_free_position_stack_top;
-extern int *l_free_position_stack;
-extern light_params_t *l_light_params;
-extern light_position_t *l_light_positions;
+//extern int l_light_list_cursor;
+//extern int l_light_list_size;
+//extern int l_free_position_stack_top;
+//extern int *l_free_position_stack;
+//extern light_params_t *l_light_params;
+//extern light_position_t *l_light_positions;
 
 /* from player.c */
 extern spawn_point_t *spawn_points;
@@ -217,12 +217,12 @@ void *level_editor_buffer = NULL;
 //int *level_editor_collider_free_stack = NULL;
 //collider_t *level_editor_colliders = NULL;
 
-int level_editor_light_list_cursor = 0;
-int level_editor_light_list_size = 0;
-int level_editor_light_free_stack_top = -1;
-int *level_editor_light_free_stack = NULL;
-light_position_t *level_editor_light_positions = NULL;
-light_params_t *level_editor_light_params = NULL;
+//int level_editor_light_list_cursor = 0;
+//int level_editor_light_list_size = 0;
+//int level_editor_light_free_stack_top = -1;
+//int *level_editor_light_free_stack = NULL;
+//light_position_t *level_editor_light_positions = NULL;
+//light_params_t *level_editor_light_params = NULL;
 
 int level_editor_portal_list_cursor = 0;
 int level_editor_portal_list_size = 0;
@@ -552,8 +552,9 @@ void editor_LevelEditorFinish()
 
 void editor_LevelEditorSetup()
 {
-	camera_SetCamera(level_editor_camera);
-	camera_SetMainViewCamera(level_editor_camera);
+//	camera_SetCamera(level_editor_camera);
+//	camera_SetMainViewCamera(level_editor_camera);
+    renderer_SetActiveView((view_def_t *)level_editor_camera);
 
 	renderer_RegisterCallback(editor_LevelEditorPreDraw, PRE_SHADING_STAGE_CALLBACK);
 	renderer_RegisterCallback(editor_LevelEditorPostDraw, POST_SHADING_STAGE_CALLBACK);
@@ -620,7 +621,9 @@ void editor_LevelEditorMain(float delta_time)
 
 	editor_LevelEditorUpdateUI();
 
-	brush_ProcessBrushes();
+//	brush_ProcessBrushes();
+
+    brush_UpdateBrushes();
 
 }
 
@@ -741,88 +744,7 @@ void editor_LevelEditorSet3dCursorPosition(float mouse_x, float mouse_y)
 
 void editor_LevelEditorUpdate3dHandlePosition()
 {
-
 	level_editor_3d_handle_position = editor_GetCenterOfSelections(&level_editor_pick_list);
-
-	#if 0
-	int i;
-
-	level_editor_3d_handle_position.x = 0.0;
-	level_editor_3d_handle_position.y = 0.0;
-	level_editor_3d_handle_position.z = 0.0;
-
-	struct waypoint_t *waypoint;
-	struct entity_t *entity;
-	struct entity_handle_t entity_handle;
-
-	struct entity_transform_t *world_transform;
-	//vec3_t entity_position;
-
-
-	//waypoints = (struct waypoint_t *)nav_waypoints.elements;
-
-	brush_t *brush;
-
-	for(i = 0; i < level_editor_pick_list.record_count; i++)
-	{
-		switch(level_editor_pick_list.records[i].type)
-		{
-			case PICK_LIGHT:
-				level_editor_3d_handle_position.x += l_light_positions[level_editor_pick_list.records[i].index0].position.x;
-				level_editor_3d_handle_position.y += l_light_positions[level_editor_pick_list.records[i].index0].position.y;
-				level_editor_3d_handle_position.z += l_light_positions[level_editor_pick_list.records[i].index0].position.z;
-			break;
-
-			case PICK_BRUSH:
-				brush = (brush_t *)level_editor_pick_list.records[i].pointer;
-				level_editor_3d_handle_position.x += brush->position.x;
-				level_editor_3d_handle_position.y += brush->position.y;
-				level_editor_3d_handle_position.z += brush->position.z;
-			break;
-
-			case PICK_SPAWN_POINT:
-//				level_editor_3d_handle_position.x += spawn_points[level_editor_pick_list.records[i].index0].position.x;
-	//			level_editor_3d_handle_position.y += spawn_points[level_editor_pick_list.records[i].index0].position.y;
-//				level_editor_3d_handle_position.z += spawn_points[level_editor_pick_list.records[i].index0].position.z;
-			break;
-
-			case PICK_ENTITY:
-
-				entity_handle.entity_index = level_editor_pick_list.records[i].index0;
-				entity_handle.def = 0;
-
-				entity = entity_GetEntityPointerHandle(entity_handle);
-
-				world_transform = entity_GetWorldTransformPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
-
-				level_editor_3d_handle_position.x += world_transform->transform.floats[3][0];
-				level_editor_3d_handle_position.y += world_transform->transform.floats[3][1];
-				level_editor_3d_handle_position.z += world_transform->transform.floats[3][2];
-			break;
-
-			case PICK_PORTAL:
-				level_editor_3d_handle_position.x += ptl_portals[level_editor_pick_list.records[i].index0].position.x;
-				level_editor_3d_handle_position.y += ptl_portals[level_editor_pick_list.records[i].index0].position.y;
-				level_editor_3d_handle_position.z += ptl_portals[level_editor_pick_list.records[i].index0].position.z;
-			break;
-
-			case PICK_WAYPOINT:
-
-				waypoint = navigation_GetWaypointPointer(level_editor_pick_list.records[i].index0);
-
-				level_editor_3d_handle_position.x += waypoint->position.x;
-				level_editor_3d_handle_position.y += waypoint->position.y;
-				level_editor_3d_handle_position.z += waypoint->position.z;
-			break;
-		}
-
-	}
-
-	level_editor_3d_handle_position.x /= (float)level_editor_pick_list.record_count;
-	level_editor_3d_handle_position.y /= (float)level_editor_pick_list.record_count;
-	level_editor_3d_handle_position.z /= (float)level_editor_pick_list.record_count;
-
-	#endif
 }
 
 void editor_LevelEditorSet3dHandleTransformMode(int mode)
@@ -835,6 +757,17 @@ void editor_LevelEditorSet3dHandleTransformMode(int mode)
 			level_editor_3d_handle_transform_mode = mode;
 		break;
 	}
+}
+
+void editor_LevelEditorSet3dHandleTransformOrientation(int orientation)
+{
+    switch(orientation)
+    {
+        case ED_3D_HANDLE_TRANSFORM_ORIENTATION_LOCAL:
+        case ED_3D_HANDLE_TRANSFORM_ORIENTATION_GLOBAL:
+            level_editor_3d_handle_transform_orientation = orientation;
+        break;
+    }
 }
 
 void editor_LevelEditorSetEditingMode(int mode)
@@ -860,7 +793,8 @@ void editor_LevelEditorSetEditingMode(int mode)
 void editor_LevelEditorEdit(float delta_time)
 {
 	pick_record_t record;
-	camera_t *active_camera = camera_GetActiveCamera();
+	//camera_t *active_camera = camera_GetActiveCamera();
+	camera_t *active_camera = (camera_t *)renderer_GetActiveView();
 	mat4_t model_view_projection_matrix;
 	vec4_t p;
 	vec4_t sp;
@@ -1443,7 +1377,8 @@ void editor_LevelEditorStopPIE()
 	editor_LevelEditorClearLevelData();
 	editor_LevelEditorRestoreLevelData();
 	level_editor_state = EDITOR_EDITING;
-	camera_SetCamera(level_editor_camera);
+//	camera_SetCamera(level_editor_camera);
+    renderer_SetActiveView((view_def_t *)level_editor_camera);
 
 	sound_StopAllSounds();
 }
@@ -1627,8 +1562,8 @@ void editor_LevelEditorClearLevelData()
 
 
 
-		l_light_list_cursor = 0;
-		l_free_position_stack_top = -1;
+//		l_light_list_cursor = 0;
+//		l_free_position_stack_top = -1;
 	}
 
 }

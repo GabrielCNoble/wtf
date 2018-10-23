@@ -1,3 +1,6 @@
+#if 0
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -84,6 +87,7 @@ void gpu_MergeFreeBlocks(int index_heap);
 
 int gpu_Init()
 {
+
 	//while(glGetError() != GL_NO_ERROR);
 
 	R_DBG_PUSH_FUNCTION_NAME();
@@ -1079,7 +1083,7 @@ void gpu_UnbindGpuHeap()
 #endif
 
 
-
+#endif
 
 
 

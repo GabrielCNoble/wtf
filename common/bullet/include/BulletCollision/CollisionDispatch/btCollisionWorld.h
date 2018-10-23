@@ -27,7 +27,7 @@ subject to the following restrictions:
  * @section install_sec Installation
  *
  * @subsection step1 Step 1: Download
- * You can download the Bullet Physics Library from the Google Code repository: http://code.google.com/p/bullet/downloads/list
+ * You can download the Bullet Physics Library from the github repository: https://github.com/bulletphysics/bullet3/releases 
  *
  * @subsection step2 Step 2: Building
  * Bullet has multiple build systems, including premake, cmake and autotools. Premake and cmake support all platforms.
@@ -106,6 +106,9 @@ protected:
 	bool m_forceUpdateAllAabbs;
 
 	void	serializeCollisionObjects(btSerializer* serializer);
+
+	void serializeContactManifolds(btSerializer* serializer);
+
 
 public:
 
@@ -205,8 +208,8 @@ public:
 	{
 		btScalar	m_closestHitFraction;
 		const btCollisionObject*		m_collisionObject;
-		short int	m_collisionFilterGroup;
-		short int	m_collisionFilterMask;
+		int	m_collisionFilterGroup;
+		int	m_collisionFilterMask;
 		//@BP Mod - Custom flags, currently used to enable backface culling on tri-meshes, see btRaycastCallback.h. Apply any of the EFlags defined there on m_flags here to invoke.
 		unsigned int m_flags;
 
@@ -340,8 +343,8 @@ public:
 	struct	ConvexResultCallback
 	{
 		btScalar	m_closestHitFraction;
-		short int	m_collisionFilterGroup;
-		short int	m_collisionFilterMask;
+		int	m_collisionFilterGroup;
+		int	m_collisionFilterMask;
 		
 		ConvexResultCallback()
 			:m_closestHitFraction(btScalar(1.)),
@@ -406,71 +409,18 @@ public:
 			return convexResult.m_hitFraction;
 		}
 	};
-	
-	struct AllConvexResultCallback : public ConvexResultCallback
-	{
-		AllConvexResultCallback(const btVector3 &convexFromWorld, const btVector3 &convexToWorld, const btCollisionObject *caller = NULL) : m_convexFromWorld(convexFromWorld), m_convexToWorld(convexToWorld), m_caller(caller)
-		{
-			m_collisionObjects.resize(0);
-			m_hitNormalWorld.resize(0);
-			m_hitPointWorld.resize(0);
-			m_hitFractions.resize(0);
-		}
-		
-		btAlignedObjectArray<const btCollisionObject*>		m_collisionObjects;
-
-		btVector3	m_convexFromWorld; //used to calculate hitPointWorld from hitFraction
-		btVector3	m_convexToWorld;
-		
-		const btCollisionObject *m_caller;
-
-		btAlignedObjectArray<btVector3>	m_hitNormalWorld;
-		btAlignedObjectArray<btVector3>	m_hitPointWorld;
-		btAlignedObjectArray<btScalar> m_hitFractions;
-		
-		
-		virtual	btScalar	addSingleResult(LocalConvexResult& convexResult,bool normalInWorldSpace)
-		{
-			if(m_caller)
-			{
-				if(m_caller == convexResult.m_hitCollisionObject)
-				{
-					/* reject results where the collision object 
-					collides with itself... */
-					return btScalar(1.0);
-				}
-			}
-			
-			m_collisionObjects.push_back(convexResult.m_hitCollisionObject);
-			m_hitFractions.push_back(convexResult.m_hitFraction);
-						
-			if (normalInWorldSpace)
-			{
-				m_hitNormalWorld.push_back(convexResult.m_hitNormalLocal);
-			} 
-			
-			else
-			{
-				///need to transform normal into worldspace
-				m_hitNormalWorld.push_back(convexResult.m_hitCollisionObject->getWorldTransform().getBasis()*convexResult.m_hitNormalLocal);
-			}
-			m_hitPointWorld.push_back(convexResult.m_hitPointLocal);
-			
-			return convexResult.m_hitFraction;
-			
-		}
-		
-	};
 
 	///ContactResultCallback is used to report contact points
 	struct	ContactResultCallback
 	{
-		short int	m_collisionFilterGroup;
-		short int	m_collisionFilterMask;
-		
+		int	m_collisionFilterGroup;
+		int	m_collisionFilterMask;
+		btScalar	m_closestDistanceThreshold;
+
 		ContactResultCallback()
 			:m_collisionFilterGroup(btBroadphaseProxy::DefaultFilter),
-			m_collisionFilterMask(btBroadphaseProxy::AllFilter)
+			m_collisionFilterMask(btBroadphaseProxy::AllFilter),
+			m_closestDistanceThreshold(0)
 		{
 		}
 
@@ -536,7 +486,10 @@ public:
 											const btCollisionObjectWrapper* colObjWrap,
 											ConvexResultCallback& resultCallback, btScalar allowedPenetration);
 
-	virtual void	addCollisionObject(btCollisionObject* collisionObject,short int collisionFilterGroup=btBroadphaseProxy::DefaultFilter,short int collisionFilterMask=btBroadphaseProxy::AllFilter);
+	virtual void	addCollisionObject(btCollisionObject* collisionObject, int collisionFilterGroup=btBroadphaseProxy::DefaultFilter, int collisionFilterMask=btBroadphaseProxy::AllFilter);
+
+	virtual void	refreshBroadphaseProxy(btCollisionObject* collisionObject);
+
 
 	btCollisionObjectArray& getCollisionObjectArray()
 	{

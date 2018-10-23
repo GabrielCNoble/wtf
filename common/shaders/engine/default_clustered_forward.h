@@ -34,6 +34,8 @@
 		in vec3 eye_space_position;
 		in vec3 eye_space_tangent;
 
+		vec3 eye_space_pixel_normal;
+
 		/*
 		===============================================================
 		===============================================================
@@ -47,10 +49,21 @@
 			int layer;
 
 			cluster = min(int((x / float(UNIFORM_r_width)) * float(UNIFORM_r_clusters_per_row)), UNIFORM_r_clusters_per_row);
-			row = min(int((y / float(UNIFORM_r_height)) * float(UNIFORM_r_cluster_rows)), UNIFORM_r_cluster_rows);
-			layer = int((log(view_z / znear) / log(zfar / znear)) * float(UNIFORM_r_cluster_layers));
+			row = min(int(floor((y / float(UNIFORM_r_height)) * float(UNIFORM_r_cluster_rows))), UNIFORM_r_cluster_rows);
+			layer = int((log(view_z / znear) / log(zfar / znear) * float(UNIFORM_r_cluster_layers)));
 			layer = max(min(layer, UNIFORM_r_cluster_layers), 0);
 			return ivec3(cluster, row, layer);
+		}
+
+		unsigned int cluster_lights(float x, float y, float view_z)
+		{
+            ivec3 current_cluster;
+            unsigned int light_bitmask;
+
+            current_cluster = cluster(x, y, view_z, 1.0, 500.0, float(UNIFORM_r_width), float(UNIFORM_r_height));
+			light_bitmask = texelFetch(UNIFORM_cluster_texture, current_cluster, 0).r;
+
+			return light_bitmask;
 		}
 
 		/*
@@ -190,7 +203,7 @@
 			float light_z;
 			float pixel_z;
 
-            eye_space_light_position = light_params[light_index].position_radius.xyz;
+            eye_space_light_position = r_lights[light_index].position_radius.xyz;
             eye_space_light_vec = eye_space_position - eye_space_light_position;
 
 			light_space_vec = vec3(vec4(eye_space_light_vec, 0.0) * UNIFORM_view_matrix);
@@ -198,7 +211,7 @@
 
 			//light_space_vec.z = -light_space_vec.z;
 
-			shadow_sample = -(texture(UNIFORM_texture_cube_array_sampler0, vec4(light_space_vec, float(light_params[light_index].shadow_map))).r * 2.0 - 1.0);
+			shadow_sample = -(texture(UNIFORM_texture_cube_array_sampler0, vec4(light_space_vec, float(r_lights[light_index].shadow_map))).r * 2.0 - 1.0);
 
 			//shadow_sample = texture(UNIFORM_texture_cube_array_sampler0, vec4(light_space_vec, float(light_params[light_index].shadow_map))).r * 2.0 - 1.0;
 
@@ -212,7 +225,7 @@
 			//light_z = -shadow_sample;
 
 			pixel_z = -largest;
-			light_z = light_params[light_index].proj_param_b / (shadow_sample - light_params[light_index].proj_param_a);
+			light_z = r_lights[light_index].proj_param_b / (shadow_sample - r_lights[light_index].proj_param_a);
 
 			//light_space_vec = normalize(light_space_vec);
 
@@ -229,6 +242,30 @@
 			//}
 
 			//return shadow;
+		}
+
+
+		struct bsp_trace_stack
+		{
+		    float t_min;
+		    float t_max;
+
+		};
+
+		bool trace_bsp(vec3 from, vec3 to)
+		{
+		    int i;
+            int depth_level = 0;
+
+
+            if(UNIFORM_r_bsp_node_count == 0)
+            {
+                return false;
+            }
+
+
+
+
 		}
 
 		/*
@@ -255,8 +292,11 @@
 
 				normal = (texture2D(UNIFORM_texture_sampler1, tex_coords).rgb * 2.0 - 1.0);
 
-				normal.x = mix(normal.x, -normal.x, float(bool(UNIFORM_material_flags & MATERIAL_INVERT_NORMAL_X)));
-				normal.y = mix(normal.y, -normal.y, float(bool(UNIFORM_material_flags & MATERIAL_INVERT_NORMAL_Y)));
+				//normal.x = mix(normal.x, -normal.x, float(bool(UNIFORM_material_flags & MATERIAL_INVERT_NORMAL_X)));
+				//normal.y = mix(normal.y, -normal.y, float(bool(UNIFORM_material_flags & MATERIAL_INVERT_NORMAL_Y)));
+
+				normal.x = bool(UNIFORM_material_flags & MATERIAL_INVERT_NORMAL_X) ? -normal.x : normal.x;
+				normal.y = bool(UNIFORM_material_flags & MATERIAL_INVERT_NORMAL_Y) ? -normal.y : normal.y;
 
 				return normalize(tbn * normal);
 			}
@@ -293,33 +333,43 @@
 			shininess = 512.0;
 
 			/* fucking stupid GL drivers... */
-			current_cluster = cluster(gl_FragCoord.x, gl_FragCoord.y, -eye_space_position.z, 1.0, 500.0, float(UNIFORM_r_width), float(UNIFORM_r_height));
-			light_bitmask = texelFetch(UNIFORM_cluster_texture, current_cluster, 0).r;
+			//current_cluster = cluster(gl_FragCoord.x, gl_FragCoord.y, -eye_space_position.z, 1.0, 500.0, float(UNIFORM_r_width), float(UNIFORM_r_height));
+			//light_bitmask = texelFetch(UNIFORM_cluster_texture, current_cluster, 0).r;
+
+            light_bitmask = cluster_lights(gl_FragCoord.x, gl_FragCoord.y, -eye_space_position.z);
 
 			eye_vec = normalize(-eye_space_position);
 
-			for(light_index = 0; light_index < LIGHT_UNIFORM_BUFFER_SIZE; light_index++)
+			albedo /= 3.14159265;
+
+			for(light_index = 0; light_index < R_LIGHT_UNIFORM_BUFFER_SIZE; light_index++)
 			{
 
 				if((light_bitmask & uint(1)) == uint(1))
 				{
-					light_vec = light_params[light_index].position_radius.xyz - eye_space_position;
-					light_color = light_params[light_index].color_energy.rgb;
+					light_vec = r_lights[light_index].position_radius.xyz - eye_space_position;
+					light_color = r_lights[light_index].color_energy.rgb;
 
 					distance = length(light_vec);
 					//distance = dot(light_vec, light_vec);
-					energy = light_params[light_index].color_energy.a;
-					radius = light_params[light_index].position_radius.w;
+					energy = r_lights[light_index].color_energy.a;
+					radius = r_lights[light_index].position_radius.w;
 
-					//shadow = 1.0;
+					//#ifdef NO_SHADOWS
 
-					shadow = pixel_shadow(light_index);
+					shadow = 1.0;
+
+					//#else
+
+					//shadow = pixel_shadow(light_index);
+
+					//#endif
 
 					light_vec /= distance;
 					half_vec = normalize(eye_vec + light_vec);
 
 					attenuation = (1.0 / (distance)) * max(1.0 - (distance / radius), 0.0) * energy;
-					diffuse = ((albedo / 3.14159265) * max(dot(light_vec, normal), 0.0)) * attenuation;
+					diffuse = (albedo * max(dot(light_vec, normal), 0.0)) * attenuation;
 					specular = light_color * pow(max(dot(half_vec, normal), 0.0), shininess) * attenuation * 1.5;
 
 					accum += ((vec4(diffuse * light_color, 1.0)) + vec4(specular, 1.0)) * shadow;
@@ -337,9 +387,9 @@
 			vec3 normal;
 
 			albedo = pixel_albedo().xyz;
-			normal = pixel_normal();
+			eye_space_pixel_normal = pixel_normal();
 
-			return accumulate_lights(albedo, normal);
+			return accumulate_lights(albedo, eye_space_pixel_normal);
 		}
 
 	#endif

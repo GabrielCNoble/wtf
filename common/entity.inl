@@ -2,6 +2,7 @@
 #define ENTITY_INL
 
 #include <stdio.h>
+#include <string.h>
 
 #include "macros.h"
 #include "ent_common.h"

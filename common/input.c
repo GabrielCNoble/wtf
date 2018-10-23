@@ -199,10 +199,86 @@ void input_GetInput(double delta_time)
 	}
 
 
+    if(engine_state == ENGINE_PLAYING)
+    {
+        SDL_SetRelativeMouseMode(1);
+        bm = SDL_GetRelativeMouseState(&mouse_x, &mouse_y);
+        mouse_y = -mouse_y;
 
-	bm = SDL_GetMouseState(&mouse_x, &mouse_y);
+        last_mouse_x = 0.0;
+        last_mouse_y = 0.0;
 
-	mouse_y = r_window_height - mouse_y;
+        normalized_mouse_x = (float)mouse_x / (float)r_window_width;
+        normalized_mouse_y = (float)mouse_y / (float)r_window_height;
+    }
+    else
+    {
+        SDL_SetRelativeMouseMode(0);
+        bm = SDL_GetMouseState(&mouse_x, &mouse_y);
+        mouse_y = r_window_height - mouse_y;
+
+        normalized_mouse_x = ((float)mouse_x / (float)r_window_width) * 2.0 - 1.0;
+        normalized_mouse_y = ((float)mouse_y / (float)r_window_height) * 2.0 - 1.0;
+
+    }
+
+    mouse_dx = normalized_mouse_x - last_mouse_x;
+    mouse_dy = normalized_mouse_y - last_mouse_y;
+
+    last_mouse_x = normalized_mouse_x;
+    last_mouse_y = normalized_mouse_y;
+
+	/*bm = SDL_GetMouseState(&mouse_x, &mouse_y);
+
+	mouse_y = r_window_height - mouse_y - 1;
+
+
+	normalized_mouse_x=(float)mouse_x/(float)(r_window_width - 1);
+	normalized_mouse_y=(float)mouse_y/(float)(r_window_height - 1);
+
+	normalized_mouse_x*=2.0;
+	normalized_mouse_x-=1.0;
+
+	normalized_mouse_y*=2.0;
+	normalized_mouse_y-=1.0;
+
+	if(engine_state == ENGINE_PLAYING)
+	{
+
+		if(last_mouse_x || last_mouse_y)
+		{
+			normalized_mouse_x = 0.0;
+			normalized_mouse_y = 0.0;
+		}
+
+		SDL_ShowCursor(0);
+		SDL_WarpMouseInWindow(window, (r_window_width )/2 - 1, (r_window_height)/2 - 1);
+		mouse_dx = normalized_mouse_x;
+		mouse_dy = normalized_mouse_y;
+
+		last_mouse_x = 0.0;
+		last_mouse_y = 0.0;
+
+		printf("[%f %f] -- [%d %d] -- [%d %d]\n", mouse_dx, mouse_dy, mouse_x, mouse_y, (r_window_width) / 2 - 1, (r_window_height) / 2 - 1);
+	}
+	else
+	{
+	    SDL_SetRelativeMouseMode(0);
+		SDL_ShowCursor(1);
+
+		mouse_dx = normalized_mouse_x - last_mouse_x;
+		mouse_dy = normalized_mouse_y - last_mouse_y;
+
+		last_mouse_x = normalized_mouse_x;
+		last_mouse_y = normalized_mouse_y;
+	}*/
+
+
+
+
+
+
+
 
 	bm_mouse &= ~(MOUSE_LEFT_BUTTON_JUST_CLICKED | MOUSE_RIGHT_BUTTON_JUST_CLICKED | MOUSE_RIGHT_BUTTON_DOUBLE_CLICKED |
 				  MOUSE_LEFT_BUTTON_JUST_RELEASED | MOUSE_RIGHT_BUTTON_JUST_RELEASED | MOUSE_LEFT_BUTTON_DOUBLE_CLICKED |
@@ -282,41 +358,7 @@ void input_GetInput(double delta_time)
 	}
 
 
-	normalized_mouse_x=(float)mouse_x/(float)r_window_width;
-	normalized_mouse_y=(float)mouse_y/(float)r_window_height;
 
-	normalized_mouse_x*=2.0;
-	normalized_mouse_x-=1.0;
-
-	normalized_mouse_y*=2.0;
-	normalized_mouse_y-=1.0;
-
-	if(engine_state == ENGINE_PLAYING/* || engine_state == ENGINE_EDITING*/)
-	{
-
-		if(last_mouse_x || last_mouse_y)
-		{
-			normalized_mouse_x = 0.0;
-			normalized_mouse_y = 0.0;
-		}
-
-		SDL_ShowCursor(0);
-		SDL_WarpMouseInWindow(window, r_window_width/2, r_window_height/2);
-		mouse_dx = normalized_mouse_x;
-		mouse_dy = normalized_mouse_y;
-		last_mouse_x = 0.0;
-		last_mouse_y = 0.0;
-	}
-	else
-	{
-		SDL_ShowCursor(1);
-
-		mouse_dx = normalized_mouse_x - last_mouse_x;
-		mouse_dy = normalized_mouse_y - last_mouse_y;
-
-		last_mouse_x = normalized_mouse_x;
-		last_mouse_y = normalized_mouse_y;
-	}
 
 	//printf("%d\n", kb_event->window.event);
 

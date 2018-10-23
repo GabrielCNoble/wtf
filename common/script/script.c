@@ -8,7 +8,7 @@
 #include "particle.h"
 #include "player.h"
 #include "physics.h"
-#include "scr_entity.h"
+#include "ent_script.h"
 #include "scr_particle.h"
 #include "scr_world.h"
 #include "scr_gui.h"
@@ -164,11 +164,11 @@ void script_RegisterTypesAndFunctions()
 
 	scr_virtual_machine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, 1);
 
-	scr_virtual_machine->RegisterGlobalFunction("double sin(double _X)", asFUNCTION(sin), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("double cos(double _X)", asFUNCTION(cos), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("double tan(double _X)", asFUNCTION(tan), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("double sqrt(double _X)", asFUNCTION(sqrt), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("double pow(double _X, double _Y)", asFUNCTION(pow), asCALL_CDECL);
+//	scr_virtual_machine->RegisterGlobalFunction("double sin(double _X)", asFUNCTION(sin), asCALL_CDECL);
+//	scr_virtual_machine->RegisterGlobalFunction("double cos(double _X)", asFUNCTION(cos), asCALL_CDECL);
+//	scr_virtual_machine->RegisterGlobalFunction("double tan(double _X)", asFUNCTION(tan), asCALL_CDECL);
+//	scr_virtual_machine->RegisterGlobalFunction("double sqrt(double _X)", asFUNCTION(sqrt), asCALL_CDECL);
+//	scr_virtual_machine->RegisterGlobalFunction("double pow(double _X, double _Y)", asFUNCTION(pow), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("float randfloat()", asFUNCTION(randfloat), asCALL_CDECL);
 //	scr_virtual_machine->RegisterGlobalFunction("void script_DebugPrint()", asFUNCTION(script_DebugPrint), asCALL_CDECL);
 
@@ -284,7 +284,7 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("vec2_t input_GetMouseDelta()", asFUNCTION(input_GetMouseDelta), asCALL_CDECL);
 
 
-	scr_virtual_machine->RegisterEnum("COMPONENT_TYPES");
+	/*scr_virtual_machine->RegisterEnum("COMPONENT_TYPES");
 	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_TRANSFORM", COMPONENT_TYPE_TRANSFORM);
 	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_PHYSICS", COMPONENT_TYPE_PHYSICS);
 	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_MODEL", COMPONENT_TYPE_MODEL);
@@ -292,7 +292,7 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_SCRIPT", COMPONENT_TYPE_SCRIPT);
 	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_CAMERA", COMPONENT_TYPE_CAMERA);
 	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_LIFE", COMPONENT_TYPE_LIFE);
-	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_NAVIGATION", COMPONENT_TYPE_NAVIGATION);
+	scr_virtual_machine->RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_NAVIGATION", COMPONENT_TYPE_NAVIGATION);*/
 
 
 	scr_virtual_machine->RegisterEnum("SDL_Scancode");
@@ -450,7 +450,7 @@ void script_RegisterTypesAndFunctions()
 	===============================================
 	*/
 
-	scr_virtual_machine->RegisterObjectType("entity_handle_t", sizeof(struct entity_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
+	/*scr_virtual_machine->RegisterObjectType("entity_handle_t", sizeof(struct entity_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
 	scr_virtual_machine->RegisterObjectType("component_handle_t", sizeof(struct component_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
 	scr_virtual_machine->RegisterObjectType("collider_handle_t", sizeof(struct collider_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
 
@@ -510,8 +510,6 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Die()", asFUNCTION(entity_ScriptDie), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_DIEYOUMOTHERFUCKER()", asFUNCTION(entity_ScriptDie), asCALL_CDECL);
 
-	//scr_virtual_machine->RegisterGlobalFunction("void entity_SetCameraPosition(vec3_t &in position)", asFUNCTION(entity_ScriptSetCameraPosition), asCALL_CDECL);
-	//scr_virtual_machine->RegisterGlobalFunction("void entity_SetCamera()", asFUNCTION(entity_ScriptSetCamera), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_SetCameraAsActive(component_handle_t camera)", asFUNCTION(entity_ScriptSetCameraAsActive), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_Print(string &in message)", asFUNCTION(entity_ScriptPrint), asCALL_CDECL);
 
@@ -558,7 +556,7 @@ void script_RegisterTypesAndFunctions()
 
 	scr_virtual_machine->RegisterGlobalFunction("int entity_GetTrigger(string &in trigger)", asFUNCTION(entity_ScriptGetTrigger), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void entity_SetTriggerPosition(int trigger_index, vec3_t &in position)", asFUNCTION(entity_ScriptSetTriggerPosition), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("int entity_IsTriggered(int trigger_index)", asFUNCTION(entity_ScriptIsTriggered), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("int entity_IsTriggered(int trigger_index)", asFUNCTION(entity_ScriptIsTriggered), asCALL_CDECL);*/
 
 
 
@@ -580,7 +578,7 @@ void script_RegisterTypesAndFunctions()
     scr_virtual_machine->RegisterGlobalFunction("void world_GetWorldArrayVarValue(string &in name, int index, ? &out value)", asFUNCTION(world_ScriptGetWorldArrayVarValue), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void world_AppendWorldArrayVarValue(string &in name, ? &in value)", asFUNCTION(world_ScriptAppendWorldArrayVarValue), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void world_ClearWorldArrayVar(string &in name)", asFUNCTION(world_ScriptClearWorldArrayVar), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("array<entity_handle_t> @world_GetEntities()", asFUNCTION(world_ScriptGetEntities), asCALL_CDECL);
+	//scr_virtual_machine->RegisterGlobalFunction("array<entity_handle_t> @world_GetEntities()", asFUNCTION(world_ScriptGetEntities), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void world_CallEvent(string &in event_name)", asFUNCTION(world_ScriptCallEvent), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void world_StopCurrentEvent()", asFUNCTION(world_ScriptStopCurrentEvent), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void world_StopAllEvents()", asFUNCTION(world_ScriptStopAllEvents), asCALL_CDECL);
@@ -1074,6 +1072,16 @@ void script_RegisterGlobalFunction(char *decl, void *function)
 	scr_virtual_machine->RegisterGlobalFunction(decl, asFUNCTION(function), asCALL_CDECL);
 }
 
+void script_RegisterObjectType(char *decl, int size, int flags)
+{
+    scr_virtual_machine->RegisterObjectType(decl, size, flags);
+}
+
+void script_RegisterObjectProperty(char *type, char *decl, int offset)
+{
+    scr_virtual_machine->RegisterObjectProperty(type, decl, offset);
+}
+
 void script_RegisterEnum(char *type)
 {
 	scr_virtual_machine->RegisterEnum(type);
@@ -1373,8 +1381,6 @@ void script_EndDebugSection()
 }*/
 
 #ifdef __cplusplus
-}
-}
 }
 #endif
 

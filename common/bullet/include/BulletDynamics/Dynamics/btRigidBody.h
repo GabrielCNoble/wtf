@@ -56,14 +56,12 @@ enum	btRigidBodyFlags
 ///There are 3 types of rigid bodies: 
 ///- A) Dynamic rigid bodies, with positive mass. Motion is controlled by rigid body dynamics.
 ///- B) Fixed objects with zero mass. They are not moving (basically collision objects)
-///- C) Kinematic objects, which are objects without mass, but the user can move them. There is on-way interaction, and Bullet calculates a velocity based on the timestep and previous and current world transform.
+///- C) Kinematic objects, which are objects without mass, but the user can move them. There is one-way interaction, and Bullet calculates a velocity based on the timestep and previous and current world transform.
 ///Bullet automatically deactivates dynamic rigid bodies, when the velocity is below a threshold for a given time.
 ///Deactivated (sleeping) rigid bodies don't take any processing time, except a minor broadphase collision detection impact (to allow active objects to activate/wake up sleeping objects)
 class btRigidBody  : public btCollisionObject
 {
-	
-public:
-	
+
 	btMatrix3x3	m_invInertiaTensorWorld;
 	btVector3		m_linearVelocity;
 	btVector3		m_angularVelocity;
@@ -137,6 +135,8 @@ public:
 		///the m_rollingFriction prevents rounded shapes, such as spheres, cylinders and capsules from rolling forever.
 		///See Bullet/Demos/RollingFrictionDemo for usage
 		btScalar			m_rollingFriction;
+        btScalar			m_spinningFriction;//torsional friction around contact normal
+        
 		///best simulation results using zero restitution.
 		btScalar			m_restitution;
 
@@ -160,6 +160,7 @@ public:
 			m_angularDamping(btScalar(0.)),
 			m_friction(btScalar(0.5)),
 			m_rollingFriction(btScalar(0)),
+            m_spinningFriction(btScalar(0)),
 			m_restitution(btScalar(0.)),
 			m_linearSleepingThreshold(btScalar(0.8)),
 			m_angularSleepingThreshold(btScalar(1.f)),

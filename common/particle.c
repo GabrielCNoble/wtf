@@ -7,11 +7,12 @@
 
 #include "matrix.h"
 
-#include "gpu.h"
+#include "r_verts.h"
 #include "particle.h"
 #include "c_memory.h"
 #include "camera.h"
 #include "texture.h"
+#include "r_main.h"
 #include "log.h"
 
 #include "script.h"
@@ -89,8 +90,8 @@ int particle_Init()
 	ps_particle_systems = stack_list_create(sizeof(struct particle_system_t), 512, particle_DisposeParticleSystemCallback);
 
 	//ps_particle_quad_handle = gpu_AllocAlign(sizeof(vec4_t) * 4, sizeof(vec4_t), 0);
-	ps_particle_quad_handle = gpu_AllocVerticesAlign(sizeof(vec4_t ) * 4, sizeof(vec4_t));
-	ps_particle_quad_start = gpu_GetAllocStart(ps_particle_quad_handle) / sizeof(vec4_t);
+	ps_particle_quad_handle = renderer_AllocVerticesAlign(sizeof(vec4_t ) * 4, sizeof(vec4_t));
+	ps_particle_quad_start = renderer_GetAllocStart(ps_particle_quad_handle) / sizeof(vec4_t);
 
 	particle_quad[0].x = -1.0;
 	particle_quad[0].y = 1.0;
@@ -112,7 +113,7 @@ int particle_Init()
 	particle_quad[3].z = 1.0;
 	particle_quad[3].w = 1.0;
 
-	gpu_Write(ps_particle_quad_handle, 0, particle_quad, sizeof(vec4_t) * 4);
+	renderer_Write(ps_particle_quad_handle, 0, particle_quad, sizeof(vec4_t) * 4);
 
 	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
@@ -672,7 +673,8 @@ void particle_SortParticles(struct particle_system_t *particle_system)
 	int indice;
 	float dist;
 
-	active_camera = camera_GetActiveCamera();
+//	active_camera = camera_GetActiveCamera();
+    active_camera = (camera_t *)renderer_GetActiveView();
 	camera_position = active_camera->world_position;
 	camera_forward_vec = active_camera->world_orientation.r2;
 

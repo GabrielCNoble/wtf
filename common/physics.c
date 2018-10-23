@@ -11,6 +11,7 @@
 #include "c_memory.h"
 #include "matrix.h"
 #include "log.h"
+#include "r_debug.h"
 
 #include "stack_list.h"
 #include "list.h"
@@ -229,16 +230,26 @@ void physics_ProcessCollisions(double delta_time)
 	int steps;
 	float remaining_delta = delta_time;
 
-	camera_t *active_camera = camera_GetActiveCamera();
+	int timer;
+
+//	camera_t *active_camera = camera_GetActiveCamera();
 
 	//if(!collision_nodes)
 	//	return;
 
 	//printf("%f\n", delta_time);
 
+    //timer = renderer_StartCpuTimer("physics_UpdateColliders");
 	physics_UpdateColliders();
-	physics_world->stepSimulation(delta_time * 0.001, 8, 1.0 / 120.0);
+	//renderer_StopTimer(timer);
+
+	//timer = renderer_StartCpuTimer("physics_world->stepSimulation");
+	physics_world->stepSimulation(delta_time * 0.001, 5, 1.0 / 60.0);
+	//renderer_StopTimer(timer);
+
+	//timer = renderer_StartCpuTimer("physics_PostUpdateColliders");
 	physics_PostUpdateColliders();
+	//renderer_StopTimer(timer);
 }
 
 collider_def_t *physics_CreateColliderDef(char *name)
@@ -603,6 +614,8 @@ void *physics_BuildCollisionShape(collider_def_t *def)
 	collision_shape_t *def_collision_shape;
 	btTransform collision_shape_transform;
 	btVector3 inertia_tensor;
+	//btMatrix3x3 basis;
+	mat3_t *rot;
 
 	if(def)
 	{
@@ -621,6 +634,12 @@ void *physics_BuildCollisionShape(collider_def_t *def)
 						collision_shape_transform.setIdentity();
 						collision_shape_transform.setOrigin(btVector3(def_collision_shape->position.x, def_collision_shape->position.y, def_collision_shape->position.z));
 						collision_shape_transform.setBasis(&def_collision_shape->orientation.floats[0][0]);
+
+						/*rot = &def_collision_shape->orientation;
+
+						collision_shape_transform.setBasis(btMatrix3x3(rot->floats[0][0], rot->floats[1][0], rot->floats[2][0],
+                                                                       rot->floats[0][1], rot->floats[1][1], rot->floats[2][1],
+                                                                       rot->floats[0][2], rot->floats[1][2], rot->floats[2][2]));*/
 
 						switch(def->collision_shape[i].type)
 						{
@@ -910,7 +929,7 @@ struct collider_handle_t physics_CreateEmptyCollider(int type)
 	//return collider_index;
 }
 
-struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t position, vec3_t scale, collider_def_t *def, int flags)
+struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t position, vec3_t scale, struct collider_def_t *def, int flags)
 {
 	int collider_index;
 	struct collider_handle_t handle;
@@ -968,12 +987,24 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	if(orientation && def->type != COLLIDER_TYPE_CHARACTER_COLLIDER)
 	{
 		collider->orientation = *orientation;
+		/*collider_transform.setBasis(btMatrix3x3(orientation->floats[0][0], orientation->floats[1][0], orientation->floats[2][0],
+                                                orientation->floats[0][1], orientation->floats[1][1], orientation->floats[2][1],
+                                                orientation->floats[0][2], orientation->floats[1][2], orientation->floats[2][2]));*/
 		collider_transform.setBasis((float *)orientation);
 	}
 
 	collider->type = def->type;
 	collider->flags = COLLIDER_FLAG_UPDATE_COLLISION_OBJECT;
 	collider->def = def;
+
+	collider_motion_state = new btDefaultMotionState(collider_transform);
+
+	collider_rigid_body = new btRigidBody(def->mass, collider_motion_state, collider_collision_shape, btVector3(def->inertia_tensor.x, def->inertia_tensor.y, def->inertia_tensor.z));
+
+   /* if(def->mass == 0.0)
+    {
+        collider_rigid_body->setFlags(btCollisionObject::CF_KINEMATIC_OBJECT);
+    }*/
 
     switch(def->type)
 	{
@@ -984,15 +1015,14 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 			character_collider->max_slope_angle = def->max_slope_angle;
 			character_collider->max_walk_speed = def->max_walk_speed;
             character_collider->max_step_height = def->max_step_height;
-
+            collider_rigid_body->setActivationState(DISABLE_DEACTIVATION);
         case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
 
 		break;
 	}
 
 
-	collider_motion_state = new btDefaultMotionState(collider_transform);
-	collider_rigid_body = new btRigidBody(def->mass, collider_motion_state, collider_collision_shape, btVector3(def->inertia_tensor.x, def->inertia_tensor.y, def->inertia_tensor.z));
+
 
 	physics_world->addRigidBody(collider_rigid_body);
 
@@ -1052,6 +1082,7 @@ struct collider_handle_t physics_CreateTrigger(mat3_t *orientation, vec3_t posit
 	collision_object = new btCollisionObject();
 	collision_object->setCollisionShape(collision_shape);
 	collision_object->setCollisionFlags(btCollisionObject::CF_NO_CONTACT_RESPONSE);
+	collision_object->setActivationState(DISABLE_DEACTIVATION);
 	collision_object->setUserIndex(*(int *)&handle);
 
 	//transform.setIdentity();
@@ -1233,6 +1264,8 @@ void physics_SetColliderPosition(struct collider_handle_t collider, vec3_t posit
 	{
         collider_ptr->position = position;
 		collider_ptr->flags |= COLLIDER_FLAG_UPDATE_COLLISION_OBJECT;
+
+		//printf("collider position: [%f %f %f]\n", position.x, position.y, position.z);
 	}
 }
 
@@ -1403,6 +1436,7 @@ void physics_UpdateColliders()
 	btCollisionObject *collision_object;
 	btCollisionShape *collision_shape;
 	btTransform collision_object_transform;
+	mat3_t *rot;
 
 	for(j = 0; j < COLLIDER_TYPE_LAST; j++)
 	{
@@ -1454,7 +1488,15 @@ void physics_UpdateColliders()
 					if(collider->type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
 					{
 						rigid_body_collider = (struct rigid_body_collider_t *)collider;
-						rigid_body->setLinearVelocity(btVector3(rigid_body_collider->linear_velocity.x, rigid_body_collider->linear_velocity.y, rigid_body_collider->linear_velocity.z));
+						if(rigid_body_collider->base.def->mass == 0.0)
+                        {
+                            rigid_body->setLinearVelocity(btVector3(0.0, 0.0, 0.0));
+                        }
+                        else
+                        {
+                            rigid_body->setLinearVelocity(btVector3(rigid_body_collider->linear_velocity.x, rigid_body_collider->linear_velocity.y, rigid_body_collider->linear_velocity.z));
+                        }
+						//rigid_body->setLinearVelocity(btVector3(rigid_body_collider->linear_velocity.x, rigid_body_collider->linear_velocity.y, rigid_body_collider->linear_velocity.z));
 						//rigid_body->setAngularVelocity(btVector3(0.0, 0.0, 0.0));
 					}
 
@@ -1467,8 +1509,13 @@ void physics_UpdateColliders()
 					//ghost_object = (btGhostObject *)collider->collision_object;
 
 					collision_object = (btCollisionObject *) collider->collision_object;
+                    rot = &collider->orientation;
 
 					collision_object_transform.setBasis(&collider->orientation.floats[0][0]);
+					/*collision_object_transform.setBasis(btMatrix3x3(rot->floats[0][0], rot->floats[1][0], rot->floats[2][0],
+                                                                    rot->floats[0][1], rot->floats[1][1], rot->floats[2][1],
+                                                                    rot->floats[0][2], rot->floats[1][2], rot->floats[2][2]));*/
+
 					collision_shape = collision_object->getCollisionShape();
 					//collision_shape->setLocalScaling()
 					collision_shape->setLocalScaling(btVector3(collider->scale.x, collider->scale.y, collider->scale.z));

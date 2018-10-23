@@ -4,10 +4,10 @@
 #include "phy_common.h"
 #include "model.h"
 #include "bsp_common.h"
-#include "scr_common.h"
+#include "script/scr_common.h"
 #include "nav_common.h"
 #include "camera_types.h"
-#include "list.h"
+#include "containers/list.h"
 
 
 #define ENTITY_NAME_MAX_LEN 24				/* including trailing null... */
@@ -306,6 +306,7 @@ struct entity_script_t
 	struct script_t script;
 
 	struct entity_handle_t *entity_handle;
+	void *on_update_entry_point;
 	void *on_first_run_entry_point;
 	void *on_spawn_entry_point;
 	void *on_die_entry_point;

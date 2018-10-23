@@ -2,7 +2,7 @@
 #define NAV_COMMON_H
 
 
-#include "vector.h"
+#include "gmath/vector.h"
 
 
 #define MAX_WAYPOINTS 16000

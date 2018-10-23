@@ -1,8 +1,10 @@
 #ifndef BSP_COMMON_H
 #define BSP_COMMON_H
 
-#include "vector.h"
+#include "gmath/vector.h"
 #include "model.h"
+
+#include "r_common.h"
 //#include "l_common.h"
 
 
@@ -40,6 +42,9 @@ struct bsp_dleaf_t
 	vec3_t extents;
 	unsigned int tris_count;			/* could get rid of this... */
 	struct bsp_striangle_t *tris;
+
+	//unsigned int batch_count;
+	//struct batch_t *batches;
 
 	unsigned int pvs_lenght;
 	unsigned char *pvs;					/* this makes this struct not 32 byte aligned. Fuck! */

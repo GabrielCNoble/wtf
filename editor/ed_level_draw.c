@@ -6,19 +6,24 @@
 #include "..\..\common\shader.h"
 #include "..\..\common\l_main.h"
 #include "..\..\common\r_imediate.h"
+#include "..\..\common\r_shader.h"
 #include "..\..\common\r_gl.h"
 #include "..\..\common\r_main.h"
 #include "..\..\common\portal.h"
 #include "..\..\common\navigation.h"
 #include "..\..\common\containers\stack_list.h"
 #include "..\..\common\material.h"
+
+#include "ed_draw.h"
 #include "bsp_cmp.h"
 #include "..\brush.h"
 
 /* from editor.c */
-extern unsigned int ed_cursors_framebuffer_id;
+/*extern unsigned int ed_cursors_framebuffer_id;
 extern unsigned int ed_cursors_color_texture_id;
-extern int ed_3d_handle_transform_mode;
+extern int ed_3d_handle_transform_mode;*/
+
+extern struct framebuffer_t ed_cursors_framebuffer;
 
 
 /* from ed_level.c */
@@ -57,7 +62,7 @@ extern int r_z_pre_pass_shader;
 extern int r_flat_pass_shader;
 extern int r_forward_pass_shader;
 extern int r_blit_texture_shader;
-extern unsigned int r_bbuffer_id;
+extern struct framebuffer_t r_bbuffer;
 
 
 
@@ -69,9 +74,12 @@ extern vertex_t *w_world_vertices;
 
 
 /* from l_main.c */
-extern int l_light_list_cursor;
-extern light_params_t *l_light_params;
-extern light_position_t *l_light_positions;
+//extern int l_light_list_cursor;
+//extern light_params_t *l_light_params;
+//extern light_position_t *l_light_positions;
+extern struct stack_list_t l_light_positions;
+extern struct stack_list_t l_light_params;
+extern struct stack_list_t l_light_clusters;
 
 
 /* from portal.c */
@@ -118,35 +126,15 @@ void editor_LevelEditorPostDraw()
 		editor_LevelEditorDrawSelected();
 	}
 
-	if(level_editor_draw_lights)
-	{
-		editor_LevelEditorDrawLights();
-	}
-
-	if(level_editor_draw_spawn_points)
-	{
-		editor_LevelEditorDrawSpawnPoints();
-	}
-
-	if(level_editor_draw_leaves)
-	{
-		editor_LevelEditorDrawLeaves();
-	}
-
-	if(level_editor_draw_world_polygons)
+	/*if(level_editor_draw_world_polygons)
 	{
 		editor_LevelEditorDrawWorldPolygons();
-	}
+	}*/
 
-	if(level_editor_draw_clipped_polygons)
+/*	if(level_editor_draw_clipped_polygons)
 	{
-		//editor_LevelEditorDrawClippedPolygons();
-	}
-
-	if(level_editor_draw_entities_aabbs)
-	{
-		editor_LevelEditorDrawEntitiesAabbs();
-	}
+		editor_LevelEditorDrawClippedPolygons();
+	}*/
 
 	if(level_editor_draw_cursors)
 	{
@@ -166,8 +154,10 @@ void editor_LevelEditorDrawBrushes()
 	portal_t *portal;
 	portal_recursive_view_data_t *recursive_view_data;
 	portal_view_data_t *view_data;
-	camera_t *active_camera = camera_GetActiveCamera();
-	camera_t *main_view = camera_GetMainViewCamera();
+//	camera_t *active_camera = camera_GetActiveCamera();
+//	camera_t *main_view = camera_GetMainViewCamera();
+
+    camera_t *active_camera = (camera_t *)renderer_GetActiveView();
 	struct batch_t *batch;
 	material_t *material;
 	bsp_polygon_t *polygon;
@@ -183,7 +173,7 @@ void editor_LevelEditorDrawBrushes()
 
 	float color[] = {10.0, 0.0, 0.0, 0.0};
 
-	gpu_BindGpuHeap();
+	//gpu_BindGpuHeap();
 
 	if(!level_editor_draw_brushes)
 		return;
@@ -199,7 +189,7 @@ void editor_LevelEditorDrawBrushes()
 		{
 			//SDL_LockMutex(brush->brush_mutex);
 
-			if(!SDL_TryLockMutex(brush->brush_mutex))
+			//if(!SDL_TryLockMutex(brush->brush_mutex))
 			{
 				for(i = 0; i < brush->batch_count; i++)
 				{
@@ -218,7 +208,7 @@ void editor_LevelEditorDrawBrushes()
 					renderer_SubmitDrawCommand(brush_draw_transform, GL_TRIANGLES, brush->batches[i].start + brush->index_start, brush->batches[i].next, brush->batches[i].material_index, 1);
 				}
 
-				SDL_UnlockMutex(brush->brush_mutex);
+				//SDL_UnlockMutex(brush->brush_mutex);
 			}
 
 
@@ -229,8 +219,9 @@ void editor_LevelEditorDrawBrushes()
 
 	renderer_EnableImediateDrawing();
 	renderer_SetShader(r_imediate_color_shader);
-	renderer_SetActiveView(main_view);
+	renderer_SetActiveView((view_def_t *)active_camera);
 	renderer_SetModelMatrix(NULL);
+	renderer_UpdateMatrices();
 	//glPolygonOffset(58.0, 20.0);
 
 	brush = brushes;
@@ -259,7 +250,7 @@ void editor_LevelEditorDrawBrushes()
 		{
 			renderer_Color3f(0.0, 10.0, 0.0);
 	//		glEnable(GL_POLYGON_OFFSET_LINE);
-			glLineWidth(4.0);
+			glLineWidth(1.0);
 
 		}
 
@@ -295,10 +286,11 @@ void editor_LevelEditorDrawGrid()
 {
 	int i;
 	int j;
-	camera_t *active_camera = camera_GetActiveCamera();
+	//camera_t *active_camera = camera_GetActiveCamera();
+	camera_t *active_camera = (camera_t *)renderer_GetActiveView();
 
 	renderer_SetShader(r_imediate_color_shader);
-	glLineWidth(2.0);
+	glLineWidth(1.0);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
@@ -350,11 +342,14 @@ void editor_LevelEditorDrawSelected()
 	struct waypoint_t *waypoint;
 	struct waypoint_t *waypoints;
 
+	struct light_position_data_t *position;
+
 	vec3_t portal_right_vector;
 	vec3_t portal_up_vector;
 	vec3_t portal_center;
 
-	active_view = camera_GetActiveCamera();
+	//active_view = camera_GetActiveCamera();
+	active_view = (camera_t *)renderer_GetActiveView();
 
 
 	//renderer_SetProjectionMatrix(&active_view)
@@ -406,7 +401,7 @@ void editor_LevelEditorDrawSelected()
 					glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 					glDepthMask(GL_TRUE);
 					glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-					glLineWidth(4.0);
+					glLineWidth(1.0);
 				}
 
 				switch(record->type)
@@ -481,6 +476,20 @@ void editor_LevelEditorDrawSelected()
 						renderer_End();
 					break;
 
+					#if 0
+
+					case PICK_LIGHT:
+                        position = (struct light_position_data_t *)l_light_positions.elements + record->index0;
+                        //glPointSize(24.0);
+                        renderer_Begin(GL_POINTS);
+                        renderer_Vertex3f(position->position.x, position->position.y, position->position.z);
+                        renderer_End();
+                        //glPointSize(1.0);
+
+                    break;
+
+                    #endif
+
 					case PICK_PORTAL:
 						portal = &ptl_portals[record->index0];
 
@@ -550,7 +559,7 @@ void editor_LevelEditorDrawSelected()
 						glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 						glDepthMask(GL_TRUE);
 						glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-						glLineWidth(4.0);
+						glLineWidth(1.0);
 					}
 
 					brush = record->pointer;
@@ -645,18 +654,8 @@ void editor_LevelEditorDrawSelected()
 
 void editor_LevelEditorDrawCursors()
 {
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, ed_cursors_framebuffer_id);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	glViewport(0, 0, r_width, r_height);
-	glClearColor(0.0, 0.0, 0.0, 1.0);
-	glClearStencil(0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-	//renderer_SaveCapability(GL_STENCIL_TEST);
-	//renderer_SaveStencilFunc();
-	//renderer_SaveStencilOp();
-
-	renderer_PushStates(GL_STENCIL_TEST);
+    renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, &ed_cursors_framebuffer);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	if(level_editor_draw_3d_handle)
 	{
@@ -665,61 +664,24 @@ void editor_LevelEditorDrawCursors()
 
 	editor_Draw3dCursor(level_editor_3d_cursor_position);
 
-	renderer_BindBackbuffer(0, 0);
+	renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, &r_bbuffer);
 
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, ed_cursors_framebuffer_id);
-	glReadBuffer(GL_COLOR_ATTACHMENT0);
-	glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_width, r_height, GL_STENCIL_BUFFER_BIT, GL_NEAREST);
+    glEnable(GL_ALPHA_TEST);
+    glAlphaFunc(GL_EQUAL, 0.0);
 
-	glEnable(GL_STENCIL_TEST);
-	glStencilFunc(GL_EQUAL, 0xff, 0xff);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    renderer_EnableImediateDrawing();
+    renderer_SetShader(r_blit_texture_shader);
+    renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, ed_cursors_framebuffer.color_attachments[0].handle);
+    renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
+    renderer_Rectf(-1.0, -1.0, 1.0, 1.0);
+    renderer_DisableImediateDrawing();
 
-	renderer_SetShader(r_blit_texture_shader);
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, ed_cursors_color_texture_id);
-	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
-	renderer_EnableImediateDrawing();
-	renderer_Rectf(-1.0, -1.0, 1.0, 1.0);
-	renderer_DisableImediateDrawing();
-	glDisable(GL_STENCIL_TEST);
+    glDisable(GL_ALPHA_TEST);
+    glAlphaFunc(GL_ALWAYS, 1.0);
 
-	/*renderer_RestoreCapability(GL_STENCIL_TEST);
-	renderer_RestoreStencilFunc();
-	renderer_RestoreStencilOp();*/
-
-	renderer_PopStates(GL_STENCIL_TEST);
-}
-
-void editor_LevelEditorDrawLights()
-{
-	int i;
-	int c = l_light_list_cursor;
-	camera_t *active_camera = camera_GetActiveCamera();
-
-	glPointSize(12.0);
-	glEnable(GL_POINT_SMOOTH);
-
-	renderer_SetShader(r_imediate_color_shader);
-	renderer_EnableImediateDrawing();
-	renderer_Begin(GL_POINTS);
-	renderer_Color3f(0.5, 0.5, 1.0);
-	for(i = 0; i < c; i++)
-	{
-		if(l_light_params[i].bm_flags & LIGHT_INVALID)
-			continue;
-		renderer_Vertex3f(l_light_positions[i].position.x, l_light_positions[i].position.y, l_light_positions[i].position.z);
-	}
-
-	renderer_End();
-	renderer_DisableImediateDrawing();
-	glPointSize(1.0);
-	glDisable(GL_POINT_SMOOTH);
-}
-
-void editor_LevelEditorDrawSpawnPoints()
-{
 
 }
+
 
 void editor_LevelEditorDrawLeaves()
 {
@@ -868,8 +830,6 @@ void editor_LevelEditorDrawWorldPolygons()
 	editor_LevelEditorRecursiveDrawWorldPolygons(world_bsp);
 
 	renderer_DisableImediateDrawing();
-	//glLineWidth()
-
 }
 
 void editor_LevelEditorDrawClippedPolygons()

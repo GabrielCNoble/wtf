@@ -62,6 +62,8 @@
 
 #define LIGHT_MAX_NAME_LEN 16	/* including trailing null... */
 
+#define L_INVALID_SHADOW_MAP_INDEX 0xff
+
 
 enum LIGHT_FRUSTUM
 {
@@ -116,17 +118,36 @@ struct light_cluster_t
 	unsigned z : 10;
 };
 
-typedef struct
+struct light_position_data_t
 {
-	mat4_t world_to_light_matrix;
+	//mat4_t world_to_light_matrix;
 	mat3_t orientation;
 	vec3_t position;
-}light_position_t;
+	//vec4_t screen_min_max;
+
+    struct bsp_dleaf_t *leaf;
+
+	unsigned short radius;
+	unsigned short flags;
+	//unsigned short energy;
 
 
-typedef struct
+    unsigned short first_cluster_data;
+    unsigned short cluster_data_count;
+
+
+	//unsigned int align0;
+};          /* 64 bytes... */
+
+struct light_cluster_data_t
 {
-	struct bsp_dleaf_t *leaf;							/* in which leaf this light is in (updated every time it moves)... */
+    struct light_cluster_t first_cluster;
+	struct light_cluster_t last_cluster;
+};          /* 8 bytes... */
+
+struct light_params_data_t
+{
+	//struct bsp_dleaf_t *leaf;						/* in which leaf this light is in (updated every time it moves)... */
 	//vec3_t box_max;								/* this box is calculated when the visible triangles are determined. As long as
 													//the light remains inside this box, no update is needed...*/
 	//vec3_t box_min;
@@ -134,26 +155,29 @@ typedef struct
 	unsigned char r;
 	unsigned char g;
 	unsigned char b;
-	char shadow_map;
+	unsigned shadow_map;
 	//char cache;
 
-	unsigned short radius;
-	unsigned short energy;
+	//unsigned short radius;
+	//unsigned short energy;
 	//unsigned short visible_triangle_count;		/* this could go somewhere else... */
 
 	//unsigned int shadow_map;
 
-	unsigned char bm_flags;
-	unsigned char align0;
+	//unsigned char flags;
+	//unsigned char align0;
+	unsigned short energy;
 	unsigned char align1;
 	unsigned char align2;
+
+	char *name;
 
 
 	//struct list_t triangle_indices[6];
 
-	struct list_t visible_triangles;
-	struct gpu_alloc_handle_t indices_handle;
-	unsigned int indices_start;
+	//struct list_t visible_triangles;
+	//struct gpu_alloc_handle_t indices_handle;
+	//unsigned int indices_start;
 
 
 
@@ -177,45 +201,27 @@ typedef struct
 //	unsigned int first_cluster;
 //	unsigned int last_cluster;
 
-	struct light_cluster_t first_cluster;
-	struct light_cluster_t last_cluster;
+	//struct light_cluster_t first_cluster;
+	//struct light_cluster_t last_cluster;
 
-}light_params_t;
+	//vec4_t screen_min_max;
+
+};          /* 8 bytes... */
 
 
-typedef struct
+struct light_pointer_t
+{
+    struct light_position_data_t *position;
+    struct light_params_data_t *params;
+    struct light_cluster_data_t *cluster;
+};
+
+/*typedef struct
 {
 	light_params_t *params;
 	light_position_t *position;
-}light_ptr_t;
+}light_ptr_t;*/
 
-struct gpu_light_t
-{
-	vec4_t forward_axis;
-	vec4_t position_radius;
-	vec4_t color_energy;
-	int bm_flags;
-	float proj_param_a;
-	float proj_param_b;
-	int shadow_map;
-};
-
-struct gpu_bsp_node_t
-{
-	vec4_t normal_dist;
-	unsigned int children[2];
-	int align0;
-	int align1;
-};
-
-
-typedef struct
-{
-	unsigned int light_indexes_bm;
-	/*unsigned int time_stamp;
-	int align1;
-	int align2;*/
-}cluster_t;
 
 struct shadow_map_t
 {

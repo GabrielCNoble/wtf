@@ -67,8 +67,8 @@ bsp_entities_t *w_leaf_entities = NULL;
 int w_visible_leaves_count = 0;
 struct bsp_dleaf_t **w_visible_leaves = NULL;
 
-int w_visible_lights_count = 0;
-unsigned short w_visible_lights[MAX_WORLD_LIGHTS];
+//int w_visible_lights_count = 0;
+//unsigned short w_visible_lights[MAX_WORLD_LIGHTS];
 
 
 struct world_script_t *w_world_script = NULL;
@@ -114,9 +114,13 @@ extern struct stack_list_t ent_entity_aabbs;
 extern struct stack_list_t ent_world_transforms;
 
 
-#include "l_globals.h"
+//#include "l_globals.h"
 
 /* from l_main.c */
+extern struct stack_list_t l_light_positions;
+extern struct stack_list_t l_light_params;
+extern struct stack_list_t l_light_clusters;
+
 //extern int l_light_count;
 //extern int l_light_list_cursor;
 //extern light_params_t *l_light_params;
@@ -140,10 +144,10 @@ extern float r_fade_value;
 extern int r_clusters_per_row;
 extern int r_cluster_rows;
 extern int r_cluster_layers;
-extern cluster_t *r_clusters;
+extern struct cluster_t *r_clusters;
 extern unsigned int r_cluster_texture;
 extern unsigned int r_light_uniform_buffer;
-extern unsigned int r_world_bsp_uniform_buffer;
+extern unsigned int r_bsp_uniform_buffer;
 
 
 #ifdef __cplusplus
@@ -332,8 +336,12 @@ void world_MarkLightsOnLeaves()
 	struct bsp_dleaf_t *leaf;
 	struct bsp_dleaf_t *lleaf;
 	bsp_lights_t *lights;
-	light_position_t *pos;
-	light_params_t *parms;
+//	light_position_t *pos;
+//	light_params_t *parms;
+
+    struct light_position_data_t *position;
+    struct light_params_data_t *params;
+
 	struct bsp_dleaf_t **leaves;
 	int leaves_count;
 	unsigned long long s;
@@ -348,40 +356,59 @@ void world_MarkLightsOnLeaves()
 	if(!w_world_leaves)
 		return;
 
-	for(i = 0; i < l_light_list_cursor; i++)
+	for(i = 0; i < l_light_positions.element_count; i++)
 	{
-		if(l_light_params[i].bm_flags & LIGHT_INVALID)
+
+	    //params = (struct light_params_data_t *)l_light_params.elements + i;
+
+		/*if(l_light_params[i].bm_flags & LIGHT_INVALID)
 			continue;
 
 		if(!(l_light_params[i].bm_flags & LIGHT_MOVED))
-			continue;
+			continue;*/
 
-		l_light_params[i].bm_flags &= ~LIGHT_MOVED;
+        position = (struct light_position_data_t *)l_light_positions.elements + i;
 
-		light_leaf = bsp_GetCurrentLeaf(w_world_nodes, l_light_positions[i].position);
+        if(!(position->flags & LIGHT_INVALID))
+        {
+            continue;
+        }
+
+        if(!(position->flags & LIGHT_MOVED))
+        {
+            continue;
+        }
+
+
+
+        position->flags &= ~LIGHT_MOVED;
+
+		//l_light_params[i].bm_flags &= ~LIGHT_MOVED;
+
+		light_leaf = bsp_GetCurrentLeaf(w_world_nodes, position->position);
 
 		//printf("a\n");
 
 		if(light_leaf)
 		{
-			parms = &l_light_params[i];
-			pos = &l_light_positions[i];
+			//parms = &l_light_params[i];
+			//pos = &l_light_positions[i];
 
 			int_index = i >> 5;
 			bit_index = i % 32;
 
 
-			if(parms->leaf)
+			if(position->leaf)
 			{
 				/* don't update anything if this light didn't
 				leave the leaf... */
-				if((struct bsp_dleaf_t *)parms->leaf != light_leaf)
+				if((struct bsp_dleaf_t *)position->leaf != light_leaf)
 				{
 					//leaf = (bsp_dleaf_t *)parms->leaf;
 					//leaf_index = leaf - w_world_leaves;
 					//w_leaf_lights[leaf_index].lights[int_index] &= ~(1 << bit_index);
 
-					leaves = bsp_DecompressPvs(parms->leaf, &leaves_count);
+					leaves = bsp_DecompressPvs(position->leaf, &leaves_count);
 
 					for(j = 0; j < leaves_count; j++)
 					{
@@ -407,19 +434,21 @@ void world_MarkLightsOnLeaves()
 			//leaf_index = light_leaf - w_world_leaves;
 			//w_leaf_lights[leaf_index].lights[int_index] |= 1 << bit_index;
 
-			radius = UNPACK_LIGHT_RADIUS(parms->radius);
-			energy = UNPACK_LIGHT_ENERGY(parms->energy);
+			radius = UNPACK_LIGHT_RADIUS(position->radius);
+			//energy = UNPACK_LIGHT_ENERGY(params->energy);
 			radius *= radius;
 
 			leaves = bsp_DecompressPvs(light_leaf, &leaves_count);
 
-			light_pos4.x = pos->position.x;
-			light_pos4.y = pos->position.y;
-			light_pos4.z = pos->position.z;
+			light_pos4.x = position->position.x;
+			light_pos4.y = position->position.y;
+			light_pos4.z = position->position.z;
 			light_pos4.w = 0.0;
 
 			if(!light_leaf->pvs)
-				continue;
+            {
+                continue;
+            }
 
 			//#define BLODDY_SSE
 
@@ -480,9 +509,9 @@ void world_MarkLightsOnLeaves()
 
 				#else
 
-				v4.x = pos->position.x - leaf->center.x;
-				v4.y = pos->position.y - leaf->center.y;
-				v4.z = pos->position.z - leaf->center.z;
+				v4.x = position->position.x - leaf->center.x;
+				v4.y = position->position.y - leaf->center.y;
+				v4.z = position->position.z - leaf->center.z;
 
 				if(v4.x > leaf->extents.x) v4.x = leaf->extents.x;
 				else if(v4.x < -leaf->extents.x) v4.x = -leaf->extents.x;
@@ -498,9 +527,9 @@ void world_MarkLightsOnLeaves()
 				v4.y += leaf->center.y;
 				v4.z += leaf->center.z;
 
-				v4.x = pos->position.x - v4.x;
-				v4.y = pos->position.y - v4.y;
-				v4.z = pos->position.z - v4.z;
+				v4.x = position->position.x - v4.x;
+				v4.y = position->position.y - v4.y;
+				v4.z = position->position.z - v4.z;
 
 				#endif
 
@@ -520,7 +549,7 @@ void world_MarkLightsOnLeaves()
 				//}
 			}
 
-			parms->leaf = (struct bsp_dleaf_t *)light_leaf;
+			position->leaf = (struct bsp_dleaf_t *)light_leaf;
 
 
 
@@ -912,6 +941,7 @@ void world_WorldOnViews()
 
 void world_LightBounds()
 {
+    #if 0
 	int i;
 	int c;
 
@@ -919,7 +949,7 @@ void world_LightBounds()
 	int y;
 	int z;
 
-	camera_t *active_camera = camera_GetActiveCamera();
+//	camera_t *active_camera = camera_GetActiveCamera();
 	//camera_t *active_camera = view;
 	vec4_t light_origin;
 
@@ -1204,6 +1234,8 @@ void world_LightBounds()
 	}
 
 	w_visible_lights_count = c;
+
+	#endif
 
 }
 
@@ -2442,6 +2474,8 @@ void world_EntitiesOnPortals()
 
 void world_VisibleEntities()
 {
+
+    #if 0
 	int i;
 	int c;
 	int j;
@@ -2580,10 +2614,14 @@ void world_VisibleEntities()
 			ent_visible_entities_count++;
 		}
 	}*/
+
+	#endif
 }
 
 void world_UploadVisibleLights()
 {
+
+    #if 0
 	int i;
 	int c;
 	int light_index;
@@ -2756,10 +2794,13 @@ void world_UploadVisibleLights()
 	glBindTexture(GL_TEXTURE_3D, 0);
 
 	R_DBG_POP_FUNCTION_NAME();
+
+	#endif
 }
 
 void world_VisibleLights()
 {
+    #if 0
 	//printf("light_VisibleLights\n");
 	int i;
 	int c = w_visible_leaves_count;
@@ -2880,10 +2921,13 @@ void world_VisibleLights()
 	light_UpdateClusters();
 	light_UploadCache();*/
 
+	#endif
+
 }
 
 void world_VisibleLightTriangles(int light_index)
 {
+    #if 0
 	int slot_index;
 	int i;
 	int c;
@@ -3001,20 +3045,24 @@ void world_VisibleLightTriangles(int light_index)
 			//printf("%d triangles\n", visible_triangles->element_count);
 		}
 	}
+
+	#endif
 }
 
 
 void world_VisibleLeaves()
 {
+    #if 0
 	camera_t *active_camera = camera_GetActiveCamera();
 	w_visible_leaves = bsp_PotentiallyVisibleLeaves(&w_visible_leaves_count, active_camera->world_position);
+	#endif
 }
 
 
 
 void world_UploadWorldBspNodes()
 {
-    glBindBuffer(GL_UNIFORM_BUFFER, r_world_bsp_uniform_buffer);
+    glBindBuffer(GL_UNIFORM_BUFFER, r_bsp_uniform_buffer);
 
     int i;
 
@@ -3038,6 +3086,7 @@ void world_UploadWorldBspNodes()
 
 void world_VisibleWorld()
 {
+    #if 0
 
 	int i;
 	int c;
@@ -3223,6 +3272,8 @@ void world_VisibleWorld()
 		gpu_WriteNonMapped(w_world_index_handle, 0, w_index_buffer, sizeof(int) * w_world_vertices_count);
 	}
 
+	#endif
+
 }
 
 
@@ -3243,7 +3294,7 @@ struct world_var_t *world_AddWorldVar(char *name, int size)
 
 	if(size <= 0)
 	{
-		return;
+		return NULL;
 	}
 
 	world_var = world_GetWorldVarPointer(name);
@@ -3705,8 +3756,8 @@ void world_ClearBsp()
 {
 	if(w_world_leaves)
 	{
-		gpu_Free(w_world_handle);
-		gpu_Free(w_world_index_handle);
+		renderer_Free(w_world_handle);
+		renderer_Free(w_world_index_handle);
 		memory_Free(w_world_vertices);
 		memory_Free(w_world_nodes);
 		memory_Free(w_world_leaves);
@@ -3771,14 +3822,14 @@ void world_Update()
 		}
 	}
 
-	w_world_handle = gpu_AllocVerticesAlign(sizeof(struct compact_vertex_t) * w_world_vertices_count + 1024 * 64, sizeof(struct compact_vertex_t));
-	w_world_start = gpu_GetAllocStart(w_world_handle) / sizeof(struct compact_vertex_t);
+	w_world_handle = renderer_AllocVerticesAlign(sizeof(struct compact_vertex_t) * w_world_vertices_count + 1024 * 64, sizeof(struct compact_vertex_t));
+	w_world_start = renderer_GetAllocStart(w_world_handle) / sizeof(struct compact_vertex_t);
 
-	w_world_index_handle = gpu_AllocIndexesAlign(sizeof(int) * w_world_vertices_count + 1024 * 64, sizeof(int));
-	w_world_index_start = gpu_GetAllocStart(w_world_index_handle) / sizeof(int);
+	w_world_index_handle = renderer_AllocIndexesAlign(sizeof(int) * w_world_vertices_count + 1024 * 64, sizeof(int));
+	w_world_index_start = renderer_GetAllocStart(w_world_index_handle) / sizeof(int);
 
 	compact_world_vertices = model_ConvertVertices(w_world_vertices, w_world_vertices_count);
-	gpu_Write(w_world_handle, 0, compact_world_vertices, sizeof(struct compact_vertex_t) * w_world_vertices_count);
+	renderer_Write(w_world_handle, 0, compact_world_vertices, sizeof(struct compact_vertex_t) * w_world_vertices_count);
 
 	physics_BuildWorldCollisionMesh();
 	memory_Free(compact_world_vertices);
@@ -3811,6 +3862,11 @@ void world_Clear(int clear_flags)
 	{
 		physics_ClearWorldCollisionMesh();
 	}
+
+	if(clear_flags & WORLD_CLEAR_FLAG_WAYPOINTS)
+    {
+        navigation_DestroyAllWaypoints();
+    }
 
     if(clear_flags & WORLD_CLEAR_FLAG_BSP)
 	{

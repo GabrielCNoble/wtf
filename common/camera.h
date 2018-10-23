@@ -31,9 +31,9 @@ void camera_DestroyAllCameras();
 
 void camera_SetCameraByIndex(int camera_index);
 
-void camera_SetCamera(camera_t *camera);
+//void camera_SetCamera(camera_t *camera);
 
-void camera_SetMainViewCamera(camera_t *camera);
+//void camera_SetMainViewCamera(camera_t *camera);
 
 void camera_Activate(camera_t *camera);
 
@@ -49,9 +49,9 @@ void camera_RotateCamera(camera_t *camera, vec3_t axis, float angle, int b_set);
 
 void camera_PitchYawCamera(camera_t *camera, float yaw, float pitch);
 
-camera_t *camera_GetActiveCamera();
+//camera_t *camera_GetActiveCamera();
 
-camera_t *camera_GetMainViewCamera();
+//camera_t *camera_GetMainViewCamera();
 
 camera_t *camera_GetCamera(char *name);
 

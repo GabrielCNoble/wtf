@@ -3,7 +3,7 @@
 
 
 #include "engine.h"
-#include "memory.h"
+#include "c_memory.h"
 #include "SDL2\SDL_timer.h"
 
 #include <float.h>
@@ -97,15 +97,15 @@ void engine_Init(int width, int height, int init_mode, int argc, char *argv[])
 
 	if(b_init_properly)
 	{
+	    b_init_properly &= script_Init();
 		b_init_properly &= resource_Init();
 		b_init_properly &= renderer_Init(width, height, init_mode);
 
 		if(b_init_properly)
 		{
 			b_init_properly &= shader_Init();
-			b_init_properly &= script_Init();
 			b_init_properly &= input_Init();
-			b_init_properly &= gpu_Init();
+			//b_init_properly &= gpu_Init();
 			b_init_properly &= model_Init();
 			b_init_properly &= particle_Init();
 			b_init_properly &= entity_Init();
@@ -171,7 +171,7 @@ void engine_Finish()
 		bsp_Finish();
 		script_Finish();
 		physics_Finish();
-		gpu_Finish();
+		//gpu_Finish();
 		renderer_Finish();
 		resource_Finish();
 		log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "Mayhem engine finished properly!");
@@ -212,6 +212,7 @@ void engine_MainLoop()
 
 	float s;
 	float e;
+	int cpu_timer;
 
 	engine_UpdateDeltaTime();
 
@@ -220,24 +221,21 @@ void engine_MainLoop()
 
 		engine_UpdateDeltaTime();
 
-		s = engine_GetDeltaTime();
+		//s = engine_GetDeltaTime();
 		//renderer_StartGpuTimer();
 
-		renderer_OpenFrame();
+
 		input_GetInput(delta_time);
 		//gui_ProcessGUI();
 
 		gui_OpenGuiFrame();
 
+		//int cpu_timer = renderer_StartCpuTimer("engine_MainLoop");
+        //cpu_timer = renderer_StartCpuTimer("engine_GameMain");
 		if(engine_GameMain)
 		{
 			engine_GameMain(delta_time);
 		}
-
-		/*gui_ImGuiSetNextWindowPos(vec2(0.0, 0.0), ImGuiCond_Once, vec2(0.0, 0.0));
-		gui_ImGuiBegin("test", NULL, 0);
-		gui_ImGuiEnd();*/
-
 
 		if(engine_state & ENGINE_PLAYING)
 		{
@@ -246,12 +244,15 @@ void engine_MainLoop()
 			world_ExecuteWorldScript();
 			physics_ProcessCollisions(delta_time);
 		}
+		//renderer_StopTimer(cpu_timer);
 
+        //cpu_timer = renderer_StartCpuTimer("update components");
         entity_UpdatePhysicsComponents();
 		entity_UpdateTransformComponents();
 		entity_UpdateCameraComponents();
+		//renderer_StopTimer(cpu_timer);
 
-		script_ExecuteScripts(delta_time);
+		//script_ExecuteScripts(delta_time);
 
 
 		//entity_ClearMarkedEntities();
@@ -260,43 +261,21 @@ void engine_MainLoop()
 		sound_ProcessSound();
 		particle_UpdateParticleSystems(delta_time);
 
+        //cpu_timer = renderer_StartCpuTimer("mark on leaves");
 		world_MarkLightsOnLeaves();
 		world_MarkEntitiesOnLeaves();
+		//renderer_StopTimer(cpu_timer);
 
-		world_VisibleWorld();
-		world_VisibleEntities();
-		world_VisibleLights();
+		//world_VisibleWorld();
+		//world_VisibleEntities();
+		//world_VisibleLights();
 
+        //renderer_StopTimer(cpu_timer);
 
-		gui_CloseGuiFrame();
+		//gui_CloseGuiFrame();
 
+		//renderer_StartFrame();
 		renderer_DrawFrame();
-
-		renderer_CloseFrame();
-		e = engine_GetDeltaTime();
-
-
-		accum_cpu_time += e - s;
-		/*accum_gpu_time += renderer_StopGpuTimer();*/
-		capture_time += delta_time;
-
-
-/*
-		if(capture_time >= 1000.0)
-		{
-			accum_cpu_time /= captured_frames;
-			//accum_gpu_time /= captured_frames;
-			printf("frame time - |gpu: %0.3f| |cpu: %0.3f| |fps(gpu): %0.3f| |fps(cpu): %0.3f|\n", accum_gpu_time, accum_cpu_time, 1.0 / (accum_gpu_time * 0.001), 1.0 / (accum_cpu_time * 0.001));
-
-			accum_cpu_time = 0.0;
-			accum_gpu_time = 0.0;
-			capture_time = 0.0;
-			captured_frames = 0;
-		}
-		else
-		{
-			captured_frames++;
-		}*/
 
 		engine_state &= ~(ENGINE_JUST_PAUSED | ENGINE_JUST_RESUMED);
 	}

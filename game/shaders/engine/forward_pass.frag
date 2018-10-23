@@ -1,11 +1,12 @@
-#version 400 compatibility  
+#version 400 compatibility
 
 #include "engine/default_clustered_forward.h"
 
 void main()
 {
-	gl_FragColor = evaluate_pixel();
-	//gl_FragColor = vec4(tex_coords.x, tex_coords.y, 0.0, 0.0);
+	//gl_FragColor = evaluate_pixel();
+	gl_FragData[0] = evaluate_pixel();
+	//gl_FragData[1] = vec4(abs(eye_space_pixel_normal), 0.0);
 }
 
 

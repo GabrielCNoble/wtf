@@ -1,8 +1,8 @@
 #ifndef PHY_COMMON_H
 #define PHY_COMMON_H
 
-#include "vector.h"
-#include "matrix.h"
+#include "gmath/vector.h"
+#include "gmath/matrix.h"
 #include "model.h"
 
 

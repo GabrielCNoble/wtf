@@ -27,11 +27,11 @@ int camera_count = 0;
 camera_t *cameras = NULL;
 camera_t *last_camera = NULL;
 
-camera_t *active_camera;
-camera_t *main_view;
+//camera_t *active_camera;
+//camera_t *main_view;
 
-extern camera_t *r_active_view;
-extern camera_t *r_main_view;
+//extern camera_t *r_active_view;
+//extern camera_t *r_main_view;
 
 static int active_camera_index;
 static unsigned int camera_indexes[2048];
@@ -83,7 +83,7 @@ int camera_Init()
 	CreatePerspectiveMatrix(&default_camera.view_data.projection_matrix, 0.68, (float)r_window_width / (float)r_window_height, 0.01, 500.0, 0.0, 0.0, &default_camera.frustum);
 
 
-	camera_SetCamera(NULL);
+//	camera_SetCamera(NULL);
 	//camera_list = malloc(sizeof(camera_t ) * camera_list_size);
 
 	/* space for name strings are prealocated... */
@@ -279,12 +279,16 @@ void camera_DeleteViewData(view_data_t *view_data)
 
 void camera_DestroyCamera(camera_t *camera)
 {
+    camera_t *active_camera;
 	if(camera)
 	{
 
+	    active_camera = (camera_t *)renderer_GetActiveView();
+
 		if(camera == active_camera)
 		{
-			camera_SetCamera(NULL);
+			//camera_SetCamera(NULL);
+			renderer_SetActiveView(NULL);
 		}
 
 		if(camera == cameras)
@@ -355,6 +359,7 @@ camera_SetCameraByIndex
 	}
 }*/
 
+#if 0
 
 void camera_SetCamera(camera_t *camera)
 {
@@ -380,11 +385,17 @@ void camera_SetCamera(camera_t *camera)
 	}
 }
 
+#endif
+
+
+#if 0
 void camera_SetMainViewCamera(camera_t *camera)
 {
 	main_view = camera;
 	r_main_view = camera;
 }
+
+#endif
 
 void camera_Activate(camera_t *camera)
 {
@@ -570,16 +581,16 @@ void camera_PitchYawCamera(camera_t *camera, float yaw, float pitch)
 camera_GetActiveCamera
 =============
 */
-camera_t *camera_GetActiveCamera()
-{
+//camera_t *camera_GetActiveCamera()
+//{
 	//return &camera_list[active_camera_index];
-	return r_active_view;
-}
+//	return r_active_view;
+//}
 
-camera_t *camera_GetMainViewCamera()
-{
-	return r_main_view;
-}
+//camera_t *camera_GetMainViewCamera()
+//{
+//	return r_main_view;
+//}
 
 camera_t *camera_GetCamera(char *name)
 {

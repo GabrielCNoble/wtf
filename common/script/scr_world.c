@@ -17,6 +17,11 @@ extern struct stack_list_t ent_entities[2];
 
 struct script_array_t array_return;
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void world_ScriptAddWorldVar(struct script_string_t *name, void *type)
 {
     int var_size;
@@ -209,6 +214,10 @@ void world_ScriptClearWorld()
     world_Clear(WORLD_CLEAR_FLAG_ALL);
 }
 
+
+#ifdef __cplusplus
+}
+#endif
 
 
 

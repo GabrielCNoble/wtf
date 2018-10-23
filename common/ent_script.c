@@ -1,7 +1,10 @@
-#include "scr_entity.h"
+#include "ent_script.h"
 #include "entity.h"
 #include "physics.h"
 #include "camera.h"
+#include "script.h"
+#include "r_main.h"
+#include "c_memory.h"
 
 #include <string.h>
 
@@ -18,6 +21,8 @@ extern struct component_fields_t COMPONENT_FIELDS[COMPONENT_TYPE_LAST];
 
 static vec3_t vec3_ret;
 static mat3_t mat3_ret;
+
+struct script_array_t array_return;
 
 extern int r_frame;
 
@@ -274,10 +279,24 @@ void entity_ScriptTranslate(vec3_t *direction)
     entity_ScriptTranslateEntity(current_entity, direction);
 }
 
+void entity_ScriptSetPosition(vec3_t *position)
+{
+    struct entity_handle_t current_entity;
+
+    script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
+
+    entity_ScriptSetEntityPosition(current_entity, position);
+}
+
 
 void entity_ScriptTranslateEntity(struct entity_handle_t entity, vec3_t *direction)
 {
     entity_TranslateEntity(entity, *direction, 1.0);
+}
+
+void entity_ScriptSetEntityPosition(struct entity_handle_t entity, vec3_t *position)
+{
+    entity_SetEntityPosition(entity, *position);
 }
 
 
@@ -717,7 +736,8 @@ void entity_ScriptSetCameraAsActive(struct component_handle_t camera)
 
 		if(camera_component)
 		{
-			camera_SetCamera(camera_component->camera);
+		//	camera_SetCamera(camera_component->camera);
+            renderer_SetActiveView((view_def_t *)camera_component->camera);
 		}
 	}
 }
@@ -840,6 +860,42 @@ void entity_ScriptPrint(struct script_string_t *script_string)
     script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	printf(script_string_GetRawString(script_string));
+}
+
+void *entity_ScriptGetEntities()
+{
+    int i;
+
+	struct entity_handle_t *entity_handles;
+	struct entity_t *entities;
+
+    if(!array_return.buffer)
+	{
+        array_return.buffer = memory_Calloc(512, sizeof(struct entity_handle_t));
+	}
+
+	array_return.element_count = 0;
+	entities = (struct entity_t *)ent_entities[0].elements;
+	entity_handles = (struct entity_handle_t *)array_return.buffer;
+
+	for(i = 0; i < ent_entities[0].element_count; i++)
+	{
+        if(entities[i].flags & ENTITY_FLAG_INVALID)
+		{
+			continue;
+		}
+
+		entity_handles[array_return.element_count].def = 0;
+		entity_handles[array_return.element_count].entity_index = i;
+
+		array_return.element_count++;
+	}
+
+	array_return.element_size = sizeof(struct entity_handle_t);
+	array_return.extern_buffer = 1;
+	array_return.extern_array = 1;
+
+	return &array_return;
 }
 
 #ifdef __cplusplus

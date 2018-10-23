@@ -15,7 +15,6 @@ enum SHADER_UNIFORMS
 
 	UNIFORM_texture_cube_array_sampler0,
 
-
 	UNIFORM_r_frame,
 	UNIFORM_r_width,
 	UNIFORM_r_height,
@@ -25,6 +24,7 @@ enum SHADER_UNIFORMS
 	UNIFORM_r_cluster_rows,
 	UNIFORM_r_cluster_layers,
 	UNIFORM_r_bloom_radius,
+	UNIFORM_r_bsp_node_count,
 	UNIFORM_cluster_texture,
 	UNIFORM_material_flags,
 	UNIFORM_projection_matrix,
@@ -55,8 +55,8 @@ enum SHADER_FLAGS
 
 typedef struct
 {
-	unsigned short location;
-	unsigned short type;
+	unsigned int location;
+	unsigned int type;
 }uniform_t;
 
 typedef struct
@@ -75,11 +75,18 @@ struct shader_t
 	unsigned int vertex_shader;
 	unsigned int fragment_shader;
 
-	unsigned char vertex_position;
+	/*unsigned char vertex_position;
 	unsigned char vertex_normal;
 	unsigned char vertex_tangent;
 	unsigned char vertex_tex_coords;
-	unsigned char vertex_color;
+	unsigned char vertex_color;*/
+
+
+	unsigned int vertex_position;
+	unsigned int vertex_normal;
+	unsigned int vertex_tangent;
+	unsigned int vertex_tex_coords;
+	unsigned int vertex_color;
 
 	unsigned char align0;
 	unsigned char align1;

@@ -1,7 +1,7 @@
 
 
 
-void main()
+void OnUpdate()
 {
     vec3_t direction;
     vec3_t player_position;

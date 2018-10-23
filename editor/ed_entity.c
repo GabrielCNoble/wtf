@@ -127,8 +127,9 @@ void editor_EntityEditorFinish()
 void editor_EntityEditorSetup()
 {
 	mat3_t light_orientation = mat3_t_id();
-	camera_SetCamera(entity_editor_camera);
-	camera_SetMainViewCamera(entity_editor_camera);
+//	camera_SetCamera(entity_editor_camera);
+//	camera_SetMainViewCamera(entity_editor_camera);
+    renderer_SetActiveView((view_def_t *)entity_editor_camera);
 
 	renderer_RegisterCallback(editor_EntityEditorPreDraw, PRE_SHADING_STAGE_CALLBACK);
 	renderer_RegisterCallback(editor_EntityEditorPostDraw, POST_SHADING_STAGE_CALLBACK);
@@ -338,7 +339,9 @@ void editor_EntityEditorMoveCamera()
 void editor_EntityEditorUpdateCamera()
 {
 
-	light_ptr_t entity_editor_light;
+//	light_ptr_t entity_editor_light;
+
+    struct light_pointer_t entity_editor_light;
 
 	if(bm_mouse & MOUSE_WHEEL_DOWN)
 	{
@@ -365,8 +368,8 @@ void editor_EntityEditorUpdateCamera()
 
 
 	entity_editor_light.position->position = entity_editor_camera->world_position;
-	entity_editor_light.params->bm_flags |= LIGHT_MOVED;
-	entity_editor_light.params->radius = PACK_LIGHT_RADIUS(entity_editor_camera_distance);
+	entity_editor_light.position->flags |= LIGHT_MOVED;
+	entity_editor_light.position->radius = PACK_LIGHT_RADIUS(entity_editor_camera_distance);
 	entity_editor_light.params->energy = PACK_LIGHT_ENERGY((entity_editor_camera_distance * entity_editor_camera_distance + 10.0));
 
 	//printf("%d\n", entity_editor_light.params->energy);
@@ -418,7 +421,8 @@ void editor_EntityEditorEdit()
 	static float prev_dy = 0.0;
 
 	mat4_t model_view_projection_matrix;
-	camera_t *active_camera = camera_GetActiveCamera();
+	//camera_t *active_camera = camera_GetActiveCamera();
+	camera_t *active_camera = (camera_t *)renderer_GetActiveView();
 	vec3_t direction;
 
 	if(bm_mouse & MOUSE_OVER_WIDGET)

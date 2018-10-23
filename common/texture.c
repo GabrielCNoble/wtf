@@ -103,7 +103,7 @@ int texture_Init()
 
 	default_texture->bm_flags = 0;
 	default_texture->frame_count = 1;
-	default_texture->gl_handle = renderer_GenGLTexture(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
+	default_texture->gl_handle = renderer_GenGLTexture(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0, 1);
 	default_texture->target = GL_TEXTURE_2D;
 
 	default_texture->texture_info = memory_Calloc(1, sizeof(struct texture_info_t));
@@ -160,7 +160,6 @@ int texture_Init()
 
 	glBindTexture(GL_TEXTURE_2D, default_texture->gl_handle);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, DEFAULT_TEXTURE_SIZE, DEFAULT_TEXTURE_SIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, default_texture_data);
-	//glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, DEFAULT_TEXTURE_SIZE, DEFAULT_TEXTURE_SIZE, layer_count, 0, GL_RGBA, GL_UNSIGNED_BYTE, default_texture_data);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
 	default_texture_info->base_level = 0;
@@ -320,7 +319,6 @@ int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 	}
 	else
 	{
-
 		tex_data = SOIL_load_image(full_path, &width, &height, &channels, SOIL_LOAD_AUTO);
 
 		frame_count = 1;
@@ -335,80 +333,12 @@ int texture_LoadTexture(char *file_name, char *name, int bm_flags)
 			printf("texture_LoadTexture: couldn't load [%s]\nFailure reason: %s\n", name, SOIL_last_result());
 			return -1;
 		}
-
-		/* try to load the file by its file name alone first. This enables
-		importing texture files from places outside the project directory... */
-		//tex_data = SOIL_load_image(file_name, &width, &height, &channels, SOIL_LOAD_AUTO);
-
-
-		/* didn't find the file outside the current directory, so check the search paths... */
-		//if(!tex_data)
-		//{
-		//	full_path = path_GetPathToFile(file_name);
-
-			/* didn't find a path to the file... */
-		//	if(!full_path)
-		//	{
-		//		printf("couldn't fild file [%s] for texture [%s]!\n", file_name, name);
-		//		return -1;
-		//	}
-
-		//	tex_data = SOIL_load_image(full_path, &width, &height, &channels, SOIL_LOAD_AUTO);
-
-			/* couldn't open the file... */
-		//	if(!tex_data)
-		//	{
-		//		printf("couldn't load %s!\nFailure reason: %s\n", name, SOIL_last_result());
-		//		return -1;
-		//	}
-		//}
-		//else
-		//{
-			/* file_name containst the full path to the file... */
-		//	full_path = file_name;
-		//}
-
-
-		//if(free_position_stack_top >= 0)
-		//{
-		//	texture_index = free_position_stack[free_position_stack_top--];
-		//}
-		//else
-		//{
-		//	texture_index = tex_texture_count++;
-
-		//	if(texture_index >= tex_texture_list_size)
-		//	{
-
-		//		memory_Free(free_position_stack);
-
-		//		texture = memory_Malloc(sizeof(texture_t) * (tex_texture_list_size + 16));
-		//		tex_texture_info = memory_Malloc(sizeof(texture_info_t) * (tex_texture_list_size + 16));
-				//c_temp = malloc(sizeof(char *) * (texture_list_size + 16));
-		//		free_position_stack = memory_Malloc(sizeof(int) * (tex_texture_list_size + 16));
-
-		//		memcpy(texture, tex_textures, sizeof(texture_t) * tex_texture_list_size);
-		//		memcpy(info, tex_texture_info, sizeof(texture_info_t) * tex_texture_list_size);
-
-
-		//		memory_Free(tex_textures);
-		//		memory_Free(tex_texture_info);
-
-		//		tex_textures = texture;
-		//		tex_texture_info = info;
-		//	}
-		//}
-
-
-
-		//texture = &tex_textures[texture_index];
-		//info = &tex_texture_info[texture_index];
 	}
 
     texture_index = texture_CreateEmtpyTexture(NULL);
     texture = texture_GetTexturePointer(texture_index);
 
-	gl_tex_handle = renderer_GenGLTexture(target, min_filter, mag_filter, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, mip_max_level);
+	gl_tex_handle = renderer_GenGLTexture(target, min_filter, mag_filter, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, mip_max_level, 1);
 
 	texture->gl_handle = gl_tex_handle;
 	texture->bm_flags = bm_flags & (~TEXTURE_INVALID);

@@ -10,6 +10,7 @@
 #include "..\common\camera.h"
 #include "..\common\entity.h"
 #include "..\common\r_main.h"
+#include "..\common\r_debug.h"
 #include "..\common\script\script.h"
 
 int game_state = GAME_STATE_NONE;
@@ -32,7 +33,14 @@ void game_Init(int argc, char *argv[])
 	gui_ImGuiAddFontFromFileTTF("fixedsys.ttf", 32);
 	engine_SetEngineState(ENGINE_PAUSED);
 
-	renderer_Debug(0, 0);
+	renderer_Enable(R_Z_PRE_PASS);
+	renderer_Disable(R_DEBUG);
+	//renderer_Enable(R_DEBUG);
+	//renderer_Enable(R_VERBOSE_DEBUG);
+	//renderer_Enable(R_WIREFRAME);
+
+
+	//renderer_Enable(R_WIREFRAME);
 	//renderer_Fullscreen(1);
 
 
@@ -121,14 +129,25 @@ void game_Init(int argc, char *argv[])
 	struct particle_system_script_t *ps_script = particle_LoadParticleSystemScript("explosion.pas", "explosion");
 	particle_CreateParticleSystemDef("explosion", 1, 60, 1, 0, explosion_texture, ps_script);
 
-	camera_t *camera;
+
+    view_def_t *active_view;
+
+    active_view = renderer_GetActiveView();
+
+    active_view->world_position.x = -350.0;
+    active_view->world_position.y = -350.0;
+    active_view->world_position.z = -350.0;
+
+    renderer_ComputeViewMatrix(active_view);
+
+	/*camera_t *camera;
 
 
 	camera = camera_GetActiveCamera();
     camera->world_position.x = -350.0;
     camera->world_position.y = -350.0;
     camera->world_position.z = -350.0;
-    camera_ComputeWorldToCameraMatrix(camera);
+    camera_ComputeWorldToCameraMatrix(camera);*/
 }
 
 void game_Finish()
@@ -330,7 +349,8 @@ void game_Main(float delta_time)
 
 		case GAME_STATE_GAME_OVER:
 			death_camera = camera_GetCamera("default camera");
-            camera_SetCamera(death_camera);
+            //camera_SetCamera(death_camera);
+            renderer_SetActiveView((view_def_t *)death_camera);
 
             player = entity_GetEntityHandle("player entity", 0);
 

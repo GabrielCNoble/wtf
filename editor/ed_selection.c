@@ -19,10 +19,12 @@
 #include "..\..\common\r_imediate.h"
 #include "..\..\common\r_debug.h"
 #include "..\..\common\r_shader.h"
+#include "..\..\common\r_gl.h"
 #include "..\..\common\navigation.h"
 #include "..\..\common\containers\stack_list.h"
 
 #include "ed_globals.h"
+#include "ed_draw.h"
 
 /* from r_main.c */
 extern int r_width;
@@ -50,9 +52,13 @@ extern struct stack_list_t ent_triggers;
 
 
 /* from l_main.c */
-extern int l_light_list_cursor;
-extern light_params_t *l_light_params;
-extern light_position_t *l_light_positions;
+//extern int l_light_list_cursor;
+//extern light_params_t *l_light_params;
+//extern light_position_t *l_light_positions;
+
+extern struct stack_list_t l_light_positions;
+extern struct stack_list_t l_light_params;
+extern struct stack_list_t l_light_clusters;
 
 
 /* from navigation.c */
@@ -182,6 +188,8 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	vec3_t entity_box_extents;
 	vec3_t entity_box_scale;
 	struct model_t *entity_model;
+
+	struct light_position_data_t *position;
 	//entity_transform_t entity_transform;
 
 	int cur_top = -1;
@@ -202,7 +210,8 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 
 
 
-	camera_t *active_camera = camera_GetActiveCamera();
+//	camera_t *active_camera = camera_GetActiveCamera();
+    camera_t *active_camera = (camera_t *)renderer_GetActiveView();
 	//triangle_group_t *triangle_group;
 	//batch_t *batch;
 	//material_t *material;
@@ -216,7 +225,9 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 
 	editor_EnablePicking(r_window_width, r_window_height);
 
-	gpu_BindGpuHeap();
+	//gpu_BindGpuHeap();
+
+	renderer_EnableVertexReads();
 
 	renderer_SetShader(ed_pick_shader);
 	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
@@ -364,7 +375,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 
 	renderer_SetModelMatrix(NULL);
 
-	c = l_light_list_cursor;
+	c = l_light_positions.element_count;
 	glPointSize(24.0);
 	glEnable(GL_POINT_SMOOTH);
 
@@ -373,19 +384,27 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 
 	for(i = 0; i < c; i++)
 	{
-		if(l_light_params[i].bm_flags & LIGHT_INVALID)
-			continue;
+
+	    position = (struct light_position_data_t *)l_light_positions.elements + i;
+
+	    if(position->flags & LIGHT_INVALID)
+        {
+            continue;
+        }
+		//if(l_light_params[i].bm_flags & LIGHT_INVALID)
+		//	continue;
 
 		value = i + 1;
 		renderer_SetNamedUniform1f("pick_index", *(float *)&value);
 
 		renderer_Begin(GL_POINTS);
-		renderer_Vertex3f(l_light_positions[i].position.x, l_light_positions[i].position.y, l_light_positions[i].position.z);
+		renderer_Vertex3f(position->position.x, position->position.y, position->position.z);
 		renderer_End();
 	}
 
 	glDisable(GL_POINT_SMOOTH);
 	glPointSize(1.0);
+
 
 /*
 	value = PICK_PORTAL;
@@ -503,7 +522,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 		break;
 	}
 
-	gpu_UnbindGpuHeap();
+	renderer_DisableVertexReads();
 	R_DBG_POP_FUNCTION_NAME();
 
 	return record;
@@ -520,7 +539,8 @@ pick_record_t editor_PickBrushFace(brush_t *brush, float mouse_x, float mouse_y)
 
 	R_DBG_PUSH_FUNCTION_NAME();
 
-	camera_t *active_camera = camera_GetActiveCamera();
+//	camera_t *active_camera = camera_GetActiveCamera();
+    camera_t *active_camera = (camera_t *)renderer_GetActiveView();
 	bsp_polygon_t *polygon;
 
 	unsigned int pick_sample[4];
@@ -627,7 +647,8 @@ vec3_t editor_3dCursorPosition(float mouse_x, float mouse_y)
 	int x;
 	int y;
 
-	camera_t *active_camera = camera_GetActiveCamera();
+//	camera_t *active_camera = camera_GetActiveCamera();
+    camera_t *active_camera = (camera_t *)renderer_GetActiveView();
 	brush_t *brush;
 
 	mat4_t camera_to_world_matrix;
@@ -639,7 +660,7 @@ vec3_t editor_3dCursorPosition(float mouse_x, float mouse_y)
 	float qr;
 	float qt;
 
-	gpu_BindGpuHeap();
+	renderer_EnableVertexReads();
 
 	editor_EnablePicking(r_window_width, r_window_height);
 	glClearColor(active_camera->frustum.zfar, active_camera->frustum.zfar, active_camera->frustum.zfar, active_camera->frustum.zfar);
@@ -696,7 +717,8 @@ float editor_GetMouseOffsetFrom3dHandle(float mouse_x, float mouse_y, vec3_t han
 	float z;
 	float amount = 0.0;
 	mat4_t model_view_projection_matrix;
-	camera_t *active_camera = camera_GetActiveCamera();
+	//camera_t *active_camera = camera_GetActiveCamera();
+	camera_t *active_camera = (camera_t *)renderer_GetActiveView();
 
 	static float grab_screen_offset_x = 0.0;
 	static float grab_screen_offset_y = 0.0;
@@ -1035,12 +1057,7 @@ void editor_TranslateSelections(pick_list_t *pick_list, vec3_t direction, float 
 			break;
 
 			case PICK_WAYPOINT:
-
 				navigation_MoveWaypoint(records[i].index0, direction, amount);
-
-				/*nav_waypoints[records[i].index0].position.x += direction.x * amount;
-				nav_waypoints[records[i].index0].position.y += direction.y * amount;
-				nav_waypoints[records[i].index0].position.z += direction.z * amount;*/
 			break;
 
 			case PICK_TRIGGER:
@@ -1058,7 +1075,7 @@ void editor_RotateSelections(pick_list_t *pick_list, vec3_t axis, float amount, 
 	int i;
 	int c;
 	brush_t *brush;
-	light_position_t *light;
+//	light_position_t *light;
 	pick_record_t *records;
 
 	vec3_t v;
@@ -1104,6 +1121,8 @@ void editor_RotateSelections(pick_list_t *pick_list, vec3_t axis, float amount, 
 			break;
 
 			case PICK_LIGHT:
+
+			    #if 0
 				light = &l_light_positions[records[i].index0];
 
 				v = light->position;
@@ -1126,6 +1145,8 @@ void editor_RotateSelections(pick_list_t *pick_list, vec3_t axis, float amount, 
 
 
 				light_TranslateLight(records[i].index0, v, 1.0);
+
+				#endif
 			break;
 
 
@@ -1222,8 +1243,8 @@ void editor_CopySelections(pick_list_t *pick_list)
 	int c;
 	int new_index;
 
-	light_position_t *light_pos;
-	light_params_t *light_parms;
+//	light_position_t *light_pos;
+//	light_params_t *light_parms;
 	struct entity_t *entity;
 	pick_record_t *records;
 
@@ -1241,12 +1262,15 @@ void editor_CopySelections(pick_list_t *pick_list)
 				records[i].pointer = brush_CopyBrush((brush_t *)records[i].pointer);
 			break;
 
+            #if 0
 			case PICK_LIGHT:
 				light_pos = &l_light_positions[records[i].index0];
 				light_parms = &l_light_params[records[i].index0];
 				new_index = light_CreateLight("copy_light", &light_pos->orientation, light_pos->position, vec3_t_c((float)light_parms->r / 255.0, (float)light_parms->g / 255.0, (float)light_parms->b / 255.0), UNPACK_LIGHT_RADIUS(light_parms->radius), UNPACK_LIGHT_ENERGY(light_parms->energy), light_parms->bm_flags);
 				records[i].index0 = new_index;
 			break;
+
+			#endif
 
 			case PICK_ENTITY:
 				//entity = entity_GetEntityPointerIndex(records[i].index0);
@@ -1318,6 +1342,8 @@ vec3_t editor_GetCenterOfSelections(pick_list_t *pick_list)
 	center.y = 0.0;
 	center.z = 0.0;
 
+	struct light_position_data_t *position;
+
 	struct waypoint_t *waypoint;
 	struct trigger_t *trigger;
 	struct entity_t *entity;
@@ -1336,9 +1362,16 @@ vec3_t editor_GetCenterOfSelections(pick_list_t *pick_list)
 		switch(pick_list->records[i].type)
 		{
 			case PICK_LIGHT:
-				center.x += l_light_positions[pick_list->records[i].index0].position.x;
+
+			    position = (struct light_position_data_t *)l_light_positions.elements + pick_list->records[i].index0;
+
+                center.x += position->position.x;
+                center.y += position->position.y;
+                center.z += position->position.z;
+
+				/*center.x += l_light_positions[pick_list->records[i].index0].position.x;
 				center.y += l_light_positions[pick_list->records[i].index0].position.y;
-				center.z += l_light_positions[pick_list->records[i].index0].position.z;
+				center.z += l_light_positions[pick_list->records[i].index0].position.z;*/
 			break;
 
 			case PICK_BRUSH:

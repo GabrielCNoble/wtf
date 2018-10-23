@@ -21,12 +21,12 @@
 
 
 /* from light.c */
-extern light_position_t *visible_light_positions;
-extern light_params_t *visible_light_params;
-extern light_position_t *light_positions;
-extern light_params_t *light_params;
-extern int light_count;
-extern int visible_light_count;
+//extern light_position_t *visible_light_positions;
+//extern light_params_t *visible_light_params;
+//extern light_position_t *light_positions;
+//extern light_params_t *light_params;
+//extern int light_count;
+//extern int visible_light_count;
 
 
 

@@ -40,6 +40,8 @@
 			<Add directory="../common/vorbis/include" />
 		</Compiler>
 		<Linker>
+			<Add option="-static-libstdc++" />
+			<Add option="-static-libgcc" />
 			<Add option="-m32" />
 			<Add option="-Wl,-Map=r.map" />
 			<Add library="mingw32" />
@@ -131,6 +133,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/ent_common.h" />
+		<Unit filename="../common/ent_script.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/ent_script.h" />
 		<Unit filename="../common/ent_serialization.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -221,6 +227,7 @@
 		</Unit>
 		<Unit filename="../common/gpu.c">
 			<Option compilerVar="CC" />
+			<Option compiler="gcc" use="1" buildCommand="gcc.exe $options $includes -c $file -o $object" />
 		</Unit>
 		<Unit filename="../common/gpu.h">
 			<Option compilerVar="CC" />
@@ -373,15 +380,19 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/r_shader.h" />
+		<Unit filename="../common/r_verts.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_verts.h" />
+		<Unit filename="../common/r_vis.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_vis.h" />
 		<Unit filename="../common/resource.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/resource.h" />
 		<Unit filename="../common/script/scr_common.h" />
-		<Unit filename="../common/script/scr_entity.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/script/scr_entity.h" />
 		<Unit filename="../common/script/scr_gui.c">
 			<Option compilerVar="CC" />
 			<Option compiler="gcc" use="1" buildCommand="gcc.exe $options $includes -c $file -o $object" />

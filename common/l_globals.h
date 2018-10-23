@@ -6,14 +6,14 @@
 
 
 
-GLOBAL(int l_light_list_cursor);
+//GLOBAL(int l_light_list_cursor);
 GLOBAL(int l_light_count);
-GLOBAL(light_position_t *l_light_positions);
-GLOBAL(light_params_t *l_light_params);
-GLOBAL(struct bsp_striangle_t *l_light_visible_triangles);
-GLOBAL(char **l_light_names);
-GLOBAL(unsigned int l_cluster_texture);
-GLOBAL(cluster_t *l_clusters);
+//GLOBAL(light_position_t *l_light_positions);
+//GLOBAL(light_params_t *l_light_params);
+//GLOBAL(struct bsp_striangle_t *l_light_visible_triangles);
+//GLOBAL(char **l_light_names);
+//GLOBAL(unsigned int l_cluster_texture);
+//GLOBAL(cluster_t *l_clusters);
 
 GLOBAL(unsigned int l_light_uniform_buffer);
 GLOBAL(unsigned int l_light_cache_element_buffer);

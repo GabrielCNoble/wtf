@@ -4,6 +4,11 @@
 #include "script_types/scr_string.h"
 
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void world_ScriptAddWorldVar(struct script_string_t *name, void *type);
 
 void world_ScriptAddWorldArrayVar(struct script_string_t *name, int max_elements, void *type);
@@ -40,6 +45,12 @@ void world_ScriptStopAllEvents();
 
 
 void world_ScriptClearWorld();
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // SCR_WORLD_H
 

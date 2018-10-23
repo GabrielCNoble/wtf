@@ -38,9 +38,9 @@ void light_DestroyAllLights();
 
 int light_Getlight(char *name);
 
-light_ptr_t light_GetLightPointer(char *name);
+struct light_pointer_t light_GetLightPointer(char *name);
 
-light_ptr_t light_GetLightPointerIndex(int light_index);
+struct light_pointer_t light_GetLightPointerIndex(int light_index);
 
 
 

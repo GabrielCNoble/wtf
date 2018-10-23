@@ -9,6 +9,11 @@
 #define GL_ENGINE_TRIANGLE_MESH 0x0040
 #define GL_ENGINE_TRIANGLE_CUBE 0x0041
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void renderer_InitImediateDrawing();
 
 void renderer_FinishImediateDrawing();
@@ -28,7 +33,7 @@ void renderer_Begin(GLenum mode);
 
 void renderer_End();
 
-/* 
+/*
 
 NOTE:
 
@@ -36,12 +41,12 @@ Those functions could do just fine with float params only, but for
 some reason gcc is passing floats (4 bytes) as double (8 bytes), which
 makes the function read garbage from the stack when retrieving its params.
 
-Not sure this is a expected behaviour, given that this won't happen in 
-some places. In some calls, gcc pushes the params of those functions 
+Not sure this is a expected behaviour, given that this won't happen in
+some places. In some calls, gcc pushes the params of those functions
 onto the stack by copying its value into eax and then eax into the stack.
 
-Where it happens however, gcc is fld'ing a double (from a QWORD 
-address) and fstp'ing it into the stack to a (QWORD address), which means 
+Where it happens however, gcc is fld'ing a double (from a QWORD
+address) and fstp'ing it into the stack to a (QWORD address), which means
 that the type it's reading is 64 bytes long...
 
 */
@@ -75,5 +80,8 @@ void renderer_DrawVertsIndexed(GLenum mode, int count, int size, int stride, voi
 ==============================================================
 */
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

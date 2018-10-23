@@ -34,6 +34,8 @@
 		in vec3 eye_space_position;
 		in vec3 eye_space_tangent;
 
+		vec3 eye_space_pixel_normal;
+
 		/*
 		===============================================================
 		===============================================================
@@ -47,10 +49,21 @@
 			int layer;
 
 			cluster = min(int((x / float(UNIFORM_r_width)) * float(UNIFORM_r_clusters_per_row)), UNIFORM_r_clusters_per_row);
-			row = min(int((y / float(UNIFORM_r_height)) * float(UNIFORM_r_cluster_rows)), UNIFORM_r_cluster_rows);
-			layer = int((log(view_z / znear) / log(zfar / znear)) * float(UNIFORM_r_cluster_layers));
+			row = min(int(floor((y / float(UNIFORM_r_height)) * float(UNIFORM_r_cluster_rows))), UNIFORM_r_cluster_rows);
+			layer = int((log(view_z / znear) / log(zfar / znear) * float(UNIFORM_r_cluster_layers)));
 			layer = max(min(layer, UNIFORM_r_cluster_layers), 0);
 			return ivec3(cluster, row, layer);
+		}
+
+		unsigned int cluster_lights(float x, float y, float view_z)
+		{
+            ivec3 current_cluster;
+            unsigned int light_bitmask;
+
+            current_cluster = cluster(x, y, view_z, 1.0, 500.0, float(UNIFORM_r_width), float(UNIFORM_r_height));
+			light_bitmask = texelFetch(UNIFORM_cluster_texture, current_cluster, 0).r;
+
+			return light_bitmask;
 		}
 
 		/*
@@ -293,8 +306,10 @@
 			shininess = 512.0;
 
 			/* fucking stupid GL drivers... */
-			current_cluster = cluster(gl_FragCoord.x, gl_FragCoord.y, -eye_space_position.z, 1.0, 500.0, float(UNIFORM_r_width), float(UNIFORM_r_height));
-			light_bitmask = texelFetch(UNIFORM_cluster_texture, current_cluster, 0).r;
+			//current_cluster = cluster(gl_FragCoord.x, gl_FragCoord.y, -eye_space_position.z, 1.0, 500.0, float(UNIFORM_r_width), float(UNIFORM_r_height));
+			//light_bitmask = texelFetch(UNIFORM_cluster_texture, current_cluster, 0).r;
+
+            light_bitmask = cluster_lights(gl_FragCoord.x, gl_FragCoord.y, -eye_space_position.z);
 
 			eye_vec = normalize(-eye_space_position);
 
@@ -311,15 +326,15 @@
 					energy = light_params[light_index].color_energy.a;
 					radius = light_params[light_index].position_radius.w;
 
-					#ifdef NO_SHADOWS
+					//#ifdef NO_SHADOWS
 
 					shadow = 1.0;
 
-					#else
+					//#else
 
-					shadow = pixel_shadow(light_index);
+					//shadow = pixel_shadow(light_index);
 
-					#endif
+					//#endif
 
 					light_vec /= distance;
 					half_vec = normalize(eye_vec + light_vec);
@@ -343,9 +358,9 @@
 			vec3 normal;
 
 			albedo = pixel_albedo().xyz;
-			normal = pixel_normal();
+			eye_space_pixel_normal = pixel_normal();
 
-			return accumulate_lights(albedo, normal);
+			return accumulate_lights(albedo, eye_space_pixel_normal);
 		}
 
 	#endif

@@ -1,4 +1,5 @@
 #include "r_gl.h"
+#include "log.h"
 #include "SDL2/SDL.h"
 #include "GL/glew.h"
 
@@ -179,8 +180,6 @@ void renderer_PopStates(GLenum cap)
 
 void renderer_CheckFunctionPointers()
 {
-    //assert(glDrawArraysInstanced);
-
     if(!__glewDrawArraysInstanced)
     {
 		__glewDrawArraysInstanced = SDL_GL_GetProcAddress("glDrawArraysInstanced");
@@ -194,8 +193,47 @@ void renderer_CheckFunctionPointers()
         {
             __glewDrawArraysInstanced = SDL_GL_GetProcAddress("glDrawArraysInstancedEXT");
         }
+    }
 
-        //__glewDrawArraysInstanced = SDL_GL_GetProcAddress("glDrawArraysInstancedEXT");
+    if(!__glewTexImage2DMultisample)
+    {
+        __glewTexImage2DMultisample = SDL_GL_GetProcAddress("glTexImage2DMultisample");
+
+        if(!__glewTexImage2DMultisample)
+        {
+            __glewTexImage2DMultisample = SDL_GL_GetProcAddress("glTexImage2DMultisampleEXT");
+        }
+
+        if(!__glewTexImage2DMultisample)
+        {
+            __glewTexImage2DMultisample = SDL_GL_GetProcAddress("glTexImage2DMultisampleARB");
+        }
+
+        if(!__glewTexImage2DMultisample)
+        {
+            log_LogMessage(LOG_MESSAGE_WARNING, 1, "renderer_CheckFunctionPointers: glTexImage2DMultisample not supported!");
+        }
+    }
+
+
+    if(!__glewFramebufferTexture2DMultisampleEXT)
+    {
+        __glewFramebufferTexture2DMultisampleEXT = SDL_GL_GetProcAddress("glFramebufferTexture2DMultisample");
+
+        if(!__glewFramebufferTexture2DMultisampleEXT)
+        {
+            __glewFramebufferTexture2DMultisampleEXT = SDL_GL_GetProcAddress("glFramebufferTexture2DMultisampleEXT");
+        }
+
+        if(!__glewFramebufferTexture2DMultisampleEXT)
+        {
+            __glewFramebufferTexture2DMultisampleEXT = SDL_GL_GetProcAddress("glFramebufferTexture2DMultisampleARB");
+        }
+
+        if(!__glewFramebufferTexture2DMultisampleEXT)
+        {
+            log_LogMessage(LOG_MESSAGE_WARNING, 1, "renderer_CheckFunctionPointers: glFramebufferTexture2DMultisample not supported!");
+        }
     }
 }
 
@@ -362,6 +400,16 @@ void renderer_DrawArraysInstanced(int mode, int first, int count, int primcount)
 ===============================================================================
 */
 
+
+
+
+#define R_FRAMEBUFFER_STACK_DEPTH 64
+
+int r_current_framebuffer = 0;
+
+struct framebuffer_t r_framebuffer_stack[R_FRAMEBUFFER_STACK_DEPTH];
+
+
 struct framebuffer_t renderer_CreateFramebuffer(int width, int height)
 {
 	int i;
@@ -371,7 +419,7 @@ struct framebuffer_t renderer_CreateFramebuffer(int width, int height)
 	framebuffer.width = width;
 	framebuffer.height = height;
 
-	for(i = 0; i < FRAMEBUFFER_MAX_COLOR_ATTACHMENTS; i++)
+	for(i = 0; i < R_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS; i++)
 	{
 		framebuffer.color_attachments[i].handle = 0;
 	}
@@ -386,7 +434,7 @@ void renderer_DestroyFramebuffer(struct framebuffer_t *framebuffer)
 {
 	int i;
 
-	for(i = 0; i < FRAMEBUFFER_MAX_COLOR_ATTACHMENTS; i++)
+	for(i = 0; i < R_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS; i++)
 	{
 		if(framebuffer->color_attachments[i].handle)
 		{
@@ -433,7 +481,7 @@ void renderer_ResizeFramebuffer(struct framebuffer_t *framebuffer, int width, in
 		height = RENDERER_MAX_HEIGHT;
 	}
 
-	for(i = 0; i < FRAMEBUFFER_MAX_COLOR_ATTACHMENTS; i++)
+	for(i = 0; i < R_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS; i++)
 	{
 		if(framebuffer->color_attachments[i].handle)
 		{
@@ -454,15 +502,17 @@ void renderer_ResizeFramebuffer(struct framebuffer_t *framebuffer, int width, in
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void renderer_AddAttachment(struct framebuffer_t *framebuffer, int attachment, int internal_format)
+void renderer_AddAttachment(struct framebuffer_t *framebuffer, int attachment, int internal_format, int samples, int sampling_method)
 {
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer->framebuffer_id);
 
 	unsigned int tex_handle;
-
+    int target;
 	int format;
 	int type;
 	int attachment_index;
+
+	int sampling;
 
 	switch(internal_format)
 	{
@@ -488,12 +538,52 @@ void renderer_AddAttachment(struct framebuffer_t *framebuffer, int attachment, i
 		break;
 
 		default:
-			if(attachment != GL_DEPTH_ATTACHMENT && attachment != GL_DEPTH_STENCIL_ATTACHMENT)
-			{
-				printf("renderer_AddAttachment: bad internal format\n");
-				return;
-			}
+		    format = GL_DEPTH_STENCIL;
+		    internal_format = GL_DEPTH24_STENCIL8;
+		    type = GL_UNSIGNED_INT_24_8;
+
+		    if(attachment != GL_DEPTH_ATTACHMENT && attachment != GL_DEPTH_STENCIL_ATTACHMENT)
+            {
+               // printf("renderer_AddAttachment: bad internal format\n");
+                log_LogMessage(LOG_MESSAGE_WARNING, 1, "renderer_AddAttachment: bad internal format");
+                return;
+            }
+
+            attachment = GL_DEPTH_STENCIL_ATTACHMENT;
+        break;
 	}
+
+	switch(sampling_method)
+    {
+        case GL_LINEAR:
+        case GL_NEAREST:
+            sampling = sampling_method;
+        break;
+
+        default:
+            log_LogMessage(LOG_MESSAGE_WARNING, 1, "renderer_AddAttachment: bad sampling method");
+            return;
+        break;
+    }
+
+	if(samples < 0)
+    {
+        samples = 1;
+    }
+    else if(samples > 4)
+    {
+        samples = 4;
+    }
+
+
+    /*if(samples > 1)
+    {
+         target = GL_TEXTURE_2D_MULTISAMPLE;
+    }
+    else*/
+    {
+        target = GL_TEXTURE_2D;
+    }
 
 	switch(attachment)
 	{
@@ -503,11 +593,7 @@ void renderer_AddAttachment(struct framebuffer_t *framebuffer, int attachment, i
 		case GL_COLOR_ATTACHMENT3:
 		case GL_COLOR_ATTACHMENT4:
 
-			tex_handle = renderer_GenGLTexture(GL_TEXTURE_2D, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
-
-			glBindTexture(GL_TEXTURE_2D, tex_handle);
-			glTexImage2D(GL_TEXTURE_2D, 0, internal_format, framebuffer->width, framebuffer->height, 0, format, type, NULL);
-			glFramebufferTexture2D(GL_READ_FRAMEBUFFER, attachment, GL_TEXTURE_2D, tex_handle, 0);
+			tex_handle = renderer_GenGLTexture(target, sampling, sampling, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0, samples);
 
 			attachment_index = attachment - GL_COLOR_ATTACHMENT0;
 
@@ -521,52 +607,114 @@ void renderer_AddAttachment(struct framebuffer_t *framebuffer, int attachment, i
 
 		case GL_DEPTH_STENCIL_ATTACHMENT:
 		case GL_DEPTH_ATTACHMENT:
-			tex_handle = renderer_GenGLTexture(GL_TEXTURE_2D, GL_NEAREST, GL_NEAREST, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0);
-
-			glBindTexture(GL_TEXTURE_2D, tex_handle);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, framebuffer->width, framebuffer->height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-
-			glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, tex_handle, 0);
-			glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, tex_handle, 0);
-
+			tex_handle = renderer_GenGLTexture(target, GL_NEAREST, GL_NEAREST, GL_REPEAT, GL_REPEAT, GL_REPEAT, 0, 0, samples);
 			framebuffer->stencil_attachment = tex_handle;
 			framebuffer->depth_attachment = tex_handle;
 		break;
 
 		default:
-			printf("renderer_AddComponent: bad attachment\n");
+			//printf("renderer_AddAttachment: bad attachment\n");
+			log_LogMessage(LOG_MESSAGE_WARNING, 1, "renderer_AddAttachment: bad attachment");
 			return;
 	}
 
-	if(glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    glBindTexture(target, tex_handle);
+
+    //NOTE: for some reason using a depth only texture is not working as intended...
+    if(samples > 1)
+    {
+        glTexImage2DMultisample(target, samples, internal_format, framebuffer->width, framebuffer->height, GL_FALSE);
+        glFramebufferTexture2DMultisampleEXT(GL_READ_FRAMEBUFFER, attachment, target, tex_handle, 0, samples);
+    }
+    else
+    {
+        glTexImage2D(target, 0, internal_format, framebuffer->width, framebuffer->height, 0, format, type, NULL);
+        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, attachment, target, tex_handle, 0);
+    }
+
+
+
+	if(glCheckFramebufferStatus(GL_READ_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
-		printf("renderer_AddComponent: framebuffer is not complete\n");
+		//printf("renderer_AddComponent: framebuffer is not complete\n");
+		log_LogMessage(LOG_MESSAGE_WARNING, 1, "renderer_AddAttachment: framebuffer is not complete");
 	}
 
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 }
 
+void renderer_ShareAttachment(struct framebuffer_t *from, struct framebuffer_t *to, int attachment)
+{
+    int attachment_index;
 
-#define FRAMEBUFFER_STACK_DEPTH 64
+    if(from && to)
+    {
+        switch(attachment)
+        {
+            case GL_COLOR_ATTACHMENT0:
+            case GL_COLOR_ATTACHMENT1:
+            case GL_COLOR_ATTACHMENT2:
 
-int framebuffer_stack_top = -1;
+                attachment_index = attachment - GL_COLOR_ATTACHMENT0;
 
-struct framebuffer_t framebuffer_stack[FRAMEBUFFER_STACK_DEPTH];
+                if(!from->color_attachments[attachment_index].handle)
+                {
+                    log_LogMessage(LOG_MESSAGE_WARNING, 1, "renderer_ShareAttachment: source framebuffer doesn't has a valid GL_COLOR_ATTACHMENT%d. No op.", attachment_index);
+                    return;
+                }
+
+                if(to->color_attachments[attachment_index].handle)
+                {
+                    log_LogMessage(LOG_MESSAGE_WARNING, 1, "renderer_ShareAttachment: destination framebuffer already has GL_COLOR_ATTACHMENT%d. This attachment will be overwritten", attachment_index);
+                }
+
+                to->color_attachments[attachment_index] = from->color_attachments[attachment_index];
+
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, to->framebuffer_id);
+                glFramebufferTexture2D(GL_READ_FRAMEBUFFER, attachment, GL_TEXTURE_2D, to->color_attachments[attachment_index].handle, 0);
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+
+            break;
+            //case GL_ATTACHMENT3:
+            case GL_DEPTH_ATTACHMENT:
+            case GL_DEPTH_STENCIL_ATTACHMENT:
+
+                if(!from->depth_attachment)
+                {
+                    log_LogMessage(LOG_MESSAGE_WARNING, 1, "renderer_ShareAttachment: source framebuffer doesn't has a valid GL_DEPTH_ATTACHMENT. No op.");
+                    return;
+                }
+
+                if(to->depth_attachment)
+                {
+                    log_LogMessage(LOG_MESSAGE_WARNING, 1, "renderer_ShareAttachment: destination framebuffer already has GL_DEPTH_ATTACHMENT. This attachment will be overwritten");
+                }
+
+                to->depth_attachment = from->depth_attachment;
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, to->framebuffer_id);
+                glFramebufferTexture2D(GL_READ_FRAMEBUFFER, attachment, GL_TEXTURE_2D, to->depth_attachment, 0);
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+
+            break;
+
+            default:
+                log_LogMessage(LOG_MESSAGE_WARNING, 1, "renderer_ShareAttachment: bad attachment");
+            break;
+
+
+        }
+    }
+}
+
 
 void renderer_PushFramebuffer(struct framebuffer_t *framebuffer)
 {
 	struct framebuffer_t *fb;
 
-	if(framebuffer_stack_top < FRAMEBUFFER_STACK_DEPTH - 1)
+	if(r_current_framebuffer < R_FRAMEBUFFER_STACK_DEPTH)
 	{
-		framebuffer_stack_top++;
-		fb = &framebuffer_stack[framebuffer_stack_top];
-
-		*fb = *framebuffer;
-
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb->framebuffer_id);
-		renderer_PushViewport(0, 0, fb->width, fb->height);
-		glDrawBuffer(GL_COLOR_ATTACHMENT0);
+		r_current_framebuffer++;
+		renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
 	}
 
 }
@@ -580,29 +728,110 @@ void renderer_PopFramebuffer()
 	int height;
 	int attachment;
 
-	if(framebuffer_stack_top - 1 >= 0)
+	if(r_current_framebuffer > 0)
 	{
-		framebuffer_stack_top--;
-		framebuffer = &framebuffer_stack[framebuffer_stack_top];
-
-		id = framebuffer->framebuffer_id;
-		width = framebuffer->width;
-		height = framebuffer->height;
-		attachment = GL_COLOR_ATTACHMENT0;
-	}
-	else
-	{
-		id = 0;
-		width = r_window_width;
-		height = r_window_height;
-		attachment = GL_BACK;
+		r_current_framebuffer--;
 	}
 
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, id);
-	glDrawBuffer(attachment);
-	renderer_PopViewport();
-	//glViewport(0, 0, width, height);
+    framebuffer = &r_framebuffer_stack[r_current_framebuffer];
+
+	renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
 }
+
+
+void renderer_BindFramebuffer(int target, struct framebuffer_t *framebuffer)
+{
+    int i;
+
+    int color_attachments[R_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS] = {GL_NONE};
+    int attachment_count = 0;
+
+    int width;
+    int height;
+    int id;
+
+    struct framebuffer_t screen_framebuffer;
+
+    if((!framebuffer) || (!framebuffer->framebuffer_id))
+    {
+        screen_framebuffer.framebuffer_id = 0;
+        screen_framebuffer.width = r_window_width;
+        screen_framebuffer.height = r_window_height;
+
+        screen_framebuffer.color_attachments[0].format = GL_RGBA;
+        screen_framebuffer.color_attachments[0].type = GL_UNSIGNED_BYTE;
+        screen_framebuffer.color_attachments[0].samples = 1;
+        screen_framebuffer.color_attachments[0].internal_format = GL_RGBA8;
+
+        framebuffer = &screen_framebuffer;
+
+        width = r_window_width;
+        height = r_window_height;
+        id = 0;
+        color_attachments[0] = GL_BACK_LEFT;
+        attachment_count = 1;
+    }
+    else
+    {
+        id = framebuffer->framebuffer_id;
+        width = framebuffer->width;
+        height = framebuffer->height;
+
+        for(i = 0; i < R_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS; i++)
+        {
+            if(framebuffer->color_attachments[i].handle)
+            {
+                color_attachments[attachment_count] = GL_COLOR_ATTACHMENT0 + i;
+                attachment_count++;
+            }
+        }
+
+        if(!attachment_count)
+        {
+            log_LogMessage(LOG_MESSAGE_ERROR, 1, "renderer_BindFramebuffer: framebuffer without attachments");
+            return;
+        }
+    }
+
+    switch(target)
+    {
+        case GL_DRAW_FRAMEBUFFER:
+        case GL_FRAMEBUFFER:
+        case GL_READ_FRAMEBUFFER:
+
+            glBindFramebuffer(target, id);
+
+            if(target == GL_READ_FRAMEBUFFER)
+            {
+                glReadBuffer(color_attachments[0]);
+            }
+            else
+            {
+                r_framebuffer_stack[r_current_framebuffer] = *framebuffer;
+
+                if(!id)
+                {
+                    glDrawBuffer(GL_BACK);
+                }
+                else
+                {
+                    glDrawBuffers(attachment_count, color_attachments);
+                }
+
+
+                glViewport(0, 0, width, height);
+            }
+        break;
+
+        default:
+            log_LogMessage(LOG_MESSAGE_ERROR, 1, "renderer_BindFramebuffer: bad target");
+            return;
+        break;
+    }
+
+
+}
+
 
 void renderer_SampleFramebuffer(double x, double y, void *sample)
 {
@@ -615,18 +844,17 @@ void renderer_SampleFramebuffer(double x, double y, void *sample)
 
 	renderer_GetViewport(&cur_x, &cur_y, &cur_w, &cur_h);
 
-	if(framebuffer_stack_top >= 0)
+	if(r_current_framebuffer >= 0)
 	{
-		cur_framebuffer = &framebuffer_stack[framebuffer_stack_top];
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, cur_framebuffer->framebuffer_id);
-		glReadBuffer(GL_COLOR_ATTACHMENT0);
-		glReadPixels(cur_x + cur_w * (x + 1.0) * 0.5, cur_y + cur_h * (y + 1.0) * 0.5, 1, 1, cur_framebuffer->color_attachments[0].format, cur_framebuffer->color_attachments[0].type, sample);
-	}
-	else
-	{
+		cur_framebuffer = &r_framebuffer_stack[r_current_framebuffer];
 
-	}
+		renderer_BindFramebuffer(GL_READ_FRAMEBUFFER, cur_framebuffer);
 
+		if(cur_framebuffer->framebuffer_id)
+        {
+            glReadPixels(cur_x + cur_w * (x + 1.0) * 0.5, cur_y + cur_h * (y + 1.0) * 0.5, 1, 1, cur_framebuffer->color_attachments[0].format, cur_framebuffer->color_attachments[0].type, sample);
+        }
+	}
 }
 
 /*
@@ -646,6 +874,12 @@ struct
 	int w;
 	int h;
 }viewport_stack[VIEWPORT_STACK_DEPTH];
+
+void renderer_PushCurrentViewport()
+{
+    renderer_PushViewport(viewport_stack[viewport_stack_top].x, viewport_stack[viewport_stack_top].y,
+                          viewport_stack[viewport_stack_top].w, viewport_stack[viewport_stack_top].h);
+}
 
 void renderer_PushViewport(int x, int y, int width, int height)
 {
@@ -688,7 +922,7 @@ void renderer_GetViewport(int *x, int *y, int *w, int *h)
 ===============================================================================
 */
 
-unsigned int renderer_GenGLTexture(int target, int min_filter, int mag_filter, int wrap_s, int wrap_t, int wrap_r, int base_level, int max_level)
+unsigned int renderer_GenGLTexture(int target, int min_filter, int mag_filter, int wrap_s, int wrap_t, int wrap_r, int base_level, int max_level, int samples)
 {
 	unsigned int handle;
 	int temp;
@@ -707,12 +941,12 @@ unsigned int renderer_GenGLTexture(int target, int min_filter, int mag_filter, i
 
 		case GL_TEXTURE_2D:
 		case GL_TEXTURE_2D_ARRAY:
+        case GL_TEXTURE_2D_MULTISAMPLE:
 			wrap_mode_test_count = 2;
 		break;
 
 		case GL_TEXTURE_3D:
 			wrap_mode_test_count = 3;
-
 		break;
 
 		default:
@@ -811,6 +1045,15 @@ unsigned int renderer_GenGLTexture(int target, int min_filter, int mag_filter, i
 		max_level = temp;
 	}
 
+	if(samples < 0)
+    {
+        samples = 1;
+    }
+    else if(samples > 4)
+    {
+        samples = 4;
+    }
+
 
 	glGenTextures(1, &handle);
 	glBindTexture(target, handle);
@@ -821,6 +1064,11 @@ unsigned int renderer_GenGLTexture(int target, int min_filter, int mag_filter, i
 	glTexParameteri(target, GL_TEXTURE_WRAP_R, wrap_r);
 	glTexParameteri(target, GL_TEXTURE_BASE_LEVEL, base_level);
 	glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, max_level);
+
+	/*if(samples > 1)
+    {
+        glTexParameteri(target, GL_TEXTURE_SAMPLES, samples);
+	}*/
 
 	if(max_level)
 	{

@@ -54,7 +54,11 @@
  #define AS_NAMESPACE_QUALIFIER ::
 #endif
 
+#ifdef __cplusplus
+
 BEGIN_AS_NAMESPACE
+
+#endif //__cplusplus
 
 // AngelScript version
 
@@ -62,7 +66,7 @@ BEGIN_AS_NAMESPACE
 #define ANGELSCRIPT_VERSION_STRING "2.32.0"
 
 // Data types
-
+#ifdef __cplusplus
 class asIScriptEngine;
 class asIScriptModule;
 class asIScriptContext;
@@ -75,6 +79,7 @@ class asIJITCompiler;
 class asIThreadManager;
 class asILockableSharedBool;
 class asIStringFactory;
+#endif //__cplusplus
 
 // Enumerations and constants
 
@@ -387,6 +392,8 @@ typedef unsigned int   asUINT;
 	#endif
 #endif
 
+#ifdef __cplusplus
+
 typedef void (*asFUNCTION_t)();
 typedef void (*asGENFUNC_t)(asIScriptGeneric *);
 typedef void *(*asALLOCFUNC_t)(size_t);
@@ -399,6 +406,8 @@ typedef void (*asCLEANTYPEINFOFUNC_t)(asITypeInfo *);
 typedef void (*asCLEANSCRIPTOBJECTFUNC_t)(asIScriptObject *);
 typedef asIScriptContext *(*asREQUESTCONTEXTFUNC_t)(asIScriptEngine *, void *);
 typedef void (*asRETURNCONTEXTFUNC_t)(asIScriptEngine *, asIScriptContext *, void *);
+
+#endif
 
 // Check if the compiler can use C++11 features
 #if !defined(_MSC_VER) || _MSC_VER >= 1700   // MSVC 2012
@@ -428,9 +437,13 @@ typedef void (*asRETURNCONTEXTFUNC_t)(asIScriptEngine *, asIScriptContext *, voi
 
 #ifndef AS_NO_CLASS_METHODS
 
+#ifdef __cplusplus
 class asCUnknownClass;
 typedef void (asCUnknownClass::*asMETHOD_t)();
+#endif //__cplusplus
 
+
+#ifdef __cplusplus
 struct asSFuncPtr
 {
 	asSFuncPtr(asBYTE f = 0)
@@ -458,6 +471,11 @@ struct asSFuncPtr
 	asBYTE flag; // 1 = generic, 2 = global func, 3 = method
 };
 
+#endif //__cplusplus
+
+
+#if __cplusplus
+
 #if defined(__BORLANDC__)
 // A bug in BCC (QC #85374) makes it impossible to distinguish const/non-const method overloads
 // with static_cast<>. The workaround is to use an _implicit_cast instead.
@@ -480,6 +498,8 @@ template <typename T>
 #define asMETHOD(c,m) asSMethodPtr<sizeof(void (c::*)())>::Convert((void (c::*)())(&c::m))
 #define asMETHODPR(c,m,p,r) asSMethodPtr<sizeof(void (c::*)())>::Convert(AS_METHOD_AMBIGUITY_CAST(r (c::*)p)(&c::m))
 
+#endif //__cplusplus
+
 #else // Class methods are disabled
 
 struct asSFuncPtr
@@ -499,7 +519,9 @@ struct asSFuncPtr
 	asBYTE flag; // 1 = generic, 2 = global func
 };
 
-#endif
+#endif // __cplusplus
+
+#ifdef __cplusplus
 
 struct asSMessageInfo
 {
@@ -509,6 +531,8 @@ struct asSMessageInfo
 	asEMsgType  type;
 	const char *message;
 };
+
+#endif // __cplusplus
 
 
 // API functions
@@ -536,6 +560,8 @@ struct asSMessageInfo
 #else
   #define AS_API
 #endif
+
+#ifdef __cplusplus
 
 #ifndef ANGELSCRIPT_DLL_MANUAL_IMPORT
 extern "C"
@@ -570,6 +596,12 @@ extern "C"
 	AS_API asILockableSharedBool *asCreateLockableSharedBool();
 }
 #endif // ANGELSCRIPT_DLL_MANUAL_IMPORT
+
+#endif // __cplusplus
+
+
+
+#ifdef __cplusplus
 
 // Determine traits of a type for registration of value types
 // Relies on C++11 features so it can not be used with non-compliant compilers
@@ -639,7 +671,11 @@ asUINT asGetTypeTraits()
 
 #endif // c++11
 
+#endif //__cplusplus
+
 // Interface declarations
+
+#ifdef __cplusplus
 
 class asIScriptEngine
 {
@@ -775,6 +811,10 @@ protected:
 	virtual ~asIScriptEngine() {}
 };
 
+#endif //__cplusplus
+
+#ifdef __cplusplus
+
 class asIStringFactory
 {
 public:
@@ -786,11 +826,20 @@ protected:
 	virtual ~asIStringFactory() {}
 };
 
+#endif //__cplusplus
+
+#ifdef __cplusplus
+
 class asIThreadManager
 {
 protected:
 	virtual ~asIThreadManager() {}
 };
+
+#endif //__cplusplus
+
+
+#ifdef __cplusplus
 
 class asIScriptModule
 {
@@ -862,6 +911,11 @@ public:
 protected:
 	virtual ~asIScriptModule() {}
 };
+
+#endif //__cplusplus
+
+
+#ifdef __cplusplus
 
 class asIScriptContext
 {
@@ -942,6 +996,11 @@ protected:
 	virtual ~asIScriptContext() {}
 };
 
+#endif //__cplusplus
+
+
+#ifdef __cplusplus
+
 class asIScriptGeneric
 {
 public:
@@ -983,6 +1042,11 @@ protected:
 	virtual ~asIScriptGeneric() {}
 };
 
+#endif //__cplusplus
+
+
+#ifdef __cplusplus
+
 class asIScriptObject
 {
 public:
@@ -1012,6 +1076,11 @@ public:
 protected:
 	virtual ~asIScriptObject() {}
 };
+
+#endif //__cplusplus
+
+
+#ifdef __cplusplus
 
 class asITypeInfo
 {
@@ -1086,6 +1155,11 @@ protected:
 	virtual ~asITypeInfo() {}
 };
 
+#endif //__cplusplus
+
+
+#ifdef __cplusplus
+
 class asIScriptFunction
 {
 public:
@@ -1147,6 +1221,11 @@ protected:
 	virtual ~asIScriptFunction() {};
 };
 
+#endif //__cplusplus
+
+
+#ifdef __cplusplus
+
 class asIBinaryStream
 {
 public:
@@ -1156,6 +1235,11 @@ public:
 public:
 	virtual ~asIBinaryStream() {}
 };
+
+#endif //__cplusplus
+
+
+#ifdef __cplusplus
 
 class asILockableSharedBool
 {
@@ -1175,6 +1259,10 @@ public:
 protected:
 	virtual ~asILockableSharedBool() {}
 };
+
+#endif //__cplusplus
+
+#ifdef __cplusplus
 
 //-----------------------------------------------------------------
 // Function pointers
@@ -1200,6 +1288,11 @@ inline asSFuncPtr asFunctionPtr(T func)
 	return p;
 }
 
+#endif //__cplusplus
+
+
+#ifdef __cplusplus
+
 // Specialization for functions using the generic calling convention
 template<>
 inline asSFuncPtr asFunctionPtr<asGENFUNC_t>(asGENFUNC_t func)
@@ -1209,6 +1302,10 @@ inline asSFuncPtr asFunctionPtr<asGENFUNC_t>(asGENFUNC_t func)
 	p.ptr.f.func = reinterpret_cast<asFUNCTION_t>(func);
 	return p;
 }
+
+#endif //__cplusplus
+
+#ifdef __cplusplus
 
 #ifndef AS_NO_CLASS_METHODS
 
@@ -1340,8 +1437,12 @@ struct asSMethodPtr<SINGLE_PTR_SIZE+4*sizeof(int)>
 
 #endif // AS_NO_CLASS_METHODS
 
+#endif //__cplusplus
+
 //----------------------------------------------------------------
 // JIT compiler
+
+#ifdef __cplusplus
 
 struct asSVMRegisters
 {
@@ -1355,7 +1456,13 @@ struct asSVMRegisters
 	asIScriptContext *ctx;                // the active context
 };
 
+
 typedef void (*asJITFunction)(asSVMRegisters *registers, asPWORD jitArg);
+
+#endif // __cplusplus
+
+
+#ifdef __cplusplus
 
 class asIJITCompiler
 {
@@ -1365,6 +1472,8 @@ public:
 public:
 	virtual ~asIJITCompiler() {}
 };
+
+#endif //__cplusplus
 
 // Byte code instructions
 enum asEBCInstr
@@ -1607,7 +1716,7 @@ enum asEBCType
 };
 
 // Instruction type sizes
-const int asBCTypeSize[21] =
+static const int asBCTypeSize[21] =
 {
 	0, // asBCTYPE_INFO
 	1, // asBCTYPE_NO_ARG
@@ -1633,6 +1742,9 @@ const int asBCTypeSize[21] =
 };
 
 // Instruction info
+
+#ifdef __cplusplus
+
 struct asSBCInfo
 {
 	asEBCInstr  bc;
@@ -1640,6 +1752,10 @@ struct asSBCInfo
 	int         stackInc;
 	const char *name;
 };
+
+#endif // __cplusplus
+
+#ifdef __cplusplus
 
 #ifndef AS_64BIT_PTR
 	#define asBCTYPE_PTR_ARG    asBCTYPE_DW_ARG
@@ -1661,6 +1777,10 @@ struct asSBCInfo
 
 #define asBCINFO(b,t,s) {asBC_##b, asBCTYPE_##t, s, #b}
 #define asBCINFO_DUMMY(b) {asBC_MAXBYTECODE, asBCTYPE_INFO, 0, "BC_" #b}
+
+#endif // __cplusplus
+
+#ifdef __cplusplus
 
 const asSBCInfo asBCInfo[256] =
 {
@@ -1924,6 +2044,8 @@ const asSBCInfo asBCInfo[256] =
 	asBCINFO(LABEL,			INFO,			0)
 };
 
+#endif // __cplusplus
+
 // Macros to access bytecode instruction arguments
 #define asBC_DWORDARG(x)  (*(((asDWORD*)x)+1))
 #define asBC_INTARG(x)    (*(int*)(((asDWORD*)x)+1))
@@ -1936,7 +2058,10 @@ const asSBCInfo asBCInfo[256] =
 #define asBC_SWORDARG1(x) (*(((short*)x)+2))
 #define asBC_SWORDARG2(x) (*(((short*)x)+3))
 
+#ifdef __cplusplus
 
 END_AS_NAMESPACE
+
+#endif //__cplusplus
 
 #endif

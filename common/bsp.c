@@ -10,6 +10,7 @@
 #include "bsp.h"
 //#include "brush.h"
 #include "w_common.h"
+#include "world.h"
 #include "camera.h"
 #include "material.h"
 #include "shader.h"
@@ -18,6 +19,7 @@
 #include "c_memory.h"
 #include "path.h"
 #include "log.h"
+#include "navigation.h"
 
 /* from world.c */
 extern int w_world_vertices_count;

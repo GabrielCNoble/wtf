@@ -616,6 +616,4 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 
 #ifdef __cplusplus
 }
-}
-}
 #endif

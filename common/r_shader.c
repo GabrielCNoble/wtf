@@ -1,5 +1,6 @@
 #include "r_common.h"
 #include "r_shader.h"
+#include "r_debug.h"
 #include "shader.h"
 #include "model.h"
 
@@ -24,6 +25,11 @@ extern int r_shader_swaps;
 extern int r_shader_uniform_updates;
 
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void renderer_SetShader(int shader_index)
 {
 	struct shader_t *shader;
@@ -35,6 +41,8 @@ void renderer_SetShader(int shader_index)
 
 	if(shader_index == r_active_shader)
 		return;
+
+    R_DBG_PUSH_FUNCTION_NAME();
 
 	if(shader_index < 0)
 	{
@@ -53,22 +61,22 @@ void renderer_SetShader(int shader_index)
 
 		current_shader = shader_GetShaderPointerIndex(r_active_shader);
 
-		if(current_shader->vertex_position != 0xff)
+		if(current_shader->vertex_position != 0xffffffff)
 		{
 			glDisableVertexAttribArray(current_shader->vertex_position);
 		}
 
-		if(current_shader->vertex_normal != 0xff)
+		if(current_shader->vertex_normal != 0xffffffff)
 		{
 			glDisableVertexAttribArray(current_shader->vertex_normal);
 		}
 
-		if(current_shader->vertex_tangent != 0xff)
+		if(current_shader->vertex_tangent != 0xffffffff)
 		{
 			glDisableVertexAttribArray(current_shader->vertex_tangent);
 		}
 
-		if(current_shader->vertex_tex_coords != 0xff)
+		if(current_shader->vertex_tex_coords != 0xffffffff)
 		{
 			glDisableVertexAttribArray(current_shader->vertex_tex_coords);
 		}
@@ -80,6 +88,8 @@ void renderer_SetShader(int shader_index)
 	r_view_matrix_changed = 1;
 	r_projection_matrix_changed = 1;
 	r_shader_swaps++;
+
+	R_DBG_POP_FUNCTION_NAME();
 }
 
 /*
@@ -244,7 +254,6 @@ void renderer_SetDefaultUniform1i(int uniform, int value)
 
 	if(r_active_shader >= 0)
 	{
-		//shader = &shaders[r_active_shader];
 		shader = shader_GetShaderPointerIndex(r_active_shader);
 
 		if(uniform < UNIFORM_LAST_UNIFORM && uniform >= 0)
@@ -541,7 +550,7 @@ void renderer_SetVertexAttribPointer(int attrib, int size, int type, int normali
 		break;
 	}
 
-	if(attrib == 255)
+	if(attrib == 0xffffffff)
 	{
 		return;
 	}
@@ -561,27 +570,27 @@ void renderer_ClearVertexAttribPointers()
 		//shader = &shaders[r_active_shader];
 		shader = shader_GetShaderPointerIndex(r_active_shader);
 
-		if(shader->vertex_position != 0xff)
+		if(shader->vertex_position != 0xffffffff)
 		{
 			glDisableVertexAttribArray(shader->vertex_position);
 		}
 
-		if(shader->vertex_normal != 0xff)
+		if(shader->vertex_normal != 0xffffffff)
 		{
 			glDisableVertexAttribArray(shader->vertex_normal);
 		}
 
-		if(shader->vertex_tangent != 0xff)
+		if(shader->vertex_tangent != 0xffffffff)
 		{
 			glDisableVertexAttribArray(shader->vertex_tangent);
 		}
 
-		if(shader->vertex_tex_coords != 0xff)
+		if(shader->vertex_tex_coords != 0xffffffff)
 		{
 			glDisableVertexAttribArray(shader->vertex_tex_coords);
 		}
 
-		if(shader->vertex_color != 0xff)
+		if(shader->vertex_color != 0xffffffff)
 		{
 			glDisableVertexAttribArray(shader->vertex_color);
 		}
@@ -621,6 +630,13 @@ void renderer_SetCurrentVertexFormat(int format)
 
 	r_current_vertex_format = format;
 }
+
+#ifdef __cplusplus
+}
+#endif
+
+
+
 
 
 

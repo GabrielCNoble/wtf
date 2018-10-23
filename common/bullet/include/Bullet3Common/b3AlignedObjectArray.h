@@ -483,6 +483,22 @@ protected:
 		}
 		return index;
 	}
+    
+    int	findLinearSearch2(const T& key) const
+    {
+        int index=-1;
+        int i;
+        
+        for (i=0;i<size();i++)
+        {
+            if (m_data[i] == key)
+            {
+                index = i;
+                break;
+            }
+        }
+        return index;
+    }
 
 	void	remove(const T& key)
 	{
@@ -512,6 +528,14 @@ protected:
 		otherArray.copy(0, otherSize, m_data);
 	}
 
+	void removeAtIndex(int index)
+    {
+        if (index<size())
+        {
+            swap( index,size()-1);
+            pop_back();
+        }
+    }
 };
 
 #endif //B3_OBJECT_ARRAY__

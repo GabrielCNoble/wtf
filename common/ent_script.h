@@ -1,5 +1,5 @@
-#ifndef SCR_ENTITY_H
-#define SCR_ENTITY_H
+#ifndef ENT_SCRIPT_H
+#define ENT_SCRIPT_H
 
 #include "ent_common.h"
 #include "scr_string.h"
@@ -61,7 +61,12 @@ void *entity_ScriptGetEntityForwardVector(struct entity_handle_t entity, int loc
 
 void entity_ScriptTranslate(vec3_t *direction);
 
+void entity_ScriptSetPosition(vec3_t *position);
+
 void entity_ScriptTranslateEntity(struct entity_handle_t entity, vec3_t *direction);
+
+void entity_ScriptSetEntityPosition(struct entity_handle_t entity, vec3_t *position);
+
 
 
 
@@ -205,6 +210,8 @@ void entity_ScriptAdvanceWaypoint();
 int entity_ScriptLineOfSightToEntity(struct entity_handle_t entity);
 
 void entity_ScriptPrint(struct script_string_t *script_string);
+
+void *entity_ScriptGetEntities();
 
 #ifdef __cplusplus
 }

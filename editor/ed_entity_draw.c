@@ -2,10 +2,12 @@
 #include "ed_entity.h"
 
 #include "..\ed_common.h"
+#include "ed_draw.h"
 
 #include "..\..\common\r_imediate.h"
 #include "..\..\common\r_main.h"
 #include "..\..\common\r_debug.h"
+#include "..\..\common\r_shader.h"
 #include "..\..\common\camera.h"
 #include "..\..\common\gmath\vector.h"
 #include "..\..\common\gmath\matrix.h"
@@ -109,7 +111,7 @@ void editor_EntityEditorPostDraw()
 		editor_EntityEditorDrawColliderDef(0);
 	}
 
-	editor_EntityEditorDrawCursors();
+//	editor_EntityEditorDrawCursors();
 }
 
 /*
@@ -134,7 +136,7 @@ void editor_EntityEditorDrawEntityDef()
 	struct entity_transform_t *global_transform;
 
 	entity_editor_entity_def_transform = mat4_t_id();
-	camera_t *main_view = camera_GetMainViewCamera();
+//	camera_t *main_view = camera_GetMainViewCamera();
 /*
 	if(ed_entity_editor_current_entity_def)
 	{
@@ -179,7 +181,8 @@ void editor_EntityEditorDrawColliderDef(int pick)
 	vec4_t shape_color;
 
 
-	active_camera = camera_GetActiveCamera();
+	//active_camera = camera_GetActiveCamera();
+	active_camera = (camera_t *)renderer_GetActiveView();
 	renderer_EnableImediateDrawing();
 	renderer_SetShader(r_imediate_color_shader);
 
@@ -213,12 +216,32 @@ void editor_EntityEditorDrawColliderDef(int pick)
 				{
 					collision_shape = collider_def->collision_shape + j;
 
+
+
+
 					if(collision_shape == ed_entity_editor_hovered_collision_shape)
 					{
 						shape_color.r = 0.5;
 						shape_color.g = 1.0;
 						shape_color.b = 0.0;
 						shape_color.a = 0.4;
+
+						renderer_Begin(GL_LINES);
+
+						renderer_Color3f(1.0, 0.0, 0.0);
+                        renderer_Vertex3f(-1000.0 + collision_shape->position.x, collision_shape->position.y, collision_shape->position.z);
+                        renderer_Vertex3f(1000.0 + collision_shape->position.x, collision_shape->position.y, collision_shape->position.z);
+
+                        renderer_Color3f(0.0, 1.0, 0.0);
+                        renderer_Vertex3f(collision_shape->position.x, -1000.0 - collision_shape->position.y, collision_shape->position.z);
+                        renderer_Vertex3f(collision_shape->position.x, 1000.0 + collision_shape->position.y, collision_shape->position.z);
+
+                        renderer_Color3f(0.0, 0.0, 1.0);
+                        renderer_Vertex3f(collision_shape->position.x, collision_shape->position.y, -1000.0 - collision_shape->position.z);
+                        renderer_Vertex3f(collision_shape->position.x, collision_shape->position.y, 1000.0 + collision_shape->position.z);
+
+						renderer_End();
+
 					}
 					else
 					{
@@ -228,10 +251,12 @@ void editor_EntityEditorDrawColliderDef(int pick)
 						shape_color.a = 0.2;
 					}
 
+
 					mat4_t_compose2(&shape_local_transform, &collision_shape->orientation, collision_shape->position, collision_shape->scale);
 					mat4_t_mult_fast(&shape_world_transform, &shape_local_transform, &entity_transform);
-
 					renderer_SetModelMatrix(&shape_world_transform);
+
+
 
 					switch(collision_shape->type)
 					{
@@ -386,7 +411,8 @@ void editor_EntityEditorDrawGrid()
 {
 	int i;
 	int j;
-	camera_t *active_camera = camera_GetActiveCamera();
+//	camera_t *active_camera = camera_GetActiveCamera();
+    camera_t *active_camera = (camera_t *)renderer_GetActiveView();
 
 	//glUseProgram(0);
 	//renderer_SetShader(-1);
@@ -427,14 +453,19 @@ void editor_EntityEditorDrawGrid()
 	glLineWidth(1.0);
 }
 
+#if 0
+
 void editor_EntityEditorDrawCursors()
 {
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, ed_cursors_framebuffer_id);
+/*	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, ed_cursors_framebuffer_id);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	glViewport(0, 0, r_width, r_height);
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glClearStencil(0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);*/
+
+    renderer_Bindframebuffer(&ed_cursors_framebuffer);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 
 	if(entity_editor_draw_3d_handle)
@@ -444,7 +475,7 @@ void editor_EntityEditorDrawCursors()
 
 	editor_Draw3dCursor(entity_editor_3d_cursor_position);
 
-	renderer_BindBackbuffer(0, 0);
+	//renderer_BindBackbuffer(0, 0);
 
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, ed_cursors_framebuffer_id);
 	glReadBuffer(GL_COLOR_ATTACHMENT0);
@@ -464,6 +495,8 @@ void editor_EntityEditorDrawCursors()
 
 	glDisable(GL_STENCIL_TEST);
 }
+
+#endif
 
 
 
