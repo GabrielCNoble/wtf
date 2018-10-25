@@ -10,7 +10,7 @@
 #include "log.h"
 #include "material.h"
 #include "texture.h"
-#include "..\..\common\script\script.h"
+#include "..\..\common\script.h"
 #include "..\..\common\gui.h"
 #include "..\..\common\c_memory.h"
 

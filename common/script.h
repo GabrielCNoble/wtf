@@ -2,8 +2,8 @@
 #define SCRIPT_H
 
 #include "scr_common.h"
-#include "scr_array.h"
-#include "scr_string.h"
+#include "script_types/scr_array.h"
+#include "script_types/scr_string.h"
 
 #include "angelscript.h"
 
@@ -68,6 +68,8 @@ void script_ExecuteScriptImediate(struct script_t *script, void *data);
 void script_RegisterGlobalFunction(char *decl, void *function);
 
 void script_RegisterObjectType(char *decl, int size, int flags);
+
+void script_RegisterObjectBehaviour(char *type, int behaviour, char *decl, void *function);
 
 void script_RegisterObjectProperty(char *type, char *decl, int offset);
 

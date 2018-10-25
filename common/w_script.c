@@ -1,5 +1,5 @@
-#include "scr_world.h"
 #include "script.h"
+#include "w_script.h"
 #include "world.h"
 
 #include "ent_common.h"

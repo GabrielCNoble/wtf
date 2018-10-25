@@ -10,6 +10,8 @@
 //#include "imgui_impl_opengl3.h"
 
 #include "gui_imgui.h"
+#include "gui_script.h"
+#include "script.h"
 
 #include "matrix.h"
 #include "gui.h"
@@ -170,6 +172,8 @@ int gui_Init()
 
 	//gui_InitImGui();
 	gui_ImGuiInit();
+
+	script_RegisterGlobalFunction("void gui_TextWall(string &in text, float alpha)", (void *)gui_ScriptTextWall);
 
 	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 

@@ -1,4 +1,4 @@
-#include "scr_resource.h"
+#include "res_script.h"
 #include "resource.h"
 
 #ifdef __cplusplus

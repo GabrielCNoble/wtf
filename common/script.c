@@ -1,18 +1,18 @@
 #include "script.h"
 #include "scr_math.h"
-#include "scr_types.h"
-#include "scr_typeof.h"
-#include "scr_sound.h"
+#include "script_types/scr_types.h"
+#include "script_types/scr_typeof.h"
+//#include "scr_sound.h"
 #include "vector.h"
 #include "c_memory.h"
-#include "particle.h"
+//#include "particle.h"
 #include "player.h"
 #include "physics.h"
 #include "ent_script.h"
-#include "scr_particle.h"
-#include "scr_world.h"
-#include "scr_gui.h"
-#include "scr_resource.h"
+//#include "scr_particle.h"
+//#include "scr_world.h"
+//#include "scr_gui.h"
+//#include "scr_resource.h"
 #include "input.h"
 #include "log.h"
 
@@ -32,8 +32,8 @@ extern "C++"
 #endif // __cplusplus
 
 #include "angelscript.h"
-#include "scriptstdstring.h"
-#include "scriptarray.h"
+#include "script_types/scriptstdstring.h"
+//#include "script_types/scriptarray.h"
 
 #ifdef __cplusplus
 }
@@ -163,6 +163,7 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->SetDefaultAccessMask(SCRIPT_ACCESS_MASK_BASE);
 
 	scr_virtual_machine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, 1);
+	scr_virtual_machine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES , 1);
 
 //	scr_virtual_machine->RegisterGlobalFunction("double sin(double _X)", asFUNCTION(sin), asCALL_CDECL);
 //	scr_virtual_machine->RegisterGlobalFunction("double cos(double _X)", asFUNCTION(cos), asCALL_CDECL);
@@ -418,7 +419,7 @@ void script_RegisterTypesAndFunctions()
 	//scr_virtual_machine->SetDefaultAccessMask(SCRIPT_ACCESS_MASK_PARTICLE_SYSTEM);
 
 	/* particle system stuff... */
-	scr_virtual_machine->RegisterObjectType("particle_t", sizeof(particle_t), asOBJ_VALUE | asOBJ_POD);
+	/*scr_virtual_machine->RegisterObjectType("particle_t", sizeof(particle_t), asOBJ_VALUE | asOBJ_POD);
 	scr_virtual_machine->RegisterObjectProperty("particle_t", "int life", asOFFSET(particle_t, life));
 	scr_virtual_machine->RegisterObjectProperty("particle_t", "vec3_t velocity", asOFFSET(particle_t, velocity));
 
@@ -441,7 +442,7 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("void particle_Die()", asFUNCTION(particle_ScriptDie), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("int particle_GetLife()", asFUNCTION(particle_ScriptGetLife), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("int particle_GetParticleSystemDef(string &in name)", asFUNCTION(particle_ScriptGetParticleSystemDef), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void particle_SpawnParticleSystem(vec3_t &in position, int particle_system_def)", asFUNCTION(particle_ScriptSpawnParticleSystem), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void particle_SpawnParticleSystem(vec3_t &in position, int particle_system_def)", asFUNCTION(particle_ScriptSpawnParticleSystem), asCALL_CDECL);*/
 
 
 	/*
@@ -567,7 +568,7 @@ void script_RegisterTypesAndFunctions()
 	*/
 
 
-	scr_virtual_machine->RegisterGlobalFunction("void world_AddWorldVar(string &in name, ? &in type)", asFUNCTION(world_ScriptAddWorldVar), asCALL_CDECL);
+	/*scr_virtual_machine->RegisterGlobalFunction("void world_AddWorldVar(string &in name, ? &in type)", asFUNCTION(world_ScriptAddWorldVar), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void world_AddWorldArrayVar(string &in name, int max_elements, ? &in type)", asFUNCTION(world_ScriptAddWorldArrayVar), asCALL_CDECL);
     scr_virtual_machine->RegisterGlobalFunction("void world_RemoveWorldVar(string &in name)", asFUNCTION(world_ScriptRemoveWorldVar), asCALL_CDECL);
     scr_virtual_machine->RegisterGlobalFunction("int world_GetWorldArrayVarLength(string &in name)", asFUNCTION(world_ScriptGetWorldArrayVarLength), asCALL_CDECL);
@@ -582,7 +583,7 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("void world_CallEvent(string &in event_name)", asFUNCTION(world_ScriptCallEvent), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void world_StopCurrentEvent()", asFUNCTION(world_ScriptStopCurrentEvent), asCALL_CDECL);
 	scr_virtual_machine->RegisterGlobalFunction("void world_StopAllEvents()", asFUNCTION(world_ScriptStopAllEvents), asCALL_CDECL);
-	scr_virtual_machine->RegisterGlobalFunction("void world_ClearWorld()", asFUNCTION(world_ScriptClearWorld), asCALL_CDECL);
+	scr_virtual_machine->RegisterGlobalFunction("void world_ClearWorld()", asFUNCTION(world_ScriptClearWorld), asCALL_CDECL);*/
 
 	/*
 	===============================================
@@ -591,7 +592,7 @@ void script_RegisterTypesAndFunctions()
 	*/
 
 
-	scr_virtual_machine->RegisterEnum("SOURCE_FLAGS");
+	/*scr_virtual_machine->RegisterEnum("SOURCE_FLAGS");
 	scr_virtual_machine->RegisterEnumValue("SOURCE_FLAGS", "SOURCE_FLAG_LOOP", SOURCE_FLAG_LOOP);
 	scr_virtual_machine->RegisterEnumValue("SOURCE_FLAGS", "SOURCE_FLAG_RELATIVE", SOURCE_FLAG_RELATIVE);
 	scr_virtual_machine->RegisterEnumValue("SOURCE_FLAGS", "SOURCE_FLAG_FADE_IN", SOURCE_FLAG_FADE_IN);
@@ -605,7 +606,7 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("void sound_StopSound(int sound_source, int fade_out)", asFUNCTION(sound_ScriptStopSound), asCALL_CDECL);
     scr_virtual_machine->RegisterGlobalFunction("int sound_IsSourcePlaying(int sound_source)", asFUNCTION(sound_ScriptIsSourcePlaying), asCALL_CDECL);
     scr_virtual_machine->RegisterGlobalFunction("int sound_IsSourceAssigned(int sound_source)", asFUNCTION(sound_ScriptIsSourceAssigned), asCALL_CDECL);
-    scr_virtual_machine->RegisterGlobalFunction("void sound_SetSourcePosition(int sound_source, vec3_t &in position)", asFUNCTION(sound_ScriptSetSourcePosition), asCALL_CDECL);
+    scr_virtual_machine->RegisterGlobalFunction("void sound_SetSourcePosition(int sound_source, vec3_t &in position)", asFUNCTION(sound_ScriptSetSourcePosition), asCALL_CDECL);*/
 
     /*
 	===============================================
@@ -613,7 +614,7 @@ void script_RegisterTypesAndFunctions()
 	===============================================
 	*/
 
-	scr_virtual_machine->RegisterGlobalFunction("void gui_TextWall(string &in text, float alpha)", asFUNCTION(gui_ScriptTextWall), asCALL_CDECL);
+	//scr_virtual_machine->RegisterGlobalFunction("void gui_TextWall(string &in text, float alpha)", asFUNCTION(gui_ScriptTextWall), asCALL_CDECL);
 
 	/*
 	===============================================
@@ -622,7 +623,7 @@ void script_RegisterTypesAndFunctions()
 	*/
 
 
-	scr_virtual_machine->RegisterGlobalFunction("void resource_LoadResource(string &in name)", asFUNCTION(resource_ScriptLoadResource), asCALL_CDECL);
+	//scr_virtual_machine->RegisterGlobalFunction("void resource_LoadResource(string &in name)", asFUNCTION(resource_ScriptLoadResource), asCALL_CDECL);
 
 
 
@@ -1075,6 +1076,11 @@ void script_RegisterGlobalFunction(char *decl, void *function)
 void script_RegisterObjectType(char *decl, int size, int flags)
 {
     scr_virtual_machine->RegisterObjectType(decl, size, flags);
+}
+
+void script_RegisterObjectBehaviour(char *type, int behaviour, char *decl, void *function)
+{
+    //scr_virtual_machine->RegisterObjectBehaviour(type, behaviour, decl, function, asCALL_CDECL);
 }
 
 void script_RegisterObjectProperty(char *type, char *decl, int offset)

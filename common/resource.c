@@ -8,6 +8,9 @@
 #include "texture.h"
 #include "log.h"
 
+#include "script.h"
+#include "res_script.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -39,6 +42,8 @@ int resource_Init()
 	//file_exts[RESOURCE_TYPE_SCRIPT][0] = "as";
 	file_exts[RESOURCE_TYPE_SCRIPT][0] = ENTITY_SCRIPT_FILE_EXTENSION;
 	file_exts[RESOURCE_TYPE_SCRIPT][1] = WORLD_SCRIPT_FILE_EXTENSION;
+
+	script_RegisterGlobalFunction("void resource_LoadResource(string &in name)", resource_ScriptLoadResource);
 
 	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 

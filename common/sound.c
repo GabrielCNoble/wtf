@@ -4,6 +4,10 @@
 
 #include "sound.h"
 
+#include "script.h"
+
+#include "snd_script.h"
+
 #include "r_common.h"
 #include "r_main.h"
 
@@ -141,6 +145,25 @@ int sound_Init()
 		alSourcei(snd_sound_sources[i].source_handle, AL_MAX_GAIN, 50.0);
 		snd_sound_sources_indices[i] = i;
 	}
+
+    script_RegisterEnum("SOURCE_FLAGS");
+	script_RegisterEnumValue("SOURCE_FLAGS", "SOURCE_FLAG_LOOP", SOURCE_FLAG_LOOP);
+	script_RegisterEnumValue("SOURCE_FLAGS", "SOURCE_FLAG_RELATIVE", SOURCE_FLAG_RELATIVE);
+	script_RegisterEnumValue("SOURCE_FLAGS", "SOURCE_FLAG_FADE_IN", SOURCE_FLAG_FADE_IN);
+	script_RegisterEnumValue("SOURCE_FLAGS", "SOURCE_FLAG_FADE_OUT", SOURCE_FLAG_FADE_OUT);
+
+
+	script_RegisterObjectType("sound_handle_t", sizeof(struct sound_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
+	script_RegisterGlobalFunction("sound_handle_t sound_GetSound(string &in name)", sound_ScriptGetSound);
+	script_RegisterGlobalFunction("int sound_PlaySound(sound_handle_t sound, vec3_t &in position, float gain, int flags)", sound_ScriptPlaySound);
+	script_RegisterGlobalFunction("void sound_PauseSound(int sound_source, int fade_out)", sound_ScriptPauseSound);
+	script_RegisterGlobalFunction("void sound_StopSound(int sound_source, int fade_out)", sound_ScriptStopSound);
+    script_RegisterGlobalFunction("int sound_IsSourcePlaying(int sound_source)", sound_ScriptIsSourcePlaying);
+    script_RegisterGlobalFunction("int sound_IsSourceAssigned(int sound_source)", sound_ScriptIsSourceAssigned);
+    script_RegisterGlobalFunction("void sound_SetSourcePosition(int sound_source, vec3_t &in position)", sound_ScriptSetSourcePosition);
+
+
+
 
 	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 

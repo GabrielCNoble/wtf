@@ -1,4 +1,4 @@
-#include "scr_particle.h"
+#include "par_script.h"
 #include "particle.h"
 
 #include <stdlib.h>
@@ -19,16 +19,16 @@ void particle_ScriptDie()
 int particle_ScriptGetLife()
 {
 	struct particle_system_t *particle_system;
-	
+
 	particle_system = particle_GetParticleSystemPointer(ps_current_particle_system);
-	
+
 	return ps_frame - particle_system->spawn_frame;
 }
 
 int particle_ScriptGetParticleSystemDef(struct script_string_t *name)
 {
 	char *def_name;
-	
+
 	def_name = script_string_GetRawString(name);
 	return particle_GetParticleSystemDef(def_name);
 }

@@ -28,7 +28,7 @@
 #include "..\..\common\engine.h"
 #include "..\..\common\portal.h"
 #include "..\..\common\particle.h"
-#include "..\..\common\script\script.h"
+#include "..\..\common\script.h"
 #include "..\..\common\navigation.h"
 #include "..\..\common\resource.h"
 #include "..\..\common\sound.h"

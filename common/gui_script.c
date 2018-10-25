@@ -1,5 +1,6 @@
-#include "scr_gui.h"
+#include "gui_script.h"
 #include "gui_imgui.h"
+#include "script.h"
 
 #include "vector.h"
 

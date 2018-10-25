@@ -15,6 +15,8 @@
 #include "camera.h"
 
 #include "world.h"
+#include "script.h"
+#include "w_script.h"
 #include "model.h"
 #include "texture.h"
 
@@ -162,6 +164,25 @@ int world_Init()
 	w_visible_entities = list_create(sizeof(struct entity_handle_t), 128, NULL);
 
 	w_world_vars = list_create(sizeof(struct world_var_t), 128, NULL);
+
+
+	script_RegisterGlobalFunction("void world_AddWorldVar(string &in name, ? &in type)", world_ScriptAddWorldVar);
+	script_RegisterGlobalFunction("void world_AddWorldArrayVar(string &in name, int max_elements, ? &in type)", world_ScriptAddWorldArrayVar);
+    script_RegisterGlobalFunction("void world_RemoveWorldVar(string &in name)", world_ScriptRemoveWorldVar);
+    script_RegisterGlobalFunction("int world_GetWorldArrayVarLength(string &in name)", world_ScriptGetWorldArrayVarLength);
+
+    script_RegisterGlobalFunction("void world_SetWorldVarValue(string &in name, ? &in value)", world_ScriptSetWorldVarValue);
+    script_RegisterGlobalFunction("void world_GetWorldVarValue(string &in name, ? &out value)", world_ScriptGetWorldVarValue);
+    script_RegisterGlobalFunction("void world_SetWorldArrayVarValue(string &in name, int index, ? &in value)", world_ScriptSetWorldArrayVarValue);
+    script_RegisterGlobalFunction("void world_GetWorldArrayVarValue(string &in name, int index, ? &out value)", world_ScriptGetWorldArrayVarValue);
+	script_RegisterGlobalFunction("void world_AppendWorldArrayVarValue(string &in name, ? &in value)", world_ScriptAppendWorldArrayVarValue);
+	script_RegisterGlobalFunction("void world_ClearWorldArrayVar(string &in name)", world_ScriptClearWorldArrayVar);
+	//scr_virtual_machine->RegisterGlobalFunction("array<entity_handle_t> @world_GetEntities()", asFUNCTION(world_ScriptGetEntities), asCALL_CDECL);
+	script_RegisterGlobalFunction("void world_CallEvent(string &in event_name)", world_ScriptCallEvent);
+	script_RegisterGlobalFunction("void world_StopCurrentEvent()", world_ScriptStopCurrentEvent);
+	script_RegisterGlobalFunction("void world_StopAllEvents()", world_ScriptStopAllEvents);
+	script_RegisterGlobalFunction("void world_ClearWorld()", world_ScriptClearWorld);
+
 
 	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 

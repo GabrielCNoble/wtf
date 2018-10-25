@@ -2,7 +2,7 @@
 #define ENT_SCRIPT_H
 
 #include "ent_common.h"
-#include "scr_string.h"
+#include "script_types/scr_string.h"
 #include "vector.h"
 
 #ifdef __cplusplus

@@ -4,7 +4,7 @@
 #include "phy_common.h"
 #include "model.h"
 #include "bsp_common.h"
-#include "script/scr_common.h"
+#include "scr_common.h"
 #include "nav_common.h"
 #include "camera_types.h"
 #include "containers/list.h"

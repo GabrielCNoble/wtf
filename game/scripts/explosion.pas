@@ -1,7 +1,7 @@
 
 
 
-void OnSpawn(particle_system_t @particle_system, array<vec4_t> @particle_positions, array<particle_t> @particles, array<int> @particle_frames)
+void OnSpawn(particle_system_t &inout particle_system, array<vec4_t> @particle_positions, array<particle_t> @particles, array<int> @particle_frames)
 {
 	particle_system.max_particles = 1;
 	particle_system.respawn_time = 1;
@@ -19,12 +19,12 @@ void OnSpawn(particle_system_t @particle_system, array<vec4_t> @particle_positio
 	//entity_Print("SPAWN!!\n");
 }
 
-void OnDie(particle_system_t @particle_system)
+void OnDie(particle_system_t &inout particle_system)
 {
 //	entity_Print("DEAD!!\n");
 }
 
-void OnUpdate(particle_system_t @particle_system, array<vec4_t> @particle_positions, array<particle_t> @particles, array<int> @particle_frames)
+void OnUpdate(particle_system_t &inout particle_system, array<vec4_t> @particle_positions, array<particle_t> @particles, array<int> @particle_frames)
 {
 	int i;
 	int particle_count;

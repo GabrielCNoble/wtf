@@ -1,5 +1,5 @@
-#ifndef SCR_WORLD_H
-#define SCR_WORLD_H
+#ifndef W_SCRIPT_H
+#define W_SCRIPT_H
 
 #include "script_types/scr_string.h"
 
@@ -52,7 +52,7 @@ void world_ScriptClearWorld();
 }
 #endif
 
-#endif // SCR_WORLD_H
+#endif // W_SCRIPT_H
 
 
 

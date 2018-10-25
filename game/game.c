@@ -11,7 +11,7 @@
 #include "..\common\entity.h"
 #include "..\common\r_main.h"
 #include "..\common\r_debug.h"
-#include "..\common\script\script.h"
+#include "..\common\script.h"
 
 int game_state = GAME_STATE_NONE;
 

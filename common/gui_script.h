@@ -1,5 +1,5 @@
-#ifndef SCR_GUI_H
-#define SCR_GUI_H
+#ifndef GUI_SCRIPT_H
+#define GUI_SCRIPT_H
 
 
 #include "script_types/scr_string.h"
@@ -15,4 +15,4 @@ void gui_ScriptTextWall(struct script_string_t *text, float alpha);
 }
 #endif
 
-#endif // SCR_GUI_H
+#endif // GUI_SCRIPT_H

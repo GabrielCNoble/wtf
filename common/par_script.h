@@ -1,5 +1,5 @@
-#ifndef SCR_PARTICLE_H
-#define SCR_PARTICLE_H
+#ifndef PAR_SCRIPT_H
+#define PAR_SCRIPT_H
 
 #include "script_types/scr_string.h"
 #include "vector.h"
@@ -8,6 +8,8 @@
 extern "C"
 {
 #endif
+
+void particle_ScriptParticleSystemConstructor();
 
 void particle_ScriptDie();
 
@@ -23,4 +25,4 @@ void particle_ScriptSpawnParticleSystem(vec3_t *position, int particle_system_de
 
 
 
-#endif
+#endif  // PAR_SCRIPT_H

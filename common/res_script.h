@@ -1,6 +1,5 @@
-#ifndef SCR_RESOURCE_H
-#define SCR_RESOURCE_H
-
+#ifndef RES_SCRIPT_H
+#define RES_SCRIPT_H
 
 #include "script_types/scr_string.h"
 
@@ -15,4 +14,4 @@ void resource_ScriptLoadResource(struct script_string_t *name);
 }
 #endif
 
-#endif // SCR_RESOURCE_H
+#endif // RES_SCRIPT_H

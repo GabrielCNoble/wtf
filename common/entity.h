@@ -45,13 +45,13 @@ void entity_Finish();
 
 
 
-static __attribute__((always_inline)) inline void *entity_GetComponentPointer(struct component_handle_t component);
+static ALWAYS_FORCE_INLINE void *entity_GetComponentPointer(struct component_handle_t component);
 
-static __attribute__((always_inline)) inline void *entity_GetComponentPointerIndex(int index, int type, int def);
+static ALWAYS_FORCE_INLINE void *entity_GetComponentPointerIndex(int index, int type, int def);
 
-static __attribute__((always_inline)) inline struct entity_transform_t *entity_GetWorldTransformPointer(struct component_handle_t component);
+static ALWAYS_FORCE_INLINE struct entity_transform_t *entity_GetWorldTransformPointer(struct component_handle_t component);
 
-static __attribute__((always_inline)) inline struct entity_aabb_t *entity_GetAabbPointer(struct component_handle_t component);
+static ALWAYS_FORCE_INLINE struct entity_aabb_t *entity_GetAabbPointer(struct component_handle_t component);
 
 
 /*

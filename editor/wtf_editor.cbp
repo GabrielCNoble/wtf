@@ -250,6 +250,10 @@
 			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
 		</Unit>
 		<Unit filename="../common/gui_imgui.h" />
+		<Unit filename="../common/gui_script.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/gui_script.h" />
 		<Unit filename="../common/imgui/imconfig.h" />
 		<Unit filename="../common/imgui/imgui.cpp" />
 		<Unit filename="../common/imgui/imgui.h" />
@@ -317,6 +321,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/navigation.h" />
+		<Unit filename="../common/par_script.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/par_script.h" />
 		<Unit filename="../common/particle.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -391,63 +399,46 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/r_vis.h" />
+		<Unit filename="../common/res_script.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/res_script.h" />
 		<Unit filename="../common/resource.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/resource.h" />
-		<Unit filename="../common/script/scr_common.h" />
-		<Unit filename="../common/script/scr_gui.c">
+		<Unit filename="../common/scr_common.h" />
+		<Unit filename="../common/scr_math.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../common/script/scr_gui.h" />
-		<Unit filename="../common/script/scr_math.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/script/scr_math.h" />
-		<Unit filename="../common/script/scr_particle.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/script/scr_particle.h" />
-		<Unit filename="../common/script/scr_resource.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/script/scr_resource.h" />
-		<Unit filename="../common/script/scr_sound.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/script/scr_sound.h" />
-		<Unit filename="../common/script/scr_world.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../common/script/scr_world.h" />
-		<Unit filename="../common/script/script.c">
-			<Option compilerVar="CPP" />
-			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
-		</Unit>
-		<Unit filename="../common/script/script.h" />
-		<Unit filename="../common/script/script_types/scr_array.c">
-			<Option compilerVar="CPP" />
-			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
-		</Unit>
-		<Unit filename="../common/script/script_types/scr_array.h" />
-		<Unit filename="../common/script/script_types/scr_string.c">
-			<Option compilerVar="CPP" />
-			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
-		</Unit>
-		<Unit filename="../common/script/script_types/scr_string.h" />
-		<Unit filename="../common/script/script_types/scr_typeof.c">
+		<Unit filename="../common/scr_math.h" />
+		<Unit filename="../common/script.c">
 			<Option compilerVar="CC" />
 			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
 		</Unit>
-		<Unit filename="../common/script/script_types/scr_typeof.h" />
-		<Unit filename="../common/script/script_types/scr_types.c">
-			<Option compilerVar="CPP" />
+		<Unit filename="../common/script.h" />
+		<Unit filename="../common/script_types/scr_array.c">
+			<Option compilerVar="CC" />
 			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
 		</Unit>
-		<Unit filename="../common/script/script_types/scr_types.h" />
-		<Unit filename="../common/script/script_types/scriptstdstring.cpp" />
-		<Unit filename="../common/script/script_types/scriptstdstring.h" />
-		<Unit filename="../common/scriptarray.h" />
+		<Unit filename="../common/script_types/scr_array.h" />
+		<Unit filename="../common/script_types/scr_string.c">
+			<Option compilerVar="CC" />
+			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
+		</Unit>
+		<Unit filename="../common/script_types/scr_string.h" />
+		<Unit filename="../common/script_types/scr_typeof.c">
+			<Option compilerVar="CC" />
+			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
+		</Unit>
+		<Unit filename="../common/script_types/scr_typeof.h" />
+		<Unit filename="../common/script_types/scr_types.c">
+			<Option compilerVar="CC" />
+			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
+		</Unit>
+		<Unit filename="../common/script_types/scr_types.h" />
+		<Unit filename="../common/script_types/scriptstdstring.cpp" />
+		<Unit filename="../common/script_types/scriptstdstring.h" />
 		<Unit filename="../common/shader.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -459,6 +450,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/shd_pprc.h" />
+		<Unit filename="../common/snd_script.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/snd_script.h" />
 		<Unit filename="../common/soil/SOIL.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -507,6 +502,10 @@
 		<Unit filename="../common/w_common.h">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../common/w_script.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/w_script.h" />
 		<Unit filename="../common/world.c">
 			<Option compilerVar="CC" />
 		</Unit>

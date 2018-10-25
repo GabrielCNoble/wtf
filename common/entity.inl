@@ -18,27 +18,6 @@ extern struct entity_t *ent_entity_defs;
 extern struct stack_list_t ent_world_transforms;
 extern struct stack_list_t ent_entity_aabbs;
 
-static ALWAYS_FORCE_INLINE struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity)
-{
-	struct entity_t *entity_ptr = NULL;
-	int cursor;
-
-	if(entity.entity_index != INVALID_ENTITY_INDEX)
-	{
-		if(entity.entity_index >= 0 && entity.entity_index < ent_entities[entity.def].element_count)
-		{
-			entity_ptr = (struct entity_t *)ent_entities[entity.def].elements + entity.entity_index;
-
-			if(entity_ptr->flags & ENTITY_FLAG_INVALID)
-			{
-				entity_ptr = NULL;
-			}
-		}
-	}
-
-	return entity_ptr;
-}
-
 static ALWAYS_FORCE_INLINE void *entity_GetComponentPointer(struct component_handle_t component)
 {
 	struct stack_list_t *list;
@@ -73,7 +52,7 @@ static ALWAYS_FORCE_INLINE struct entity_aabb_t *entity_GetAabbPointer(struct co
 	return (struct entity_aabb_t *)((char *)ent_entity_aabbs.elements + ent_entity_aabbs.element_size * component.index);
 }
 
-/*__forceinline struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity)
+static ALWAYS_FORCE_INLINE struct entity_t *entity_GetEntityPointerHandle(struct entity_handle_t entity)
 {
 	struct entity_t *entity_ptr = NULL;
 	int cursor;
@@ -92,7 +71,7 @@ static ALWAYS_FORCE_INLINE struct entity_aabb_t *entity_GetAabbPointer(struct co
 	}
 
 	return entity_ptr;
-}*/
+}
 
 static ALWAYS_FORCE_INLINE struct entity_t *entity_GetEntityParentPointerHandle(struct entity_handle_t entity)
 {

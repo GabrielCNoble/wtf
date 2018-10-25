@@ -5,7 +5,12 @@
 #include <float.h>
 #include <assert.h>
 
+#include "macros.h"
+
 #include "matrix.h"
+
+#include "script.h"
+#include "par_script.h"
 
 #include "r_verts.h"
 #include "particle.h"
@@ -114,6 +119,36 @@ int particle_Init()
 	particle_quad[3].w = 1.0;
 
 	renderer_Write(ps_particle_quad_handle, 0, particle_quad, sizeof(vec4_t) * 4);
+
+
+
+	script_RegisterObjectType("particle_t", sizeof(struct particle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
+	script_RegisterObjectProperty("particle_t", "int life", OFFSETOF(struct particle_t, life));
+	script_RegisterObjectProperty("particle_t", "vec3_t velocity", OFFSETOF(struct particle_t, velocity));
+
+	script_RegisterObjectType("particle_system_t", sizeof(struct particle_system_t ), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
+	//script_RegisterObjectBehaviour("particle_system_t", asBEHAVE_FACTORY, "particle_system_t@ Factory()", script_DummyDefaultConstructor);
+	//scr_virtual_machine->RegisterObjectType("particle_system_t", 0, asOBJ_REF | asOBJ_NOCOUNT);
+
+	//scr_virtual_machine->RegisterObjectBehaviour("particle_system_t", asBEHAVE_CONSTRUCT, "void Constructor()", asFUNCTION(script_DummyConstructor), asCALL_CDECL_OBJFIRST);
+	//scr_virtual_machine->RegisterObjectBehaviour("particle_system_t", asBEHAVE_DESTRUCT, "void Destructor()", asFUNCTION(script_DummyDestructor), asCALL_CDECL_OBJFIRST);
+
+	script_RegisterObjectProperty("particle_system_t", "int16 particle_count", OFFSETOF(struct particle_system_t, particle_count));
+	script_RegisterObjectProperty("particle_system_t", "int16 max_particles", OFFSETOF(struct particle_system_t, max_particles));
+	script_RegisterObjectProperty("particle_system_t", "int16 max_life", OFFSETOF(struct particle_system_t, max_life));
+	script_RegisterObjectProperty("particle_system_t", "int16 max_frame", OFFSETOF(struct particle_system_t, max_frame));
+	script_RegisterObjectProperty("particle_system_t", "int16 respawn_time", OFFSETOF(struct particle_system_t, respawn_time));
+	script_RegisterObjectProperty("particle_system_t", "int16 respawn_countdown", OFFSETOF(struct particle_system_t, respawn_countdown));
+	script_RegisterObjectProperty("particle_system_t", "int spawn_frame", OFFSETOF(struct particle_system_t, spawn_frame));
+
+
+	script_RegisterGlobalFunction("void particle_Die()", particle_ScriptDie);
+	script_RegisterGlobalFunction("int particle_GetLife()", particle_ScriptGetLife);
+	script_RegisterGlobalFunction("int particle_GetParticleSystemDef(string &in name)", particle_ScriptGetParticleSystemDef);
+	script_RegisterGlobalFunction("void particle_SpawnParticleSystem(vec3_t &in position, int particle_system_def)", particle_ScriptSpawnParticleSystem);
+
+
+
 
 	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
