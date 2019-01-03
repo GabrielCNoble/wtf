@@ -13,6 +13,7 @@
 #include "..\..\common\script.h"
 #include "..\..\common\gui.h"
 #include "..\..\common\c_memory.h"
+#include "..\common\r_debug.h"
 
 #include "GL\glew.h"
 
@@ -172,7 +173,7 @@ void editor_MiscMenu()
 			}
 			if(gui_ImGuiMenuItem("Reload path", NULL, NULL, 1))
 			{
-				path_ReadCfg();
+				path_ReadCfg(NULL);
 			}
 			if(gui_ImGuiMenuItem("Check memory", NULL, NULL, 1))
 			{
@@ -219,6 +220,134 @@ void editor_MiscMenu()
 		}
 		gui_ImGuiEndMainMenuBar();
 	}
+}
+
+void editor_RendererMenu()
+{
+    int debug_flags;
+
+    char checked;
+
+
+    if(gui_ImGuiBeginMainMenuBar())
+    {
+        if(gui_ImGuiBeginMenu("Renderer"))
+        {
+            debug_flags = renderer_GetDebugDrawFlags();
+
+
+
+            checked = (debug_flags & R_DEBUG_DRAW_FLAG_DRAW_ENTITIES) && 1;
+
+            if(gui_ImGuiCheckbox("Draw entities", &checked))
+            {
+                if(checked)
+                {
+                    debug_flags |= R_DEBUG_DRAW_FLAG_DRAW_ENTITIES;
+                }
+                else
+                {
+                    debug_flags &= ~R_DEBUG_DRAW_FLAG_DRAW_ENTITIES;
+                }
+            }
+
+
+
+
+            checked = (debug_flags & R_DEBUG_DRAW_FLAG_DRAW_LIGHTS) && 1;
+
+            if(gui_ImGuiCheckbox("Draw lights", &checked))
+            {
+                if(checked)
+                {
+                    debug_flags |= R_DEBUG_DRAW_FLAG_DRAW_LIGHTS;
+                }
+                else
+                {
+                    debug_flags &= ~R_DEBUG_DRAW_FLAG_DRAW_LIGHTS;
+                }
+            }
+
+
+
+
+            checked = (debug_flags & R_DEBUG_DRAW_FLAG_DRAW_TRIGGERS) && 1;
+
+            if(gui_ImGuiCheckbox("Draw triggers", &checked))
+            {
+                if(checked)
+                {
+                    debug_flags |= R_DEBUG_DRAW_FLAG_DRAW_TRIGGERS;
+                }
+                else
+                {
+                    debug_flags &= ~R_DEBUG_DRAW_FLAG_DRAW_TRIGGERS;
+                }
+            }
+
+
+
+
+            checked = (debug_flags & R_DEBUG_DRAW_FLAG_DRAW_COLLIDERS) && 1;
+
+            if(gui_ImGuiCheckbox("Draw colliders", &checked))
+            {
+                if(checked)
+                {
+                    debug_flags |= R_DEBUG_DRAW_FLAG_DRAW_COLLIDERS;
+                }
+                else
+                {
+                    debug_flags &= ~R_DEBUG_DRAW_FLAG_DRAW_COLLIDERS;
+                }
+            }
+
+
+
+
+            checked = (debug_flags & R_DEBUG_DRAW_FLAG_DRAW_VIEWS) && 1;
+
+            if(gui_ImGuiCheckbox("Draw views", &checked))
+            {
+                if(checked)
+                {
+                    debug_flags |= R_DEBUG_DRAW_FLAG_DRAW_VIEWS;
+                }
+                else
+                {
+                    debug_flags &= ~R_DEBUG_DRAW_FLAG_DRAW_VIEWS;
+                }
+            }
+
+
+
+
+            checked = (debug_flags & R_DEBUG_DRAW_FLAG_DRAW_WAYPOINTS) && 1;
+
+            if(gui_ImGuiCheckbox("Draw waypoints", &checked))
+            {
+                if(checked)
+                {
+                    debug_flags |= R_DEBUG_DRAW_FLAG_DRAW_WAYPOINTS;
+                }
+                else
+                {
+                    debug_flags &= ~R_DEBUG_DRAW_FLAG_DRAW_WAYPOINTS;
+                }
+            }
+
+
+
+
+
+            renderer_DebugDrawFlags(debug_flags);
+
+
+            gui_ImGuiEndMenu();
+        }
+
+        gui_ImGuiEndMainMenuBar();
+    }
 }
 
 void editor_EditorsMenu()

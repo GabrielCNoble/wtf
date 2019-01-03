@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "SDL2\SDL.h"
+#include "SDL2\SDL_atomic.h"
 #include "GL\glew.h"
 
 #include "camera.h"
@@ -11,6 +12,8 @@
 #include "l_main.h"
 #include "c_memory.h"
 #include "log.h"
+
+#include "matrix.h"
 
 //#define LOG_STUFF
 
@@ -48,6 +51,8 @@ int b_step = 0;
 extern SDL_mutex *polygon_copy_mutex;
 extern SDL_sem *step_semaphore;
 extern int b_draw_pvs_steps;
+
+extern int r_z_pre_pass_shader;
 
 
 SDL_mutex *stop_flag_mutex = NULL;
@@ -100,9 +105,6 @@ void bsp_StopPvsTimer()
 
 
 
-/* number of samples per meter cubed... */
-#define BSP_VIS_SAMPLE_DENSITY 10
-#define BSP_VIS_RESOLUTION 512
 
 void bsp_GenVisProbes(struct bsp_node_t *bsp)
 {
@@ -120,17 +122,406 @@ void bsp_GenVisProbes(struct bsp_node_t *bsp)
         bsp_BspBounds(bsp, &max, &min);
     }
 
+}
+
+
+#define BSP_VIS_SAMPLE_DENSITY 5
+#define BSP_MAX_VIS_SAMPLES 128
+#define BSP_VIS_RESOLUTION 128
+
+
+SDL_atomic_t leaf_count;
+SDL_atomic_t active_threads;
+
+
+int bsp_TraceLeafRays(void *leaf_pointer)
+{
+    //struct bsp_vis_sample_t *samples;
+	//struct bsp_vis_sample_t *sample;
+	struct trace_t result;
+
+	struct bsp_dleaf_t *leaf = leaf_pointer;
+
+	vec3_t max = vec3_t_c(0.0, 0.0, 0.0);
+	vec3_t min = vec3_t_c(0.0, 0.0, 0.0);
+	vec3_t range;
+	vec3_t pos;
+	vec3_t sample_pos;
+
+    int leaf_index;
+    int pvs_leaf_index;
+
+	int x;
+	int y;
+	int z;
+
+	int rx;
+	int ry;
+
+	int cx;
+	int cy;
+	int cz;
+
+	int view_index;
+	int i;
+
+
+	vec3_t start;
+	vec3_t end;
+
+	vec3_t dir;
+
+	float dx;
+	float dy;
+
+
+    /* this will hang any machine for sure... */
+	//SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
+
+
+	int byte_index;
+	int bit_index;
+
+	mat3_t view_dirs[6];
+
+	view_dirs[0] = mat3_t_c0(vec3_t_c(1.0, 0.0, 0.0), vec3_t_c(0.0, 1.0, 0.0), vec3_t_c(0.0, 0.0, -1.0));
+
+    view_dirs[1] = mat3_t_c0(vec3_t_c(-1.0, 0.0, 0.0), vec3_t_c(0.0, 1.0, 0.0), vec3_t_c(0.0, 0.0, 1.0));
+
+    view_dirs[2] = mat3_t_c0(vec3_t_c(0.0, 0.0, -1.0), vec3_t_c(0.0, 1.0, 0.0), vec3_t_c(1.0, 0.0, 0.0));
+
+    view_dirs[3] = mat3_t_c0(vec3_t_c(0.0, 0.0, 1.0), vec3_t_c(0.0, 1.0, 0.0), vec3_t_c(-1.0, 0.0, 0.0));
+
+    view_dirs[4] = mat3_t_c0(vec3_t_c(1.0, 0.0, 0.0), vec3_t_c(0.0, 0.0, 1.0), vec3_t_c(0.0, -1.0, 0.0));
+
+    view_dirs[5] = mat3_t_c0(vec3_t_c(1.0, 0.0, 0.0), vec3_t_c(0.0, 0.0, -1.0), vec3_t_c(0.0, 1.0, 0.0));
+
+    vec3_t forward_vec;
+    vec3_t right_vec;
+    vec3_t up_vec;
+
+
+    //for(leaf_index = 0; leaf_index < w_world_leaves_count; leaf_index++)
+    //{
+        //leaf = w_world_leaves + leaf_index;
+
+    range.x = leaf->extents.x * 2.0;
+    range.y = leaf->extents.y * 2.0;
+    range.z = leaf->extents.z * 2.0;
+
+    pos.x = leaf->center.x - leaf->extents.x;
+    pos.y = leaf->center.y - leaf->extents.y;
+    pos.z = leaf->center.z - leaf->extents.z;
+
+    cx = 1 + range.x * BSP_VIS_SAMPLE_DENSITY;
+    cy = 1 + range.y * BSP_VIS_SAMPLE_DENSITY;
+    cz = 1 + range.z * BSP_VIS_SAMPLE_DENSITY;
+
+    //samples = memory_Calloc(cx * cy * cz, sizeof(struct bsp_vis_sample_t));
+
+    for(z = 0; z < cz; z++)
+    {
+        for(y = 0; y < cy; y++)
+        {
+            for(x = 0; x < cx; x++)
+            {
+                /*sample = samples + (z * cy * cx) + (y * cx) + x;
+
+                sample->position.x = pos.x + range.x * ((float)x / (float)cx);
+                sample->position.y = pos.y + range.y * ((float)y / (float)cy);
+                sample->position.z = pos.z + range.z * ((float)z / (float)cz);
+
+                sample->valid = (bsp_GetCurrentLeaf(w_world_nodes, sample->position) == leaf);*/
+
+
+                sample_pos.x = pos.x + range.x * ((float)x / (float)cx);
+                sample_pos.y = pos.y + range.y * ((float)y / (float)cy);
+                sample_pos.z = pos.z + range.z * ((float)z / (float)cz);
+
+                //if(sample->valid)
+
+                if(bsp_GetCurrentLeaf(w_world_nodes, sample_pos) == leaf)
+                {
+                    for(view_index = 0; view_index < 6; view_index++)
+                    {
+
+                        right_vec = view_dirs[view_index].r0;
+                        up_vec = view_dirs[view_index].r1;
+                        forward_vec = view_dirs[view_index].r2;
+
+                        for(ry = 0; ry < BSP_VIS_RESOLUTION; ry++)
+                        {
+                            for(rx = 0; rx < BSP_VIS_RESOLUTION; rx++)
+                            {
+                                dx = ((float)rx / (float)BSP_VIS_RESOLUTION) * 2.0 - 1.0;
+                                dy = ((float)ry / (float)BSP_VIS_RESOLUTION) * 2.0 - 1.0;
+
+                                dir.x = forward_vec.x + right_vec.x * dx + up_vec.x * dy;
+                                dir.y = forward_vec.y + right_vec.y * dx + up_vec.y * dy;
+                                dir.z = forward_vec.z + right_vec.z * dx + up_vec.z * dy;
+
+                                dir = normalize3(dir);
+
+                                /*start = sample->position;
+
+                                end.x = sample->position.x + dir.x * 1000.0;
+                                end.y = sample->position.y + dir.y * 1000.0;
+                                end.z = sample->position.z + dir.z * 1000.0;*/
+
+                                start = sample_pos;
+
+                                end.x = sample_pos.x + dir.x * 1000.0;
+                                end.y = sample_pos.y + dir.y * 1000.0;
+                                end.z = sample_pos.z + dir.z * 1000.0;
+
+                                bsp_FirstHit(w_world_nodes, start, end, &result);
+
+                                if(result.leaf)
+                                {
+                                    pvs_leaf_index = result.leaf - w_world_leaves;
+
+                                    byte_index = pvs_leaf_index >> 3;
+                                    bit_index = pvs_leaf_index % 8;
+
+                                    leaf->pvs[byte_index] |= (1 << bit_index);
 
 
 
+                                    pvs_leaf_index = leaf - w_world_leaves;
+
+                                    byte_index = pvs_leaf_index >> 3;
+                                    bit_index = pvs_leaf_index % 8;
+
+                                    result.leaf->pvs[byte_index] |= (1 << bit_index);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    //memory_Free(samples);
+
+    leaf_index = SDL_AtomicAdd(&leaf_count, -1);
+
+    printf("%.03f%%\n", 100.0 * (1.0 - ((float)leaf_index / (float)w_world_leaves_count)));
+
+    SDL_AtomicDecRef(&active_threads);
+}
+
+#define MAX_ACTIVE_THREADS 8
+
+void bsp_CalculatePvs3()
+{
+    SDL_Thread *thread;
+    struct bsp_dleaf_t *leaf;
+
+    int leaf_index = 0;
+    int max_active_threads;
+    int count;
+
+    SDL_AtomicSet(&leaf_count, w_world_leaves_count);
+    SDL_AtomicSet(&active_threads, 0);
+
+    max_active_threads = SDL_GetCPUCount() * 2;
+
+    //max_active_threads = MAX_ACTIVE_THREADS;
+
+    printf("pvs running on %d threads\n", max_active_threads);
+
+    b_calculating_pvs = 1;
+
+    while(count = SDL_AtomicGet(&leaf_count))
+    {
+        if(SDL_AtomicGet(&active_threads) < max_active_threads)
+        {
+            leaf = w_world_leaves + leaf_index;
+            leaf_index++;
+
+            SDL_AtomicIncRef(&active_threads);
+            thread = SDL_CreateThread(bsp_TraceLeafRays, "bsp_TraceLeafRays", leaf);
+            SDL_DetachThread(thread);
+        }
+
+        SDL_Delay(10);
+    }
+
+    b_calculating_pvs = 0;
+}
+
+
+void bsp_CalculatePvs2()
+{
+
+    struct bsp_vis_sample_t *samples;
+	struct bsp_vis_sample_t *sample;
+	struct trace_t result;
+
+	struct bsp_dleaf_t *leaf;
+
+	vec3_t max = vec3_t_c(0.0, 0.0, 0.0);
+	vec3_t min = vec3_t_c(0.0, 0.0, 0.0);
+	vec3_t range;
+	vec3_t pos;
+
+    int leaf_index;
+    int pvs_leaf_index;
+
+	int x;
+	int y;
+	int z;
+
+	int rx;
+	int ry;
+
+	int cx;
+	int cy;
+	int cz;
+
+	int view_index;
+	int i;
+
+
+	vec3_t start;
+	vec3_t end;
+
+	vec3_t dir;
+
+	float dx;
+	float dy;
+
+
+	int byte_index;
+	int bit_index;
+
+	mat3_t view_dirs[6];
+
+	view_dirs[0] = mat3_t_c0(vec3_t_c(1.0, 0.0, 0.0), vec3_t_c(0.0, 1.0, 0.0), vec3_t_c(0.0, 0.0, -1.0));
+
+    view_dirs[1] = mat3_t_c0(vec3_t_c(-1.0, 0.0, 0.0), vec3_t_c(0.0, 1.0, 0.0), vec3_t_c(0.0, 0.0, 1.0));
+
+    view_dirs[2] = mat3_t_c0(vec3_t_c(0.0, 0.0, -1.0), vec3_t_c(0.0, 1.0, 0.0), vec3_t_c(1.0, 0.0, 0.0));
+
+    view_dirs[3] = mat3_t_c0(vec3_t_c(0.0, 0.0, 1.0), vec3_t_c(0.0, 1.0, 0.0), vec3_t_c(-1.0, 0.0, 0.0));
+
+    view_dirs[4] = mat3_t_c0(vec3_t_c(1.0, 0.0, 0.0), vec3_t_c(0.0, 0.0, 1.0), vec3_t_c(0.0, -1.0, 0.0));
+
+    view_dirs[5] = mat3_t_c0(vec3_t_c(1.0, 0.0, 0.0), vec3_t_c(0.0, 0.0, -1.0), vec3_t_c(0.0, 1.0, 0.0));
+
+    vec3_t forward_vec;
+    vec3_t right_vec;
+    vec3_t up_vec;
+
+    b_calculating_pvs = 1;
+
+
+    for(leaf_index = 0; leaf_index < w_world_leaves_count; leaf_index++)
+    {
+        leaf = w_world_leaves + leaf_index;
+
+        range.x = leaf->extents.x * 2.0;
+        range.y = leaf->extents.y * 2.0;
+        range.z = leaf->extents.z * 2.0;
+
+        pos.x = leaf->center.x - leaf->extents.x;
+        pos.y = leaf->center.y - leaf->extents.y;
+        pos.z = leaf->center.z - leaf->extents.z;
+
+        cx = 1 + range.x * BSP_VIS_SAMPLE_DENSITY;
+        cy = 1 + range.y * BSP_VIS_SAMPLE_DENSITY;
+        cz = 1 + range.z * BSP_VIS_SAMPLE_DENSITY;
+
+        samples = memory_Calloc(cx * cy * cz, sizeof(struct bsp_vis_sample_t));
+
+        for(z = 0; z < cz; z++)
+        {
+            for(y = 0; y < cy; y++)
+            {
+                for(x = 0; x < cx; x++)
+                {
+                    sample = samples + (z * cy * cx) + (y * cx) + x;
+
+                    sample->position.x = pos.x + range.x * ((float)x / (float)cx);
+                    sample->position.y = pos.y + range.y * ((float)y / (float)cy);
+                    sample->position.z = pos.z + range.z * ((float)z / (float)cz);
+
+                    sample->valid = (bsp_GetCurrentLeaf(w_world_nodes, sample->position) == leaf);
+                }
+            }
+        }
+
+        for(z = 0; z < cz; z++)
+        {
+            for(y = 0; y < cy; y++)
+            {
+                for(x = 0; x < cx; x++)
+                {
+                    sample = samples + (z * cy * cx) + (y * cx) + x;
+
+                    if(sample->valid)
+                    {
+                        for(view_index = 0; view_index < 6; view_index++)
+                        {
+
+                            right_vec = view_dirs[view_index].r0;
+                            up_vec = view_dirs[view_index].r1;
+                            forward_vec = view_dirs[view_index].r2;
+
+                            for(ry = 0; ry < BSP_VIS_RESOLUTION; ry++)
+                            {
+                                for(rx = 0; rx < BSP_VIS_RESOLUTION; rx++)
+                                {
+                                    dx = ((float)rx / (float)BSP_VIS_RESOLUTION) * 2.0 - 1.0;
+                                    dy = ((float)ry / (float)BSP_VIS_RESOLUTION) * 2.0 - 1.0;
+
+                                    dir.x = forward_vec.x + right_vec.x * dx + up_vec.x * dy;
+                                    dir.y = forward_vec.y + right_vec.y * dx + up_vec.y * dy;
+                                    dir.z = forward_vec.z + right_vec.z * dx + up_vec.z * dy;
+
+                                    dir = normalize3(dir);
+
+                                    start = sample->position;
+
+                                    end.x = sample->position.x + dir.x * 1000.0;
+                                    end.y = sample->position.y + dir.y * 1000.0;
+                                    end.z = sample->position.z + dir.z * 1000.0;
+
+                                    bsp_FirstHit(w_world_nodes, start, end, &result);
+
+                                    if(result.leaf)
+                                    {
+                                        pvs_leaf_index = result.leaf - w_world_leaves;
+
+                                        byte_index = pvs_leaf_index >> 3;
+                                        bit_index = pvs_leaf_index % 8;
+
+                                        leaf->pvs[byte_index] |= (1 << bit_index);
 
 
 
+                                        pvs_leaf_index = leaf - w_world_leaves;
 
+                                        byte_index = pvs_leaf_index >> 3;
+                                        bit_index = pvs_leaf_index % 8;
 
+                                        result.leaf->pvs[byte_index] |= (1 << bit_index);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
+        //printf("%.03f%%\n", 100.0 * ((float)leaf_index / (float)w_world_leaves_count));
 
+        memory_Free(samples);
+    }
 
+    b_calculating_pvs = 0;
 }
 
 
@@ -983,7 +1374,6 @@ void bsp_ClipPortalsToBounds(bsp_node_t *bsp, bsp_portal_t *portals)
 	while(p)
 	//while(0)
 	{
-
 		if(bsp_ClassifyPolygon(p->portal_polygon, vec3_t_c(0.0, y_max, 0.0), vec3_t_c(0.0, -1.0, 0.0)) == POLYGON_STRADDLING)
 		{
 			bsp_SplitPolygon(p->portal_polygon, vec3_t_c(0.0, y_max, 0.0), vec3_t_c(0.0, -1.0, 0.0), &front, &back);
@@ -2095,8 +2485,8 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 	if(b_stop)
 		return -2;
 
-	//if(bsp_DeltaTime() > time_out)
-	//	return -1;
+	if(bsp_DeltaTime() > time_out)
+		return -1;
 
 	if(dst_leaf == src_leaf)
 		return 0;
@@ -2147,13 +2537,13 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 	#endif
 
 
-	for(i = 0; i < in_valid_dst_portal_count; i++)
-	{
-		if(in_valid_dst_portals[i]->portal_polygon->vert_count > 10)
-		{
+	//for(i = 0; i < in_valid_dst_portal_count; i++)
+	//{
+	//	if(in_valid_dst_portals[i]->portal_polygon->vert_count > 10)
+	//	{
 			//engine_BreakPoint();
-		}
-	}
+	//	}
+	//}
 
 
 	for(i = 0; i < in_valid_dst_portal_count; i++)
@@ -2390,16 +2780,16 @@ int bsp_RecursivePvsForLeaf(bsp_leaf_t *src_leaf, bsp_portal_t *src_portal, bsp_
 
 			/* skip this portal if it leads to a leaf
 			we recursed through and didn't return from yet...  */
-			//if(dst_dst_portal->leaf0 == dst_dst_leaf)
-			//	if(dst_dst_portal->leaf1->pvs[dst_dst_portal->leaf1->leaf_index >> 3] & (1 << (dst_dst_portal->leaf1->leaf_index % 8)))
-			//		continue;
+			if(dst_dst_portal->leaf0 == dst_dst_leaf)
+				if(dst_dst_portal->leaf1->pvs[dst_dst_portal->leaf1->leaf_index >> 3] & (1 << (dst_dst_portal->leaf1->leaf_index % 8)))
+					continue;
 
 
 			/* skip this portal if it leads to a leaf
 			we recursed through and didn't return from yet... */
-			//if(dst_dst_portal->leaf1 == dst_dst_leaf)
-			//	if(dst_dst_portal->leaf0->pvs[dst_dst_portal->leaf0->leaf_index >> 3] & (1 << (dst_dst_portal->leaf0->leaf_index % 8)))
-			//		continue;
+			if(dst_dst_portal->leaf1 == dst_dst_leaf)
+				if(dst_dst_portal->leaf0->pvs[dst_dst_portal->leaf0->leaf_index >> 3] & (1 << (dst_dst_portal->leaf0->leaf_index % 8)))
+					continue;
 
 
 			/* skip this portal if it leads to the source leaf... */
@@ -2919,33 +3309,33 @@ void bsp_PvsForLeaves(bsp_node_t *bsp, bsp_portal_t *portals)
 	//SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
 
 	//while(leaf = bsp_GetNextLeaf())
-	//while(job =  bsp_GetNextJob())
-	//{
+	while(job =  bsp_GetNextJob())
+	{
 
- 	//	i = bsp_PvsForLeaf(job->leaf, job->time_out, job->src_portal_index);
+ 		i = bsp_PvsForLeaf(job->leaf, job->time_out, job->src_portal_index);
 
-	//	if(i > -1)
-	//	{
-	//		job->src_portal_index = i;
-	//		printf("timed out after %.02fs and has been requeued...\n", job->time_out / 1000.0);
-	//		bsp_RequeueJob(job);
-	//	}
-	//	else
-	//	{
-	//		memory_Free(job);
-	//	}
+		if(i > -1)
+		{
+			job->src_portal_index = i;
+			printf("timed out after %.02fs and has been requeued...\n", job->time_out / 1000.0);
+			bsp_RequeueJob(job);
+		}
+		else
+		{
+            memory_Free(job);
+		}
 
-	//	if(b_stop)
-	//	{
-	//		printf("pvs calculation stopped!\n");
-	//		return;
-	//	}
+		if(b_stop)
+		{
+			printf("pvs calculation stopped!\n");
+			return;
+		}
 
-//	}
+	}
 
 	//SDL_SetThreadPriority(SDL_THREAD_PRIORITY_NORMAL);
 
-	bsp_RecursivePvsForLeaves(bsp);
+	//bsp_RecursivePvsForLeaves(bsp);
 
 }
 
@@ -2990,7 +3380,7 @@ int bsp_PvsForLeavesThreadFn(void *data)
 
 }
 
-
+struct shader_t *shader;
 
 //#define EMPTY_PVS
 #define TRACE_COUNT 8
@@ -3003,7 +3393,7 @@ void bsp_CalculatePvs(bsp_node_t *bsp)
 	int t;
 	int pvs_size;
 	vec3_t end;
-	trace_t trace;
+	struct trace_t trace;
 	bsp_portal_t *portals = NULL;
 	bsp_leaf_t *leaf0;
 	bsp_leaf_t *leaf1;
@@ -3036,6 +3426,8 @@ void bsp_CalculatePvs(bsp_node_t *bsp)
 
 	//pvs_calc_stack = malloc(sizeof(pvs_for_leaf_stack) * 1024);
 	//pvs_calc_stack_pointer = 0;
+
+	//shader = shader_GetShaderPointerIndex(r_z_pre_pass_shader);
 
 	job_list_mutex = SDL_CreateMutex();
 
@@ -3077,6 +3469,8 @@ int bsp_CalculatePvsAssync(void *data)
 {
 	printf("pvs thread has started\n");
 	bsp_CalculatePvs((bsp_node_t *)data);
+	//bsp_CalculatePvs2();
+	//bsp_CalculatePvs3();
 	light_ClearLightLeaves();
 
 	printf("pvs thread has returned\n");

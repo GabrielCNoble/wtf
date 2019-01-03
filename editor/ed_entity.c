@@ -10,11 +10,13 @@
 #include "..\editor.h"
 #include "..\ed_ui_explorer.h"
 
-#include "..\..\common\camera.h"
+//#include "..\..\common\camera.h"
 #include "..\..\common\gmath\vector.h"
 #include "..\..\common\gmath\matrix.h"
 #include "..\..\common\input.h"
+#include "..\..\common\r_view.h"
 #include "..\..\common\r_main.h"
+#include "..\r_debug.h"
 #include "..\..\common\entity.h"
 #include "..\..\common\model.h"
 #include "..\..\common\l_main.h"
@@ -48,7 +50,8 @@ extern struct collider_def_t *collider_defs;
 */
 
 
-camera_t *entity_editor_camera = NULL;
+//camera_t *entity_editor_camera = NULL;
+struct view_handle_t entity_editor_view = INVALID_VIEW_HANDLE;
 int entity_editor_light_index = -1;
 
 pick_list_t entity_editor_pick_list;
@@ -76,7 +79,7 @@ int entity_editor_draw_grid = 1;
 int entity_editor_draw_collider_def = 1;
 int entity_editor_draw_entity_def = 1;
 int entity_editor_orthographic_mode = 0;
-
+int entity_editor_debug_draw_flags = 0;
 
 
 //struct entity_def_t *entity_editor_current_entity_def = NULL;
@@ -98,9 +101,9 @@ struct entity_handle_t ed_entity_editor_draw_collider_list[1024];
 void editor_EntityEditorInit()
 {
 	mat3_t orientation = mat3_t_id();
-	entity_editor_camera = camera_CreateCamera("entity editor camera", vec3_t_c(0.0, 0.0, 0.0), &orientation, 0.68, r_window_width, r_window_height, 0.1, 100.0, 0);
-
-	camera_Deactivate(entity_editor_camera);
+	//entity_editor_camera = camera_CreateCamera("entity editor camera", vec3_t_c(0.0, 0.0, 0.0), &orientation, 0.68, r_window_width, r_window_height, 0.1, 100.0, 0);
+    entity_editor_view = renderer_CreateViewDef("entity editor camera", vec3_t_c(0.0, 0.0, 0.0), &orientation, 0.68, r_window_width, r_window_height, 0.1, 100.0, 0);
+//	camera_Deactivate(entity_editor_camera);
 
 	entity_editor_camera_v_angle = -0.15;
 	entity_editor_camera_h_angle = 0.20;
@@ -116,6 +119,7 @@ void editor_EntityEditorInit()
 
 	editor_EntityEditorInitUI();
 
+	entity_editor_debug_draw_flags = R_DEBUG_DRAW_FLAG_DRAW_VIEWS | R_DEBUG_DRAW_FLAG_DRAW_ENTITIES;
 }
 
 void editor_EntityEditorFinish()
@@ -129,7 +133,7 @@ void editor_EntityEditorSetup()
 	mat3_t light_orientation = mat3_t_id();
 //	camera_SetCamera(entity_editor_camera);
 //	camera_SetMainViewCamera(entity_editor_camera);
-    renderer_SetActiveView((view_def_t *)entity_editor_camera);
+    renderer_SetMainView(entity_editor_view);
 
 	renderer_RegisterCallback(editor_EntityEditorPreDraw, PRE_SHADING_STAGE_CALLBACK);
 	renderer_RegisterCallback(editor_EntityEditorPostDraw, POST_SHADING_STAGE_CALLBACK);
@@ -139,6 +143,8 @@ void editor_EntityEditorSetup()
 	//entity_editor_current_entity_def = entity_GetEntityPointer("toilet", 1);
 	entity_editor_light_index = light_CreateLight("entity editor light", &light_orientation, vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), 10.0, 10.0, 0);
 
+
+    renderer_DebugDrawFlags(entity_editor_debug_draw_flags);
 	//editor_SetExplorerReadFileCallback(editor_EntityEditorLoadEntityFileCallback);
 	//editor_SetExplorerWriteFileCallback(editor_EntityEditorSaveEntityFileCallback);
 }
@@ -148,7 +154,7 @@ void editor_EntityEditorShutdown()
 	renderer_ClearRegisteredCallbacks();
 	renderer_SetClearColor(0.0, 0.0, 0.0);
 	light_DestroyLightIndex(entity_editor_light_index);
-	camera_Deactivate(entity_editor_camera);
+//	camera_Deactivate(entity_editor_camera);
 
 
 	if(ed_entity_editor_preview_entity.entity_index != INVALID_ENTITY_INDEX)
@@ -158,10 +164,7 @@ void editor_EntityEditorShutdown()
 		ed_entity_editor_update_preview_entity = 1;
 	}
 
-
-	//editor_ClearExplorerFileCallbacks();
-
-
+    entity_editor_debug_draw_flags = renderer_GetDebugDrawFlags();
 }
 
 void editor_EntityEditorRestart()
@@ -171,15 +174,19 @@ void editor_EntityEditorRestart()
 
 void editor_EntityEditorMain(float delta_time)
 {
+    struct view_def_t *view;
+	//if(entity_editor_orthographic_mode)
+	//{
+	//	CreateOrthographicMatrix(&entity_editor_camera->view_data.projection_matrix, -r_window_width * 0.005 * entity_editor_camera_distance, r_window_width * 0.005 * entity_editor_camera_distance, r_window_height * 0.005 * entity_editor_camera_distance, -r_window_height * 0.005 * entity_editor_camera_distance, -100.0, 100.0, &entity_editor_camera->frustum);
+	//}
+	//else
 
-	if(entity_editor_orthographic_mode)
-	{
-		CreateOrthographicMatrix(&entity_editor_camera->view_data.projection_matrix, -r_window_width * 0.005 * entity_editor_camera_distance, r_window_width * 0.005 * entity_editor_camera_distance, r_window_height * 0.005 * entity_editor_camera_distance, -r_window_height * 0.005 * entity_editor_camera_distance, -100.0, 100.0, &entity_editor_camera->frustum);
-	}
-	else
-	{
-		CreatePerspectiveMatrix(&entity_editor_camera->view_data.projection_matrix, 0.68, (float)r_window_width/(float)r_window_height, 0.1, 100.0, 0.0, 0.0, &entity_editor_camera->frustum);
-	}
+	view = renderer_GetViewPointer(entity_editor_view);
+
+
+	//{
+    CreatePerspectiveMatrix(&view->view_data.projection_matrix, 0.68, (float)r_window_width/(float)r_window_height, 0.1, 100.0, 0.0, 0.0, &view->frustum);
+	//}
 
 
 
@@ -294,18 +301,23 @@ void editor_EntityEditorMoveCamera()
 {
 	mat3_t orientation = mat3_t_id();
 
+	struct view_def_t *view;
+
+
+	view = renderer_GetViewPointer(entity_editor_view);
+
 	if(input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED)
 	{
-		entity_editor_camera_pivot_center.x += -entity_editor_camera->world_orientation.r_axis.floats[0] * mouse_dx * entity_editor_camera_distance -
-												entity_editor_camera->world_orientation.u_axis.floats[0] * mouse_dy * entity_editor_camera_distance;
+		entity_editor_camera_pivot_center.x += -view->world_orientation.r_axis.floats[0] * mouse_dx * entity_editor_camera_distance -
+												view->world_orientation.u_axis.floats[0] * mouse_dy * entity_editor_camera_distance;
 
 
-		entity_editor_camera_pivot_center.y += -entity_editor_camera->world_orientation.r_axis.floats[1] * mouse_dx * entity_editor_camera_distance -
-												entity_editor_camera->world_orientation.u_axis.floats[1] * mouse_dy * entity_editor_camera_distance;
+		entity_editor_camera_pivot_center.y += -view->world_orientation.r_axis.floats[1] * mouse_dx * entity_editor_camera_distance -
+												view->world_orientation.u_axis.floats[1] * mouse_dy * entity_editor_camera_distance;
 
 
-		entity_editor_camera_pivot_center.z += -entity_editor_camera->world_orientation.r_axis.floats[2] * mouse_dx * entity_editor_camera_distance -
-												entity_editor_camera->world_orientation.u_axis.floats[2] * mouse_dy * entity_editor_camera_distance;
+		entity_editor_camera_pivot_center.z += -view->world_orientation.r_axis.floats[2] * mouse_dx * entity_editor_camera_distance -
+												view->world_orientation.u_axis.floats[2] * mouse_dy * entity_editor_camera_distance;
 	}
 	else
 	{
@@ -330,7 +342,7 @@ void editor_EntityEditorMoveCamera()
 		}
 
 
-		entity_editor_camera->world_orientation = orientation;
+		view->world_orientation = orientation;
 	}
 
 }
@@ -340,6 +352,9 @@ void editor_EntityEditorUpdateCamera()
 {
 
 //	light_ptr_t entity_editor_light;
+
+
+    struct view_def_t *view = renderer_GetViewPointer(entity_editor_view);
 
     struct light_pointer_t entity_editor_light;
 
@@ -360,21 +375,21 @@ void editor_EntityEditorUpdateCamera()
 
 	if(!entity_editor_orthographic_mode)
 	{
-		entity_editor_camera->world_position.x = entity_editor_camera->world_orientation.f_axis.floats[0] * entity_editor_camera_distance + entity_editor_camera_pivot_center.x;
-		entity_editor_camera->world_position.y = entity_editor_camera->world_orientation.f_axis.floats[1] * entity_editor_camera_distance + entity_editor_camera_pivot_center.y;
-		entity_editor_camera->world_position.z = entity_editor_camera->world_orientation.f_axis.floats[2] * entity_editor_camera_distance + entity_editor_camera_pivot_center.z;
+		view->world_position.x = view->world_orientation.f_axis.floats[0] * entity_editor_camera_distance + entity_editor_camera_pivot_center.x;
+		view->world_position.y = view->world_orientation.f_axis.floats[1] * entity_editor_camera_distance + entity_editor_camera_pivot_center.y;
+		view->world_position.z = view->world_orientation.f_axis.floats[2] * entity_editor_camera_distance + entity_editor_camera_pivot_center.z;
 	}
 
 
 
-	entity_editor_light.position->position = entity_editor_camera->world_position;
+	entity_editor_light.position->position = view->world_position;
 	entity_editor_light.position->flags |= LIGHT_MOVED;
 	entity_editor_light.position->radius = PACK_LIGHT_RADIUS(entity_editor_camera_distance);
 	entity_editor_light.params->energy = PACK_LIGHT_ENERGY((entity_editor_camera_distance * entity_editor_camera_distance + 10.0));
 
 	//printf("%d\n", entity_editor_light.params->energy);
 
-	camera_ComputeWorldToCameraMatrix(entity_editor_camera);
+	renderer_ComputeViewMatrix(entity_editor_view);
 }
 
 
@@ -422,7 +437,7 @@ void editor_EntityEditorEdit()
 
 	mat4_t model_view_projection_matrix;
 	//camera_t *active_camera = camera_GetActiveCamera();
-	camera_t *active_camera = (camera_t *)renderer_GetActiveView();
+	struct view_def_t *main_view = renderer_GetMainViewPointer();
 	vec3_t direction;
 
 	if(bm_mouse & MOUSE_OVER_WIDGET)

@@ -8,6 +8,7 @@
 #include "GL/glew.h"
 
 #include "ed_globals.h"
+#include "r_view.h"
 
 extern int r_imediate_color_shader;
 
@@ -15,7 +16,8 @@ extern int r_imediate_color_shader;
 void editor_Draw3dHandle(vec3_t position, int transform_mode)
 {
 //	camera_t *active_camera = camera_GetActiveCamera();
-    camera_t *active_camera = (camera_t *)renderer_GetActiveView();
+    //camera_t *active_camera = (camera_t *)renderer_GetMainView();
+    struct view_def_t *main_view = renderer_GetMainViewPointer();
 	vec4_t cursor_position;
 	int i;
 	float d;
@@ -81,7 +83,7 @@ void editor_Draw3dHandle(vec3_t position, int transform_mode)
 		cursor_position.vec3 = position;
 		cursor_position.w = 1.0;
 
-		mat4_t_vec4_t_mult(&active_camera->view_data.view_matrix, &cursor_position);
+		mat4_t_vec4_t_mult(&main_view->view_data.view_matrix, &cursor_position);
 
 		//if(cursor_position.z < nznear)
 		{
@@ -109,8 +111,8 @@ void editor_Draw3dHandle(vec3_t position, int transform_mode)
 			forward_vector.z *= d;
 
 			renderer_SetShader(r_imediate_color_shader);
-			renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
-			renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+			renderer_SetProjectionMatrix(&main_view->view_data.projection_matrix);
+			renderer_SetViewMatrix(&main_view->view_data.view_matrix);
 			renderer_SetModelMatrix(NULL);
 			renderer_EnableImediateDrawing();
 
@@ -314,9 +316,9 @@ void editor_Draw3dHandle(vec3_t position, int transform_mode)
 
 void editor_Draw3dCursor(vec3_t position)
 {
-	camera_t *active_camera;
+	//camera_t *active_camera;
 //	active_camera = camera_GetActiveCamera();
-    active_camera = (camera_t *)renderer_GetActiveView();
+    struct view_def_t *main_view = renderer_GetMainViewPointer();
 	vec4_t cursor_position;
 	float ratio;
 	float qt;
@@ -325,9 +327,9 @@ void editor_Draw3dCursor(vec3_t position)
 	cursor_position.vec3 = position;
 	cursor_position.w = 1.0;
 
-	mat4_t_vec4_t_mult(&active_camera->view_data.view_matrix, &cursor_position);
-	qt = -active_camera->frustum.znear / active_camera->frustum.top;
-	qr = -active_camera->frustum.znear / active_camera->frustum.right;
+	mat4_t_vec4_t_mult(&main_view->view_data.view_matrix, &cursor_position);
+	qt = -main_view->frustum.znear / main_view->frustum.top;
+	qr = -main_view->frustum.znear / main_view->frustum.right;
 
 	if(cursor_position.z < 0.0)
 	{

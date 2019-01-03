@@ -48,8 +48,8 @@
 #include "entity.h"
 
 
-static camera_t *editor_camera;
-static int editor_camera_index;
+//static camera_t *editor_camera;
+//static int editor_camera_index;
 
 
 
@@ -96,7 +96,7 @@ extern float last_mouse_y;
 extern int bm_mouse;
 
 /* from player.c */
-extern player_t *active_player;
+//extern player_t *active_player;
 extern int spawn_point_count;
 extern spawn_point_t *spawn_points;
 
@@ -246,7 +246,7 @@ int ed_editor_angular_snap_value_index;
 char *ed_editor_snap_value_str;
 
 
-void editor_Init(int argc, char *argv[])
+void editor_Init()
 {
 
 	renderer_PushFunctionName("editor_Init");
@@ -284,101 +284,14 @@ void editor_Init(int argc, char *argv[])
 	editor_camera_yaw = 0.2;
 	editor_camera_pitch = -0.15;
 
-	//editor_camera = camera_CreateCamera("editor_camera", vec3(12.0, 10.0, 15.0), &r, 0.68, r_width, r_height, 0.1, 500.0, CAMERA_UPDATE_ON_RESIZE);
-	//camera_SetCamera(editor_camera);
 
 	engine_SetEngineState(ENGINE_PAUSED);
 
-	//return;
-
-	//path_AddSearchPath("shaders", SEARCH_PATH_SHADER);
-	//path_AddSearchPath("textures/world", SEARCH_PATH_TEXTURE);
-
-	//ed_draw_cursors_shader = shader_LoadShader("editor/draw_cursors");
 	ed_pick_brush_face_shader = shader_LoadShader("editor/pick_brush_face", "pick brush face");
-	//ed_brush_pick_shader = shader_LoadShader("editor/brush_pick");
-	//ed_light_pick_shader = shader_LoadShader("editor/light_pick");
-	//ed_spawn_point_pick_shader = shader_LoadShader("editor/spawn_point_pick");
 	ed_brush_dist_shader = shader_LoadShader("editor/brush_dist", "brush dist");
-	//ed_forward_pass_brush_shader = shader_LoadShader("editor/forward_pass_brush");
-	//ed_model_thumbnail_shader = shader_LoadShader("editor/model_thumbnail");
 	ed_pick_shader = shader_LoadShader("editor/pick", "pick");
 
 
-	int model_index;// = model_LoadModel("portal_gun6.mpk", "portal gun");
-	int entity_def_index;// = entity_CreateEntityDef("portal gun", ENTITY_TYPE_MOVABLE, model_index);
-	int entity_index;
-	struct entity_t *entity_def;
-	struct model_component_t *model_component;
-
-/*
-	collider_def_t *collider_def = physics_CreateColliderDef("cube");
-	physics_AddCollisionShape(collider_def, vec3(0.5, 0.5, 0.5), vec3(0.0, 0.0, 0.0), &r, COLLISION_SHAPE_BOX);
-
-	model_index = model_LoadModel("toilet2.mpk", "toilet");
-	entity_def_index = entity_CreateEntityDef("toilet");
-	entity_AddComponent(entity_def_index, COMPONENT_TYPE_MODEL, 1);
-	entity_AddComponent(entity_def_index, COMPONENT_TYPE_PHYSICS_CONTROLLER, 1);
-
-	entity_def = entity_GetEntityPointer("toilet", 1);
-	entity_SetEntityModel(entity_def_index, model_index, 1);
-	entity_SetEntityCollider(entity_def_index, collider_def, 1);*/
-
-/*	for(i = 0; i < 500; i++)
-	{
-		entity_SpawnEntity(&r, vec3(0.0, 5.0 + i, 0.0), vec3(1.0, 1.0, 1.0), entity_def_index, "toilet_ent");
-	}*/
-
-
-
-	//mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.25, 1);
-
-	//entity_SpawnEntity(&r, vec3(0.0, 0.0, 3.5), vec3(1.0, 1.0, 1.0), entity_def_index, "toilet_ent2");
-
-
-
-
-
-	//camera_PitchYawCamera(editor_camera, editor_camera_yaw, editor_camera_pitch);
-	//camera_ComputeWorldToCameraMatrix(editor_camera);
-
-	r = mat3_t_id();
-
-	//mat3_t_rotate(&r, vec3(0.0, 1.0, 0.0), 0.3, 1);
-	//mat3_t_rotate(&r, vec3(1.0, 0.0, 0.0), 0.3, 0);
-
-
-
-	/*int entity_index = */
-
-	/*for(i = 0; i < 100; i++)
-	{
-		entity_CreateEntity("bus stop", vec3(0.0, 5.0 + i * 2.0, 0.0), vec3(1.0, 1.0, 1.0), &r, entity_def_index);
-	}*/
-
-	//entity_CreateEntity("bus stop", vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, entity_def_index);
-	/*entity_CreateEntity("bus stop", vec3(-8.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, entity_def_index);
-	entity_CreateEntity("bus stop", vec3(-6.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, entity_def_index);
-	entity_CreateEntity("bus stop", vec3(-4.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, entity_def_index);
-	entity_CreateEntity("bus stop", vec3(-2.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, entity_def_index);
-	entity_CreateEntity("bus stop", vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, entity_def_index);
-	entity_CreateEntity("bus stop", vec3(2.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, entity_def_index);
-	entity_CreateEntity("bus stop", vec3(4.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, entity_def_index);
-	entity_CreateEntity("bus stop", vec3(6.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, entity_def_index);
-	entity_CreateEntity("bus stop", vec3(8.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, entity_def_index);
-	entity_CreateEntity("bus stop", vec3(10.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), &r, entity_def_index);*/
-	//brush_Init();
-
-	//char *data;
-	//int size;
-
-
-	//editor_t *editor;
-
-	/*brush_CreateBrush(vec3(0.0, 0.0, 0.0), &r, vec3(1.0, 1.0, 1.0), BRUSH_CUBE, 1);
-	brush_CreateBrush(vec3(5.0, 0.0, 0.0), &r, vec3(1.0, 1.0, 1.0), BRUSH_CUBE, 1);
-	brush_CreateBrush(vec3(-5.0, 0.0, 0.0), &r, vec3(1.0, 1.0, 1.0), BRUSH_CUBE, 1);*/
-	//brush_CreateBrush(vec3(2.0, 0.0, 0.0), &r, vec3(1.0, 1.0, 1.0), BRUSH_CUBE, 0);
 
 
 	input_RegisterKey(SDL_SCANCODE_ESCAPE);
@@ -390,8 +303,6 @@ void editor_Init(int argc, char *argv[])
 	input_RegisterKey(SDL_SCANCODE_C);
 	input_RegisterKey(SDL_SCANCODE_SPACE);
 	input_RegisterKey(SDL_SCANCODE_LSHIFT);
-
-
 
 
 	input_RegisterKey(SDL_SCANCODE_H);
@@ -413,14 +324,13 @@ void editor_Init(int argc, char *argv[])
 
 	input_RegisterKey(SDL_SCANCODE_LCTRL);
 
-	//renderer_RegisterCallback(renderer_EditorDraw, PRE_SHADING_STAGE_CALLBACK);
-	//renderer_RegisterCallback(renderer_PostDraw, POST_SHADING_STAGE_CALLBACK);
 
-	//SDL_GetDisplayMode(0, 0, &display_mode);
+	renderer_DebugDrawFlags(R_DEBUG_DRAW_FLAG_DRAW_ENTITIES |
+                            R_DEBUG_DRAW_FLAG_DRAW_LIGHTS |
+                            R_DEBUG_DRAW_FLAG_DRAW_WAYPOINTS |
+                            R_DEBUG_DRAW_FLAG_DRAW_TRIGGERS);
 
-	//glGenFramebuffers(1, &ed_pick_framebuffer_id);
-	//glGenTextures(1, &ed_pick_color_texture_id);
-	//glGenTextures(1, &ed_pick_depth_texture_id);
+
 
 	ed_pick_framebuffer = renderer_CreateFramebuffer(1920, 1080);
 	renderer_AddAttachment(&ed_pick_framebuffer, GL_COLOR_ATTACHMENT0, GL_RGBA32F, 1, GL_LINEAR);
@@ -430,103 +340,14 @@ void editor_Init(int argc, char *argv[])
 	renderer_AddAttachment(&ed_cursors_framebuffer, GL_COLOR_ATTACHMENT0, GL_RGBA8, 1, GL_LINEAR);
 	renderer_AddAttachment(&ed_cursors_framebuffer, GL_DEPTH_STENCIL_ATTACHMENT, 0, 1, GL_NEAREST);
 
-
-	//while(glGetError() != GL_NO_ERROR);
-	//glBindTexture(GL_TEXTURE_2D, ed_pick_color_texture_id);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, r_window_width, r_window_height, 0, GL_RGB, GL_FLOAT, NULL);
-	/*status = glGetError();
-	if(status != GL_NO_ERROR)
-	{
-		printf("editor_Init: %s generated while initalizing ed_pick_color_texture_id.\n", renderer_GetGLEnumString(status));
-	}*/
-
-
-	//glBindTexture(GL_TEXTURE_2D, ed_pick_depth_texture_id);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, r_window_width, r_window_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	//glBindTexture(GL_TEXTURE_2D, 0);
-
-	//glBindFramebuffer(GL_READ_FRAMEBUFFER, ed_pick_framebuffer_id);
-	//glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ed_pick_color_texture_id, 0);
-	//glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, ed_pick_depth_texture_id, 0);
-
-
-
-	/*glGenFramebuffers(1, &ed_cursors_framebuffer_id);
-	glGenTextures(1, &ed_cursors_color_texture_id);
-	glGenTextures(1, &ed_cursors_depth_texture_id);
-
-
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, ed_cursors_framebuffer_id);
-
-	glBindTexture(GL_TEXTURE_2D, ed_cursors_color_texture_id);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, r_window_width, r_window_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-
-	glBindTexture(GL_TEXTURE_2D, ed_cursors_depth_texture_id);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, r_window_width, r_window_height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ed_cursors_color_texture_id, 0);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, ed_cursors_depth_texture_id, 0);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, ed_cursors_depth_texture_id, 0);*/
-
-	//glClear(GL_COLOR_BUFFER_BIT);
-
-
-	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-
-
-
-
-	//ed_max_selections = 1024;
-	//ed_selection_count = 0;
-	//ed_selections = memory_Malloc(sizeof(pick_record_t ) * ed_max_selections, "editor_Init");
-	//pie_player_index = player_CreatePlayer("pie player", vec3(0, 0, 0), &r);
-
-
-	//brush_CreateBrush(vec3(0, 0, 0), &r, vec3(1, 1, 1), BRUSH_CUBE, 1);
-
-
-	//ed_3d_cursor_position = vec3(0.0, 0.0, 0.0);
-	//ed_3d_handle_position = vec3(0.0, 0.0, 0.0);
-
-
-	//ed_3d_handle_flags = 0;
-	//ed_3d_handle_pivot_mode = ED_3D_HANDLE_PIVOT_MODE_ACTIVE_OBJECT_ORIGIN;
-	//ed_handle_3d_mode = HANDLE_3D_TRANSLATION;
-	//editor_Set3dHandleTransformMode(ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION);
-	//editor_SetEditingMode(EDITING_MODE_OBJECT);
-
 	editor_InitUI();
-
-//	editor_SetProjectName("untitled.wtf");
 
 	editor_RegisterEditor("Level editor", editor_LevelEditorInit, editor_LevelEditorFinish, editor_LevelEditorRestart, editor_LevelEditorSetup, editor_LevelEditorShutdown, editor_LevelEditorMain);
 	editor_RegisterEditor("Entity editor", editor_EntityEditorInit, editor_EntityEditorFinish, editor_EntityEditorRestart, editor_EntityEditorSetup, editor_EntityEditorShutdown, editor_EntityEditorMain);
 
 	editor_StartEditor("Level editor");
+
+	renderer_Disable(R_VERBOSE_DEBUG);
 
 
 	renderer_PopFunctionName();
@@ -582,6 +403,7 @@ void editor_Main(float delta_time)
 	}
 
 	editor_MiscMenu();
+	editor_RendererMenu();
 	editor_EditorsMenu();
 	editor_UpdateExplorer();
 }

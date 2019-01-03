@@ -9,6 +9,7 @@
 #include "..\..\common\r_shader.h"
 #include "..\..\common\r_gl.h"
 #include "..\..\common\r_main.h"
+#include "..\..\common\r_view.h"
 #include "..\..\common\portal.h"
 #include "..\..\common\navigation.h"
 #include "..\..\common\containers\stack_list.h"
@@ -17,6 +18,8 @@
 #include "ed_draw.h"
 #include "bsp_cmp.h"
 #include "..\brush.h"
+
+#include <math.h>
 
 /* from editor.c */
 /*extern unsigned int ed_cursors_framebuffer_id;
@@ -44,6 +47,7 @@ extern pick_list_t level_editor_brush_face_pick_list;
 
 extern vec3_t level_editor_3d_handle_position;
 extern vec3_t level_editor_3d_cursor_position;
+extern float level_editor_linear_snap_value;
 extern int level_editor_3d_handle_transform_mode;
 extern int level_editor_editing_mode;
 extern int level_editor_state;
@@ -157,7 +161,7 @@ void editor_LevelEditorDrawBrushes()
 //	camera_t *active_camera = camera_GetActiveCamera();
 //	camera_t *main_view = camera_GetMainViewCamera();
 
-    camera_t *active_camera = (camera_t *)renderer_GetActiveView();
+    struct view_def_t *main_view = renderer_GetMainViewPointer();
 	struct batch_t *batch;
 	material_t *material;
 	bsp_polygon_t *polygon;
@@ -219,7 +223,7 @@ void editor_LevelEditorDrawBrushes()
 
 	renderer_EnableImediateDrawing();
 	renderer_SetShader(r_imediate_color_shader);
-	renderer_SetActiveView((view_def_t *)active_camera);
+	//renderer_SetMainView(active_camera);
 	renderer_SetModelMatrix(NULL);
 	renderer_UpdateMatrices();
 	//glPolygonOffset(58.0, 20.0);
@@ -286,8 +290,11 @@ void editor_LevelEditorDrawGrid()
 {
 	int i;
 	int j;
+
+	float snap_value;
 	//camera_t *active_camera = camera_GetActiveCamera();
-	camera_t *active_camera = (camera_t *)renderer_GetActiveView();
+	struct view_def_t *main_view = renderer_GetMainViewPointer();
+	mat4_t grid_transform = mat4_t_id();
 
 	renderer_SetShader(r_imediate_color_shader);
 	glLineWidth(1.0);
@@ -295,28 +302,52 @@ void editor_LevelEditorDrawGrid()
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 
-	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
-	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+	renderer_SetProjectionMatrix(&main_view->view_data.projection_matrix);
+	renderer_SetViewMatrix(&main_view->view_data.view_matrix);
 	renderer_SetModelMatrix(NULL);
+
+    glLineWidth(2.0);
 
 	renderer_EnableImediateDrawing();
 	renderer_Begin(GL_QUADS);
 	renderer_Color3f(0.3, 0.3, 0.3);
 
-	for(i = 0; i <= 10; i++)
+
+    if(level_editor_linear_snap_value != 0.0)
+    {
+        snap_value = level_editor_linear_snap_value;
+    }
+    else
+    {
+        snap_value = 1.0;
+    }
+
+
+	grid_transform.floats[3][0] = snap_value * (int)(main_view->world_position.floats[0] / snap_value);
+	grid_transform.floats[3][2] = snap_value * (int)(main_view->world_position.floats[2] / snap_value);
+
+
+	grid_transform.floats[0][0] = snap_value;
+	grid_transform.floats[2][2] = snap_value;
+
+	renderer_SetModelMatrix(&grid_transform);
+
+	#define GRID_DIVS 50 / snap_value
+
+	for(i = 0; i <= GRID_DIVS; i++)
 	{
-		renderer_Vertex3f(-i, 0.0,-10.0);
-		renderer_Vertex3f(-i, 0.0, 10.0);
-		renderer_Vertex3f( i, 0.0, 10.0);
-		renderer_Vertex3f( i, 0.0,-10.0);
+		renderer_Vertex3f(-i, 0.0,-GRID_DIVS);
+		renderer_Vertex3f(-i, 0.0, GRID_DIVS);
+		renderer_Vertex3f( i, 0.0, GRID_DIVS);
+		renderer_Vertex3f( i, 0.0,-GRID_DIVS);
 	}
 
-	for(i = 0; i <= 10; i++)
+	for(i = 0; i <= GRID_DIVS; i++)
 	{
-		renderer_Vertex3f(-10.0, 0.0,-i);
-		renderer_Vertex3f( 10.0, 0.0,-i);
-		renderer_Vertex3f( 10.0, 0.0, i);
-		renderer_Vertex3f(-10.0, 0.0, i);
+		renderer_Vertex3f(-GRID_DIVS, 0.0,-i);
+		renderer_Vertex3f( GRID_DIVS, 0.0,-i);
+		renderer_Vertex3f( GRID_DIVS, 0.0, i);
+		renderer_Vertex3f(-GRID_DIVS, 0.0, i);
 	}
 
 	renderer_End();
@@ -337,7 +368,7 @@ void editor_LevelEditorDrawSelected()
 	brush_t *brush;
 	bsp_polygon_t *polygon;
 	pick_record_t *record;
-	camera_t *active_view;
+//	camera_t *active_view;
 	portal_t *portal;
 	struct waypoint_t *waypoint;
 	struct waypoint_t *waypoints;
@@ -349,11 +380,11 @@ void editor_LevelEditorDrawSelected()
 	vec3_t portal_center;
 
 	//active_view = camera_GetActiveCamera();
-	active_view = (camera_t *)renderer_GetActiveView();
+	struct view_def_t *main_view = renderer_GetMainViewPointer();
 
 
 	//renderer_SetProjectionMatrix(&active_view)
-	renderer_SetActiveView(active_view);
+	//renderer_SetMainView(active_view);
 	renderer_SetModelMatrix(NULL);
 
 

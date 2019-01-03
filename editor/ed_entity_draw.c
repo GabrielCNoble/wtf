@@ -8,6 +8,7 @@
 #include "..\..\common\r_main.h"
 #include "..\..\common\r_debug.h"
 #include "..\..\common\r_shader.h"
+#include "..\..\common\r_view.h"
 #include "..\..\common\camera.h"
 #include "..\..\common\gmath\vector.h"
 #include "..\..\common\gmath\matrix.h"
@@ -162,7 +163,8 @@ void editor_EntityEditorDrawEntityDef()
 
 void editor_EntityEditorDrawColliderDef(int pick)
 {
-	camera_t *active_camera;
+//	camera_t *active_camera;
+    struct view_def_t *main_view;
 	int i;
 	int j;
 
@@ -182,7 +184,7 @@ void editor_EntityEditorDrawColliderDef(int pick)
 
 
 	//active_camera = camera_GetActiveCamera();
-	active_camera = (camera_t *)renderer_GetActiveView();
+	main_view = renderer_GetMainViewPointer();
 	renderer_EnableImediateDrawing();
 	renderer_SetShader(r_imediate_color_shader);
 
@@ -190,8 +192,8 @@ void editor_EntityEditorDrawColliderDef(int pick)
 	//glDisable(GL_DEPTH_TEST);
 	//glDisable(GL_CULL_FACE);
 
-	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
-	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+	renderer_SetProjectionMatrix(&main_view->view_data.projection_matrix);
+	renderer_SetViewMatrix(&main_view->view_data.view_matrix);
 
 
 
@@ -206,18 +208,17 @@ void editor_EntityEditorDrawColliderDef(int pick)
 			transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
 			physics_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_PHYSICS]);
 
-			collider_def = physics_component->collider.collider_def;
+			collider_def = physics_GetColliderDefPointerHandle(physics_component->collider);
 
 			if(collider_def)
 			{
 				mat4_t_compose2(&entity_transform, &transform_component->orientation, transform_component->position, transform_component->scale);
 
-				for(j = 0; j < collider_def->collision_shape_count; j++)
+				for(j = 0; j < collider_def->collision_shape.element_count; j++)
 				{
-					collision_shape = collider_def->collision_shape + j;
+					//collision_shape = collider_def->collision_shape + j;
 
-
-
+					collision_shape = physics_GetCollisionShapePointer(physics_component->collider, j);
 
 					if(collision_shape == ed_entity_editor_hovered_collision_shape)
 					{
@@ -412,7 +413,7 @@ void editor_EntityEditorDrawGrid()
 	int i;
 	int j;
 //	camera_t *active_camera = camera_GetActiveCamera();
-    camera_t *active_camera = (camera_t *)renderer_GetActiveView();
+    struct view_def_t *main_view = renderer_GetMainViewPointer();
 
 	//glUseProgram(0);
 	//renderer_SetShader(-1);
@@ -422,7 +423,7 @@ void editor_EntityEditorDrawGrid()
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 
-	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+	renderer_SetViewMatrix(&main_view->view_data.view_matrix);
 	renderer_SetModelMatrix(NULL);
 
 	renderer_EnableImediateDrawing();

@@ -145,7 +145,7 @@ typedef struct bsp_triangle_t
 
 }bsp_triangle_t;
 
-struct bsp_vis_probe_t
+struct bsp_vis_sample_t
 {
     vec3_t position;
     int valid;

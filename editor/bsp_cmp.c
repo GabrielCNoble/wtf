@@ -4043,7 +4043,7 @@ void bsp_RecursiveLinearizeBsp(bsp_node_t *bsp, vertex_t *vertices, int *vertex_
 			#endif
 
 
-			dleaf->pvs = NULL;
+			dleaf->pvs = leaf->pvs;
 
 			//leaf->pvs = dleaf->pvs;
 
@@ -4759,7 +4759,11 @@ void bsp_CompileBsp(int remove_outside)
 
 	//bsp_LockBrushPolygons();
 
+    //memory_CheckCorrupted();
+
 	polygons = brush_BuildPolygonListFromBrushes();
+
+	//memory_CheckCorrupted();
 
 	//bsp_UnlockBrushPolygons();
 
@@ -4775,28 +4779,158 @@ void bsp_CompileBsp(int remove_outside)
 	world_bsp = bsp_SolidLeafBsp(polygons);
 	printf("done\n");
 
-	printf("bsp_CompileBsp: bsp_ClipCoplanarLeafPolygons... ");
-	bsp_ClipCoplanarLeafPolygons(world_bsp);
-	printf("done\n");
+	//memory_CheckCorrupted();
+
+	//printf("bsp_CompileBsp: bsp_ClipCoplanarLeafPolygons... ");
+	//bsp_ClipCoplanarLeafPolygons(world_bsp);
+	//printf("done\n");
+
+	//memory_CheckCorrupted();
 
 
 	printf("bsp_CompileBsp: bsp_TriangulateLeafPolygons... ");
 	bsp_TriangulateLeafPolygons(world_bsp, &w_world_triangle_count);
 	printf("done\n");
 
-	printf("bsp_CompileBsp: bsp_MergeCoplanarLeafTriangles... ");
-	bsp_MergeCoplanarLeafTriangles(world_bsp, &w_world_triangle_count);
-	printf("done\n");
+    //memory_CheckCorrupted();
+
+	//printf("bsp_CompileBsp: bsp_MergeCoplanarLeafTriangles... ");
+	//bsp_MergeCoplanarLeafTriangles(world_bsp, &w_world_triangle_count);
+	//printf("done\n");
+
+	//memory_CheckCorrupted();
 
 
 	printf("bsp_CompileBsp: bsp_BuildTriangleGroups... ");
 	bsp_BuildTriangleGroups(world_bsp, &w_world_batches, &w_world_batch_count);
 	printf("done\n");
 
+	//memory_CheckCorrupted();
+
 
 	printf("bsp_CompileBsp: bsp_LinearizeBsp... ");
 	bsp_LinearizeBsp(world_bsp, &w_world_vertices, &w_world_vertices_count, &w_world_nodes, &w_world_nodes_count, &w_world_leaves, &w_world_leaves_count, w_world_batches, w_world_batch_count, 1);
 	printf("done\n");
+
+	//memory_CheckCorrupted();
+
+/*
+	struct bsp_vis_sample_t *samples;
+	struct bsp_vis_sample_t *sample;
+	struct trace_t result;
+
+	struct bsp_dleaf_t *leaf;
+
+	vec3_t max = vec3_t_c(0.0, 0.0, 0.0);
+	vec3_t min = vec3_t_c(0.0, 0.0, 0.0);
+	vec3_t range;
+	vec3_t pos;
+
+    int leaf_index;
+
+	int x;
+	int y;
+	int z;
+
+	int rx;
+	int ry;
+
+	int cx;
+	int cy;
+	int cz;
+
+
+	vec3_t start;
+	vec3_t end;
+
+	vec3_t dir;
+
+	//bsp_BspBounds(world_bsp, &max, &min);
+
+	//samples = memory_Calloc(1000 * 1000 * 1000, sizeof(struct bsp_vis_sample_t));
+
+	#define BSP_VIS_SAMPLE_DENSITY 2
+    #define BSP_VIS_RESOLUTION 4
+
+    printf("bsp_ClassifyViewSamples...");
+
+    for(leaf_index = 0; leaf_index < w_world_leaves_count; leaf_index++)
+    {
+        leaf = w_world_leaves + leaf_index;
+
+        range.x = leaf->extents.x * 2.0;
+        range.y = leaf->extents.y * 2.0;
+        range.z = leaf->extents.z * 2.0;
+
+        pos.x = leaf->center.x - leaf->extents.x;
+        pos.y = leaf->center.y - leaf->extents.y;
+        pos.z = leaf->center.z - leaf->extents.z;
+
+        cx = 1 + range.x * BSP_VIS_SAMPLE_DENSITY;
+        cy = 1 + range.y * BSP_VIS_SAMPLE_DENSITY;
+        cz = 1 + range.z * BSP_VIS_SAMPLE_DENSITY;
+
+        samples = memory_Calloc(cx * cy * cz, sizeof(struct bsp_vis_sample_t));
+
+        for(z = 0; z < cz; z++)
+        {
+            for(y = 0; y < cy; y++)
+            {
+                for(x = 0; x < cx; x++)
+                {
+                    sample = samples + (z * cy * cx) + (y * cx) + x;
+
+                    sample->position.x = pos.x + range.x * ((float)x / (float)cx);
+                    sample->position.y = pos.y + range.y * ((float)y / (float)cy);
+                    sample->position.z = pos.z + range.z * ((float)z / (float)cz);
+
+                    sample->valid = (bsp_GetCurrentLeaf(w_world_nodes, sample->position) == leaf);
+                }
+            }
+        }
+
+        for(z = 0; z < cz; z++)
+        {
+            for(y = 0; y < cy; y++)
+            {
+                for(x = 0; x < cx; x++)
+                {
+                    sample = samples + (z * cy * cx) + (y * cx) + x;
+
+                    if(sample->valid)
+                    {
+                        for(ry = 0; ry < BSP_VIS_RESOLUTION; ry++)
+                        {
+                            for(rx = 0; rx < BSP_VIS_RESOLUTION; rx++)
+                            {
+                                dir.x = -1.0 + 2.0 * ((float)rx / (float)BSP_VIS_RESOLUTION);
+                                dir.y = -1.0 + 2.0 * ((float)ry / (float)BSP_VIS_RESOLUTION);
+                                dir.z = -1.0;
+
+                                dir = normalize3(dir);
+
+                                start = sample->position;
+
+                                end.x = sample->position.x + dir.x * 1000.0;
+                                end.y = sample->position.y + dir.y * 1000.0;
+                                end.z = sample->position.z + dir.z * 1000.0;
+
+                                bsp_FirstHit(w_world_nodes, start, end, &result);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        printf("%.03f%%\n", 100.0 * ((float)leaf_index / (float)w_world_leaves_count));
+
+        memory_Free(samples);
+    }
+
+    printf("done\n");
+*/
+
 
 
 	//bsp_AllocPvsForLeaves(world_bsp);
@@ -4806,6 +4940,8 @@ void bsp_CompileBsp(int remove_outside)
 	//memory_CheckCorrupted();
 
 	world_Update();
+
+	//memory_CheckCorrupted();
 
 	//printf("after world_Update...\n");
 	//log_LogMessage(LOG_MESSAGE_NOTIFY, "after world_Update...");
@@ -4821,8 +4957,8 @@ void bsp_CompileBsp(int remove_outside)
 	}
 	*/
 
-	bsp_build_thread = SDL_CreateThread(bsp_CalculatePvsAssync, "calculate pvs thread", world_bsp);
-	SDL_DetachThread(bsp_build_thread);
+	//bsp_build_thread = SDL_CreateThread(bsp_CalculatePvsAssync, "calculate pvs thread", world_bsp);
+	//SDL_DetachThread(bsp_build_thread);
 
 	b_compiling = 0;
 

@@ -1,44 +1,57 @@
 [header]
 -vertice count
--total indice count (across all lods)
--batch count
--lod count
--vertices
+-indice count (across all lods)
 
+-batch count (this is essentially how many materials there are in this model. The 
+number of batches is the same for every lod...)
+
+-lod count
+
+
+
+[body]
+
+-vertices buffer
+-indices buffer (for all the lods...)
+
+
+
+
+
+-lod buffer (each lod has the same number of batches...)
+	-[lod0]
+	-[lod1]
+	-[lod2]
+	.
+	.
+	.
 
 [lod0]
--lod indice count (how many indices this lod has)
--lod indice buffer
+-batch start (offset into the bantch buffer)
+-batch count
+
+-indice start (offset into the indices buffer. This defines wher this lod's indice
+buffer starts...)
+-indice count (how many indices this lod has)
+
+
+
+
+
+
+
+
+-batch buffer (the group of batches referenced by a lod is determined by how much batches are
+in this model. All the lods have the same number of batches...)
+	-[batch]
+	-[batch]
+	-[batch]
+	.
+	.
+	.
 
 [batch]
--material name0
+-material name
 -batch indice start (first indice inside the lod indice buffer)
 -batch indice count
 
-[batch]
--material name1
--batch indice start 
--batch indice count
-
-
-.
-.
-.
-
-
-[lod1]
--lod indice count
--lod indice buffer
-
-[batch]
--material name0
--batch indice start 
--batch indice count
-
-[batch]
--material name1
--batch indice start 
--batch indice count
-.
-.
-.

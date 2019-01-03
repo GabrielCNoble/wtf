@@ -77,6 +77,9 @@ typedef struct pvs_for_leaf_stack_t
 
 void bsp_GenVisSamples(struct bsp_node_t *bsp);
 
+void bsp_CalculatePvs2();
+
+void bsp_CalculatePvs3();
 
 
 

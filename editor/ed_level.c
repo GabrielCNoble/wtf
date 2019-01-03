@@ -2,6 +2,8 @@
 #include "ed_level_draw.h"
 #include "ed_level_ui.h"
 #include "..\..\common\r_main.h"
+#include "..\..\common\r_view.h"
+#include "..\common\r_debug.h"
 
 #include "..\..\common\gmath\matrix.h"
 #include "..\..\common\gmath\vector.h"
@@ -13,6 +15,7 @@
 #include "..\editor.h"
 #include "..\ed_selection.h"
 #include "..\brush.h"
+#include "..\ed_ui_explorer.h"
 
 #include "..\..\common\camera.h"
 #include "..\..\common\input.h"
@@ -113,6 +116,9 @@ extern brush_t *brushes;
 extern brush_t *last_brush;
 extern int brush_count;
 
+/* from texture.c */
+extern struct stack_list_t tex_textures;
+
 /************************************************************************************************************/
 /************************************************************************************************************/
 /************************************************************************************************************/
@@ -125,7 +131,8 @@ extern int brush_count;
 float level_editor_camera_pitch = 0.0;
 float level_editor_camera_yaw = 0.0;
 float level_editor_camera_speed_multiplier = 1.0;
-camera_t *level_editor_camera = NULL;
+struct view_handle_t level_editor_view = INVALID_VIEW_HANDLE;
+//camera_t *level_editor_camera = NULL;
 
 
 /*int level_editor_max_selections = 0;
@@ -175,6 +182,7 @@ int level_editor_draw_3d_handle = 0;
 that exists in the world... */
 int level_editor_has_copied_data = 0;
 int level_editor_need_to_copy_data = 1;
+int level_editor_debug_draw_flags = 0;
 
 brush_t *level_editor_brushes = NULL;
 brush_t *level_editor_last_brush = NULL;
@@ -235,6 +243,30 @@ struct stack_list_t brush_transforms;
 
 
 char level_editor_level_name[PATH_MAX] = {0};
+char level_editor_level_path[PATH_MAX] = {0};
+
+
+enum LEVEL_EDITOR_LEVEL_FODERS
+{
+    LEVEL_EDITOR_FOLDER_FIRST = 0,
+    LEVEL_EDITOR_FOLDER_MODELS = LEVEL_EDITOR_FOLDER_FIRST,
+    LEVEL_EDITOR_FOLDER_ENTITIES,
+    LEVEL_EDITOR_FOLDER_SCRIPTS,
+    LEVEL_EDITOR_FOLDER_SOUNDS,
+    LEVEL_EDITOR_FOLDER_TEXTURES,
+    LEVEL_EDITOR_FOLDER_LAST,
+};
+
+
+char *level_editor_level_folder_names[] =
+{
+    "models",
+    "entities",
+    "scripts",
+    "sounds",
+    "textures",
+    NULL,
+};
 
 
 /************************************************************************************************************/
@@ -253,12 +285,19 @@ void editor_LevelEditorInit()
 {
 	mat3_t r = mat3_t_id();
 	int i;
-	level_editor_camera = camera_CreateCamera("level editor camera", vec3_t_c(20.0, 10.0, 15.0), &r, 0.68, r_width, r_height, 0.1, 500.0, 0);
+	level_editor_view = renderer_CreateViewDef("level editor camera", vec3_t_c(20.0, 10.0, 15.0), &r, 0.68, r_width, r_height, 0.1, 500.0, 0);
 	//level_editor_camera = camera_CreateCamera("level editor camera", vec3(0.0, 7.0, 0.0), &r, 0.68, r_width, r_height, 0.1, 500.0, 0);
 
-	camera_Deactivate(level_editor_camera);
+//	camera_Deactivate(level_editor_camera);
 	level_editor_camera_yaw = 0.2;
 	level_editor_camera_pitch = -0.15;
+
+
+	level_editor_level_folder_names[LEVEL_EDITOR_FOLDER_MODELS] = "models";
+	level_editor_level_folder_names[LEVEL_EDITOR_FOLDER_ENTITIES] = "entities";
+	level_editor_level_folder_names[LEVEL_EDITOR_FOLDER_SCRIPTS] = "scripts";
+	level_editor_level_folder_names[LEVEL_EDITOR_FOLDER_SOUNDS] = "sounds";
+	level_editor_level_folder_names[LEVEL_EDITOR_FOLDER_TEXTURES] = "textures";
 
 	//level_editor_camera_yaw = 0.0;
 	//level_editor_camera_pitch = 0.0;
@@ -277,8 +316,8 @@ void editor_LevelEditorInit()
 	level_editor_brush_face_uv_pick_list.record_count = 0;
 	level_editor_brush_face_uv_pick_list.records = memory_Malloc(sizeof(pick_record_t) * level_editor_brush_face_uv_pick_list.max_records);
 
-	camera_PitchYawCamera(level_editor_camera, level_editor_camera_yaw, level_editor_camera_pitch);
-	camera_ComputeWorldToCameraMatrix(level_editor_camera);
+	renderer_PitchYawView(level_editor_view, level_editor_camera_yaw, level_editor_camera_pitch);
+	renderer_ComputeViewMatrix(level_editor_view);
 
 	editor_LevelEditorUIInit();
 
@@ -377,8 +416,8 @@ void editor_LevelEditorInit()
 
 	//entity = entity_GetNestledEntityHandle(entity, "weapon entity");
 
-    struct world_script_t *world_script = world_LoadScript("map.was", "map");
-    world_SetWorldScript(world_script);
+    //struct world_script_t *world_script = world_LoadScript("map.was", "map");
+    //world_SetWorldScript(world_script);
 
 
     //struct sound_handle_t noise = sound_GenerateNoise("noise", 2.0);
@@ -520,6 +559,17 @@ void editor_LevelEditorInit()
 
 	//int trigger = entity_CreateTrigger(NULL, vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 5.0, 1.0), "Trigger", "trigger");
 	//entity_AddTriggerFilter(trigger, "player");
+
+
+	struct skeleton_handle_t skeleton_def = animation_LoadSkeleton("tri_anim.ozz");
+	struct animation_handle_t animation = animation_LoadAnimation("le_cool_animation.ozz");
+
+	struct skeleton_handle_t skeleton = animation_SpawnSkeleton(skeleton_def);
+
+	animation_PlayAnimation(skeleton, animation);
+
+	level_editor_debug_draw_flags = R_DEBUG_DRAW_FLAG_DRAW_ENTITIES | R_DEBUG_DRAW_FLAG_DRAW_LIGHTS |
+                                    R_DEBUG_DRAW_FLAG_DRAW_TRIGGERS | R_DEBUG_DRAW_FLAG_DRAW_WAYPOINTS;
 }
 
 void editor_LevelEditorFinish()
@@ -554,12 +604,14 @@ void editor_LevelEditorSetup()
 {
 //	camera_SetCamera(level_editor_camera);
 //	camera_SetMainViewCamera(level_editor_camera);
-    renderer_SetActiveView((view_def_t *)level_editor_camera);
+    renderer_SetMainView(level_editor_view);
 
 	renderer_RegisterCallback(editor_LevelEditorPreDraw, PRE_SHADING_STAGE_CALLBACK);
 	renderer_RegisterCallback(editor_LevelEditorPostDraw, POST_SHADING_STAGE_CALLBACK);
 	editor_LevelEditorUISetup();
 	editor_LevelEditorRestoreLevelData();
+
+	renderer_DebugDrawFlags(level_editor_debug_draw_flags);
 
 	//editor_SetExplorerReadFileCallback(editor_LevelEditorLoadLevel);
 	//editor_SetExplorerWriteFileCallback(editor_LevelEditorSaveLevel);
@@ -576,9 +628,11 @@ void editor_LevelEditorShutdown()
 	editor_LevelEditorCopyLevelData();
 	editor_LevelEditorClearLevelData();
 
+	level_editor_debug_draw_flags = renderer_GetDebugDrawFlags();
+
 	//editor_ClearExplorerFileCallbacks();
 
-	camera_Deactivate(level_editor_camera);
+	//camera_Deactivate(level_editor_camera);
 }
 
 void editor_LevelEditorRestart()
@@ -588,9 +642,11 @@ void editor_LevelEditorRestart()
 
 void editor_LevelEditorMain(float delta_time)
 {
-	camera_t *active_camera;
+//	camera_t *active_camera;
 
 	portal_t *portal;
+
+	struct view_def_t *view;
 
 
 	static float r = -1.0;
@@ -599,12 +655,16 @@ void editor_LevelEditorMain(float delta_time)
 
 	r += 0.005;
 
+
+
+    view = renderer_GetViewPointer(level_editor_view);
+
 	//active_camera = camera_GetActiveCamera();
 
 	//active_camera = camera_GetMainViewCamera();
 	//if(active_camera == level_editor_camera)
 	{
-		CreatePerspectiveMatrix(&level_editor_camera->view_data.projection_matrix, 0.68, (float)r_window_width / (float)r_window_height, 0.1, 500.0, 0.0, 0.0, &level_editor_camera->frustum);
+		CreatePerspectiveMatrix(&view->view_data.projection_matrix, 0.68, (float)r_window_width / (float)r_window_height, 0.1, 500.0, 0.0, 0.0, &view->frustum);
 	}
 
 
@@ -794,7 +854,7 @@ void editor_LevelEditorEdit(float delta_time)
 {
 	pick_record_t record;
 	//camera_t *active_camera = camera_GetActiveCamera();
-	camera_t *active_camera = (camera_t *)renderer_GetActiveView();
+	struct view_def_t *main_view = renderer_GetMainViewPointer();
 	mat4_t model_view_projection_matrix;
 	vec4_t p;
 	vec4_t sp;
@@ -857,7 +917,7 @@ void editor_LevelEditorEdit(float delta_time)
 		{
 			p.vec3 = level_editor_3d_handle_position;
 			p.w = 1.0;
-			mat4_t_mult_fast(&model_view_projection_matrix, &active_camera->view_data.view_matrix, &active_camera->view_data.projection_matrix);
+			mat4_t_mult_fast(&model_view_projection_matrix, &main_view->view_data.view_matrix, &main_view->view_data.projection_matrix);
 			mat4_t_vec4_t_mult(&model_view_projection_matrix, &p);
 
 
@@ -902,7 +962,7 @@ void editor_LevelEditorEdit(float delta_time)
 				p.vec3 = direction;
 				p.w = 0.0;
 
-				mat4_t_vec4_t_mult(&active_camera->view_data.view_matrix, &p);
+				mat4_t_vec4_t_mult(&main_view->view_data.view_matrix, &p);
 
 				screen_x = p.x;
 				screen_y = p.y;
@@ -952,7 +1012,7 @@ void editor_LevelEditorEdit(float delta_time)
 
 				amount = asin(prev_dx * screen_dy - prev_dy * screen_dx);
 
-				d = dot3(direction, active_camera->world_orientation.f_axis);
+				d = dot3(direction, main_view->world_orientation.f_axis);
 
 				if(d < 0)
 				{
@@ -960,7 +1020,7 @@ void editor_LevelEditorEdit(float delta_time)
 				}
 				else if(d == 0)
 				{
-					d = dot3(direction, active_camera->world_orientation.r_axis);
+					d = dot3(direction, main_view->world_orientation.r_axis);
 
 					if(d < 0)
 					{
@@ -989,7 +1049,7 @@ void editor_LevelEditorEdit(float delta_time)
 				switch(level_editor_3d_handle_transform_mode)
 				{
 					case ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION:
-						amount *= 0.5;
+						//amount *= 0.5;
 
 						editor_LevelEditorTranslateSelections(direction, amount);
 					break;
@@ -1081,7 +1141,7 @@ void editor_LevelEditorEdit(float delta_time)
 		{
             if(input_GetKeyStatus(SDL_SCANCODE_S) & KEY_JUST_PRESSED)
 			{
-
+                editor_LevelEditorQuickSave();
 			}
 		}
 		else if(input_GetKeyStatus(SDL_SCANCODE_G) & KEY_JUST_PRESSED)
@@ -1199,6 +1259,8 @@ void editor_LevelEditorFly(float delta_time)
 	vec3_t translation = {0.0, 0.0, 0.0};
 	vec3_t velocity = {0.0, 0.0, 0.0};
 
+	struct view_def_t *view;
+
 
 	if(engine_GetEngineState() & ENGINE_PAUSED)
 	{
@@ -1212,10 +1274,12 @@ void editor_LevelEditorFly(float delta_time)
 		if(level_editor_camera_yaw > 1.0) level_editor_camera_yaw = -1.0 + (level_editor_camera_yaw - 1.0);
 		else if(level_editor_camera_yaw < -1.0) level_editor_camera_yaw = 1.0 + (level_editor_camera_yaw + 1.0);
 
-		camera_PitchYawCamera(level_editor_camera, level_editor_camera_yaw, level_editor_camera_pitch);
+		renderer_PitchYawView(level_editor_view, level_editor_camera_yaw, level_editor_camera_pitch);
 
-		forward_vector = level_editor_camera->world_orientation.f_axis;
-		right_vector = level_editor_camera->world_orientation.r_axis;
+		view = renderer_GetViewPointer(level_editor_view);
+
+		forward_vector = view->world_orientation.f_axis;
+		right_vector = view->world_orientation.r_axis;
 
 		if(input_GetKeyStatus(SDL_SCANCODE_W) & KEY_PRESSED)
 		{
@@ -1278,7 +1342,7 @@ void editor_LevelEditorFly(float delta_time)
 		velocity.y = translation.y;
 		velocity.z = translation.z;
 
-		camera_TranslateCamera(level_editor_camera, velocity, 1.0, 0);
+		renderer_TranslateView(level_editor_view, velocity, 1.0, 0);
 	}
 
 
@@ -1378,7 +1442,7 @@ void editor_LevelEditorStopPIE()
 	editor_LevelEditorRestoreLevelData();
 	level_editor_state = EDITOR_EDITING;
 //	camera_SetCamera(level_editor_camera);
-    renderer_SetActiveView((view_def_t *)level_editor_camera);
+    renderer_SetMainView(level_editor_view);
 
 	sound_StopAllSounds();
 }
@@ -1797,37 +1861,205 @@ void editor_LevelEditorNewLevel()
 
     level_editor_has_copied_data = 0;
     level_editor_need_to_copy_data = 0;
+
+    editor_LevelEditorSetNameAndPath(NULL, NULL);
 }
+
+int editor_LevelEditorWriteLevelFile(char *file_path, char *file_name)
+{
+    FILE *file;
+
+    char path[PATH_MAX];
+
+    void *buffer = NULL;
+    int buffer_size = 0;
+
+    int i;
+
+	editor_LevelEditorSetNameAndPath(file_name, file_path);
+
+    editor_LevelEditorSerialize(&buffer, &buffer_size);
+
+    strcpy(path, level_editor_level_path);
+    strcat(path, "/");
+    strcat(path, level_editor_level_name);
+
+    file = fopen(path, "wb");
+    fwrite(buffer, buffer_size, 1, file);
+    fclose(file);
+
+    memory_Free(buffer);
+
+	return 0;
+}
+
 
 
 int editor_LevelEditorSaveLevel(char *file_path, char *file_name, void **file_buffer, int *file_buffer_size)
 {
-	strcpy(level_editor_level_name, file_path);
-	strcat(level_editor_level_name, "/");
-	strcat(level_editor_level_name, path_AddExtToName(file_name, ".wtf"));
+    FILE *file;
+    FILE *path_file;
 
-	editor_LevelEditorSerialize(file_buffer, file_buffer_size);
-	return 1;
+    char path[PATH_MAX];
+    char sub_path[PATH_MAX];
+    char copy_path[PATH_MAX];
+
+    void *buffer = NULL;
+    int buffer_size = 0;
+
+    struct texture_t *texture;
+
+    int i;
+    int j;
+
+	editor_LevelEditorSetNameAndPath(path_AddExtToName(file_name, "wtf"), file_path);
+
+	strcpy(path, level_editor_level_path);
+	strcat(path, "/");
+	strcat(path, path_GetNameNoExt(level_editor_level_name));
+
+	if(!path_CheckDir(path))
+    {
+        path_MakeDir(path);
+    }
+
+    strcpy(sub_path, path);
+    strcat(sub_path, "/");
+    strcat(sub_path, "path.cfg");
+
+    path_file = fopen(sub_path, "w");
+
+    i = 0;
+
+    for(i = LEVEL_EDITOR_FOLDER_FIRST; i < LEVEL_EDITOR_FOLDER_LAST; i++)
+    {
+        strcpy(sub_path, path);
+        strcat(sub_path, "/");
+        strcat(sub_path, level_editor_level_folder_names[i]);
+
+        if(!path_CheckDir(sub_path))
+        {
+            path_MakeDir(sub_path);
+        }
+
+        fprintf(path_file, "[%s]\n", level_editor_level_folder_names[i]);
+
+        switch(i)
+        {
+            case LEVEL_EDITOR_FOLDER_TEXTURES:
+                for(j = 0; j < tex_textures.element_count; j++)
+                {
+                    texture = texture_GetTexturePointer(j);
+
+                    if(texture)
+                    {
+                        strcpy(copy_path, sub_path);
+                        strcat(copy_path, "/");
+                        strcat(copy_path, texture->texture_info->file_name);
+                        path_CopyFile(texture->texture_info->full_path, copy_path);
+                    }
+                }
+            break;
+
+            case LEVEL_EDITOR_FOLDER_SOUNDS:
+
+            break;
+
+            case LEVEL_EDITOR_FOLDER_SCRIPTS:
+
+            break;
+        }
+
+    }
+
+    /*while(level_editor_level_folder_names[i])
+    {
+        strcpy(sub_path, path);
+        strcat(sub_path, "/");
+        strcat(sub_path, level_editor_level_folder_names[i]);
+
+        if(!path_CheckDir(sub_path))
+        {
+            path_MakeDir(sub_path);
+        }
+
+        fprintf(path_file, "[%s]\n", level_editor_level_folder_names[i]);
+
+        i++;
+    }*/
+
+    fclose(path_file);
+
+
+    strcat(path, "/");
+    strcat(path, level_editor_level_name);
+
+    editor_LevelEditorSerialize(&buffer, &buffer_size);
+
+    file = fopen(path, "wb");
+    fwrite(buffer, buffer_size, 1, file);
+    fclose(file);
+
+    memory_Free(buffer);
+
+	return 0;
+}
+
+int editor_LevelEditorQuickSave()
+{
+    if(!(level_editor_level_name[0] && level_editor_level_path[0]))
+    {
+        editor_SetExplorerWriteFileCallback(editor_LevelEditorSaveLevel);
+        editor_OpenExplorerWindow(NULL, EXPLORER_FILE_MODE_WRITE);
+    }
+    else
+    {
+        editor_LevelEditorSaveLevel(level_editor_level_path, level_editor_level_name, NULL, NULL);
+    }
 }
 
 int editor_LevelEditorLoadLevel(char *path, char *file_name)
 {
 	char file_path[PATH_MAX];
+	char folder_path[PATH_MAX];
 	unsigned long file_size;
 	void *file_buffer;
 	void *read_buffer;
 
 	FILE *file;
 
-	strcpy(level_editor_level_name, path);
+	/*strcpy(level_editor_level_name, path);
 	strcat(level_editor_level_name, "/");
-	strcat(level_editor_level_name, path_AddExtToName(file_name, ".wtf"));
+	strcat(level_editor_level_name, path_AddExtToName(file_name, ".wtf"));*/
 
 	if(!strcmp(path_GetFileExtension(file_name), "wtf"))
     {
-        strcpy(file_path, path);
+        if(!strcmp(path_GetNameNoExt(file_name), path_GetLastPathSegment(path)))
+        {
+            strcpy(folder_path, path_DropPathSegment(path, 0));
+        }
+        else
+        {
+            strcpy(folder_path, path);
+        }
+
+        editor_LevelEditorSetNameAndPath(path_AddExtToName(file_name, ".wtf"), folder_path);
+
+        /*strcpy(file_path, path);
         strcat(file_path, "/");
-        strcat(file_path, file_name);
+        strcat(file_path, file_name);*/
+        strcat(folder_path, "/");
+        strcat(folder_path, path_GetNameNoExt(file_name));
+
+        //strcpy(file_path, folder_path);
+        //strcat(file_path, "/");
+        //strcat(file_path, "path.cfg");
+
+        path_ReadCfg(folder_path);
+
+        strcpy(file_path, folder_path);
+        strcat(file_path, "/");
+        strcat(file_path, level_editor_level_name);
 
 
         file = fopen(file_path, "rb");
@@ -1846,9 +2078,11 @@ int editor_LevelEditorLoadLevel(char *path, char *file_name)
 
             memory_Free(file_buffer);
 
+            level_editor_need_to_copy_data = 1;
+
             return 1;
 
-            level_editor_need_to_copy_data = 1;
+
         }
     }
 
@@ -1872,6 +2106,27 @@ int editor_LevelEditorImportBsp(char *file_path, char *file_name)
 
 }
 
+
+void editor_LevelEditorSetNameAndPath(char *level_name, char *level_path)
+{
+    if(level_name && level_path)
+    {
+        strcpy(level_editor_level_name, level_name);
+        strcpy(level_editor_level_path, level_path);
+    }
+    else
+    {
+        /*level_name = "untitled";
+        level_path = "";*/
+        strcpy(level_editor_level_name, "untitled");
+        level_editor_level_path[0] = '\0';
+    }
+}
+
+int editor_LevelEditorIsPathComplete()
+{
+    return level_editor_level_name[0] && level_editor_level_path[0];
+}
 
 
 

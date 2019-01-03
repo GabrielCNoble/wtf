@@ -540,10 +540,12 @@ void editor_LevelEditorMaterialsWindow()
 	char *menu_name;
 	char material_name[512];
 
-	unsigned short *texture_handle;
+	short *texture_handle;
+
+	int texture_index;
+	int texture_type;
 
 	int i;
-	int j;
 
 	int selected;
 	int flip_texture_x;
@@ -553,9 +555,31 @@ void editor_LevelEditorMaterialsWindow()
 
 	if(ed_level_editor_material_window_open)
 	{
-		current_material = material_GetMaterialPointerIndex(ed_level_editor_material_window_current_material);
+
 
         gui_ImGuiBegin("Materials", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+
+        if(gui_ImGuiButton("New material", vec2(90.0, 16.0)))
+		{
+            ed_level_editor_material_window_current_material = material_CreateMaterial("New material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, -1, -1, -1);
+		}
+
+		gui_ImGuiSameLine(0.0, -1.0);
+
+		if(gui_ImGuiButton("Delete material", vec2(112.0, 16.0)))
+		{
+			material_DestroyMaterialIndex(ed_level_editor_material_window_current_material);
+			ed_level_editor_material_window_current_material = -1;
+			brush_UpdateAllBrushes();
+            //material_CreateMaterial("New material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, -1, -1, -1);
+		}
+
+
+		current_material = material_GetMaterialPointerIndex(ed_level_editor_material_window_current_material);
+
+
+
+		gui_ImGuiSameLine(0.0, -1.0);
 
         strcpy(material_name, current_material->name);
 
@@ -568,7 +592,7 @@ void editor_LevelEditorMaterialsWindow()
 
         if(gui_ImGuiBeginCombo(" ", current_material->name, ImGuiComboFlags_NoPreview))
 		{
-			for(i = 0; i < mat_material_list_cursor; i++)
+			for(i = -1; i < mat_material_list_cursor; i++)
 			{
 				material = material_GetMaterialPointerIndex(i);
 
@@ -584,26 +608,6 @@ void editor_LevelEditorMaterialsWindow()
             gui_ImGuiEndCombo();
 		}
 
-		gui_ImGuiSameLine(0.0, -1.0);
-
-		if(gui_ImGuiButton("New material", vec2(90.0, 16.0)))
-		{
-            material_CreateMaterial("New material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, -1, -1, -1);
-		}
-
-		gui_ImGuiSameLine(0.0, -1.0);
-
-		if(gui_ImGuiButton("Delete material", vec2(90.0, 16.0)))
-		{
-			material_DestroyMaterialIndex(ed_level_editor_material_window_current_material);
-			ed_level_editor_material_window_current_material = -1;
-			brush_UpdateAllBrushes();
-            //material_CreateMaterial("New material", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, -1, -1, -1);
-		}
-
-
-       // gui_ImGuiText()
-
 		base_color.r = (float)current_material->r / 255.0;
 		base_color.g = (float)current_material->g / 255.0;
 		base_color.b = (float)current_material->b / 255.0;
@@ -611,16 +615,17 @@ void editor_LevelEditorMaterialsWindow()
 
 		gui_ImGuiSliderFloat4("Base color", &base_color.r, 0.0, 1.0, "%.3f", 1.0);
 
+        if(ed_level_editor_material_window_current_material >= 0)
+        {
+            current_material->r = 0xff * base_color.r;
+            current_material->g = 0xff * base_color.g;
+            current_material->b = 0xff * base_color.b;
+            current_material->a = 0xff * base_color.a;
+        }
 
-		current_material->r = 0xff * base_color.r;
-		current_material->g = 0xff * base_color.g;
-		current_material->b = 0xff * base_color.b;
-		current_material->a = 0xff * base_color.a;
-
-
-        for(j = 0; j < 2; j++)
+        for(texture_type = MATERIAL_TEXTURE_TYPE_FIRST; texture_type <= MATERIAL_TEXTURE_TYPE_NORMAL; texture_type++)
 		{
-            switch(j)
+            switch(texture_type)
 			{
 				case 0:
 					if(current_material->flags & MATERIAL_USE_DIFFUSE_TEXTURE)
@@ -676,9 +681,9 @@ void editor_LevelEditorMaterialsWindow()
 
 			if(gui_ImGuiBeginCombo(menu_name, texture_name, ImGuiComboFlags_HeightLargest))
 			{
-				for(i = 0; i < tex_textures.element_count; i++)
+				for(texture_index = 0; texture_index < tex_textures.element_count; texture_index++)
 				{
-					texture = texture_GetTexturePointer(i);
+					texture = texture_GetTexturePointer(texture_index);
 
 					if(texture)
 					{
@@ -687,10 +692,15 @@ void editor_LevelEditorMaterialsWindow()
 							gui_ImGuiText("%s", texture->texture_info->name);
 							if(gui_ImGuiImageButton(texture->gl_handle, vec2(150.0, 150.0), vec2(0.0, 0.0), vec2(1.0, 1.0), 5, vec4(0.0, 0.0, 0.0, 0.0), vec4(1.0, 1.0, 1.0, 1.0)))
 							{
-								*texture_handle = i;
-								current_material->flags |= texture_flag;
-								gui_ImGuiCloseCurrentPopup();
-								brush_UpdateAllBrushes();
+							    if(ed_level_editor_material_window_current_material >= 0)
+                                {
+                                    //*texture_handle = i;
+                                    material_SetMaterialTexture(ed_level_editor_material_window_current_material, texture_type, texture_index);
+                                    current_material->flags |= texture_flag;
+                                    brush_UpdateAllBrushes();
+                                }
+
+                                gui_ImGuiCloseCurrentPopup();
 							}
 						}
 					}
@@ -699,7 +709,7 @@ void editor_LevelEditorMaterialsWindow()
 				gui_ImGuiEndCombo();
 			}
 
-			if(j == 1)
+			if(texture_type == MATERIAL_TEXTURE_TYPE_NORMAL)
 			{
 				gui_ImGuiSameLine(0.0, -1.0);
 
@@ -781,9 +791,10 @@ void editor_LevelEditorEntityDefsMenu()
 
 void editor_LevelEditorLightWindow(int light_index)
 {
-    #if 0
-	light_ptr_t light_ptr;
+	//light_ptr_t light_ptr;
 	pick_record_t *pick;
+
+	struct light_pointer_t light_pointer;
 
 	int r;
 	int g;
@@ -800,19 +811,20 @@ void editor_LevelEditorLightWindow(int light_index)
 		//	case PICK_LIGHT:
 		//		light_ptr = light_GetLightPointerIndex(pick->index0);
 
-		light_ptr = light_GetLightPointerIndex(light_index);
+		light_pointer = light_GetLightPointerIndex(light_index);
 
-		if(light_ptr.params)
+		if(light_pointer.params)
 		{
-			r = light_ptr.params->r;
-			g = light_ptr.params->g;
-			b = light_ptr.params->b;
+			r = light_pointer.params->r;
+			g = light_pointer.params->g;
+			b = light_pointer.params->b;
 
-			radius = light_ptr.params->radius;
-			energy = light_ptr.params->energy;
+			radius = light_pointer.position->radius;
+			energy = light_pointer.params->energy;
 
 			gui_ImGuiSetNextWindowPos(vec2(0.0, 0.0), ImGuiCond_Once, vec2(0.0, 0.0));
 			gui_ImGuiBeginChild("Light options", vec2(0.0, 0.0), 0, ImGuiWindowFlags_AlwaysAutoResize);
+			gui_ImGuiText("World position: [%f %f %f]", light_pointer.position->position.x, light_pointer.position->position.y, light_pointer.position->position.z);
 			gui_ImGuiSliderInt("Red", &r, 0, 255, "%d");
 			gui_ImGuiSliderInt("Green", &g, 0, 255, "%d");
 			gui_ImGuiSliderInt("Blue", &b, 0, 255, "%d");
@@ -820,19 +832,14 @@ void editor_LevelEditorLightWindow(int light_index)
 			gui_ImGuiSliderInt("Energy", &energy, 0, 0xffff, "%d");
 			gui_ImGuiEndChild();
 
-			light_ptr.params->r = r;
-			light_ptr.params->g = g;
-			light_ptr.params->b = b;
+			light_pointer.params->r = r;
+			light_pointer.params->g = g;
+			light_pointer.params->b = b;
 
-			light_ptr.params->radius = radius;
-			light_ptr.params->energy = energy;
+			light_pointer.position->radius = radius;
+			light_pointer.params->energy = energy;
 		}
-
-			//break;
-		//}
 	}
-
-	#endif
 }
 
 void editor_LevelEditorBrushWindow(struct brush_t *brush)
@@ -859,6 +866,7 @@ void editor_LevelEditorBrushWindow(struct brush_t *brush)
 		gui_ImGuiBeginChild("Brush options", vec2(0.0, 0.0), 0, ImGuiWindowFlags_AlwaysAutoResize);
 		gui_ImGuiText("Vertices: %d", brush->clipped_polygons_vert_count);
 		gui_ImGuiText("Faces: %d", brush->clipped_polygon_count);
+		gui_ImGuiText("World position: [%f %f %f]", brush->position.x, brush->position.y, brush->position.z);
 
 		if(brush->bm_flags & BRUSH_SUBTRACTIVE)
 		{
@@ -1367,7 +1375,7 @@ void editor_LevelEditorEntityWindow(int entity_index)
 
             if(physics_component)
 			{
-				collider = physics_GetColliderPointerHandle(physics_component->collider.collider_handle);
+				collider = physics_GetColliderPointer(physics_component->collider);
 
 				if(collider)
 				{
@@ -1388,14 +1396,14 @@ void editor_LevelEditorEntityWindow(int entity_index)
 					{
 						if(!(collider->flags & COLLIDER_FLAG_STATIC))
 						{
-							physics_SetColliderStatic(physics_component->collider.collider_handle, 1);
+							physics_SetColliderStatic(physics_component->collider, 1);
 						}
 					}
 					else
 					{
 						if(collider->flags & COLLIDER_FLAG_STATIC)
 						{
-							physics_SetColliderStatic(physics_component->collider.collider_handle, 0);
+							physics_SetColliderStatic(physics_component->collider, 0);
 						}
 					}
 
@@ -1412,7 +1420,7 @@ void editor_LevelEditorWaypointWindow(int waypoint_index)
 	{
 		waypoint = navigation_GetWaypointPointer(waypoint_index);
 
-        gui_ImGuiText("Position: [%f %f %f]", waypoint->position.x, waypoint->position.y, waypoint->position.z);
+        gui_ImGuiText("World position: [%f %f %f]", waypoint->position.x, waypoint->position.y, waypoint->position.z);
 	}
 }
 
@@ -1468,6 +1476,8 @@ void editor_LevelEditorTriggerWindow(int trigger_index)
 					level_editor_need_to_copy_data = 1;
 				}
 			}
+
+			gui_ImGuiText("World position: [%f %f %f]", trigger->position.x, trigger->position.y, trigger->position.z);
 		}
 	}
 }

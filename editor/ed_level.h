@@ -115,13 +115,21 @@ void editor_LevelEditorDeserialize(void **buffer);
 
 void editor_LevelEditorNewLevel();
 
+int editor_LevelEditorWriteLevelFile(char *file_path, char *file_name);
+
 int editor_LevelEditorSaveLevel(char *file_path, char *file_name, void **file_buffer, int *file_buffer_size);
+
+int editor_LevelEditorQuickSave();
 
 int editor_LevelEditorLoadLevel(char *path, char *file_name);
 
 int editor_LevelEditorExportBsp(char *file_path, char *file_name, void **file_buffer, int *file_buffer_size);
 
 int editor_LevelEditorImportBsp(char *file_path, char *file_name);
+
+void editor_LevelEditorSetNameAndPath(char *level_name, char *level_path);
+
+int editor_LevelEditorIsPathComplete();
 
 
 

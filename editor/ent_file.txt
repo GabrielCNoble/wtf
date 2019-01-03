@@ -1,7 +1,153 @@
+
+struct entity_t
+{
+	struct component_handle_t components[COMPONENT_TYPE_LAST];
+	struct entity_handle_t def;
+    struct list_t props;
+	int ref_count;
+	struct bsp_dleaf_t *leaf;
+	int flags;
+	int spawn_time;
+	char *name;
+};
+
+This is an entity. It is essentially a list of components (+ a few more fields). Each component type has
+a fixed position inside the component list, which means each entity can only have ONE component of each
+type.
+
+It also keeps a list of properties, which are just general purpose storage inside an entity to keep attributes
+that can be used inside a game.
+
+It also points back at the entity definition that generated it. Entity definitions will be explained further ahead.
+
+
+
+
+Each entity is referenced by a:
+
+struct entity_handle_t
+{
+	unsigned def : 1;
+	unsigned entity_index : 31;
+};
+
+Entity handle. This struct reserves a single bit to
+signal whether this handle points to an entity or to
+an entity definition.
+
+
+
+/*********************************************************************/
+/*********************************************************************/
+
+
+
+struct component_t
+{
+	struct entity_handle_t entity;
+	short type;
+	short flags;
+};
+
+This is the base component. It holds common information for any component
+that is to exist. Each component points back at the entity that owns it,
+and it also keeps which type it is. The types are:
+
+
+enum COMPONENT_TYPES
+{
+	COMPONENT_TYPE_TRANSFORM = 0,
+	COMPONENT_TYPE_PHYSICS,
+	COMPONENT_TYPE_MODEL,
+	COMPONENT_TYPE_LIGHT,
+	COMPONENT_TYPE_SCRIPT,
+	COMPONENT_TYPE_CAMERA,
+	COMPONENT_TYPE_PARTICLE_SYSTEM,
+	COMPONENT_TYPE_LIFE,
+	COMPONENT_TYPE_NAVIGATION,
+	COMPONENT_TYPE_LAST,
+	COMPONENT_TYPE_NONE = COMPONENT_TYPE_LAST
+};
+
+And components are referenced by:
+
+struct component_handle_t
+{
+	unsigned type : 4;
+	unsigned def : 1;
+	unsigned index : 27;
+};
+
+component handles.
+
+
+
+
+The only component that needs special attention is the:
+
+struct transform_component_t
+{
+	struct component_t base;
+
+	mat3_t orientation;
+	vec3_t scale;
+	vec3_t position;
+
+	int top_list_index;
+
+	int flags;
+
+	struct component_handle_t parent;
+	int children_count;
+	int max_children;
+	struct component_handle_t *child_transforms;
+
+	char *instance_name;
+};
+
+Transform component. This is the only type of component that points at other
+components (transform components). This component forms a tree-like structure,
+which means it creates a hierarchy of transform components. A single transform
+component can have as many transform components it wants nestled into it, and
+the handles of those nestled transform components will be kept inside the
+"child_transforms" list. A transform component also points to another transform
+component higher up in the hierarchy (it's parent).
+
+Transform components are the main mechanism to allow parenting (or gluing) an entity onto
+another. It does so by accumulating its transform as it traverses down the hierarchy.
+
+Also, given that every component points at the entity that owns it, it's possible to reach
+all the entities linked in the hierarchy.
+
+
+
+
+/*********************************************************************/
+/*********************************************************************/
+
+
+
+
+Entities and entity definitions (entity defs) share the very same structures. They're just alloc'd
+from different lists.
+
+An entity definition represent how an entity should be when spawned. It keeps what components the entity should
+have when it gets spawned, and also a list of nestled transform components inside its transform component,
+which keep the hierarchical information. When spawning an entity, this hierarchy (which is formed by a transform
+component, it's parent, and the transform nestled within it) is traversed. From each transform component, it's
+possible to access the entity it references, and thus the rest of the components of that entity.
+
+
+In order to not add too much overhead with text parsing, entities get serialized into a tag based binary format, called '.ent'.
+
+
+It's structure is as follows:
+
+
 [entity record start]
-[prop record]
-[prop record]
-[prop record]
+[property record]
+[property record]
+[property record]
 .
 .
 .
@@ -11,13 +157,15 @@
 .
 .
 .
-[nestled transform (component record)] (Those are just normal 'component records'. Those transforms get nestled into this entity's transform component)
+[nestled transform (component record)] (Those are just normal 'component record'. Those transforms get nestled into this entity's transform component)
 [nestled transform (component record)]
 .
 .
 .
 [entity record end]
 
+
+A nestled transform will likely point at another entity.
 
 
 For physics components belonging to an entity def, it's collider def will be serialized right after it:
@@ -41,8 +189,8 @@ For physics components belonging to an entity def, it's collider def will be ser
 
 
 
-Nestled entity records (if any) will show up amidst the nestled transform records. In this case
-the file will look like this:
+Nestled entity records (if any) will show up amidst the nestled transform records, and will happen
+if the transform component points at a valid entity def. In this case the file will look like this:
 
 [entity record start]
 .
@@ -69,7 +217,7 @@ this can happen an arbitrary number of times.
 .
 .
 [nestled transform (component record)]
-	[entity record start]
+	[entity record start]from_transform
 	.
 	.
 	.
@@ -96,4 +244,49 @@ this can happen an arbitrary number of times.
 [entity record end]
 
 
-If a component references a transform component (or more), the referenced transform(s) will be serialized right after this component. This means that the order in which the transforms were in the child list of their parent transform is not preserved.
+If a component references a transform component (or more), the referenced transform(s) will be serialized right after this component.
+This means that the order in which the transforms were in the child list of their parent transform is not preserved.
+
+
+
+
+
+
+To allow for entity defs to be used inside other entities without duplication an entity def reference is created.
+
+It works by adding a nestled transform to an entity def and making this transform point at another entity def. For instance:
+
+
+
+
+[entity def A]
+[properties]
+[transform component (contained within A, points at A)]
+[other components]
+[nestled transforms]
+[nestled entity defs]
+[end entity def A]
+
+
+
+[entity def B]
+[properties]
+[transform component (contained within B, points at B)]
+[other components]
+[nestled transforms]
+[nestled entity defs]
+[nestled transform component (not contained within A, points at A)]
+[end entity def B]
+
+When comes the time to spawn entity B, the nestled transforms will be accessed when traversing the hierarchy, and the
+transform used to reference entity A will correctly point at it. From there onwards, the spawn process happens as if
+entity A was nestled within entity B all along, but without requiring a copy of it.
+
+
+
+
+
+
+
+
+

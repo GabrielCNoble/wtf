@@ -51,6 +51,8 @@ void editor_FinishUI();
 
 void editor_MiscMenu();
 
+void editor_RendererMenu();
+
 void editor_EditorsMenu();
 
 

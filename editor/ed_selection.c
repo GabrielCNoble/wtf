@@ -19,6 +19,7 @@
 #include "..\..\common\r_imediate.h"
 #include "..\..\common\r_debug.h"
 #include "..\..\common\r_shader.h"
+#include "..\..\common\r_view.h"
 #include "..\..\common\r_gl.h"
 #include "..\..\common\navigation.h"
 #include "..\..\common\containers\stack_list.h"
@@ -211,7 +212,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 
 
 //	camera_t *active_camera = camera_GetActiveCamera();
-    camera_t *active_camera = (camera_t *)renderer_GetActiveView();
+    struct view_def_t *main_view = renderer_GetMainViewPointer();
 	//triangle_group_t *triangle_group;
 	//batch_t *batch;
 	//material_t *material;
@@ -230,8 +231,8 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	renderer_EnableVertexReads();
 
 	renderer_SetShader(ed_pick_shader);
-	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
-	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+	renderer_SetProjectionMatrix(&main_view->view_data.projection_matrix);
+	renderer_SetViewMatrix(&main_view->view_data.view_matrix);
 	renderer_SetModelMatrix(NULL);
 	renderer_EnableImediateDrawing();
 
@@ -540,7 +541,7 @@ pick_record_t editor_PickBrushFace(brush_t *brush, float mouse_x, float mouse_y)
 	R_DBG_PUSH_FUNCTION_NAME();
 
 //	camera_t *active_camera = camera_GetActiveCamera();
-    camera_t *active_camera = (camera_t *)renderer_GetActiveView();
+    struct view_def_t *main_view = renderer_GetMainViewPointer();
 	bsp_polygon_t *polygon;
 
 	unsigned int pick_sample[4];
@@ -550,8 +551,8 @@ pick_record_t editor_PickBrushFace(brush_t *brush, float mouse_x, float mouse_y)
 	editor_EnablePicking(r_window_width, r_window_height);
 
 	renderer_SetShader(ed_pick_shader);
-	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
-	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+	renderer_SetProjectionMatrix(&main_view->view_data.projection_matrix);
+	renderer_SetViewMatrix(&main_view->view_data.view_matrix);
 	renderer_SetModelMatrix(NULL);
 	renderer_EnableImediateDrawing();
 
@@ -648,7 +649,7 @@ vec3_t editor_3dCursorPosition(float mouse_x, float mouse_y)
 	int y;
 
 //	camera_t *active_camera = camera_GetActiveCamera();
-    camera_t *active_camera = (camera_t *)renderer_GetActiveView();
+    struct view_def_t *main_view = renderer_GetMainViewPointer();
 	brush_t *brush;
 
 	mat4_t camera_to_world_matrix;
@@ -663,13 +664,13 @@ vec3_t editor_3dCursorPosition(float mouse_x, float mouse_y)
 	renderer_EnableVertexReads();
 
 	editor_EnablePicking(r_window_width, r_window_height);
-	glClearColor(active_camera->frustum.zfar, active_camera->frustum.zfar, active_camera->frustum.zfar, active_camera->frustum.zfar);
+	glClearColor(main_view->frustum.zfar, main_view->frustum.zfar, main_view->frustum.zfar, main_view->frustum.zfar);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 
 	renderer_SetShader(ed_brush_dist_shader);
-	renderer_SetProjectionMatrix(&active_camera->view_data.projection_matrix);
-	renderer_SetViewMatrix(&active_camera->view_data.view_matrix);
+	renderer_SetProjectionMatrix(&main_view->view_data.projection_matrix);
+	renderer_SetViewMatrix(&main_view->view_data.view_matrix);
 	renderer_SetModelMatrix(NULL);
 	renderer_EnableImediateDrawing();
 
@@ -683,11 +684,11 @@ vec3_t editor_3dCursorPosition(float mouse_x, float mouse_y)
 	editor_SamplePickingBuffer(mouse_x, mouse_y, (int *)q);
 
 	editor_DisablePicking();
-	mat4_t_compose(&camera_to_world_matrix, &active_camera->world_orientation, active_camera->world_position);
-	qr = active_camera->frustum.znear / active_camera->frustum.right;
-	qt = active_camera->frustum.znear / active_camera->frustum.top;
+	mat4_t_compose(&camera_to_world_matrix, &main_view->world_orientation, main_view->world_position);
+	qr = main_view->frustum.znear / main_view->frustum.right;
+	qt = main_view->frustum.znear / main_view->frustum.top;
 
-	if(q[0] == active_camera->frustum.zfar)
+	if(q[0] == main_view->frustum.zfar)
 	{
 		z = -10.0;
 	}
@@ -718,7 +719,7 @@ float editor_GetMouseOffsetFrom3dHandle(float mouse_x, float mouse_y, vec3_t han
 	float amount = 0.0;
 	mat4_t model_view_projection_matrix;
 	//camera_t *active_camera = camera_GetActiveCamera();
-	camera_t *active_camera = (camera_t *)renderer_GetActiveView();
+	struct view_def_t *main_view = renderer_GetMainViewPointer();
 
 	static float grab_screen_offset_x = 0.0;
 	static float grab_screen_offset_y = 0.0;
@@ -732,7 +733,7 @@ float editor_GetMouseOffsetFrom3dHandle(float mouse_x, float mouse_y, vec3_t han
 
 	p.vec3 = handle_position;
 	p.w = 1.0;
-	mat4_t_mult_fast(&model_view_projection_matrix, &active_camera->view_data.view_matrix, &active_camera->view_data.projection_matrix);
+	mat4_t_mult_fast(&model_view_projection_matrix, &main_view->view_data.view_matrix, &main_view->view_data.projection_matrix);
 	mat4_t_vec4_t_mult(&model_view_projection_matrix, &p);
 
 
@@ -779,7 +780,7 @@ float editor_GetMouseOffsetFrom3dHandle(float mouse_x, float mouse_y, vec3_t han
 		p.vec3 = direction;
 		p.w = 0.0;
 
-		mat4_t_vec4_t_mult(&active_camera->view_data.view_matrix, &p);
+		mat4_t_vec4_t_mult(&main_view->view_data.view_matrix, &p);
 
 		screen_x = p.x;
 		screen_y = p.y;
@@ -828,7 +829,7 @@ float editor_GetMouseOffsetFrom3dHandle(float mouse_x, float mouse_y, vec3_t han
 
 		amount = asin(prev_dx * screen_dy - prev_dy * screen_dx);
 
-		d = dot3(direction, active_camera->world_orientation.f_axis);
+		d = dot3(direction, main_view->world_orientation.f_axis);
 
 		if(d < 0)
 		{
@@ -836,7 +837,7 @@ float editor_GetMouseOffsetFrom3dHandle(float mouse_x, float mouse_y, vec3_t han
 		}
 		else if(d == 0)
 		{
-			d = dot3(direction, active_camera->world_orientation.r_axis);
+			d = dot3(direction, main_view->world_orientation.r_axis);
 
 			if(d < 0)
 			{
@@ -1262,15 +1263,13 @@ void editor_CopySelections(pick_list_t *pick_list)
 				records[i].pointer = brush_CopyBrush((brush_t *)records[i].pointer);
 			break;
 
-            #if 0
 			case PICK_LIGHT:
-				light_pos = &l_light_positions[records[i].index0];
+			    records[i].index0 = light_CopyLightIndex(records[i].index0);
+				/*light_pos = &l_light_positions[records[i].index0];
 				light_parms = &l_light_params[records[i].index0];
 				new_index = light_CreateLight("copy_light", &light_pos->orientation, light_pos->position, vec3_t_c((float)light_parms->r / 255.0, (float)light_parms->g / 255.0, (float)light_parms->b / 255.0), UNPACK_LIGHT_RADIUS(light_parms->radius), UNPACK_LIGHT_ENERGY(light_parms->energy), light_parms->bm_flags);
-				records[i].index0 = new_index;
+				records[i].index0 = new_index;*/
 			break;
-
-			#endif
 
 			case PICK_ENTITY:
 				//entity = entity_GetEntityPointerIndex(records[i].index0);

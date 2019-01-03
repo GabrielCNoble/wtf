@@ -19,6 +19,7 @@
 #include "..\..\common\gmath\matrix.h"
 
 #include "..\..\common\r_main.h"
+#include "..\..\common\r_view.h"
 
 #include "..\ed_ui_explorer.h"
 
@@ -392,24 +393,51 @@ int editor_EntityEditorSetPhysicsComponentValue(struct entity_handle_t entity)
 	int keep_open = 2;
 
 	struct collider_def_t *collider_defs;
+	struct collider_def_t *collider_def;
 	struct entity_t *entity_ptr;
 	struct physics_component_t *physics_component;
+	struct collider_handle_t collider_handle;
 
 	int i;
 	int k;
 	int c;
 
-	collider_defs = phy_collider_defs;
+	//collider_defs = phy_collider_defs;
+	collider_defs = physics_GetColliderDefsList(&c);
 	entity_ptr = entity_GetEntityPointerHandle(entity);
 	physics_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
 
-	while(collider_defs)
+    for(i = 0; i < c; i++)
+    {
+        if(collider_defs->base.flags & COLLIDER_FLAG_INVALID)
+        {
+            continue;
+        }
+
+        if(gui_ImGuiMenuItem(collider_defs->name, NULL, NULL, 1))
+		{
+            physics_DecColliderDefRefCount(physics_component->collider);
+
+            collider_handle.type = COLLIDER_TYPE_COLLIDER_DEF;
+            collider_handle.index = i;
+
+			physics_IncColliderDefRefCount(collider_handle);
+
+			physics_component->collider = collider_handle;
+			ed_entity_editor_update_preview_entity = 1;
+			keep_open = 0;
+
+			break;
+		}
+    }
+
+	/*while(collider_defs)
 	{
 		if(gui_ImGuiMenuItem(collider_defs->name, NULL, NULL, 1))
 		{
-			if(physics_component->collider.collider_def)
+			//if(physics_component->collider.collider_def)
 			{
-				physics_DecColliderDefRefCount(physics_component->collider.collider_def);
+				physics_DecColliderDefRefCount(physics_component->collider);
 			}
 
 			physics_IncColliderDefRefCount(collider_defs);
@@ -420,7 +448,7 @@ int editor_EntityEditorSetPhysicsComponentValue(struct entity_handle_t entity)
 		}
 
 		collider_defs = collider_defs->next;
-	}
+	}*/
 
 	if(keep_open)
 	{
@@ -428,36 +456,42 @@ int editor_EntityEditorSetPhysicsComponentValue(struct entity_handle_t entity)
 		{
 			if(gui_ImGuiMenuItem("Character collider", NULL, NULL, 1))
 			{
-				collider_defs = physics_CreateCharacterColliderDef("New character collider", 0.5, 0.5, 0.25, 0.5, 0.5, 2.0, 1.0);
+				collider_handle = physics_CreateCharacterColliderDef("New character collider", 0.5, 0.5, 0.25, 0.5, 0.5, 2.0, 1.0);
 				keep_open = 0;
 			}
 
 			if(gui_ImGuiMenuItem("Rigid body collider", NULL, NULL, 1))
 			{
-				collider_defs = physics_CreateRigidBodyColliderDef("New character collider");
+				collider_handle = physics_CreateRigidBodyColliderDef("New character collider");
 				keep_open = 0;
 			}
 
 			if(gui_ImGuiMenuItem("Projectile collider", NULL, NULL, 1))
 			{
+			    collider_handle = INVALID_COLLIDER_HANDLE;
 				keep_open = 0;
 			}
 
 			if(!keep_open)
 			{
-				if(physics_component->collider.collider_def)
+				if(physics_component->collider.index != INVALID_COLLIDER_INDEX)
 				{
-					physics_DecColliderDefRefCount(physics_component->collider.collider_def);
+					physics_DecColliderDefRefCount(physics_component->collider);
 
-					if(!physics_component->collider.collider_def->ref_count)
-					{
-						physics_DestroyColliderDefPointer(physics_component->collider.collider_def);
-					}
+					collider_def = physics_GetColliderDefPointerHandle(physics_component->collider);
+
+                    if(collider_def)
+                    {
+                        if(!collider_def->ref_count)
+                        {
+                            physics_DestroyColliderDef(physics_component->collider);
+                        }
+                    }
 				}
 
 				//physics_component->collider.collider_def = collider_defs;
 
-                entity_SetCollider(entity, collider_defs);
+                entity_SetCollider(entity, &collider_handle);
 
 				ed_entity_editor_update_preview_entity = 1;
 			}
@@ -706,7 +740,8 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 
 	mat4_t collision_shape_transform;
 
-	camera_t *active_camera;
+//	camera_t *active_camera;
+    struct view_def_t *main_view;
 
 	char *collision_shape_type;
 
@@ -724,11 +759,13 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 	vec3_t position;
 
 //	active_camera = camera_GetActiveCamera();
-    active_camera = (camera_t *)renderer_GetActiveView();
+    main_view = renderer_GetMainViewPointer();
 
 	char checked = 0;
 
-	collider_def = (struct collider_def_t *)physics_component->collider.collider_def;
+	//collider_def = (struct collider_def_t *)physics_component->collider.collider_def;
+
+	collider_def = physics_GetColliderDefPointerHandle(physics_component->collider);
 
 	ed_entity_editor_hovered_collision_shape = NULL;
 
@@ -736,7 +773,7 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 	{
 		gui_ImGuiInputText(" ", collider_def->name, COLLIDER_DEF_NAME_MAX_LEN, 0);
 
-		switch(collider_def->type)
+		switch(collider_def->collider_type)
 		{
 			case COLLIDER_TYPE_CHARACTER_COLLIDER:
 
@@ -810,7 +847,7 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 
 						if(gui_ImGuiMenuItem(collision_shape_type, NULL, NULL, 1))
 						{
-							physics_AddCollisionShape(collider_def, vec3_t_c(1.0, 1.0, 1.0), vec3_t_c(0.0, 0.0, 0.0), NULL, i);
+							physics_AddCollisionShape(physics_component->collider, vec3_t_c(1.0, 1.0, 1.0), vec3_t_c(0.0, 0.0, 0.0), NULL, i);
 						}
 					}
 					gui_ImGuiEndPopup();
@@ -827,9 +864,10 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 					ed_entity_editor_update_preview_entity = 1;
 				}
 
-				for(i = 0; i < collider_def->collision_shape_count; i++)
+				for(i = 0; i < collider_def->collision_shape.element_count; i++)
 				{
-					collision_shape = collider_def->collision_shape + i;
+					//collision_shape = collider_def->collision_shape + i;
+                    collision_shape = physics_GetCollisionShapePointer(physics_component->collider, i);
 
 					gui_ImGuiPushIDi(i);
 
@@ -874,7 +912,7 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 					if(gui_ImGuiDragFloat3("Position", &position.x, 0.001, 0.0, 0.0, "%0.3f", 1.0))
 					{
 						ed_entity_editor_update_preview_entity = 1;
-						physics_SetCollisionShapePosition(collider_def, position, i);
+						physics_SetCollisionShapePosition(physics_component->collider, position, i);
 					}
 					gui_ImGuiNewLine();
 
@@ -1022,7 +1060,7 @@ void editor_EntityEditorProp(struct entity_handle_t entity)
 				gui_ImGuiPopID();
 			}
 
-			if(gui_ImGuiMenuItem("Add prop", NULL, NULL, 1))
+			if(gui_ImGuiMenuItem("New prop", NULL, NULL, 1))
 			{
 				entity_AddProp(entity, "New prop", 4);
 			}
@@ -1083,6 +1121,8 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 			entity_name = entity_ptr->name;
 		}
 
+        gui_ImGuiSeparator();
+
 		sprintf(node_id, "Node%d%d", depth_level, transform.index);
 
 		if(gui_ImGuiTreeNodeEx(node_id, ImGuiTreeNodeFlags_DefaultOpen, " "))
@@ -1096,10 +1136,16 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 				/* add component to entity popup... */
 				editor_EntityEditorOpenAddComponentMenu(mouse_x, r_window_height - mouse_y, entity, transform);
 			}
-
+            //gui_ImGuiPushIDi(depth_level + 2);
+            //sprintf(text_field_id, "Props%d%d", depth_level, transform.index);
+			//gui_ImGuiBeginChild("entity data", vec2(0.0, 0.0), 1, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar);
 			editor_EntityEditorProp(entity);
 
+			//gui_ImGuiEndChild();
 
+
+            //sprintf(text_field_id, "Components%d%d", depth_level, transform.index);
+            //gui_ImGuiBeginChildIId(depth_level + 2, vec2(0.0, 0.0), 1, ImGuiWindowFlags_AlwaysAutoResize);
 
 			for(i = 0; i < COMPONENT_TYPE_LAST; i++)
 			{
@@ -1208,7 +1254,10 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 				}
 			}
 
+			//gui_ImGuiEndChild();
+
 			gui_ImGuiTreePop();
+			gui_ImGuiSeparator();
 		}
 		else
 		{
