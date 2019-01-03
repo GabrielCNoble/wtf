@@ -1,0 +1,665 @@
+# depslib dependency file v1.0
+1545448734 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\animcvt.cpp
+	"animcvt.h"
+
+1545025307 d:\files\gabriel noble\compiler\wtf\tools\animcvt\animcvt.h
+	"assimp/Importer.hpp"
+	"assimp/scene.h"
+	"assimp/postprocess.h"
+	"ozz/animation/offline/raw_animation.h"
+	"ozz/animation/offline/raw_skeleton.h"
+	"ozz/animation/offline/skeleton_builder.h"
+	"ozz/animation/offline/animation_builder.h"
+	"ozz/animation/runtime/skeleton.h"
+	"ozz/animation/runtime/animation.h"
+	"ozz/base/io/stream.h"
+	"ozz/base/io/archive.h"
+	<stdlib.h>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\cimport.h
+	<assimp/types.h>
+	"importerdesc.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\types.h
+	<sys/types.h>
+	<stddef.h>
+	<string.h>
+	<limits.h>
+	"defs.h"
+	"vector3.h"
+	"vector2.h"
+	"color4.h"
+	"matrix3x3.h"
+	"matrix4x4.h"
+	"quaternion.h"
+	<cstring>
+	<new>
+	<string>
+	"vector2.inl"
+	"vector3.inl"
+	"color4.inl"
+	"quaternion.inl"
+	"matrix3x3.inl"
+	"matrix4x4.inl"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\defs.h
+	<assimp/config.h>
+
+1543981558 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\config.h
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\vector3.h
+	<cmath>
+	<math.h>
+	"defs.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\vector2.h
+	<cmath>
+	<math.h>
+	"defs.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\color4.h
+	"defs.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\matrix3x3.h
+	"defs.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\matrix4x4.h
+	"vector3.h"
+	"defs.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\quaternion.h
+	"defs.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\vector2.inl
+	"vector2.h"
+	<cmath>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\vector3.inl
+	"vector3.h"
+	<cmath>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\color4.inl
+	"color4.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\quaternion.inl
+	"quaternion.h"
+	<cmath>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\matrix3x3.inl
+	"matrix3x3.h"
+	"matrix4x4.h"
+	<algorithm>
+	<cmath>
+	<limits>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\matrix4x4.inl
+	"matrix4x4.h"
+	"matrix3x3.h"
+	"quaternion.h"
+	<algorithm>
+	<limits>
+	<cmath>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\importerdesc.h
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\scene.h
+	"types.h"
+	"texture.h"
+	"mesh.h"
+	"light.h"
+	"camera.h"
+	"material.h"
+	"anim.h"
+	"metadata.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\texture.h
+	"types.h"
+	"./Compiler/pushpack1.h"
+	"./Compiler/poppack1.h"
+
+1543980107 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\compiler\pushpack1.h
+
+1543980107 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\compiler\poppack1.h
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\mesh.h
+	"types.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\light.h
+	"types.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\camera.h
+	"types.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\material.h
+	"types.h"
+	"./Compiler/pushpack1.h"
+	"./Compiler/poppack1.h"
+	"material.inl"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\material.inl
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\anim.h
+	<assimp/types.h>
+	<assimp/quaternion.h>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\metadata.h
+	"Compiler/pstdint.h"
+	<stdint.h>
+	<string>
+
+1543980107 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\compiler\pstdint.h
+	<stddef.h>
+	<limits.h>
+	<signal.h>
+	<stdint.h>
+	<sys/inttypes.h>
+	<wchar.h>
+	<stdlib.h>
+	<stdio.h>
+	<string.h>
+
+1544592306 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\importer.hpp
+	<assimp/types.h>
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\animation\offline\raw_animation.h
+	"ozz/base/containers/string.h"
+	"ozz/base/containers/vector.h"
+	"ozz/base/io/archive_traits.h"
+	"ozz/base/maths/quaternion.h"
+	"ozz/base/maths/vec_float.h"
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\containers\string.h
+	<string>
+	"ozz/base/containers/std_allocator.h"
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\containers\std_allocator.h
+	<new>
+	"ozz/base/memory/allocator.h"
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\memory\allocator.h
+	<cstddef>
+	<new>
+	"ozz/base/platform.h"
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\platform.h
+	<stdint.h>
+	<cassert>
+	<cstddef>
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\containers\vector.h
+	<vector>
+	"ozz/base/containers/std_allocator.h"
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\io\archive_traits.h
+	<stdint.h>
+	<cstddef>
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\maths\quaternion.h
+	<cassert>
+	"ozz/base/maths/math_constant.h"
+	"ozz/base/maths/math_ex.h"
+	"ozz/base/maths/vec_float.h"
+	"ozz/base/platform.h"
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\maths\math_constant.h
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\maths\math_ex.h
+	<cassert>
+	<cmath>
+	"ozz/base/platform.h"
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\maths\vec_float.h
+	<cassert>
+	<cmath>
+	"ozz/base/maths/math_constant.h"
+	"ozz/base/platform.h"
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\animation\offline\raw_skeleton.h
+	"ozz/base/containers/string.h"
+	"ozz/base/containers/vector.h"
+	"ozz/base/io/archive_traits.h"
+	"ozz/base/maths/transform.h"
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\maths\transform.h
+	"ozz/base/maths/quaternion.h"
+	"ozz/base/maths/vec_float.h"
+	"ozz/base/platform.h"
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\animation\offline\skeleton_builder.h
+	"ozz/base/containers/string.h"
+	"ozz/base/containers/vector.h"
+	"ozz/base/maths/transform.h"
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\animation\offline\animation_builder.h
+
+1544496209 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\animation\runtime\skeleton.h
+	"ozz/base/io/archive_traits.h"
+	"ozz/base/platform.h"
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\io\stream.h
+	"ozz/base/platform.h"
+	<cstddef>
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\io\archive.h
+	"ozz/base/endianness.h"
+	"ozz/base/io/stream.h"
+	"ozz/base/platform.h"
+	<stdint.h>
+	<cassert>
+	"ozz/base/io/archive_traits.h"
+
+1532190428 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\base\endianness.h
+	<cstddef>
+	"ozz/base/platform.h"
+
+1543980099 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxanimation.cpp
+	"FBXParser.h"
+	"FBXDocument.h"
+	"FBXImporter.h"
+	"FBXDocumentUtil.h"
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxparser.h
+	<stdint.h>
+	<map>
+	<memory>
+	<assimp/LogAux.h>
+	<assimp/fast_atof.h>
+	"FBXCompileConfig.h"
+	"FBXTokenizer.h"
+
+1544592312 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\logaux.h
+	<assimp/TinyFormatter.h>
+	<assimp/Exceptional.h>
+	<assimp/DefaultLogger.hpp>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\tinyformatter.h
+	<sstream>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\exceptional.h
+	<stdexcept>
+	<assimp/DefaultIOStream.h>
+
+1543980107 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\defaultiostream.h
+	<stdio.h>
+	<assimp/IOStream.hpp>
+	<assimp/importerdesc.h>
+	<assimp/Defines.h>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\iostream.hpp
+	"types.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\defines.h
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\defaultlogger.hpp
+	"Logger.hpp"
+	"LogStream.hpp"
+	"NullLogger.hpp"
+	<vector>
+
+1544593788 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\logger.hpp
+	<assimp/types.h>
+	<assimp/TinyFormatter.h>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\logstream.hpp
+	"types.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\nulllogger.hpp
+	"Logger.hpp"
+
+1544593492 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\fast_atof.h
+	<cmath>
+	<limits>
+	<stdint.h>
+	<stdexcept>
+	<assimp/defs.h>
+	"StringComparison.h"
+	<assimp/DefaultLogger.hpp>
+	<stdint.h>
+	<assimp/Compiler/pstdint.h>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\stringcomparison.h
+	<assimp/ai_assert.h>
+	<assimp/defs.h>
+	"StringComparison.h"
+	<string.h>
+	<stdint.h>
+	<string>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\ai_assert.h
+	<assert.h>
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxcompileconfig.h
+	<map>
+	<unordered_map>
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxtokenizer.h
+	"FBXCompileConfig.h"
+	<assimp/ai_assert.h>
+	<vector>
+	<string>
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxdocument.h
+	<numeric>
+	<stdint.h>
+	<assimp/mesh.h>
+	"FBXProperties.h"
+	"FBXParser.h"
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxproperties.h
+	"FBXCompileConfig.h"
+	<memory>
+	<string>
+
+1544593661 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbximporter.h
+	"FBXImportSettings.h"
+	<string>
+
+1543980107 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\baseimporter.h
+	"Exceptional.h"
+	<vector>
+	<set>
+	<assimp/types.h>
+	<assimp/ProgressHandler.hpp>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\progresshandler.hpp
+	"types.h"
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbximportsettings.h
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxdocumentutil.h
+	<assimp/defs.h>
+	<string>
+	<memory>
+	"FBXDocument.h"
+
+1543980099 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxbinarytokenizer.cpp
+	"FBXTokenizer.h"
+	"FBXUtil.h"
+	<assimp/defs.h>
+	<stdint.h>
+	<assimp/Exceptional.h>
+	<assimp/ByteSwapper.h>
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxutil.h
+	"FBXCompileConfig.h"
+	"FBXTokenizer.h"
+
+1543980107 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\byteswapper.h
+	<assimp/ai_assert.h>
+	<assimp/types.h>
+	<stdint.h>
+	<stdlib.h>
+
+1543980099 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxconverter.cpp
+	"FBXConverter.h"
+	"FBXParser.h"
+	"FBXMeshGeometry.h"
+	"FBXDocument.h"
+	"FBXUtil.h"
+	"FBXProperties.h"
+	"FBXImporter.h"
+	<assimp/StringComparison.h>
+	<assimp/scene.h>
+	<tuple>
+	<memory>
+	<iterator>
+	<vector>
+	<sstream>
+	<iomanip>
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxconverter.h
+	"FBXParser.h"
+	"FBXMeshGeometry.h"
+	"FBXDocument.h"
+	"FBXUtil.h"
+	"FBXProperties.h"
+	"FBXImporter.h"
+	<assimp/anim.h>
+	<assimp/material.h>
+	<assimp/light.h>
+	<assimp/texture.h>
+	<assimp/camera.h>
+	<assimp/StringComparison.h>
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxmeshgeometry.h
+	"FBXParser.h"
+	"FBXDocument.h"
+
+1543980099 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxdeformer.cpp
+	"FBXParser.h"
+	"FBXDocument.h"
+	"FBXImporter.h"
+	"FBXDocumentUtil.h"
+
+1544595010 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxdocument.cpp
+	"FBXDocument.h"
+	"FBXMeshGeometry.h"
+	"FBXParser.h"
+	"FBXUtil.h"
+	"FBXImporter.h"
+	"FBXImportSettings.h"
+	"FBXDocumentUtil.h"
+	"FBXProperties.h"
+	<memory>
+	<functional>
+	<map>
+
+1544592043 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxdocumentutil.cpp
+	"FBXParser.h"
+	"FBXDocument.h"
+	"FBXUtil.h"
+	"FBXDocumentUtil.h"
+	"FBXProperties.h"
+
+1543980099 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxexporter.cpp
+	"FBXExporter.h"
+	"FBXExportNode.h"
+	"FBXExportProperty.h"
+	"FBXCommon.h"
+	<assimp/version.h>
+	<assimp/IOSystem.hpp>
+	<assimp/Exporter.hpp>
+	<assimp/DefaultLogger.hpp>
+	<assimp/StreamWriter.h>
+	<assimp/Exceptional.h>
+	<assimp/material.h>
+	<assimp/scene.h>
+	<assimp/mesh.h>
+	<memory>
+	<string>
+	<sstream>
+	<ctime>
+	<map>
+	<set>
+	<vector>
+	<array>
+	<unordered_set>
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxexporter.h
+	"FBXExportNode.h"
+	"FBXCommon.h"
+	<assimp/types.h>
+	<assimp/StreamWriter.h>
+	<assimp/Exceptional.h>
+	<vector>
+	<map>
+	<unordered_set>
+	<memory>
+	<sstream>
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxexportnode.h
+	"FBXExportProperty.h"
+	<assimp/StreamWriter.h>
+	<string>
+	<vector>
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxexportproperty.h
+	<assimp/types.h>
+	<assimp/StreamWriter.h>
+	<string>
+	<vector>
+	<ostream>
+	<type_traits>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\streamwriter.h
+	"ByteSwapper.h"
+	<assimp/IOStream.hpp>
+	<memory>
+	<vector>
+
+1543980099 d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxcommon.h
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\version.h
+	"defs.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\iosystem.hpp
+	"types.h"
+	<direct.h>
+	<stdlib.h>
+	<stdio.h>
+	<sys/stat.h>
+	<sys/types.h>
+	<unistd.h>
+	<vector>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\exporter.hpp
+	"cexport.h"
+	<map>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\cexport.h
+	<assimp/types.h>
+
+1543980099 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxexportnode.cpp
+	"FBXExportNode.h"
+	"FBXCommon.h"
+	<assimp/StreamWriter.h>
+	<assimp/Exceptional.h>
+	<assimp/ai_assert.h>
+	<assimp/StringUtils.h>
+	<string>
+	<ostream>
+	<sstream>
+	<memory>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\stringutils.h
+	<assimp/defs.h>
+	<sstream>
+	<stdarg.h>
+	<cstdlib>
+
+1543980099 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxexportproperty.cpp
+	"FBXExportProperty.h"
+	<assimp/StreamWriter.h>
+	<assimp/Exceptional.h>
+	<string>
+	<vector>
+	<ostream>
+	<locale>
+	<sstream>
+
+1544593796 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbximporter.cpp
+	"FBXImporter.h"
+	"FBXTokenizer.h"
+	"FBXParser.h"
+	"FBXUtil.h"
+	"FBXDocument.h"
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\streamreader.h
+	"ByteSwapper.h"
+	"Exceptional.h"
+	<memory>
+	<assimp/IOStream.hpp>
+	<assimp/Defines.h>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\memoryiowrapper.h
+	<assimp/IOStream.hpp>
+	<assimp/IOSystem.hpp>
+	<assimp/ai_assert.h>
+	<stdint.h>
+
+1543980099 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxmaterial.cpp
+	"FBXParser.h"
+	"FBXDocument.h"
+	"FBXImporter.h"
+	"FBXImportSettings.h"
+	"FBXDocumentUtil.h"
+	"FBXProperties.h"
+	<assimp/ByteSwapper.h>
+	<algorithm>
+
+1544593292 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxmeshgeometry.cpp
+	<functional>
+	"FBXMeshGeometry.h"
+	"FBXDocument.h"
+	"FBXImporter.h"
+	"FBXImportSettings.h"
+	"FBXDocumentUtil.h"
+
+1543980099 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxmodel.cpp
+	"FBXParser.h"
+	"FBXMeshGeometry.h"
+	"FBXDocument.h"
+	"FBXImporter.h"
+	"FBXDocumentUtil.h"
+
+1543980099 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxnodeattribute.cpp
+	"FBXParser.h"
+	"FBXDocument.h"
+	"FBXImporter.h"
+	"FBXDocumentUtil.h"
+
+1543980099 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxproperties.cpp
+	"FBXTokenizer.h"
+	"FBXParser.h"
+	"FBXDocument.h"
+	"FBXDocumentUtil.h"
+	"FBXProperties.h"
+
+1543980099 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxtokenizer.cpp
+	<assimp/ParsingUtils.h>
+	"FBXTokenizer.h"
+	"FBXUtil.h"
+	<assimp/Exceptional.h>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\parsingutils.h
+	"StringComparison.h"
+	"StringUtils.h"
+	<assimp/defs.h>
+
+1543980099 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxutil.cpp
+	"FBXUtil.h"
+	"FBXTokenizer.h"
+	<assimp/TinyFormatter.h>
+	<string>
+
+1544596218 source:d:\files\gabriel noble\compiler\wtf\tools\animcvt\fbx\fbxparser.cpp
+	<zlib.h>
+	"../contrib/zlib/zlib.h"
+	"FBXTokenizer.h"
+	"FBXParser.h"
+	"FBXUtil.h"
+	<assimp/ParsingUtils.h>
+	<assimp/fast_atof.h>
+	<assimp/ByteSwapper.h>
+	<iostream>
+
+1543980107 d:\files\gabriel noble\compiler\wtf\tools\animcvt\contrib\zlib\zlib.h
+	"zconf.h"
+
+1543980107 d:\files\gabriel noble\compiler\wtf\tools\animcvt\contrib\zlib\zconf.h
+	<stddef.h>
+	<windows.h>
+	<limits.h>
+	<sys/types.h>
+	<stdarg.h>
+	<stddef.h>
+	<unistd.h>
+	<unixio.h>
+
+1543980108 d:\files\gabriel noble\compiler\wtf\tools\assimp\include\assimp\postprocess.h
+	"types.h"
+
+1545018509 d:\files\gabriel noble\compiler\wtf\common\ozz\include\ozz\animation\runtime\animation.h
+	"ozz/base/io/archive_traits.h"
+	"ozz/base/platform.h"
+

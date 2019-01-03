@@ -40,8 +40,8 @@
 //#define SET_LIGHT_ENERGY(energy) ((unsigned short)(0xffff * (energy / LIGHT_MAX_ENERGY)))
 
 
-#define UNPACK_LIGHT_RADIUS(radius) (LIGHT_MIN_RADIUS+((LIGHT_MAX_RADIUS-LIGHT_MIN_RADIUS)*((float)((unsigned short)radius)/(float)0xffff)))
-#define UNPACK_LIGHT_ENERGY(energy) (LIGHT_MIN_ENERGY+((LIGHT_MAX_ENERGY-LIGHT_MIN_ENERGY)*((float)((unsigned short)energy)/(float)0xffff)))
+#define UNPACK_LIGHT_RADIUS(radius) (((LIGHT_MAX_RADIUS-LIGHT_MIN_RADIUS)*((float)((unsigned short)radius)/(float)0xffff)))
+#define UNPACK_LIGHT_ENERGY(energy) (((LIGHT_MAX_ENERGY-LIGHT_MIN_ENERGY)*((float)((unsigned short)energy)/(float)0xffff)))
 
 #define PACK_LIGHT_RADIUS(radius) ((unsigned short)(0xffff * (radius / (LIGHT_MAX_RADIUS - LIGHT_MIN_RADIUS))))
 #define PACK_LIGHT_ENERGY(energy) ((unsigned short)(0xffff * (energy / (LIGHT_MAX_ENERGY - LIGHT_MIN_ENERGY))))

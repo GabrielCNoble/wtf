@@ -113,6 +113,20 @@ struct debug_timer_t
 };
 
 
+enum R_DEBUG_DRAW_FLAGS
+{
+    R_DEBUG_DRAW_FLAG_DRAW_VIEWS = 1,
+    R_DEBUG_DRAW_FLAG_DRAW_WAYPOINTS = 1 << 1,
+    R_DEBUG_DRAW_FLAG_DRAW_COLLIDERS = 1 << 2,
+    R_DEBUG_DRAW_FLAG_DRAW_ENTITIES = 1 << 3,
+    R_DEBUG_DRAW_FLAG_DRAW_TRIGGERS = 1 << 4,
+    R_DEBUG_DRAW_FLAG_DRAW_LIGHTS = 1 << 5,
+    R_DEBUG_DRAW_FLAG_DRAW_CLUSTERS = 1 << 6,
+    R_DEBUG_DRAW_FLAG_DRAW_BSP_LEAVES = 1 << 7,
+    R_DEBUG_DRAW_FLAG_DRAW_WORLD_POLYGONS = 1 << 8,
+};
+
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -193,6 +207,10 @@ void renderer_DrawClusters();
 
 void renderer_DrawStatistics();
 
+void renderer_DrawLeaves();
+
+void renderer_DrawSkeletons();
+
 
 
 
@@ -207,6 +225,10 @@ void renderer_DrawStatistics();
 ==============================================================
 ==============================================================
 */
+
+int renderer_GetDebugDrawFlags();
+
+void renderer_DebugDrawFlags(int flags);
 
 void renderer_DrawDebug();
 

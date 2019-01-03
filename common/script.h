@@ -116,6 +116,20 @@ void script_BeginDebugSection();
 
 void script_EndDebugSection();
 
+
+int script_CreateTimer(char *name, int timeout);
+
+void script_DestroyTimer(int timer_index);
+
+void script_DestroyTimerByName(char *timer_name);
+
+void script_ResetTimer(int timer_index);
+
+void script_CheckTimer(int timer_index);
+
+
+
+
 //void script_BreakPoint();
 
 

@@ -9,7 +9,7 @@
 
 typedef struct
 {
-	view_data_t view_data;
+	struct view_data_t view_data;
 	mat3_t orientation;
 	vec3_t position;
 
@@ -80,7 +80,7 @@ void portal_ScalePortal(int portal_index, vec2_t scale, float amount);
 ==========================================================================
 */
 
-int portal_CalculateViewMatrix(camera_t *view, portal_t *portal);
+//int portal_CalculateViewMatrix(camera_t *view, portal_t *portal);
 
 int portal_CalculatePortalView(portal_t *portal, mat3_t *view_orientation, vec3_t view_position, int recursion_level, int viewing_portal_index);
 

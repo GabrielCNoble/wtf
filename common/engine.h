@@ -28,6 +28,7 @@
 #include "resource.h"
 #include "world.h"
 #include "texture.h"
+#include "animation.h"
 
 
 

@@ -628,6 +628,31 @@ int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t c
 	return light_index;
 }
 
+int light_CopyLightIndex(int light_index)
+{
+    struct light_pointer_t light_ptr;
+    int new_light_index = -1;
+    vec3_t light_color;
+    float energy;
+    float radius;
+
+    light_ptr = light_GetLightPointerIndex(light_index);
+
+    if(light_ptr.position)
+    {
+        light_color.r = (float)light_ptr.params->r / 255.0;
+        light_color.g = (float)light_ptr.params->g / 255.0;
+        light_color.b = (float)light_ptr.params->b / 255.0;
+
+        energy = UNPACK_LIGHT_ENERGY(light_ptr.params->energy);
+        radius = UNPACK_LIGHT_RADIUS(light_ptr.position->radius);
+
+        new_light_index = light_CreateLight("copy", &light_ptr.position->orientation, light_ptr.position->position, light_color, radius, energy, 0);
+    }
+
+    return new_light_index;
+}
+
 
 int light_DestroyLight(char *name)
 {

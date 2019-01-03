@@ -44,7 +44,7 @@ void OnUpdate()
 
 	in_control = entity_GetEntityProp1i(current_entity, "control");
 
-	if(in_control > 0)
+	//if(in_control > 0)
 	{
 		if((input_GetKeyStatus(SDL_SCANCODE_W) & KEY_PRESSED) == KEY_PRESSED)
 		{

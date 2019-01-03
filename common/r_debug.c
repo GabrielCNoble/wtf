@@ -2,12 +2,14 @@
 #include "r_main.h"
 #include "r_imediate.h"
 #include "r_shader.h"
+#include "r_view.h"
 #include "camera.h"
 #include "c_memory.h"
 #include "navigation.h"
 #include "portal.h"
 #include "physics.h"
 #include "engine.h"
+#include "animation.h"
 
 #include "gui.h"
 
@@ -52,6 +54,9 @@ extern struct stack_list_t l_light_params;
 extern struct stack_list_t l_light_clusters;
 
 
+extern struct stack_list_t anim_skeletons[2];
+
+
 
 /*int r_dbg_debug_cmd_count = 0;
 int r_dbg_max_debug_cmd_count = 0;*/
@@ -73,21 +78,33 @@ extern int r_debug;
 int r_debug_verbose = 0;
 int r_debug_draw_portal_outlines = 0;
 int r_debug_draw_views = 0;
-int r_debug_draw_waypoints = 1;
+int r_debug_draw_waypoints = 0;
 int r_debug_draw_colliders = 0;
 int r_debug_draw_entities = 0;
 int r_debug_draw_triggers = 0;
 int r_debug_draw_lights = 0;
 int r_debug_draw_lights_screen_bounds = 0;
 int r_debug_draw_clusters = 0;
-int r_debug_draw_bsp_leaves = 0;
+int r_debug_draw_bsp_leaves = 1;
+int r_debug_draw_world_polygons = 0;
 int r_debug_draw_statistics = 0;
+//int r_debug_draw_leaves = 1;
+
+//int r_debug_caps[R_DEBUG_DRAW_FLAG_LAST] = {0};
 
 extern unsigned int r_visible_lights_count;
 extern unsigned int r_visible_lights[];
 
 extern unsigned int r_visible_leaves_count;
 extern struct bsp_dleaf_t *r_visible_leaves;
+
+extern struct bsp_dleaf_t *w_world_leaves;
+extern struct vertex_t *w_world_vertices;
+
+extern int w_world_z_batch_count;
+extern struct batch_t *w_world_z_batches;
+
+extern unsigned int *r_occlusion_queries;
 
 
 
@@ -113,7 +130,7 @@ extern unsigned int r_frame_vert_count;
 
 
 /* from camera.c */
-extern camera_t *cameras;
+//extern camera_t *cameras;
 
 
 #define CHARACTER_COLLIDER_CAPSULE_SEGMENTS 16
@@ -242,7 +259,7 @@ void renderer_InitDebug()
 	r_dbg_max_draw_bytes = 4 << 16;
 	r_dbg_draw_bytes = memory_Malloc(r_dbg_max_draw_bytes);
 
-	renderer_VerboseDebugOutput(0);
+	renderer_VerboseDebugOutput(1);
 
 	//glEnable(GL_DEBUG_OUTPUT);
 	glDebugMessageCallbackARB((GLDEBUGPROC)renderer_GLReportCallback, 0);
@@ -943,8 +960,10 @@ void renderer_DrawPortalViews()
 
 void renderer_DrawViews()
 {
-	view_def_t *view;
-	view_def_t *active_view;
+
+    #if 0
+	struct view_def_t *view;
+	struct view_def_t *active_view;
 	mat4_t view_transform;
 
 	vec3_t near_color;
@@ -960,7 +979,7 @@ void renderer_DrawViews()
 
 	//active_view = camera_GetActiveCamera();
 
-	active_view = renderer_GetActiveView();
+	active_view = renderer_GetMainView();
 
 	renderer_SetShader(r_imediate_color_shader);
 	renderer_SetModelMatrix(NULL);
@@ -1069,6 +1088,8 @@ void renderer_DrawViews()
 
 
 	//renderer_DisableImediateDrawing();
+
+	#endif
 }
 
 
@@ -1478,8 +1499,8 @@ void renderer_DrawClusters()
     int i;
     int c;
 
-    view_def_t *active_view;
-    active_view = renderer_GetActiveView();
+    struct view_def_t *active_view;
+    active_view = renderer_GetMainViewPointer();
 
     renderer_SetShader(r_cluster_debug_shader);
     renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_cbuffer.depth_attachment);
@@ -1567,13 +1588,206 @@ void renderer_DrawStatistics()
     gui_ImGuiPopStyleVar();
 }
 
+void renderer_DrawLeaves()
+{
+    int i;
+    int j;
+    int k;
+    struct bsp_dleaf_t *leaf;
+    struct vertex_t *vertice;
+    struct bsp_striangle_t *triangle;
+
+    struct view_def_t *active_view;
+    active_view = renderer_GetMainViewPointer();
+
+    renderer_SetShader(r_imediate_color_shader);
+    renderer_SetViewMatrix(&active_view->view_data.view_matrix);
+    renderer_SetProjectionMatrix(&active_view->view_data.projection_matrix);
+    renderer_SetModelMatrix(NULL);
+
+    renderer_UpdateMatrices();
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+
+    vec3_t color;
+
+
+
+    renderer_Begin(GL_TRIANGLES);
+
+    for(i = 0; i < w_world_z_batch_count; i++)
+    {
+        color.r = 0.0;
+        color.g = 0.0;
+        color.b = 0.0;
+
+        if(w_world_z_batches[i].start < 0)
+        {
+            color.r = 1.0;
+        }
+        else
+        {
+            color.b = 1.0;
+        }
+
+        if(w_world_z_batches[i].next < 0)
+        {
+            color.g = 1.0;
+        }
+
+        renderer_Color3f(color.r, color.g, color.b);
+
+        leaf = w_world_leaves + w_world_z_batches[i].material_index;
+
+
+        for(j = 0; j < leaf->tris_count; j++)
+        {
+            triangle = leaf->tris + j;
+
+            for(k = 0; k < 3; k++)
+            {
+                vertice = w_world_vertices + triangle->first_vertex + k;
+                renderer_Vertex3f(vertice->position.x, vertice->position.y, vertice->position.z);
+            }
+        }
+    }
+
+    renderer_End();
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+}
+
+void renderer_DrawSkeletonJoints(struct skeleton_joint_t *joint)
+{
+
+}
+
+void renderer_DrawSkeletons()
+{
+    struct skeleton_t *skeletons;
+    struct skeleton_t *skeleton;
+
+    vec3_t position;
+    vec3_t next_position;
+
+    vec3_t direction;
+
+    float len;
+
+    int i;
+    int c;
+    int j;
+
+    skeletons = anim_skeletons[0].elements;
+    c = anim_skeletons[0].element_count;
+
+    glPointSize(12.0);
+    glEnable(GL_POINT_SMOOTH);
+
+    for(i = 0; i < c; i++)
+    {
+        skeleton = skeletons + i;
+
+        if(skeleton->flags & ANIM_SKELETON_FLAG_INVALID)
+        {
+            continue;
+        }
+
+
+        renderer_Begin(GL_POINTS);
+        renderer_Color3f(1.0, 1.0, 1.0);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glDisable(GL_CULL_FACE);
+
+        for(j = 0; j < skeleton->joint_count; j++)
+        {
+            position.x = skeleton->joints[j].transform.floats[3][0];
+            position.y = skeleton->joints[j].transform.floats[3][1];
+            position.z = skeleton->joints[j].transform.floats[3][2];
+
+            renderer_Vertex3f(position.x, position.y, position.z);
+
+            /*next_position.x = skeleton->joints[j + 1].transform.floats[3][0];
+            next_position.y = skeleton->joints[j + 1].transform.floats[3][1];
+            next_position.z = skeleton->joints[j + 1].transform.floats[3][2];
+
+            direction.x = next_position.x - position.x;
+            direction.y = next_position.y - position.y;
+            direction.z = next_position.z - position.z;*/
+
+            /*direction.x = skeleton->joints[j].transform.floats[1][0];
+            direction.y = skeleton->joints[j].transform.floats[1][1];
+            direction.z = skeleton->joints[j].transform.floats[1][2];*/
+
+            //len = length3(direction);
+
+
+            /*renderer_SetModelMatrix(&skeleton->joints[j].transform);
+
+            #define BONE_DIM_1 0.14
+            #define BONE_DIM_2 0.3
+
+
+
+            renderer_Begin(GL_TRIANGLE_FAN);
+            renderer_Vertex3f(0.0, 0.0, 0.0);
+            renderer_Vertex3f(BONE_DIM_1 * len, BONE_DIM_2 * len, BONE_DIM_1 * len);
+            renderer_Vertex3f(-BONE_DIM_1 * len, BONE_DIM_2 * len, BONE_DIM_1 * len);
+            renderer_Vertex3f(-BONE_DIM_1 * len, BONE_DIM_2 * len, -BONE_DIM_1 * len);
+            renderer_Vertex3f(BONE_DIM_1 * len, BONE_DIM_2 * len, -BONE_DIM_1 * len);
+            renderer_Vertex3f(BONE_DIM_1 * len, BONE_DIM_2 * len, BONE_DIM_1 * len);
+            renderer_End();
+
+            renderer_Begin(GL_TRIANGLE_FAN);
+            renderer_Vertex3f(0.0, 1.0 * len, 0.0);
+            renderer_Vertex3f(BONE_DIM_1 * len, BONE_DIM_2 * len, BONE_DIM_1 * len);
+            renderer_Vertex3f(-BONE_DIM_1 * len, BONE_DIM_2 * len, BONE_DIM_1 * len);
+            renderer_Vertex3f(-BONE_DIM_1 * len, BONE_DIM_2 * len, -BONE_DIM_1 * len);
+            renderer_Vertex3f(BONE_DIM_1 * len, BONE_DIM_2 * len, -BONE_DIM_1 * len);
+            renderer_Vertex3f(BONE_DIM_1 * len, BONE_DIM_2 * len, BONE_DIM_1 * len);
+            renderer_End();*/
+
+        }
+
+        renderer_End();
+    }
+
+    glDisable(GL_POINT_SMOOTH);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glEnable(GL_CULL_FACE);
+    glPointSize(1.0);
+}
+
 /*
 ==============================================================
 ==============================================================
 ==============================================================
 */
 
+int renderer_GetDebugDrawFlags()
+{
+    return (r_debug_draw_lights | r_debug_draw_triggers |
+            r_debug_draw_entities | r_debug_draw_waypoints |
+            r_debug_draw_views | r_debug_draw_world_polygons |
+            r_debug_draw_bsp_leaves | r_debug_draw_colliders);
+}
 
+void renderer_DebugDrawFlags(int flags)
+{
+    r_debug_draw_lights = flags & R_DEBUG_DRAW_FLAG_DRAW_LIGHTS;
+    r_debug_draw_triggers = flags & R_DEBUG_DRAW_FLAG_DRAW_TRIGGERS;
+    r_debug_draw_colliders = flags & R_DEBUG_DRAW_FLAG_DRAW_COLLIDERS;
+    r_debug_draw_entities = flags & R_DEBUG_DRAW_FLAG_DRAW_ENTITIES;
+    r_debug_draw_waypoints = flags & R_DEBUG_DRAW_FLAG_DRAW_WAYPOINTS;
+    r_debug_draw_views = flags & R_DEBUG_DRAW_FLAG_DRAW_VIEWS;
+    r_debug_draw_bsp_leaves = flags & R_DEBUG_DRAW_FLAG_DRAW_BSP_LEAVES;
+    r_debug_draw_world_polygons = flags & R_DEBUG_DRAW_FLAG_DRAW_WORLD_POLYGONS;
+}
 
 void renderer_DrawDebug()
 {
@@ -1584,9 +1798,9 @@ void renderer_DrawDebug()
 	point_dbg_draw_data_t *point_data;
 	line_dbg_draw_data_t *line_data;
 	line_2d_dbg_draw_data_t *line_2d_data;
-	view_def_t *active_view;
+	struct view_def_t *active_view;
 
-    active_view = renderer_GetActiveView();
+    active_view = renderer_GetMainViewPointer();
 
 	//active_camera = camera_GetActiveCamera();
 
@@ -1645,6 +1859,13 @@ void renderer_DrawDebug()
     {
         renderer_DrawStatistics();
     }
+
+    if(r_debug_draw_bsp_leaves)
+    {
+        renderer_DrawLeaves();
+    }
+
+    renderer_DrawSkeletons();
 
     renderer_SetShader(r_imediate_color_shader);
 	renderer_SetModelMatrix(NULL);

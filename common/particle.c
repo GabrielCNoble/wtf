@@ -15,7 +15,8 @@
 #include "r_verts.h"
 #include "particle.h"
 #include "c_memory.h"
-#include "camera.h"
+#include "r_view.h"
+//#include "camera.h"
 #include "texture.h"
 #include "r_main.h"
 #include "log.h"
@@ -701,17 +702,24 @@ int particle_frames[MAX_PARTICLE_SYSTEM_PARTICLES];
 void particle_SortParticles(struct particle_system_t *particle_system)
 {
 	int i;
-	camera_t *active_camera;
+//	camera_t *active_camera;
+    struct view_def_t *main_view;
 	vec3_t particle_vec;
-	vec3_t camera_position;
-	vec3_t camera_forward_vec;
+	vec3_t view_position;
+	vec3_t view_forward_vec;
 	int indice;
 	float dist;
 
 //	active_camera = camera_GetActiveCamera();
-    active_camera = (camera_t *)renderer_GetActiveView();
+    /*active_camera = (camera_t *)renderer_GetMainView();
 	camera_position = active_camera->world_position;
-	camera_forward_vec = active_camera->world_orientation.r2;
+	camera_forward_vec = active_camera->world_orientation.r2;*/
+
+
+	main_view = renderer_GetMainViewPointer();
+	view_position = main_view->world_position;
+	view_forward_vec = main_view->world_orientation.r2;
+
 
 
 	//particle_positions = particle_system->particle_positions;
@@ -723,11 +731,11 @@ void particle_SortParticles(struct particle_system_t *particle_system)
 		particles[i] = particle_system->particles[i];
 		particle_frames[i] = particle_system->particle_frames[i];
 
-        particle_vec.x = particle_positions[i].x - camera_position.x;
-		particle_vec.y = particle_positions[i].y - camera_position.y;
-		particle_vec.z = particle_positions[i].z - camera_position.z;
+        particle_vec.x = particle_positions[i].x - view_position.x;
+		particle_vec.y = particle_positions[i].y - view_position.y;
+		particle_vec.z = particle_positions[i].z - view_position.z;
 
-		dist = -dot3(particle_vec, camera_forward_vec);
+		dist = -dot3(particle_vec, view_forward_vec);
 
         particle_dists[i] = dist;
         particle_indices[i] = i;

@@ -101,7 +101,7 @@ void path_Init(char *path)
 
 	path_SetDir(pth_base_path);
 
-	path_ReadCfg();
+	path_ReadCfg(NULL);
 }
 
 void path_Finish()
@@ -114,12 +114,13 @@ void path_Finish()
 	memory_Free(pth_dir_elements);
 }
 
-void path_ReadCfg()
+void path_ReadCfg(char *path)
 {
 	FILE *file;
 	char *file_buffer;
-	unsigned long file_size;
+	int file_size;
 
+	char file_path[PATH_MAX];
 	char path_buffer[PATH_MAX];
 
 	int path_start;
@@ -127,7 +128,7 @@ void path_ReadCfg()
 
 
 
-	file = fopen("path.cfg", "r");
+	/*file = fopen("path.cfg", "r");
 
 	if(!file)
 	{
@@ -139,11 +140,29 @@ void path_ReadCfg()
 
     file_buffer = memory_Calloc(file_size, 1);
     fread(file_buffer, file_size, 1, file);
-    fclose(file);
+    fclose(file);*/
+
+    file_path[0] = '\0';
+
+    if(path)
+    {
+        strcpy(file_path, path);
+        strcat(file_path, "/");
+    }
+
+    strcat(file_path, "path.cfg");
+
+    path_ReadFile(file_path, (void **)&file_buffer, &file_size);
+
+    if(!file_size)
+    {
+        printf("path_ReadCfg: couldn't locate path.cfg\n");
+		return;
+    }
 
 	path_ClearSearchPaths();
 
-    path_start= 0;
+    path_start = 0;
 
     while(file_buffer[path_start])
 	{
@@ -165,11 +184,19 @@ void path_ReadCfg()
 
 			if(path_start >= 0)
 			{
-                //memcpy(path_buffer, file_buffer + path_start, path_end - 1);
-				//path_buffer[path_end - 1] = '\0';
-
 				file_buffer[path_end] = '\0';
-				path_AddSearchPath(file_buffer + path_start);
+				path_buffer[0] = '\0';
+
+                if(path)
+                {
+                    strcpy(path_buffer, path);
+                    strcat(path_buffer, "/");
+                }
+
+                strcat(path_buffer, file_buffer + path_start);
+
+				//path_AddSearchPath(file_buffer + path_start);
+				path_AddSearchPath(path_buffer);
 				path_end++;
 			}
 
@@ -182,6 +209,60 @@ void path_ReadCfg()
 	}
 
 	memory_Free(file_buffer);
+}
+
+void path_ReadFile(char *file_name, void **file_buffer, int *file_size)
+{
+    FILE *file;
+
+    *file_buffer = NULL;
+    *file_size = 0;
+
+    int buffer_size;
+    void *buffer;
+
+    file = fopen(file_name, "rb");
+
+    if(file)
+    {
+        buffer_size = path_GetFileSize(file);
+
+        buffer = memory_Calloc(1, buffer_size);
+        fread(buffer, 1, buffer_size, file);
+        fclose(file);
+
+        *file_buffer = buffer;
+        *file_size = buffer_size;
+    }
+}
+
+void path_WriteFile(char *file_name, void *file_buffer, int file_size)
+{
+    FILE *file;
+
+    file = fopen(file_name, "wb");
+
+    if(file)
+    {
+        fwrite(file_buffer, 1, file_size, file);
+        fclose(file);
+    }
+}
+
+int path_CopyFile(char *from, char *to)
+{
+    void *file_buffer;
+    int file_buffer_size;
+
+    path_ReadFile(from, &file_buffer, &file_buffer_size);
+
+    if(file_buffer_size)
+    {
+        path_WriteFile(to, file_buffer, file_buffer_size);
+        memory_Free(file_buffer);
+    }
+
+    return file_buffer_size;
 }
 
 
@@ -265,9 +346,9 @@ char *path_GetPathToFile(char *file_name)
 			continue;
 		}
 
-		strcpy(path_to_file, pth_base_path);
-		strcat(path_to_file, "/");
-		strcat(path_to_file, pth_search_paths[i].path);
+		//strcpy(path_to_file, pth_base_path);
+		//strcat(path_to_file, "/");
+		strcpy(path_to_file, pth_search_paths[i].path);
 		strcat(path_to_file, "/");
 		strcat(path_to_file, file_name);
 
@@ -356,6 +437,11 @@ int path_SetDir(char *dir)
 	closedir(current_dir);
 
 	return 1;
+}
+
+int path_MakeDir(char *dir)
+{
+    return !mkdir(dir);
 }
 
 
@@ -587,6 +673,106 @@ char *path_FormatPath(char *path)
 	return rtrn;
 }
 
+char *path_GetPathSegment(char *path, int segment)
+{
+    static char rtrn[1024];
+
+    //int end = 0;
+    int i = 0;
+    int j = 0;
+
+    while(path[i]) i++;
+
+    while(i)
+    {
+        if(path[i] == '\\' || path[i] == '/' || (!i))
+        {
+            /* we hit a separator (or we got to the beginning of the string)... */
+            segment--;
+
+            if(segment < 0)
+            {
+                /* if we're not at the end of this string,
+                increment the index by one to step forward
+                (and away from the separator that got us here). If
+                this is the end of this string however, don't
+                step forward... */
+                i += (i != 0);
+
+                while(path[i] != '\\' && path[i] != '/' && path[i] != '\0')
+                {
+                    rtrn[j] = path[i];
+                    i++;
+                    j++;
+                }
+
+                break;
+            }
+
+        }
+        i--;
+    }
+
+    rtrn[j] = '\0';
+
+    return rtrn;
+}
+
+char *path_GetLastPathSegment(char *path)
+{
+    return path_GetPathSegment(path, 0);
+}
+
+char *path_DropPathSegment(char *path, int segment)
+{
+    static char rtrn[1024];
+
+    int end = 0;
+    int i = 0;
+    int j = 0;
+
+    while(path[end]) end++;
+
+    i = end;
+
+    while(i)
+    {
+        if(path[i] == '\\' || path[i] == '/')
+        {
+            /* we hit a separator (or we got to the beginning of the string)... */
+            segment--;
+
+            if(segment < 0)
+            {
+
+                for(j = 0; j < i; j++)
+                {
+                    rtrn[j] = path[j];
+                }
+
+                i++;
+
+                while(path[i] != '\\' && path[i] != '/' && path[i])i++;
+
+                while(path[i])
+                {
+                    rtrn[j] = path[i];
+                    i++;
+                    j++;
+                }
+
+                break;
+            }
+
+        }
+        i--;
+    }
+
+    rtrn[j] = '\0';
+
+    return rtrn;
+}
+
 
 
 FILE *path_TryOpenFile(char *file_name)
@@ -611,6 +797,11 @@ FILE *path_TryOpenFile(char *file_name)
 	}
 
 	return file;
+}
+
+int path_FileExists(char *file_name)
+{
+
 }
 
 unsigned long path_GetFileSize(FILE *file)

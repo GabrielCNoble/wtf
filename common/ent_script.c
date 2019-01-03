@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "script.h"
 #include "r_main.h"
+#include "r_view.h"
 #include "c_memory.h"
 
 #include <string.h>
@@ -52,7 +53,7 @@ void entity_ScriptMove(vec3_t *direction)
 
 		if(physics_component)
 		{
-			physics_Move(physics_component->collider.collider_handle, *direction);
+			physics_Move(physics_component->collider, *direction);
 		}
 	}
 }
@@ -75,7 +76,7 @@ void entity_ScriptSetEntityVelocity(struct entity_handle_t entity, vec3_t *veloc
 
 		if(physics_component)
 		{
-			physics_SetColliderVelocity(physics_component->collider.collider_handle, *velocity);
+			physics_SetColliderVelocity(physics_component->collider, *velocity);
 		}
 	}
 }
@@ -100,7 +101,7 @@ void entity_ScriptJump(float jump_force)
 		//if(controller->controller.base.type == COMPONENT_TYPE_SCRIPT_CONTROLLER)
 		if(physics_component)
 		{
-			physics_Jump(physics_component->collider.collider_handle, jump_force);
+			physics_Jump(physics_component->collider, jump_force);
 		}
 	}
 }
@@ -737,7 +738,7 @@ void entity_ScriptSetCameraAsActive(struct component_handle_t camera)
 		if(camera_component)
 		{
 		//	camera_SetCamera(camera_component->camera);
-            renderer_SetActiveView((view_def_t *)camera_component->camera);
+            renderer_SetMainView(camera_component->view);
 		}
 	}
 }

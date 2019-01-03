@@ -151,7 +151,7 @@ void physics_Jump(struct collider_handle_t character_collider, float jump_force)
 		return;
 	}
 
-	collider = (struct character_collider_t *)physics_GetColliderPointerHandle(character_collider);
+	collider = (struct character_collider_t *)physics_GetColliderPointer(character_collider);
 
 
 	if(collider)
@@ -182,7 +182,7 @@ void physics_Move(struct collider_handle_t character_collider, vec3_t direction)
         return;
 	}
 
-	collider = (struct character_collider_t *)physics_GetColliderPointerHandle(character_collider);
+	collider = (struct character_collider_t *)physics_GetColliderPointer(character_collider);
 
 	if(collider)
 	{
@@ -310,7 +310,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	}
 
 
-	collider = (struct character_collider_t *)physics_GetColliderPointerHandle(character_collider);
+	collider = (struct character_collider_t *)physics_GetColliderPointer(character_collider);
 
 	rigid_body = (btRigidBody *)collider->base.collision_object;
 	//capsule = (btCapsuleShape *)rigid_body->getCollisionShape();

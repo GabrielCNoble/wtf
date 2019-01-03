@@ -81,15 +81,15 @@ void world_MarkLightsOnLeaves();
 =================================================
 */
 
-void world_VisibleEntities();
+//void world_VisibleEntities();
 
-void world_VisibleLights();
+//void world_VisibleLights();
 
-void world_VisibleLightTriangles(int light_index);
+//void world_VisibleLightTriangles(int light_index);
 
-void world_VisibleLeaves();
+//void world_VisibleLeaves();
 
-void world_VisibleWorld();
+//void world_VisibleWorld();
 
 
 
@@ -164,6 +164,10 @@ void world_ClearBsp();
 void world_Update();
 
 void world_Clear(int clear_flags);
+
+struct world_level_t *world_GetLevel(char *level_name);
+
+void world_ChangeLevel(char *level_name);
 
 
 #ifdef __cplusplus

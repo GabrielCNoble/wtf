@@ -154,6 +154,8 @@ void entity_SetTransform(struct entity_handle_t entity, mat3_t *orientation, vec
 
 void entity_SetCameraTransform(struct entity_handle_t entity, mat3_t *orientation, vec3_t position);
 
+void entity_SetSkeleton(struct entity_handle_t entity, struct skeleton_handle_t skeleton);
+
 /*
 ==============================================================
 ==============================================================

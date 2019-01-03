@@ -131,14 +131,15 @@ struct bsp_pnode_t
 																		only necessary to keep the stride to the back child. */
 };	/* would like to shrink this from 20 to 16 bytes... */
 
-typedef struct
+struct trace_t
 {
 	vec3_t normal;
 	vec3_t position;
+	struct bsp_dleaf_t *leaf;
 	float frac;
 	float dist;
 	int bm_flags;
-}trace_t;
+};
 
 enum TRACE_FLAGS
 {

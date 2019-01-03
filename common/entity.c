@@ -2,6 +2,7 @@
 #include "ent_serialization.h"
 #include "ent_script.h"
 #include "r_main.h"
+#include "r_view.h"
 
 #include "stack_list.h"
 #include "list.h"
@@ -175,6 +176,7 @@ int entity_Init()
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_PARTICLE_SYSTEM, sizeof(struct particle_system_component_t));
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_LIFE, sizeof(struct life_component_t));
     DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_NAVIGATION, sizeof(struct navigation_component_t));
+    DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_SKELETON, sizeof(struct skeleton_component_t));
 
 	DECLARE_COMPONENT_FIELDS(COMPONENT_TYPE_TRANSFORM, {
 															COMPONENT_FIELD("orientation", SCRIPT_VAR_TYPE_MAT3T, COMPONENT_FIELD_OFFSET(struct transform_component_t, orientation)),
@@ -221,13 +223,14 @@ int entity_Init()
     script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_CAMERA", COMPONENT_TYPE_CAMERA);
     script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_LIFE", COMPONENT_TYPE_LIFE);
     script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_NAVIGATION", COMPONENT_TYPE_NAVIGATION);
+    script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_SKELETON", COMPONENT_TYPE_SKELETON);
 
 
     script_RegisterObjectType("entity_handle_t", sizeof(struct entity_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
     script_RegisterObjectType("component_handle_t", sizeof(struct component_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
     script_RegisterObjectType("collider_handle_t", sizeof(struct collider_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
     script_RegisterObjectType("entity_contact_t", sizeof(struct entity_contact_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
-
+    script_RegisterObjectType("skeleton_handle_t", sizeof(struct skeleton_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
 
     script_RegisterObjectProperty("entity_contact_t", "entity_handle_t entity", (int)(&((struct entity_contact_t *)0)->entity));
     script_RegisterObjectProperty("entity_contact_t", "vec3_t position", (int)(&((struct entity_contact_t *)0)->position));
@@ -416,10 +419,11 @@ struct component_handle_t entity_AllocComponent(int component_type, int alloc_fo
 			case COMPONENT_TYPE_TRANSFORM:
 				transform = (struct transform_component_t *)component;
 				transform->parent.type = COMPONENT_TYPE_NONE;
+				transform->bone.type = COMPONENT_TYPE_NONE;
 				transform->children_count = 0;
 
-				/* if this transorm isn't getting alloc'd for
-				a entity def, add it to the top list so it
+				/* if this transform isn't getting alloc'd for
+				an entity def, add it to the top list so it
 				gets treated as the top of a hierarchy... */
 				if(!alloc_for_def)
 				{
@@ -693,6 +697,8 @@ void entity_ParentEntityToEntityTransform(struct component_handle_t parent_trans
 
 	if(parent_transform.def)
 	{
+
+	    /* if we're parenting two transform components  */
 		/* if this is a ref, we alloc a new transform component and make it point
 		to this def, thus configuring a entity def reference... */
 		child_transform = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, parent_transform.def);
@@ -1013,7 +1019,8 @@ void entity_RemoveComponent(struct entity_handle_t entity, int component_type)
 
 						if(!entity.def)
 						{
-							camera_DestroyCamera(camera_component->camera);
+							//camera_DestroyCamera(camera_component->camera);
+							renderer_DestroyViewDef(camera_component->view);
 						}
 					break;
 				}
@@ -1389,7 +1396,19 @@ void entity_SetCollider(struct entity_handle_t entity, void *collider)
 		return;
 	}
 
-	if(entity.def)
+	physics_component->collider = *(struct collider_handle_t *)collider;
+
+	if(!entity.def)
+    {
+		collider_ptr = physics_GetColliderPointer(physics_component->collider);
+
+		if(collider_ptr)
+		{
+			collider_ptr->entity_index = entity.entity_index;
+		}
+    }
+
+	/*if(entity.def)
 	{
 		physics_component->collider.collider_def = collider;
 	}
@@ -1402,7 +1421,7 @@ void entity_SetCollider(struct entity_handle_t entity, void *collider)
 		{
 			collider_ptr->entity_index = entity.entity_index;
 		}
-	}
+	}*/
 
 	physics_component->flags = 0;
 }
@@ -1505,10 +1524,10 @@ void entity_SetTransform(struct entity_handle_t entity, mat3_t *orientation, vec
 		{
 			if(!entity.def)
 			{
-				physics_SetColliderOrientation(physics_component->collider.collider_handle, &transform_component->orientation);
-				physics_SetColliderPosition(physics_component->collider.collider_handle, transform_component->position);
-				physics_SetColliderScale(physics_component->collider.collider_handle, transform_component->scale);
-				physics_SetColliderVelocity(physics_component->collider.collider_handle, vec3_t_c(0.0, 0.0, 0.0));
+				physics_SetColliderOrientation(physics_component->collider, &transform_component->orientation);
+				physics_SetColliderPosition(physics_component->collider, transform_component->position);
+				physics_SetColliderScale(physics_component->collider, transform_component->scale);
+				physics_SetColliderVelocity(physics_component->collider, vec3_t_c(0.0, 0.0, 0.0));
 			}
 
 		}
@@ -1555,11 +1574,38 @@ void entity_SetCameraTransform(struct entity_handle_t entity, mat3_t *orientatio
 		transform_component->position = position;
 		transform_component->scale = vec3_t_c(1.0, 1.0, 1.0);
 	}
-
-
 }
 
-void entity_SetCamera(struct entity_handle_t entity, camera_t *camera)
+void entity_SetSkeleton(struct entity_handle_t entity, struct skeleton_handle_t skeleton)
+{
+    struct entity_t *entity_ptr;
+    struct skeleton_component_t *skeleton_component;
+
+    entity_ptr = entity_GetEntityPointerHandle(entity);
+
+    if(entity_ptr)
+    {
+        skeleton_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SKELETON]);
+
+        if(!skeleton_component)
+        {
+            if(entity.def)
+            {
+                printf("entity_SetSkeleton: entity def [%s] doesn't have a valid skeleton component\n", entity_ptr->name);
+            }
+            else
+            {
+                printf("entity_SetSkeleton: entity [%s] doesn't have a valid skeleton component\n", entity_ptr->name);
+            }
+
+            return;
+        }
+
+        skeleton_component->skeleton = skeleton;
+    }
+}
+
+/*void entity_SetCamera(struct entity_handle_t entity, camera_t *camera)
 {
 	struct entity_t *entity_ptr;
 	struct camera_component_t *camera_component;
@@ -1567,7 +1613,7 @@ void entity_SetCamera(struct entity_handle_t entity, camera_t *camera)
 	entity_ptr = entity_GetEntityPointerHandle(entity);
 	camera_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_CAMERA]);
 	camera_component->camera = camera;
-}
+}*/
 
 /*
 ==============================================================
@@ -1723,9 +1769,9 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 				case COMPONENT_TYPE_PHYSICS:
 					def_physics_component = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_TYPE_PHYSICS]);
 
-					if(def_physics_component->collider.collider_def)
+					if(def_physics_component->collider.index != INVALID_COLLIDER_INDEX)
 					{
-						collider_handle = physics_CreateCollider(orientation, position, scale, def_physics_component->collider.collider_def, 0);
+						collider_handle = physics_CreateCollider(orientation, position, scale, def_physics_component->collider, 0);
 
 						if(def_physics_component->flags & PHYSICS_COMPONENT_FLAG_STATIC)
 						{
@@ -1751,8 +1797,8 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 					camera_transform_component->orientation = def_camera_transform_component->orientation;
 					camera_transform_component->position = def_camera_transform_component->position;
 					camera_transform_component->scale = def_camera_transform_component->scale;*/
-
-					camera_component->camera = camera_CreateCamera("camera", vec3_t_c(0.0, 0.0, 0.0), NULL, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
+                    camera_component->view = renderer_CreateViewDef("view", vec3_t_c(0.0, 0.0, 0.0), NULL, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
+					//camera_component->camera = camera_CreateCamera("camera", vec3_t_c(0.0, 0.0, 0.0), NULL, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
 				break;
 			}
 		}
@@ -1922,13 +1968,14 @@ void entity_RemoveEntity(struct entity_handle_t entity)
 				{
 					case COMPONENT_TYPE_CAMERA:
 						camera_component = entity_GetComponentPointer(component);
-						camera_DestroyCamera(camera_component->camera);
+//						camera_DestroyCamera(camera_component->camera);
+                        renderer_DestroyViewDef(camera_component->view);
 			//			entity_DeallocComponent(camera_component->transform);
 					break;
 
 					case COMPONENT_TYPE_PHYSICS:
 						physics_component = entity_GetComponentPointer(component);
-						physics_DestroyColliderHandle(physics_component->collider.collider_handle);
+						physics_DestroyCollider(physics_component->collider);
 					break;
 				}
 				entity_DeallocComponent(component);
@@ -2405,7 +2452,7 @@ void entity_TranslateEntity(struct entity_handle_t entity, vec3_t direction, flo
 
 		if(physics_component)
 		{
-			physics_SetColliderPosition(physics_component->collider.collider_handle, transform->position);
+			physics_SetColliderPosition(physics_component->collider, transform->position);
 		}
 	}
 }
@@ -2432,7 +2479,7 @@ void entity_SetEntityPosition(struct entity_handle_t entity, vec3_t position)
 
         if(collider)
         {
-            physics_SetColliderPosition(collider->collider.collider_handle, transform->position);
+            physics_SetColliderPosition(collider->collider, transform->position);
         }
     }
 }
@@ -2459,7 +2506,7 @@ void entity_RotateEntity(struct entity_handle_t entity, vec3_t axis, float amoun
 
         if(physics)
         {
-            physics_SetColliderOrientation(physics->collider.collider_handle, &transform->orientation);
+            physics_SetColliderOrientation(physics->collider, &transform->orientation);
         }
     }
 }
@@ -2483,7 +2530,7 @@ void entity_SetEntityOrientation(struct entity_handle_t entity, mat3_t *orientat
 
         if(physics)
         {
-            physics_SetColliderOrientation(physics->collider.collider_handle, &transform->orientation);
+            physics_SetColliderOrientation(physics->collider, &transform->orientation);
         }
     }
 }
@@ -2607,13 +2654,13 @@ struct entity_handle_t *entity_GetTouchedEntities(struct entity_handle_t entity,
 	if(entity_ptr)
 	{
 		physics_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
-		collider = physics_GetColliderPointerHandle(physics_component->collider.collider_handle);
+		collider = physics_GetColliderPointer(physics_component->collider);
 
-		contact_records = physics_GetColliderContactRecords(physics_component->collider.collider_handle);
+		contact_records = physics_GetColliderContactRecords(physics_component->collider);
 
 		for(i = 0; i < collider->contact_record_count && i < MAX_TOUCHED_ENTITIES; i++)
 		{
-			other = physics_GetColliderPointerHandle(contact_records[i].collider);
+			other = physics_GetColliderPointer(contact_records[i].collider);
 
 			if(other)
 			{
@@ -2859,6 +2906,8 @@ void entity_UpdateScriptComponents()
 
 	if(engine_state & ENGINE_PLAYING)
 	{
+	    //printf("executing\n");
+
 		for(i = 0; i < c; i++)
 		{
 			script_component = (struct script_component_t *)list->elements + i;
@@ -2867,6 +2916,8 @@ void entity_UpdateScriptComponents()
 			{
 				continue;
 			}
+
+			//printf("execute\n");
 			script_ExecuteScriptImediate((struct script_t *)script_component->script, script_component);
 		}
 	}
@@ -2904,7 +2955,7 @@ void entity_UpdatePhysicsComponents()
     {
         physics_component = physics_components + i;
 
-        collider = physics_GetColliderPointerHandle(physics_component->collider.collider_handle);
+        collider = physics_GetColliderPointer(physics_component->collider);
 
         if(collider)
         {
@@ -2918,7 +2969,7 @@ void entity_UpdatePhysicsComponents()
 
             prev_start += physics_component->max_entity_contact_count;
 
-            contact_records = physics_GetColliderContactRecords(physics_component->collider.collider_handle);
+            contact_records = physics_GetColliderContactRecords(physics_component->collider);
 
             increment = physics_component->max_entity_contact_count + ent_entity_contacts.element_count;
 
@@ -2939,7 +2990,7 @@ void entity_UpdatePhysicsComponents()
 
                     contact_record = contact_records + j;
 
-                    other = physics_GetColliderPointerHandle(contact_record->collider);
+                    other = physics_GetColliderPointer(contact_record->collider);
 
                     if(other)
                     {
@@ -3109,13 +3160,17 @@ void entity_UpdateTransformComponents()
 
 	for(i = 0; i < c; i++)
 	{
-		world_transform = world_transforms + top_transforms[i].index;
-		local_transform = transform_components + top_transforms[i].index;
+		/*world_transform = world_transforms + top_transforms[i].index;
+		local_transform = transform_components + top_transforms[i].index;*/
 
-		if(local_transform->base.flags & COMPONENT_FLAG_INVALID)
+		local_transform = entity_GetComponentPointer(top_transforms[i]);
+
+		if(!local_transform)
 		{
 			continue;
 		}
+
+		world_transform = entity_GetWorldTransformPointer(top_transforms[i]);
 
 		if(local_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
 		{
@@ -3124,7 +3179,7 @@ void entity_UpdateTransformComponents()
 			if(entity->components[COMPONENT_TYPE_PHYSICS].type != COMPONENT_TYPE_NONE)
 			{
 				physics_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_PHYSICS]);
-				collider = physics_GetColliderPointerHandle(physics_component->collider.collider_handle);
+				collider = physics_GetColliderPointer(physics_component->collider);
 
 				if(collider)
 				{
@@ -3136,48 +3191,27 @@ void entity_UpdateTransformComponents()
 					mat4_t_compose2(&world_transform->transform, &local_transform->orientation, local_transform->position, local_transform->scale);
 				}
 			}
-			else
+			/*else if(local_transform->bone.type != COMPONENT_TYPE_NONE)
+            {
+
+            }*/
+			/*else
 			{
 				mat4_t_compose2(&world_transform->transform, &local_transform->orientation, local_transform->position, local_transform->scale);
-			}
+			}*/
 
-			if(local_transform->child_transforms)
+			entity_RecursiveUpdateTransform(NULL, top_transforms[i], &aabb_max, &aabb_min);
+
+			/*if(local_transform->child_transforms)
 			{
-				//aabb_max = vec3_t_c(world_transform->transform.floats[3][0], world_transform->transform.floats[3][1], world_transform->transform.floats[3][2]);
-				//aabb_min = aabb_max;
-
-				//entity_AabbWorldExtents(local_transform->base.entity, &aabb_max, &aabb_min);
-
 				for(j = 0; j < local_transform->children_count; j++)
 				{
 					entity_RecursiveUpdateTransform(world_transform, local_transform->child_transforms[j], &aabb_max, &aabb_min);
 				}
-
-				//entity_UpdateAabb(local_transform->base.entity);
-
-			//	entity_AabbWorldExtents(local_transform->base.entity, &root_aabb_max, &root_aabb_min);
-
-				/*if(root_aabb_max.x > aabb_max.x) aabb_max.x = root_aabb_max.x;
-				if(root_aabb_max.y > aabb_max.y) aabb_max.y = root_aabb_max.y;
-				if(root_aabb_max.z > aabb_max.z) aabb_max.z = root_aabb_max.z;
-
-				if(root_aabb_min.x < aabb_min.x) aabb_min.x = root_aabb_min.x;
-				if(root_aabb_min.y < aabb_min.y) aabb_min.y = root_aabb_min.y;
-				if(root_aabb_min.z < aabb_min.z) aabb_min.z = root_aabb_min.z;*/
-
-			/*	root_aabb = aabbs + top_transforms[i].index;
-
-				aabb_center.x = (aabb_max.x + aabb_min.x) / 2.0;
-				aabb_center.y = (aabb_max.y + aabb_min.y) / 2.0;
-				aabb_center.z = (aabb_max.z + aabb_min.z) / 2.0;
-
-				root_aabb->current_extents.x = aabb_max.x - aabb_center.x * 0.5;
-				root_aabb->current_extents.y = aabb_max.y - aabb_center.y * 0.5;
-				root_aabb->current_extents.z = aabb_max.z - aabb_center.z * 0.5;*/
-			}
+			}*/
 			//else
 			//{
-			entity_UpdateAabb(local_transform->base.entity);
+			//entity_UpdateAabb(local_transform->base.entity);
 			//}
 
 		/*	if(entity->components[COMPONENT_TYPE_MODEL].type != COMPONENT_TYPE_NONE)
@@ -3200,7 +3234,8 @@ void entity_UpdateCameraComponents()
 	struct entity_transform_t *world_transform;
 
 	struct entity_t *entity;
-	camera_t *camera;
+	struct view_def_t *view_def;
+//	camera_t *camera;
 
 	vec3_t forward_vec;
 	vec3_t right_vec;
@@ -3226,13 +3261,19 @@ void entity_UpdateCameraComponents()
 				continue;
 			}
 
-			if(camera_component->camera)
+			view_def = renderer_GetViewPointer(camera_component->view);
+
+			if(view_def)
 			{
-				camera = camera_component->camera;
+				/*camera = camera_component->camera;
 
 				camera->world_position.x = world_transform->transform.floats[3][0];
 				camera->world_position.y = world_transform->transform.floats[3][1];
-				camera->world_position.z = world_transform->transform.floats[3][2];
+				camera->world_position.z = world_transform->transform.floats[3][2];*/
+
+				view_def->world_position.x = world_transform->transform.floats[3][0];
+				view_def->world_position.y = world_transform->transform.floats[3][1];
+				view_def->world_position.z = world_transform->transform.floats[3][2];
 
 				right_vec.x = world_transform->transform.floats[0][0];
 				right_vec.y = world_transform->transform.floats[0][1];
@@ -3253,17 +3294,17 @@ void entity_UpdateCameraComponents()
 
 
 
-				camera->world_orientation.floats[0][0] = right_vec.x;
-				camera->world_orientation.floats[0][1] = right_vec.y;
-				camera->world_orientation.floats[0][2] = right_vec.z;
+				view_def->world_orientation.floats[0][0] = right_vec.x;
+				view_def->world_orientation.floats[0][1] = right_vec.y;
+				view_def->world_orientation.floats[0][2] = right_vec.z;
 
-				camera->world_orientation.floats[1][0] = up_vec.x;
-				camera->world_orientation.floats[1][1] = up_vec.y;
-				camera->world_orientation.floats[1][2] = up_vec.z;
+				view_def->world_orientation.floats[1][0] = up_vec.x;
+				view_def->world_orientation.floats[1][1] = up_vec.y;
+				view_def->world_orientation.floats[1][2] = up_vec.z;
 
-				camera->world_orientation.floats[2][0] = forward_vec.x;
-				camera->world_orientation.floats[2][1] = forward_vec.y;
-				camera->world_orientation.floats[2][2] = forward_vec.z;
+				view_def->world_orientation.floats[2][0] = forward_vec.x;
+				view_def->world_orientation.floats[2][1] = forward_vec.y;
+				view_def->world_orientation.floats[2][2] = forward_vec.z;
 
 
 
@@ -3280,7 +3321,7 @@ void entity_UpdateCameraComponents()
 				camera->world_orientation.floats[2][1] = world_transform->transform.floats[2][1];
 				camera->world_orientation.floats[2][2] = world_transform->transform.floats[2][2];*/
 
-				camera_ComputeWorldToCameraMatrix(camera);
+				renderer_ComputeViewMatrix(camera_component->view);
 			}
 		}
 
@@ -3455,7 +3496,7 @@ void entity_DestroyTriggerIndex(int trigger_index)
     if(trigger)
 	{
         trigger->flags |= TRIGGER_FLAG_INVALID;
-		physics_DestroyColliderHandle(trigger->collider);
+		physics_DestroyCollider(trigger->collider);
 
 		memory_Free(trigger->event_name);
 		memory_Free(trigger->name);
@@ -3566,12 +3607,12 @@ void entity_UpdateTriggers()
 
 		filters = (struct trigger_filter_t *)trigger->trigger_filters.elements;
 
-		trigger_collider = (struct trigger_collider_t *)physics_GetColliderPointerHandle(trigger->collider);
+		trigger_collider = (struct trigger_collider_t *)physics_GetColliderPointer(trigger->collider);
 		contact_records = physics_GetColliderContactRecords(trigger->collider);
 
 		for(j = 0; j < trigger_collider->base.contact_record_count; j++)
 		{
-			other_collider = physics_GetColliderPointerHandle(contact_records[j].collider);
+			other_collider = physics_GetColliderPointer(contact_records[j].collider);
 
 			if(other_collider)
 			{

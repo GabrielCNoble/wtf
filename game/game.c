@@ -11,6 +11,7 @@
 #include "..\common\entity.h"
 #include "..\common\r_main.h"
 #include "..\common\r_debug.h"
+#include "..\common\r_view.h"
 #include "..\common\script.h"
 
 int game_state = GAME_STATE_NONE;
@@ -33,8 +34,9 @@ void game_Init(int argc, char *argv[])
 	gui_ImGuiAddFontFromFileTTF("fixedsys.ttf", 32);
 	engine_SetEngineState(ENGINE_PAUSED);
 
-	renderer_Enable(R_Z_PRE_PASS);
-	renderer_Disable(R_DEBUG);
+	//renderer_Enable(R_Z_PRE_PASS);
+	//renderer_Disable(R_CLEAR_COLOR_BUFFER);
+	//renderer_Disable(R_DEBUG);
 	//renderer_Enable(R_DEBUG);
 	//renderer_Enable(R_VERBOSE_DEBUG);
 	//renderer_Enable(R_WIREFRAME);
@@ -130,15 +132,17 @@ void game_Init(int argc, char *argv[])
 	particle_CreateParticleSystemDef("explosion", 1, 60, 1, 0, explosion_texture, ps_script);
 
 
-    view_def_t *active_view;
+    struct view_def_t *active_view;
 
-    active_view = renderer_GetActiveView();
+    active_view = renderer_GetMainViewPointer();
 
     active_view->world_position.x = -350.0;
     active_view->world_position.y = -350.0;
     active_view->world_position.z = -350.0;
 
-    renderer_ComputeViewMatrix(active_view);
+    renderer_ComputeMainViewMatrix();
+
+    //renderer_ComputeViewMatrix(active_view);
 
 	/*camera_t *camera;
 
@@ -292,7 +296,10 @@ void game_Main(float delta_time)
 	struct entity_prop_t *life;
 	struct entity_transform_t *world_transform;
 
-	camera_t *death_camera;
+	//camera_t *death_camera;
+
+	struct view_handle_t death_view_handle;
+	struct view_def_t *death_view;
 
 	int life_value;
 
@@ -348,9 +355,11 @@ void game_Main(float delta_time)
 		break;
 
 		case GAME_STATE_GAME_OVER:
-			death_camera = camera_GetCamera("default camera");
+			//death_camera = camera_GetCamera("default camera");
+			death_view_handle = renderer_GetViewByName("default view");
+			death_view = renderer_GetViewPointer(death_view_handle);
             //camera_SetCamera(death_camera);
-            renderer_SetActiveView((view_def_t *)death_camera);
+            renderer_SetMainView(death_view_handle);
 
             player = entity_GetEntityHandle("player entity", 0);
 
@@ -360,11 +369,12 @@ void game_Main(float delta_time)
 			{
                 world_transform = entity_GetWorldTransformPointer(player_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
-                death_camera->world_position.x = world_transform->transform.floats[3][0];
-                death_camera->world_position.y = world_transform->transform.floats[3][1];
-                death_camera->world_position.z = world_transform->transform.floats[3][2];
+                death_view->world_position.x = world_transform->transform.floats[3][0];
+                death_view->world_position.y = world_transform->transform.floats[3][1];
+                death_view->world_position.z = world_transform->transform.floats[3][2];
 
-                camera_ComputeWorldToCameraMatrix(death_camera);
+                //camera_ComputeWorldToCameraMatrix(death_camera);
+                renderer_ComputeViewMatrix(death_view_handle);
 
 				entity_MarkForRemoval(player);
 			}

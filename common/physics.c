@@ -74,6 +74,8 @@ extern "C++"
 
 	#include "bullet/include/BulletCollision/CollisionDispatch/btGhostObject.h"
 
+	#include "bullet/include/BulletDynamics/ConstraintSolver/btHingeConstraint.h"
+
 	btDefaultCollisionConfiguration *collision_configuration = NULL;
 	btCollisionDispatcher *narrow_phase = NULL;
 	btBroadphaseInterface *broad_phase = NULL;
@@ -157,6 +159,7 @@ int physics_Init()
 	collider_type_size[COLLIDER_TYPE_CHARACTER_COLLIDER] = sizeof(struct character_collider_t);
 	collider_type_size[COLLIDER_TYPE_TRIGGER_COLLIDER] = sizeof(struct trigger_collider_t);
 	collider_type_size[COLLIDER_TYPE_PROJECTILE_COLLIDER] = sizeof(struct projectile_collider_t);
+	collider_type_size[COLLIDER_TYPE_COLLIDER_DEF] = sizeof(struct collider_def_t);
 
 
 
@@ -183,9 +186,10 @@ void physics_Finish()
 	int i;
 	btRigidBody *collider_rigid_body;
 
-	while(phy_collider_defs)
+	/*while(phy_collider_defs)
 	{
 		phy_last_collider_def = phy_collider_defs->next;
+
 		if(phy_collider_defs->type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
 		{
 			memory_Free(phy_collider_defs->collision_shape);
@@ -194,7 +198,7 @@ void physics_Finish()
 		memory_Free(phy_collider_defs->name);
 		memory_Free(phy_collider_defs);
 		phy_collider_defs = phy_last_collider_def;
-	}
+	}*/
 
 	for(i = 0; i < COLLIDER_TYPE_LAST; i++)
 	{
@@ -252,49 +256,48 @@ void physics_ProcessCollisions(double delta_time)
 	//renderer_StopTimer(timer);
 }
 
-collider_def_t *physics_CreateColliderDef(char *name)
+struct collider_handle_t physics_CreateColliderDef(char *name)
 {
-	collider_def_t *def;
-	def = (collider_def_t *) memory_Malloc(sizeof(collider_def_t));
 
-	def->name = memory_Strdup(name);
-	def->ref_count = 0;
-	def->next = NULL;
-	def->prev = NULL;
+    struct collider_handle_t def = INVALID_COLLIDER_HANDLE;
+    struct collider_def_t *def_ptr;
+    int i;
 
-	def->mass = 0.0;
-	def->max_collision_shapes = 0;
-	def->collision_shape_count = 0;
-	def->collision_shape = NULL;
-	def->cached_collision_shape = NULL;
-	//def->mass = 1.0;
+    def = physics_CreateEmptyCollider(COLLIDER_TYPE_COLLIDER_DEF);
 
-	//def->max_collision_shapes = 16;
-	//def->collision_shape_count = 0;
-	//def->collision_shape = (collision_shape_t *) memory_Malloc(sizeof(collision_shape_t) * def->max_collision_shapes, "physics_CreateColliderDef");
-	//def->cached_collision_shape = NULL;
+    def_ptr = (struct collider_def_t *)physics_GetColliderPointer(def);
 
-	def->flags = 0;
-	def->type = COLLIDER_TYPE_NONE;
+    if(def_ptr)
+    {
+        def_ptr->mass = 0.0;
+        def_ptr->collider_type = COLLIDER_TYPE_NONE;
 
-	if(!phy_collider_defs)
-	{
-		phy_collider_defs = def;
-	}
-	else
-	{
-		phy_last_collider_def->next = def;
-		def->prev = phy_last_collider_def;
-	}
+        //def_ptr->collision_shape_count = 0;
+        def_ptr->collision_shape.elements = NULL;
+        def_ptr->collision_shape.element_count = 0;
+        def_ptr->collision_shape.element_size = 0;
+        def_ptr->collision_shape.max_elements = 0;
 
-	phy_last_collider_def = def;
+        //def_ptr->collision_shape = NULL;
+        def_ptr->cached_collision_shape = NULL;
+        def_ptr->name = (char *)memory_Calloc(COLLIDER_DEF_NAME_MAX_LEN, 1);
 
-	return def;
+        for(i = 0; i < COLLIDER_DEF_NAME_MAX_LEN - 1 && name[i]; i++)
+        {
+            def_ptr->name[i] = name[i];
+        }
+
+        //def_ptr->name = memory_Strdup(name);
+    }
+
+    return def;
 }
 
-collider_def_t *physics_CreateRigidBodyColliderDef(char *name)
+struct collider_handle_t physics_CreateRigidBodyColliderDef(char *name)
 {
-	collider_def_t *def;
+    struct collider_handle_t def = INVALID_COLLIDER_HANDLE;
+    struct collider_def_t *def_ptr;
+	/*collider_def_t *def;
 
 	def = physics_CreateColliderDef(name);
 
@@ -303,14 +306,49 @@ collider_def_t *physics_CreateRigidBodyColliderDef(char *name)
 	def->collision_shape_count = 0;
 	def->collision_shape = (collision_shape_t *) memory_Malloc(sizeof(collision_shape_t) * def->max_collision_shapes);
 	def->flags = COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
-	def->type = COLLIDER_TYPE_RIGID_BODY_COLLIDER;
+	def->type = COLLIDER_TYPE_RIGID_BODY_COLLIDER;*/
+
+
+    def = physics_CreateColliderDef(name);
+    def_ptr = physics_GetColliderDefPointerHandle(def);
+
+    if(def_ptr)
+    {
+        def_ptr->mass = 1.0;
+        def_ptr->collision_shape = list_create(sizeof(struct collision_shape_t), 16, NULL);
+        //def_ptr->max_collision_shapes = 16;
+        //def_ptr->collision_shape = (collision_shape_t *) memory_Malloc(sizeof(struct collision_shape_t) * def_ptr->max_collision_shapes);
+        def_ptr->def_flags = COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+        def_ptr->collider_type = COLLIDER_TYPE_RIGID_BODY_COLLIDER;
+    }
+
 
 	return def;
 }
 
-collider_def_t *physics_CreateCharacterColliderDef(char *name, float height, float crouch_height, float radius, float step_height, float slope_angle, float max_walk_speed, float mass)
+struct collider_handle_t physics_CreateCharacterColliderDef(char *name, float height, float crouch_height, float radius, float step_height, float slope_angle, float max_walk_speed, float mass)
 {
-	collider_def_t *def;
+    struct collider_handle_t def = INVALID_COLLIDER_HANDLE;
+    struct collider_def_t *def_ptr;
+
+    def = physics_CreateColliderDef(name);
+
+    def_ptr = physics_GetColliderDefPointerHandle(def);
+
+    if(def_ptr)
+    {
+        def_ptr->height = height;
+        def_ptr->crouch_height = crouch_height;
+        def_ptr->radius = radius;
+        def_ptr->max_slope_angle = slope_angle;
+        def_ptr->max_step_height = step_height;
+        def_ptr->max_walk_speed = max_walk_speed;
+        def_ptr->mass = mass;
+
+        def_ptr->def_flags = COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+        def_ptr->collider_type = COLLIDER_TYPE_CHARACTER_COLLIDER;
+    }
+	/*collider_def_t *def;
 	def = physics_CreateColliderDef(name);
 
 	def->height = height;
@@ -323,14 +361,14 @@ collider_def_t *physics_CreateCharacterColliderDef(char *name, float height, flo
 	def->mass = mass;
 
 	def->flags = COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
-	def->type = COLLIDER_TYPE_CHARACTER_COLLIDER;
+	def->type = COLLIDER_TYPE_CHARACTER_COLLIDER;*/
 
 	return def;
 }
 
-collider_def_t *physics_CreateProjectileColliderDef(char *name, float radius, float mass)
+struct collider_handle_t physics_CreateProjectileColliderDef(char *name, float radius, float mass)
 {
-	collider_def_t *def;
+	/*collider_def_t *def;
 
 	def = physics_CreateColliderDef(name);
 
@@ -340,27 +378,25 @@ collider_def_t *physics_CreateProjectileColliderDef(char *name, float radius, fl
 	def->flags = COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
 	def->type = COLLIDER_TYPE_PROJECTILE_COLLIDER;
 
-	return def;
+	return def;*/
+
+	return INVALID_COLLIDER_HANDLE;
 }
 
-void physics_DestroyColliderDef(char *name)
+void physics_DestroyColliderDefByName(char *name)
 {
-	collider_def_t *r;
+	struct collider_handle_t def = physics_GetColliderDefByName(name);
+    physics_DestroyColliderDef(def);
+}
 
-	r = phy_collider_defs;
-
-	while(r)
-	{
-		if(!strcmp(name, r->name))
-		{
-			physics_DestroyColliderDefPointer(r);
-		}
-		r = r->next;
-	}
+void physics_DestroyColliderDef(struct collider_handle_t def)
+{
+    physics_DestroyCollider(def);
 }
 
 void physics_DestroyColliderDefPointer(collider_def_t *def)
 {
+    #if 0
 	btCollisionShape *collision_shape;
 	btCompoundShape *compound_shape;
 	int i;
@@ -420,52 +456,98 @@ void physics_DestroyColliderDefPointer(collider_def_t *def)
 		memory_Free(def);
 	}
 
+	#endif
+
 }
 
 void physics_DestroyColliderDefs()
 {
+    #if 0
 	while(phy_collider_defs)
 	{
 		phy_last_collider_def = phy_collider_defs->next;
 		physics_DestroyColliderDefPointer(phy_collider_defs);
 		phy_collider_defs = phy_last_collider_def;
 	}
+
+	#endif
 }
 
-collider_def_t *physics_GetColliderDefPointer(char *name)
+struct collider_handle_t physics_GetColliderDefByName(char *name)
 {
-	collider_def_t *r;
+    struct collider_def_t *collider_defs;
+    struct collider_handle_t def = INVALID_COLLIDER_HANDLE;
+    int i;
+    int c;
 
-	r = phy_collider_defs;
 
-	while(r)
-	{
-		if(!strcmp(name, r->name))
-		{
-			return r;
-		}
-		r = r->next;
-	}
+    collider_defs = (struct collider_def_t *)phy_colliders[COLLIDER_TYPE_COLLIDER_DEF].elements;
+    c = phy_colliders[COLLIDER_TYPE_COLLIDER_DEF].element_count;
 
-	return NULL;
+    for(i = 0; i < c; i++)
+    {
+        if(collider_defs[i].base.flags & COLLIDER_FLAG_INVALID)
+        {
+            continue;
+        }
+
+        if(!strcmp(name, collider_defs[i].name))
+        {
+            //return collider_defs + i;
+            def.type = COLLIDER_TYPE_COLLIDER_DEF;
+            def.index = i;
+            break;
+        }
+    }
+
+    return def;
 }
+
+struct collider_def_t *physics_GetColliderDefPointer(char *name)
+{
+    struct collider_handle_t def;
+
+    def = physics_GetColliderDefByName(name);
+
+    return (struct collider_def_t *)physics_GetColliderPointer(def);
+}
+
+struct collider_def_t *physics_GetColliderDefPointerHandle(struct collider_handle_t def)
+{
+    return (struct collider_def_t *)physics_GetColliderPointer(def);
+}
+
+struct collider_def_t *physics_GetColliderDefsList(int *def_count)
+{
+    *def_count = phy_colliders[COLLIDER_TYPE_COLLIDER_DEF].element_count;
+    return (struct collider_def_t *)phy_colliders[COLLIDER_TYPE_COLLIDER_DEF].elements;
+}
+
 
 
 #define MIN_COLLISION_SHAPE_SCALE 0.01
 
-void physics_AddCollisionShape(collider_def_t *def, vec3_t scale, vec3_t relative_position, mat3_t *relative_orientation, int type)
+void physics_AddCollisionShape(struct collider_handle_t def_handle, vec3_t scale, vec3_t relative_position, mat3_t *relative_orientation, int type)
 {
 	int collision_shape_index;
-	collision_shape_t *collision_shape;
+	struct collision_shape_t *collision_shape;
+	struct collision_shape_t *collision_shapes;
+
+	struct collider_def_t *def = physics_GetColliderDefPointerHandle(def_handle);
 
 	if(def)
 	{
+	    if(def->collider_type != COLLIDER_TYPE_RIGID_BODY_COLLIDER)
+        {
+            return;
+        }
+
 		switch(type)
 		{
 			case COLLISION_SHAPE_BOX:
 			case COLLISION_SHAPE_CYLINDER:
 			case COLLISION_SHAPE_SPHERE:
-				collision_shape_index = def->collision_shape_count++;
+				/*collision_shape_index = def->collision_shape_count++;
 
 				if(collision_shape_index >= def->max_collision_shapes)
 				{
@@ -476,7 +558,10 @@ void physics_AddCollisionShape(collider_def_t *def, vec3_t scale, vec3_t relativ
 
 					def->collision_shape = collision_shape;
 					def->max_collision_shapes += 16;
-				}
+				}*/
+
+                collision_shape_index = list_add(&def->collision_shape, NULL);
+                collision_shape = (struct collision_shape_t *) list_get(&def->collision_shape, collision_shape_index);
 
 				if(scale.x < MIN_COLLISION_SHAPE_SCALE) scale.x = MIN_COLLISION_SHAPE_SCALE;
 				if(scale.y < MIN_COLLISION_SHAPE_SCALE) scale.y = MIN_COLLISION_SHAPE_SCALE;
@@ -484,24 +569,24 @@ void physics_AddCollisionShape(collider_def_t *def, vec3_t scale, vec3_t relativ
 
 				if(relative_orientation)
 				{
-					def->collision_shape[collision_shape_index].orientation = *relative_orientation;
+					collision_shape->orientation = *relative_orientation;
 				}
 				else
 				{
-					def->collision_shape[collision_shape_index].orientation = mat3_t_id();
+					collision_shape->orientation = mat3_t_id();
 				}
 
-				def->collision_shape[collision_shape_index].position = relative_position;
-				def->collision_shape[collision_shape_index].scale = scale;
-				def->collision_shape[collision_shape_index].type = type;
+				collision_shape->position = relative_position;
+				collision_shape->scale = scale;
+				collision_shape->type = type;
 
-				def->flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+				def->def_flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
 
 				/* updating ALL the colliders that use this
 				shape every time something changes may become
 				a bottleneck, but changing the collision shape
 				at runtime is not intended... */
-				physics_UpdateReferencingColliders(def);
+				physics_UpdateReferencingColliders(def_handle);
 			break;
 
 			default:
@@ -515,77 +600,165 @@ void physics_AddCollisionShape(collider_def_t *def, vec3_t scale, vec3_t relativ
 
 
 
-void physics_RemoveCollisionShape(collider_def_t *def, int shape_index)
+void physics_RemoveCollisionShape(struct collider_handle_t def_handle, int shape_index)
 {
+    struct collider_def_t *def = physics_GetColliderDefPointerHandle(def_handle);
+
 	if(def)
 	{
-		if(shape_index >= 0 && shape_index < def->collision_shape_count)
+	    if(def->collider_type != COLLIDER_TYPE_RIGID_BODY_COLLIDER)
+        {
+            return;
+        }
+
+		if(shape_index >= 0 && shape_index < def->collision_shape.element_count)
 		{
-			if(shape_index < def->collision_shape_count - 1)
+			/*if(shape_index < def->collision_shape_count - 1)
 			{
 				def->collision_shape[shape_index] = def->collision_shape[def->collision_shape_count - 1];
 			}
 
-			def->collision_shape_count--;
-			def->flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+			def->collision_shape_count--;*/
 
-			physics_UpdateReferencingColliders(def);
+			list_remove(&def->collision_shape, shape_index);
+
+			def->def_flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+
+			physics_UpdateReferencingColliders(def_handle);
 		}
 	}
 }
 
-void physics_TranslateCollisionShape(collider_def_t *def, vec3_t translation, int shape_index)
+
+struct collision_shape_t *physics_GetCollisionShapePointer(struct collider_handle_t collider, int shape_index)
 {
+    struct collider_def_t *def;
+    struct collision_shape_t *collision_shape = NULL;
+
+    if(collider.type == COLLIDER_TYPE_COLLIDER_DEF)
+    {
+        def = physics_GetColliderDefPointerHandle(collider);
+
+        if(def)
+        {
+            collision_shape = (struct collision_shape_t *)list_get(&def->collision_shape, shape_index);
+        }
+    }
+
+    return collision_shape;
+}
+
+
+void physics_TranslateCollisionShape(struct collider_handle_t def_handle, vec3_t translation, int shape_index)
+{
+    struct collider_def_t *def = physics_GetColliderDefPointerHandle(def_handle);
+    struct collision_shape_t *collision_shape;
+
 	if(def)
 	{
 
-		if(shape_index >= 0 && shape_index < def->collision_shape_count)
+	    collision_shape = physics_GetCollisionShapePointer(def_handle, shape_index);
+
+	    if(collision_shape)
+        {
+            collision_shape->position.x += translation.x;
+			collision_shape->position.y += translation.y;
+			collision_shape->position.z += translation.z;
+
+			def->def_flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+			physics_UpdateReferencingColliders(def_handle);
+        }
+
+		/*if(shape_index >= 0 && shape_index < def->collision_shape_count)
 		{
 			def->collision_shape[shape_index].position.x += translation.x;
 			def->collision_shape[shape_index].position.y += translation.y;
 			def->collision_shape[shape_index].position.z += translation.z;
 
-			def->flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
-			physics_UpdateReferencingColliders(def);
-		}
+			def->def_flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+			physics_UpdateReferencingColliders(def_handle);
+		}*/
 	}
 }
 
-void physics_SetCollisionShapePosition(struct collider_def_t *def, vec3_t position, int shape_index)
+void physics_SetCollisionShapePosition(struct collider_handle_t def_handle, vec3_t position, int shape_index)
 {
+    struct collider_def_t *def = physics_GetColliderDefPointerHandle(def_handle);
+    struct collision_shape_t *collision_shape;
+
 	if(def)
 	{
+	    collision_shape = physics_GetCollisionShapePointer(def_handle, shape_index);
 
-		if(shape_index >= 0 && shape_index < def->collision_shape_count)
+	    if(collision_shape)
+        {
+            collision_shape->position.x = position.x;
+			collision_shape->position.y = position.y;
+			collision_shape->position.z = position.z;
+
+			def->def_flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+			physics_UpdateReferencingColliders(def_handle);
+	    }
+
+		/*if(shape_index >= 0 && shape_index < def->collision_shape_count)
 		{
 			def->collision_shape[shape_index].position.x = position.x;
 			def->collision_shape[shape_index].position.y = position.y;
 			def->collision_shape[shape_index].position.z = position.z;
 
-			def->flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
-			physics_UpdateReferencingColliders(def);
-		}
+			def->def_flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+			physics_UpdateReferencingColliders(def_handle);
+		}*/
 	}
 }
 
-void physics_RotateCollisionShape(collider_def_t *def, vec3_t axis, float amount, int shape_index)
+void physics_RotateCollisionShape(struct collider_handle_t def_handle, vec3_t axis, float amount, int shape_index)
 {
+    struct collider_def_t *def = physics_GetColliderDefPointerHandle(def_handle);
+    struct collision_shape_t *collision_shape;
+
 	if(def)
 	{
-		if(shape_index >= 0 && shape_index < def->collision_shape_count)
+	    collision_shape = physics_GetCollisionShapePointer(def_handle, shape_index);
+
+	    if(collision_shape)
+        {
+            mat3_t_rotate(&collision_shape->orientation, axis, amount, 0);
+			def->def_flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+			physics_UpdateReferencingColliders(def_handle);
+        }
+		/*if(shape_index >= 0 && shape_index < def->collision_shape_count)
 		{
 			mat3_t_rotate(&def->collision_shape[shape_index].orientation, axis, amount, 0);
-			def->flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
-			physics_UpdateReferencingColliders(def);
-		}
+			def->def_flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+			physics_UpdateReferencingColliders(def_handle);
+		}*/
 	}
 }
 
-void physics_ScaleCollisionShape(collider_def_t *def, vec3_t scale, int shape_index)
+void physics_ScaleCollisionShape(struct collider_handle_t def_handle, vec3_t scale, int shape_index)
 {
+    struct collider_def_t *def = physics_GetColliderDefPointerHandle(def_handle);
+    struct collision_shape_t *collision_shape;
+
 	if(def)
 	{
-		if(shape_index >= 0 && shape_index < def->collision_shape_count)
+	    collision_shape = physics_GetCollisionShapePointer(def_handle, shape_index);
+
+	    if(collision_shape)
+        {
+            collision_shape->scale.x += scale.x;
+			collision_shape->scale.y += scale.y;
+			collision_shape->scale.z += scale.z;
+
+			if(collision_shape->scale.x < MIN_COLLISION_SHAPE_SCALE) collision_shape->scale.x = MIN_COLLISION_SHAPE_SCALE;
+			if(collision_shape->scale.y < MIN_COLLISION_SHAPE_SCALE) collision_shape->scale.y = MIN_COLLISION_SHAPE_SCALE;
+			if(collision_shape->scale.z < MIN_COLLISION_SHAPE_SCALE) collision_shape->scale.z = MIN_COLLISION_SHAPE_SCALE;
+
+			def->def_flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+			physics_UpdateReferencingColliders(def_handle);
+        }
+		/*if(shape_index >= 0 && shape_index < def->collision_shape_count)
 		{
 			def->collision_shape[shape_index].scale.x += scale.x;
 			def->collision_shape[shape_index].scale.y += scale.y;
@@ -595,42 +768,47 @@ void physics_ScaleCollisionShape(collider_def_t *def, vec3_t scale, int shape_in
 			if(def->collision_shape[shape_index].scale.y < MIN_COLLISION_SHAPE_SCALE) def->collision_shape[shape_index].scale.y = MIN_COLLISION_SHAPE_SCALE;
 			if(def->collision_shape[shape_index].scale.z < MIN_COLLISION_SHAPE_SCALE) def->collision_shape[shape_index].scale.z = MIN_COLLISION_SHAPE_SCALE;
 
-			def->flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
-			physics_UpdateReferencingColliders(def);
-		}
+			def->def_flags |= COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+			physics_UpdateReferencingColliders(def_handle);
+		}*/
 	}
 }
 
 
 
 
-void *physics_BuildCollisionShape(collider_def_t *def)
+void *physics_BuildCollisionShape(struct collider_handle_t def_handle)
 {
 	int i;
 	int c;
 
 	btCompoundShape *compound_shape = NULL;
 	btCollisionShape *collision_shape;
-	collision_shape_t *def_collision_shape;
+	struct collision_shape_t *def_collision_shape;
 	btTransform collision_shape_transform;
 	btVector3 inertia_tensor;
 	//btMatrix3x3 basis;
 	mat3_t *rot;
 
+	struct collider_def_t *def = physics_GetColliderDefPointerHandle(def_handle);
+
 	if(def)
 	{
 		/* would like to share collision shapes, but this wouldn't allow
 		them to be scaled on a per instance basis... */
-		switch(def->type)
+		switch(def->collider_type)
 		{
 			case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
-				if(def->collision_shape_count > 1)
+				if(def->collision_shape.element_count > 1)
 				{
 					compound_shape = new btCompoundShape();
-					for(i = 0; i < def->collision_shape_count; i++)
+					for(i = 0; i < def->collision_shape.element_count; i++)
 					{
 
-						def_collision_shape = &def->collision_shape[i];
+						//def_collision_shape = &def->collision_shape[i];
+
+						def_collision_shape = physics_GetCollisionShapePointer(def_handle, i);
+
 						collision_shape_transform.setIdentity();
 						collision_shape_transform.setOrigin(btVector3(def_collision_shape->position.x, def_collision_shape->position.y, def_collision_shape->position.z));
 						collision_shape_transform.setBasis(&def_collision_shape->orientation.floats[0][0]);
@@ -641,7 +819,7 @@ void *physics_BuildCollisionShape(collider_def_t *def)
                                                                        rot->floats[0][1], rot->floats[1][1], rot->floats[2][1],
                                                                        rot->floats[0][2], rot->floats[1][2], rot->floats[2][2]));*/
 
-						switch(def->collision_shape[i].type)
+						switch(def_collision_shape->type)
 						{
 							case COLLISION_SHAPE_BOX:
 								compound_shape->addChildShape(collision_shape_transform, new btBoxShape(btVector3(def_collision_shape->scale.x, def_collision_shape->scale.y, def_collision_shape->scale.z)));
@@ -658,9 +836,11 @@ void *physics_BuildCollisionShape(collider_def_t *def)
 					}
 					collision_shape = compound_shape;
 				}
-				else if(def->collision_shape_count == 1)
+				else if(def->collision_shape.element_count == 1)
 				{
-					def_collision_shape = &def->collision_shape[0];
+					//def_collision_shape = &def->collision_shape[0];
+
+					def_collision_shape = physics_GetCollisionShapePointer(def_handle, 0);
 					switch(def_collision_shape->type)
 					{
 						case COLLISION_SHAPE_BOX:
@@ -695,7 +875,7 @@ void *physics_BuildCollisionShape(collider_def_t *def)
 
 		/* still not sure if it is necessary to recalculate this
 		once the collision shape gets scaled...  */
-		if(def->flags & COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR)
+		if(def->def_flags & COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR)
 		{
 			collision_shape->calculateLocalInertia(def->mass, inertia_tensor);
 			def->inertia_tensor.x = inertia_tensor[0];
@@ -709,23 +889,31 @@ void *physics_BuildCollisionShape(collider_def_t *def)
 
 			def->cached_collision_shape = collision_shape;
 
-			def->flags &= ~COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
+			def->def_flags &= ~COLLIDER_DEF_RECALCULATE_INERTIA_TENSOR;
 		}
 	}
 
 	return collision_shape;
 }
 
-void physics_IncColliderDefRefCount(collider_def_t *def)
+void physics_IncColliderDefRefCount(struct collider_handle_t def_handle)
 {
+    struct collider_def_t *def;
+
+    def = physics_GetColliderDefPointerHandle(def_handle);
+
 	if(def)
 	{
 		def->ref_count++;
 	}
 }
 
-void physics_DecColliderDefRefCount(collider_def_t *def)
+void physics_DecColliderDefRefCount(struct collider_handle_t def_handle)
 {
+    struct collider_def_t *def;
+
+    def = physics_GetColliderDefPointerHandle(def_handle);
+
 	if(def)
 	{
 		if(def->ref_count > 0)
@@ -735,7 +923,7 @@ void physics_DecColliderDefRefCount(collider_def_t *def)
 	}
 }
 
-void physics_UpdateReferencingColliders(collider_def_t *def)
+void physics_UpdateReferencingColliders(struct collider_handle_t def_handle)
 {
 	int i;
 	int type;
@@ -747,6 +935,10 @@ void physics_UpdateReferencingColliders(collider_def_t *def)
 
 	struct collider_t *colliders;
 	struct collider_t *collider;
+	struct collider_def_t *def;
+
+    def = physics_GetColliderDefPointerHandle(def_handle);
+
 
 	if(def)
 	{
@@ -755,8 +947,8 @@ void physics_UpdateReferencingColliders(collider_def_t *def)
 
 	//	for(type = 0; type < COLLIDER_TYPE_LAST; type++)
 	//	{
-		colliders = (struct collider_t *)phy_colliders[type].elements;
-		count = phy_colliders[def->type].element_count;
+		colliders = (struct collider_t *)phy_colliders[def->collider_type].elements;
+		count = phy_colliders[def->collider_type].element_count;
 
 		for(i = 0; i < count; i++)
 		{
@@ -767,16 +959,16 @@ void physics_UpdateReferencingColliders(collider_def_t *def)
 				continue;
 			}
 
-			if(collider->def != def)
+			/*if(collider->def != def)
 			{
 				continue;
-			}
+			}*/
 
 
 			if(!(collider->flags & COLLIDER_FLAG_NO_SCALE_HINT))
 			{
 				/* make a copy of the collision shape, so this collider can be freely scaled... */
-				collision_shape = (btCollisionShape *) physics_BuildCollisionShape(def);
+				collision_shape = (btCollisionShape *) physics_BuildCollisionShape(def_handle);
 				rigid_body = (btRigidBody *) collider->collision_object;
 
 				/* get rid of the outdated copy this collider has... */
@@ -884,6 +1076,7 @@ struct collider_handle_t physics_CreateEmptyCollider(int type)
 		case COLLIDER_TYPE_CHARACTER_COLLIDER:
 		case COLLIDER_TYPE_PROJECTILE_COLLIDER:
 		case COLLIDER_TYPE_TRIGGER_COLLIDER:
+        case COLLIDER_TYPE_COLLIDER_DEF:
 			collider_index = stack_list_add(&phy_colliders[type], NULL);
 		break;
 
@@ -918,7 +1111,7 @@ struct collider_handle_t physics_CreateEmptyCollider(int type)
 	collider->flags = 0;
 	collider->type = type;
 	collider->collision_object = NULL;
-	collider->def = NULL;
+	collider->def = INVALID_COLLIDER_HANDLE;
 	collider->max_contact_records = 32;
 	collider->contact_record_count = 0;
 	collider->first_contact_record = 0;
@@ -929,7 +1122,7 @@ struct collider_handle_t physics_CreateEmptyCollider(int type)
 	//return collider_index;
 }
 
-struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t position, vec3_t scale, struct collider_def_t *def, int flags)
+struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t position, vec3_t scale, struct collider_handle_t def_handle, int flags)
 {
 	int collider_index;
 	struct collider_handle_t handle;
@@ -937,6 +1130,7 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	struct collider_t *collider;
 	struct character_collider_t *character_collider;
 	struct trigger_collider_t *trigger_collider;
+	struct collider_def_t *def;
 
 
 	btCollisionShape *collider_collision_shape;
@@ -947,6 +1141,8 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 
 	handle.type = COLLIDER_TYPE_NONE;
 	handle.index = INVALID_COLLIDER_INDEX;
+
+	def = physics_GetColliderDefPointerHandle(def_handle);
 
 	if(!def)
 	{
@@ -965,7 +1161,7 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	}
 	else
 	{
-		collider_collision_shape = (btCollisionShape *) physics_BuildCollisionShape(def);
+		collider_collision_shape = (btCollisionShape *) physics_BuildCollisionShape(def_handle);
 	}
 
 	if(!collider_collision_shape)
@@ -975,8 +1171,8 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	}
 
 
-	handle = physics_CreateEmptyCollider(def->type);
-	collider = physics_GetColliderPointerHandle(handle);
+	handle = physics_CreateEmptyCollider(def->collider_type);
+	collider = physics_GetColliderPointer(handle);
 
 	collider_transform.setIdentity();
 	collider_transform.setOrigin(btVector3(position.x, position.y, position.z));
@@ -984,7 +1180,7 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	collider->position = position;
 	collider->scale = scale;
 
-	if(orientation && def->type != COLLIDER_TYPE_CHARACTER_COLLIDER)
+	if(orientation && def->collider_type != COLLIDER_TYPE_CHARACTER_COLLIDER)
 	{
 		collider->orientation = *orientation;
 		/*collider_transform.setBasis(btMatrix3x3(orientation->floats[0][0], orientation->floats[1][0], orientation->floats[2][0],
@@ -993,9 +1189,9 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 		collider_transform.setBasis((float *)orientation);
 	}
 
-	collider->type = def->type;
+	collider->type = def->collider_type;
 	collider->flags = COLLIDER_FLAG_UPDATE_COLLISION_OBJECT;
-	collider->def = def;
+	collider->def = def_handle;
 
 	collider_motion_state = new btDefaultMotionState(collider_transform);
 
@@ -1006,7 +1202,7 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
         collider_rigid_body->setFlags(btCollisionObject::CF_KINEMATIC_OBJECT);
     }*/
 
-    switch(def->type)
+    switch(def->collider_type)
 	{
 		case COLLIDER_TYPE_CHARACTER_COLLIDER:
 			character_collider = (struct character_collider_t *)collider;
@@ -1032,7 +1228,7 @@ struct collider_handle_t physics_CreateCollider(mat3_t *orientation, vec3_t posi
 	collider_rigid_body->setUserIndex(*(int *)&handle);
 
 
-	if(def->type == COLLIDER_TYPE_CHARACTER_COLLIDER || def->type == COLLIDER_TYPE_PROJECTILE_COLLIDER)
+	if(def->collider_type == COLLIDER_TYPE_CHARACTER_COLLIDER || def->collider_type == COLLIDER_TYPE_PROJECTILE_COLLIDER)
 	{
 		/* a character controller is a capsule that can't rotate... */
 		collider_rigid_body->setAngularFactor(btVector3(0.0, 0.0, 0.0));
@@ -1063,7 +1259,7 @@ struct collider_handle_t physics_CreateTrigger(mat3_t *orientation, vec3_t posit
 
     handle = physics_CreateEmptyCollider(COLLIDER_TYPE_TRIGGER_COLLIDER);
 
-    trigger = (struct trigger_collider_t *)physics_GetColliderPointerHandle(handle);
+    trigger = (struct trigger_collider_t *)physics_GetColliderPointer(handle);
 
     if(orientation)
 	{
@@ -1151,17 +1347,17 @@ int physics_CopyCollider(int collider_index)
 	return collider_index;
 }
 
-void physics_DestroyColliderHandle(struct collider_handle_t collider)
+void physics_DestroyCollider(struct collider_handle_t collider)
 {
 	btRigidBody *collider_rigid_body;
 	btCollisionObject *collider_ghost_object;
 	struct collider_t *collider_ptr;
 	btCollisionShape *collider_collision_shape;
-	collider_def_t *collider_def;
+	struct collider_def_t *collider_def;
 	struct stack_list_t *list;
 
 
-	collider_ptr = physics_GetColliderPointerHandle(collider);
+	collider_ptr = physics_GetColliderPointer(collider);
 
 	if(collider_ptr)
 	{
@@ -1183,21 +1379,29 @@ void physics_DestroyColliderHandle(struct collider_handle_t collider)
 				physics_world->removeCollisionObject(collider_ghost_object);
 				delete collider_ghost_object;
 			break;
+
+			case COLLIDER_TYPE_COLLIDER_DEF:
+			    collider_def = (struct collider_def_t *)collider_ptr;
+			    list_destroy(&collider_def->collision_shape);
+                //memory_Free(collider_def->collision_shape);
+            break;
 		}
 
-		physics_DestroyCollisionShape(collider_collision_shape);
-
-		physics_DecColliderDefRefCount(collider_ptr->def);
+		if(collider_ptr->type != COLLIDER_TYPE_COLLIDER_DEF)
+        {
+            physics_DestroyCollisionShape(collider_collision_shape);
+            physics_DecColliderDefRefCount(collider_ptr->def);
+        }
 
 		collider_ptr->collision_object = NULL;
-		collider_ptr->def = NULL;
+		collider_ptr->def = INVALID_COLLIDER_HANDLE;
 
 		stack_list_remove(&phy_colliders[collider.type], collider.index);
 	}
 
 }
 
-struct collider_t *physics_GetColliderPointerHandle(struct collider_handle_t collider)
+struct collider_t *physics_GetColliderPointer(struct collider_handle_t collider)
 {
 	stack_list_t *list;
 	struct collider_t *collider_ptr;
@@ -1232,7 +1436,7 @@ void physics_GetColliderAabb(struct collider_handle_t collider, vec3_t *aabb)
 	{
         if(collider.type != COLLIDER_TYPE_TRIGGER_COLLIDER)
 		{
-            collider_ptr = physics_GetColliderPointerHandle(collider);
+            collider_ptr = physics_GetColliderPointer(collider);
 
 			if(collider_ptr)
 			{
@@ -1258,7 +1462,7 @@ void physics_SetColliderPosition(struct collider_handle_t collider, vec3_t posit
 	struct collider_t *collider_ptr;
 	struct stack_list_t *list;
 
-	collider_ptr = physics_GetColliderPointerHandle(collider);
+	collider_ptr = physics_GetColliderPointer(collider);
 
 	if(collider_ptr)
 	{
@@ -1274,7 +1478,7 @@ void physics_SetColliderOrientation(struct collider_handle_t collider, mat3_t *o
 	struct collider_t *collider_ptr;
 	struct stack_list_t *list;
 
-    collider_ptr = physics_GetColliderPointerHandle(collider);
+    collider_ptr = physics_GetColliderPointer(collider);
 
     if(collider_ptr)
 	{
@@ -1288,7 +1492,7 @@ void physics_SetColliderScale(struct collider_handle_t collider, vec3_t scale)
 	struct collider_t *collider_ptr;
 	struct stack_list_t *list;
 
-	collider_ptr = physics_GetColliderPointerHandle(collider);
+	collider_ptr = physics_GetColliderPointer(collider);
 
 	if(collider_ptr)
 	{
@@ -1309,7 +1513,7 @@ void physics_SetColliderVelocity(struct collider_handle_t collider, vec3_t veloc
 
 	if(collider.type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
 	{
-        rigid_body_collider = (struct rigid_body_collider_t *)physics_GetColliderPointerHandle(collider);
+        rigid_body_collider = (struct rigid_body_collider_t *)physics_GetColliderPointer(collider);
 
 		if(rigid_body_collider)
 		{
@@ -1330,7 +1534,7 @@ void physics_SetColliderMass(struct collider_handle_t collider, float mass)
 
 	if(collider.type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
 	{
-		collider_ptr = (struct rigid_body_collider_t *)physics_GetColliderPointerHandle(collider);
+		collider_ptr = (struct rigid_body_collider_t *)physics_GetColliderPointer(collider);
 
 		if(collider_ptr)
 		{
@@ -1382,7 +1586,7 @@ void physics_ApplyCentralForce(struct collider_handle_t collider, vec3_t force)
 	struct collider_t *collider_ptr;
 	btRigidBody *rigid_body;
 
-	collider_ptr = physics_GetColliderPointerHandle(collider);
+	collider_ptr = physics_GetColliderPointer(collider);
 
 	if(collider_ptr)
 	{
@@ -1400,7 +1604,7 @@ void physics_ApplyCentralImpulse(struct collider_handle_t collider, vec3_t impul
 
 	if(collider.type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
 	{
-		collider_ptr = physics_GetColliderPointerHandle(collider);
+		collider_ptr = physics_GetColliderPointer(collider);
 
 		if(collider_ptr)
 		{
@@ -1427,6 +1631,7 @@ void physics_UpdateColliders()
 	int j;
 
 	struct collider_t *collider;
+	struct collider_def_t *def;
 	struct rigid_body_collider_t *rigid_body_collider;
 	struct trigger_collider_t *trigger_collider;
 	struct stack_list_t *list;
@@ -1449,7 +1654,7 @@ void physics_UpdateColliders()
 		for(i = 0; i < collider_count; i++)
 		{
 			collider_handle.index = i;
-			collider = physics_GetColliderPointerHandle(collider_handle);
+			collider = physics_GetColliderPointer(collider_handle);
 
 			if(!collider)
 			{
@@ -1488,7 +1693,10 @@ void physics_UpdateColliders()
 					if(collider->type == COLLIDER_TYPE_RIGID_BODY_COLLIDER)
 					{
 						rigid_body_collider = (struct rigid_body_collider_t *)collider;
-						if(rigid_body_collider->base.def->mass == 0.0)
+
+						def = physics_GetColliderDefPointerHandle(rigid_body_collider->base.def);
+
+						if(def->mass == 0.0)
                         {
                             rigid_body->setLinearVelocity(btVector3(0.0, 0.0, 0.0));
                         }
@@ -1673,8 +1881,8 @@ void physics_PostUpdateColliders()
 			handle0 = body0->getUserIndex();
 			handle1 = body1->getUserIndex();
 
-			collider0 = physics_GetColliderPointerHandle(*(struct collider_handle_t *)&handle0);
-			collider1 = physics_GetColliderPointerHandle(*(struct collider_handle_t *)&handle1);
+			collider0 = physics_GetColliderPointer(*(struct collider_handle_t *)&handle0);
+			collider1 = physics_GetColliderPointer(*(struct collider_handle_t *)&handle1);
 
 			contact_point_count = persistent_manifold->getNumContacts();
 
@@ -1921,7 +2129,7 @@ int physics_AreColliding(struct collider_handle_t collider_a, struct collider_ha
 	int i;
 	int first_contact_record;
 
-	collider = physics_GetColliderPointerHandle(collider_a);
+	collider = physics_GetColliderPointer(collider_a);
 	contact_records = (struct contact_record_t *)phy_contact_records.elements;
 
 	if(collider)
@@ -1949,7 +2157,7 @@ int physics_HasNewCollisions(struct collider_handle_t collider)
 	struct contact_record_t *contact_records;
 	int i;
 
-	collider_ptr = physics_GetColliderPointerHandle(collider);
+	collider_ptr = physics_GetColliderPointer(collider);
 
 	if(collider_ptr)
 	{
@@ -1971,7 +2179,7 @@ struct contact_record_t *physics_GetColliderContactRecords(struct collider_handl
 {
 	struct collider_t *collider_ptr;
 
-	collider_ptr = physics_GetColliderPointerHandle(collider);
+	collider_ptr = physics_GetColliderPointer(collider);
 
 	if(collider_ptr)
 	{

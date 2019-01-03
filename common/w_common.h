@@ -64,6 +64,13 @@ struct world_script_t
 };
 
 
+struct world_level_t
+{
+    struct world_level_t *next;
+    struct world_level_t *prev;
+    char *level_name;
+};
+
 enum WORLD_CLEAR_FLAGS
 {
 	WORLD_CLEAR_FLAG_LIGHTS = 1,

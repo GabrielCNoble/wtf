@@ -6,7 +6,9 @@
 #include "bsp_common.h"
 #include "scr_common.h"
 #include "nav_common.h"
-#include "camera_types.h"
+#include "anim_common.h"
+#include "r_common.h"
+//#include "camera_types.h"
 #include "containers/list.h"
 
 
@@ -23,6 +25,7 @@
 #define INVALID_COMPONENT_INDEX 0x7ffffff
 
 #define INVALID_COMPONENT_HANDLE (struct component_handle_t){COMPONENT_TYPE_NONE,0,INVALID_COMPONENT_INDEX}
+#define COMPONENT_HANDLE(type, index, def) (struct component_handle_t){type, def, index}
 #define INVALID_ENTITY_HANDLE (struct entity_handle_t){1, INVALID_ENTITY_INDEX}
 
 
@@ -95,6 +98,7 @@ enum COMPONENT_TYPES
 	COMPONENT_TYPE_PARTICLE_SYSTEM,
 	COMPONENT_TYPE_LIFE,
 	COMPONENT_TYPE_NAVIGATION,
+	COMPONENT_TYPE_SKELETON,
 	COMPONENT_TYPE_LAST,
 	COMPONENT_TYPE_NONE = COMPONENT_TYPE_LAST
 };
@@ -148,9 +152,10 @@ struct transform_component_t
 	vec3_t position;
 
 	int top_list_index;
-	//int depth_index;
 
 	int flags;
+
+    struct component_handle_t bone;
 
 	struct component_handle_t parent;
 	int children_count;
@@ -186,12 +191,7 @@ struct physics_component_t
 {
 	struct component_t base;
 
-	union
-	{
-		struct collider_def_t *collider_def;
-		struct collider_handle_t collider_handle;
-
-	}collider;
+	struct collider_handle_t collider;
 
 	int first_entity_contact;
     short entity_contact_count;
@@ -224,9 +224,6 @@ struct light_component_t
 
 	struct list_t light_list;
 	struct list_t transform_list;
-
-	//int light_index;
-	//struct component_handle_t transform;
 };
 
 /*
@@ -251,7 +248,8 @@ struct script_component_t
 struct camera_component_t
 {
 	struct component_t base;
-	camera_t *camera;
+	struct view_handle_t view;
+	//camera_t *camera;
 	//struct component_handle_t transform;
 };
 
@@ -293,6 +291,48 @@ struct navigation_component_t
     struct component_t base;
     struct list_t route;
     int current_waypoint;
+};
+
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
+
+/*
+    alloc'ing a transform component
+    for each bone that affects at least another
+    transform component might be a good idea.
+
+    This transform then could have a list of child
+    transforms, each child transform being the
+    relative offset to that bone. And each one
+    of those transforms then could point to
+    the transform the bone affects. The transform
+    the bone affects would then get the proper
+    local space transformation, which would later
+    be compounded with the whole entity's transform...
+
+    Other (simpler) solution would be to alloc a single
+    transform component for a skeleton's bone, and have
+    the transforms being affected by it have a handle
+    to this transform. Then, when comes the time to
+    calculate the world transform, the transform system
+    just checks whether a transform points to a bone
+    transform, and if so, concatenates it's transform
+    before everything else...
+*/
+struct bone_transform_t
+{
+    int bone_index;
+    struct component_handle_t transform;
+};
+
+struct skeleton_component_t
+{
+    struct component_t base;
+    struct skeleton_handle_t skeleton;
 };
 
 /*

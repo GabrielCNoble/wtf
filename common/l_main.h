@@ -30,6 +30,8 @@ int light_GetShadowMapsResolution();
 
 int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t color, float radius, float energy, int bm_flags);
 
+int light_CopyLightIndex(int light_index);
+
 int light_DestroyLight(char *name);
 
 int light_DestroyLightIndex(int light_index);

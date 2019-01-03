@@ -48,7 +48,7 @@ void physics_UpdateProjectileCollider(struct collider_handle_t collider)
 		return;
 	}
 
-	collider_ptr = (struct projectile_collider_t *)physics_GetColliderPointerHandle(collider);
+	collider_ptr = (struct projectile_collider_t *)physics_GetColliderPointer(collider);
 
 	rigid_body = (btRigidBody *)collider_ptr->base.collision_object;
 

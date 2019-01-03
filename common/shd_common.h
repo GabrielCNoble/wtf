@@ -24,6 +24,7 @@ enum SHADER_UNIFORMS
 	UNIFORM_r_cluster_rows,
 	UNIFORM_r_cluster_layers,
 	UNIFORM_r_bloom_radius,
+	UNIFORM_r_world_vertices_count,
 	UNIFORM_r_bsp_node_count,
 	UNIFORM_cluster_texture,
 	UNIFORM_material_flags,
@@ -36,6 +37,7 @@ enum SHADER_UNIFORMS
 
 	UNIFORM_particle_positions,
 	UNIFORM_particle_frames,
+
 
 	UNIFORM_LAST_UNIFORM
 };

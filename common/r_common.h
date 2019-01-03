@@ -3,7 +3,8 @@
 
 #include "gmath/vector.h"
 #include "gmath/matrix.h"
-#include "camera_types.h"
+#include "containers/list.h"
+//#include "camera_types.h"
 
 
 #define RENDERER_MIN_WIDTH 800
@@ -22,11 +23,16 @@
 
 #define R_LIGHT_UNIFORM_BUFFER_BINDING 0
 #define R_BSP_UNIFORM_BUFFER_BINDING 2
+#define R_WORLD_VERTICES_UNIFORM_BUFFER_BINDING 3
 
 #define R_MAX_VISIBLE_LIGHTS 32
 #define R_MAX_BSP_NODES 512
 #define R_MAX_VISIBLE_LEAVES 512
 #define R_MAX_VISIBLE_ENTITIES 4096
+
+#define R_MAX_ACTIVE_VIEWS 32
+#define R_VIEW_NAME_MAX_LEN 24
+#define R_MAX_DRAW_COMMANDS 32768
 
 
 enum INIT_MODE
@@ -46,6 +52,7 @@ enum WINDOW_FLAGS
 
 enum R_CAPABILITIES
 {
+    R_FIRST_CAP = 0,
     R_CLEAR_COLOR_BUFFER,
     R_Z_PRE_PASS,
     R_SHADOW_PASS,
@@ -56,6 +63,7 @@ enum R_CAPABILITIES
     R_FULLSCREEN,
     R_DEBUG,
     R_VERBOSE_DEBUG,
+    R_LAST_CAP,
 };
 
 
@@ -134,7 +142,7 @@ enum DRAW_COMMAND_FLAGS
 };
 
 
-typedef struct
+struct draw_command_t
 {
 	mat4_t *transform;
 	unsigned int start;
@@ -143,14 +151,14 @@ typedef struct
 	unsigned char flags;
 	//unsigned short draw_mode;
 	short material_index;			/* this could be a char... */
-}draw_command_t;
+};
 
 typedef struct
 {
 	int material_index;
 	unsigned short max_draw_cmds;
 	unsigned short draw_cmds_count;
-	draw_command_t *draw_cmds;
+	struct draw_command_t *draw_cmds;
 }draw_command_group_t;
 
 
@@ -160,6 +168,7 @@ struct batch_t
 	int next;
 	int material_index;
 };
+
 
 
 struct cluster_t
@@ -213,7 +222,106 @@ typedef struct
 }tex_unit_t;
 
 
-typedef camera_t view_def_t;
+
+
+
+
+
+
+
+
+enum R_VIEW_FLAGS
+{
+    R_VIEW_FLAG_INVALID = 1,
+};
+
+
+#define INVALID_VIEW_INDEX 0xffff
+#define DEFAULT_VIEW_INDEX 0xfffe
+
+struct view_handle_t
+{
+    unsigned short view_index;
+};
+
+#define INVALID_VIEW_HANDLE (struct view_handle_t){INVALID_VIEW_INDEX}
+#define DEFAULT_VIEW_HANDLE (struct view_handle_t){DEFAULT_VIEW_INDEX}
+
+
+struct view_data_t
+{
+	mat4_t projection_matrix;
+	mat4_t view_matrix;
+
+    unsigned int draw_commands_frame;
+	struct list_t draw_commands;
+
+
+
+	//frustum_t frustum;
+
+//	unsigned short view_lights_list_cursor;
+//	unsigned short view_lights_list_size;
+//	view_light_t *view_lights;
+
+//	unsigned short view_entities_list_cursor;
+//	unsigned short view_entities_list_size;
+//	unsigned short *view_entities;
+
+//	unsigned int view_portals_frame;
+//	unsigned short view_portals_list_cursor;
+//	unsigned short view_portals_list_size;
+//	unsigned short *view_portals;
+
+//	unsigned short view_triangles_cursor;
+//	unsigned short view_triangles_size;
+//	bsp_striangle_t *view_triangles;
+	//unsigned int view_world_batch_cursor;
+	//unsigned int view_world_batch_size;
+	//batch_t *view_world_batches;
+	//unsigned int *view_visible_world;
+
+	//view_material_ref_record_t *view_material_refs;
+
+//	unsigned int view_draw_command_frame;
+//	unsigned int view_draw_command_list_size;
+//	unsigned int view_draw_command_list_cursor;
+//	draw_command_t *view_draw_commands;
+
+//	int view_leaves_list_cursor;
+//	int view_leaves_list_size;
+//	bsp_dleaf_t **view_leaves;
+};
+
+struct view_def_t
+{
+	struct view_data_t view_data;
+
+    frustum_t frustum;
+
+	mat3_t world_orientation;
+	vec3_t world_position;
+
+	//float zoom;
+	float fov_y;
+	int width;
+	int height;
+
+	//float x_shift;
+	//float y_shift;
+
+	int flags;
+	char *name;
+};
+
+
+
+
+
+
+
+
+//typedef camera_t view_def_t;
 
 
 

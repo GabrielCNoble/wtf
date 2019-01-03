@@ -1,10 +1,10 @@
 #include "mpk_write.h"
 #include "gmath/vector.h"
-#include "model.h"
-#include "texture.h"
-#include "c_memory.h"
+//#include "model.h"
+//#include "texture.h"
+//#include "c_memory.h"
 
-#include "material.h"
+//#include "material.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +16,7 @@
 
 
 
-void calculate_tangents(vertex_t *vertices, int vertice_count)
+void calculate_tangents(mpk_vertex_t *vertices, int vertice_count)
 {
 	int i;
 	int count = vertice_count;
@@ -27,19 +27,19 @@ void calculate_tangents(vertex_t *vertices, int vertice_count)
 	vec3_t ab;
 	vec3_t ac;
 	vec3_t t;
-	vec3_t bt;
+//	vec3_t bt;
 	vec3_t t1;
-	vec3_t bt1;
+//	vec3_t bt1;
 
 	vec2_t duv1;
 	vec2_t duv2;
 
 
 
-	float x;
-	float y;
-	float z;
-	float w;
+//	float x;
+//	float y;
+//	float z;
+//	float w;
 
 	float q;
 
@@ -137,11 +137,11 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 	char t;
 	unsigned long file_size;
 
-	vertex_t *vertices = NULL;
+	mpk_vertex_t *vertices = NULL;
 
 	int read_data = 0;
 
-	int vertex_records_cursor = 0;
+//	int vertex_records_cursor = 0;
 	//struct mpk_vertex_record_t *vertex_records = NULL;
 	//struct mpk_vertex_record_t *vertex_record = NULL;
 
@@ -168,11 +168,11 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 	char **mtllibs = NULL;
 
 	int material_records_cursor = 0;
-	struct material_record_t *material_records = NULL;
-	struct material_record_t *material_record = NULL;
+	struct mpk_material_t *material_records = NULL;
+	struct mpk_material_t *material_record = NULL;
 
-	int texture_record_cursor = 0;
-	texture_record_t *texture_records = NULL;
+//	int texture_record_cursor = 0;
+//	texture_record_t *texture_records = NULL;
 
 	int value_str_cursor = 0;
 	char value_str[1024];
@@ -185,10 +185,25 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 	file_size = ftell(file);
 	rewind(file);
 
-	file_buffer = memory_Calloc(file_size, 1);
+	file_buffer = calloc(file_size, 1);
 	fread(file_buffer, 1, file_size, file);
 
 	fclose(file);
+
+
+	in_params->vertices = NULL;
+	in_params->vertices_count = 0;
+
+	in_params->indices = NULL;
+	in_params->indices_count = 0;
+
+	in_params->batches = NULL;
+	in_params->batches_count = 0;
+
+	/*in_params->in_triangles = NULL;
+	in_params->in_triangles_count = 0;*/
+
+
 
 	/*================================================================================================*/
 	/*================================================================================================*/
@@ -493,24 +508,24 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 
 
 		current_material = NULL;
-		positions = memory_Malloc(sizeof(vec3_t) * position_count);
-		normals = memory_Malloc(sizeof(vec3_t) * normal_count);
+		positions = malloc(sizeof(vec3_t) * position_count);
+		normals = malloc(sizeof(vec3_t) * normal_count);
 
 		if(tex_coord_count)
 		{
-			tex_coords = memory_Malloc(sizeof(vec3_t) * tex_coord_count);
+			tex_coords = malloc(sizeof(vec3_t) * tex_coord_count);
 		}
 
-		face_indexes = memory_Malloc(sizeof(struct face_index_t) * face_index_count);
+		face_indexes = malloc(sizeof(struct face_index_t) * face_index_count);
 
 		if(material_refs)
 		{
-			referenced_materials = memory_Malloc(sizeof(char *) * material_refs);
+			referenced_materials = malloc(sizeof(char *) * material_refs);
 		}
 
 		if(mtllib_count)
 		{
-			mtllibs = memory_Malloc(sizeof(char *) * mtllib_count);
+			mtllibs = malloc(sizeof(char *) * mtllib_count);
 		}
 	}
 
@@ -520,11 +535,11 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 	/*================================================================================================*/
 
 
-	memory_Free(file_buffer);
+	free(file_buffer);
 
-	vertices = memory_Malloc(sizeof(vertex_t) * vertice_count);
+	vertices = malloc(sizeof(mpk_vertex_t) * vertice_count);
 
-	material_records = memory_Malloc(referenced_material_cursor * sizeof(struct material_record_t));
+	material_records = malloc(referenced_material_cursor * sizeof(struct mpk_material_t));
 	material_records_cursor = -1;
 
 	file_buffer = NULL;
@@ -549,7 +564,7 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 			free(file_buffer);
 		}
 
-		file_buffer = memory_Malloc(file_size);
+		file_buffer = malloc(file_size);
 		fread(file_buffer, file_size, 1, mtl);
 		fclose(mtl);
 
@@ -589,7 +604,7 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 						value_str[value_str_cursor] = '\0';
 
 						//strcpy(material_records[material_records_cursor].separate_names.material_name, value_str);
-						memset(&material_records[material_records_cursor], 0, sizeof(struct material_record_t));
+						memset(&material_records[material_records_cursor], 0, sizeof(struct mpk_material_t));
 						strcpy(material_records[material_records_cursor].material_name, value_str);
 						/*for(i = 0; i < PATH_MAX; i++)
 						{
@@ -802,7 +817,7 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 
 	if(file_buffer)
 	{
-		memory_Free(file_buffer);
+		free(file_buffer);
 	}
 
 	material_records_cursor++;
@@ -828,7 +843,7 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 	/*================================================================================================*/
 	/*================================================================================================*/
 
-	batches = memory_Malloc(sizeof(struct mpk_batch_t) * (material_records_cursor + 1));
+	batches = malloc(sizeof(struct mpk_batch_t) * (material_records_cursor + 1));
 	batch_cursor = 0;
 
 	for(j = 0; j < material_records_cursor; j++)
@@ -878,7 +893,11 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 					face_indexes[i].used = 1;
 
 					batch->indice_count++;
-					strcpy(batch->material_name, face_indexes[i].material_name);
+
+					if(!batch->material_name[0])
+                    {
+                        strcpy(batch->material_name, face_indexes[i].material_name);
+                    }
 				}
 			}
 		}
@@ -962,100 +981,11 @@ void load_obj(FILE *file, struct input_params_t *in_params)
 	{
 		calculate_tangents(vertices, vertice_count);
 
-		in_params->in_batches = batches;
-		in_params->in_batches_count = batch_cursor;
+		in_params->batches = batches;
+		in_params->batches_count = batch_cursor;
 
-		in_params->in_vertices = vertices;
-		in_params->in_vertices_count = vertice_count;
-	}
-
-}
-
-void mpk_write(char *output_name, struct input_params_t *in_params)
-{
-	FILE *file;
-
-	struct mpk_header_t *header;
-	struct mpk_batch_t *batch;
-	struct mpk_lod_t *lod;
-
-	struct output_params_t out_params;
-
-	vertex_t *verts;
-
-	int i;
-	int j;
-
-	unsigned int file_size;
-	char *file_buffer;
-	char *out;
-
-	if(in_params->in_vertices_count)
-	{
-
-		mpk_index(in_params);
-		mpk_optmize(in_params, &out_params);
-		mpk_lod(in_params, &out_params, 1);
-
-		file_size = sizeof(struct mpk_header_t);
-		file_size += sizeof(vertex_t ) * in_params->in_vertices_count;
-
-		for(i = 0; i < out_params.out_lods_count; i++)
-		{
-			file_size += sizeof(struct mpk_lod_t);
-			file_size += sizeof(int) * out_params.out_lods[i].indice_count;
-			file_size += sizeof(struct mpk_batch_t) * out_params.out_batches_count;
-		}
-
-		file_buffer = memory_Calloc(file_size, 1);
-
-		out = file_buffer;
-
-		header = (struct mpk_header_t *)out;
-		out += sizeof(struct mpk_header_t);
-
-        memset(header, 0, sizeof(struct mpk_header_t ));
-        strcpy(header->tag, mpk_header_tag);
-
-		header->batch_count = out_params.out_batches_count;
-		header->vertice_count = out_params.out_vertices_count;
-		header->indice_count = out_params.out_indices_count;
-		header->lod_count = out_params.out_lods_count;
-
-		memcpy(out, out_params.out_vertices, sizeof(vertex_t) * header->vertice_count);
-		out += sizeof(struct vertex_t) * header->vertice_count;
-
-		for(j = 0; j < header->lod_count; j++)
-		{
-            lod = (struct mpk_lod_t *)out;
-			out += sizeof(struct mpk_lod_t);
-
-            lod->indice_count = out_params.out_lods[j].indice_count;
-            memcpy(out, out_params.out_lods_indices[j], sizeof(int) * lod->indice_count);
-
-            out += sizeof(int) * lod->indice_count;
-
-            for(i = 0; i < out_params.out_batches_count; i++)
-			{
-                batch = (struct mpk_batch_t *)out;
-				out += sizeof(struct mpk_batch_t);
-
-				memcpy(batch, out_params.out_lods_batches[j * out_params.out_batches_count + i], sizeof(struct mpk_batch_t));
-			}
-		}
-
-		file = fopen(output_name, "wb");
-
-		fwrite(file_buffer, file_size, 1, file);
-		fclose(file);
-		memory_Free(file_buffer);
-
-		printf("statistics:\n---\n");
-		printf("batches: %d\n", in_params->in_batches_count);
-		printf("input vertice count: %d\n", in_params->in_vertices_count);
-		printf("output vertice count: %d\n", out_params.out_vertices_count);
-
-
+		in_params->vertices = vertices;
+		in_params->vertices_count = vertice_count;
 	}
 
 }
@@ -1064,98 +994,67 @@ void mpk_write(char *output_name, struct input_params_t *in_params)
 
 
 
-void mpk_index(struct input_params_t *params)
+
+void mpk_index(struct output_params_t *params)
 {
-	struct mpk_triangle_t *triangles;
-	struct mpk_triangle_t *triangle;
+//	struct mpk_triangle_t *triangles;
+//	struct mpk_triangle_t *triangle;
 
 	struct mpk_batch_t *batches;
 	struct mpk_batch_t *batch;
 
-	int *indices;
+	int *indices = NULL;
+//	int indices_count = 0;
 
 
-	vertex_t *vertices;
+	mpk_vertex_t *vertices;
 
-	int triangle_count;
+//	int triangle_count;
 	int vertice_count;
 	int batch_count;
 
 	int i;
 	int j;
 
-	batch_count = params->in_batches_count;
-	batches = params->in_batches;
+	batch_count = params->batches_count;
+	batches = params->batches;
 
-	vertice_count = params->in_vertices_count;
-	vertices = params->in_vertices;
+	vertice_count = params->vertices_count;
+	vertices = params->vertices;
 
-	triangle_count = vertice_count / 3;
-	triangles = memory_Malloc(sizeof(struct mpk_triangle_t) * triangle_count);
+    if(!params->indices)
+    {
+        /* if the loader didn't get any indices, generate
+        a identity indice buffer here... */
+        indices = malloc(sizeof(int) * vertice_count);
 
-	triangle_count = 0;
+        params->indices = indices;
+        params->indices_count = vertice_count;
 
-	indices = memory_Malloc(sizeof(int) * vertice_count);
+        for(i = 0; i < batch_count; i++)
+        {
+            batch = batches + i;
 
-	for(i = 0; i < batch_count; i++)
-	{
-        batch = batches + i;
-
-        for(j = 0; j < batch->indice_count;)
-		{
-			triangle = triangles + triangle_count;
-			triangle->material_name = batch->material_name;
-			triangle->verts = indices + triangle_count * 3;
-
-			triangle->verts[0] = j + batch->indice_start;
-			j++;
-
-			triangle->verts[1] = j + batch->indice_start;
-			j++;
-
-			triangle->verts[2] = j + batch->indice_start;
-			j++;
-
-			triangle_count++;
-		}
-	}
-
-
-
-/*	for(i = 0; i < vertice_count; i++)
-	{
-		indices[i] = i;
-	}*/
-
-
-	/*for(i = 0, j = 0; i < triangle_count; i++)
-	{
-		triangle = triangles + i;
-
-        indices[j] = triangle->verts[0];
-		j++;
-		indices[j] = triangle->verts[1];
-		j++;
-		indices[j] = triangle->verts[2];
-		j++;
-	}*/
-
-	params->in_triangles = triangles;
-	params->in_triangles_count = triangle_count;
-
-    params->in_indices = indices;
-    params->in_indices_count = vertice_count;
+            for(j = 0; j < batch->indice_count; j++)
+            {
+                indices[batch->indice_start + j] = batch->indice_start + j;
+            }
+        }
+    }
 }
 
 #define MAX_LODS 4
 
-void mpk_lod(struct input_params_t *in_params, struct output_params_t *out_params, int max_lod)
+void mpk_lod(struct output_params_t *out_params, int max_lod)
 {
 	int i;
+	int j;
 
 	int *indices;
 	int indices_count;
 	int original_vert_count;
+
+	struct mpk_lod_t *lod;
 
     if(max_lod < 0)
 	{
@@ -1168,39 +1067,22 @@ void mpk_lod(struct input_params_t *in_params, struct output_params_t *out_param
 
 	max_lod = 0;
 
-	//original_vert_count = params->out_vertices_count;
+	out_params->lods_count = max_lod + 1;
+	out_params->lods = malloc(sizeof(struct mpk_lod_t) * out_params->lods_count);
 
-	out_params->out_batches_count = in_params->in_batches_count;
-	//out_params->out_vertices_count = in_params->in_vertices_count;
+	lod = out_params->lods;
 
-    out_params->out_lods_count = max_lod + 1;
-    out_params->out_lods = memory_Malloc(sizeof(struct mpk_lod_t) * out_params->out_lods_count);
+	lod->batch_start = 0;
+	lod->indice_start = 0;
+	lod->indice_count = 0;
 
-    out_params->out_lods_indices = memory_Malloc(sizeof(int *) * out_params->out_lods_count);
-    out_params->out_lods_batches = memory_Malloc(sizeof(struct mpk_batch_t *) * out_params->out_lods_count);
-
-
-
-	out_params->out_lods[0].indice_count = out_params->out_indices_count;
-    out_params->out_lods_indices[0] = memory_Malloc(sizeof(int) * out_params->out_lods[0].indice_count);
-    memcpy(out_params->out_lods_indices[0], out_params->out_indices, sizeof(int) * out_params->out_lods[0].indice_count);
-
-    out_params->out_lods_batches[0] = memory_Malloc(sizeof(struct mpk_batch_t) * in_params->in_batches_count);
-
-	//out_params->out_indices_count = 0;
-
-    for(i = 0; i < in_params->in_batches_count; i++)
-	{
-		strcpy(out_params->out_lods_batches[i]->material_name, in_params->in_batches[i].material_name);
-
-		out_params->out_lods_batches[i]->indice_start = in_params->in_batches[i].indice_start;
-		out_params->out_lods_batches[i]->indice_count = in_params->in_batches[i].indice_count;
-
-		//out_params->out_indice_count += in_params->in_batches[i].indice_count;
-	}
+    for(i = 0; i < out_params->batches_count; i++)
+    {
+        lod->indice_count += out_params->batches[lod->batch_start + i].indice_count;
+    }
 }
 
-void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_params)
+void mpk_optmize(struct output_params_t *out_params)
 {
     //struct mpk_vertex_record_t *vertex_records;
     //struct mpk_vertex_record_t *vertex_record;
@@ -1210,8 +1092,8 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 	struct mpk_batch_t *batch;
 	int batch_count;
 
-    vertex_t *vertices;
-    vertex_t *out_vertices;
+    mpk_vertex_t *vertices;
+    mpk_vertex_t *out_vertices;
     int vertice_count;
     int out_vertice_count;
 
@@ -1237,8 +1119,8 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
     float diff;
 
 
-    vertex_t *cur_vertex;
-    vertex_t *test_vertex;
+    mpk_vertex_t *cur_vertex;
+    mpk_vertex_t *test_vertex;
 
 
 
@@ -1247,28 +1129,69 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
     //vertex_records = *params->out_vertex_records;
     //vertex_records_count = *params->out_vertex_records_count;
 
-    batches = in_params->in_batches;
-    batch_count = in_params->in_batches_count;
+    batches = out_params->batches;
+    batch_count = out_params->batches_count;
 
-    vertices = in_params->in_vertices;
-    vertice_count = in_params->in_vertices_count;
+    indices = out_params->indices;
 
-    triangles = in_params->in_triangles;
-    triangle_count = in_params->in_triangles_count;
+    vertices = out_params->vertices;
+    vertice_count = out_params->vertices_count;
 
-    indices = in_params->in_indices;
+    //triangle_count = out_params->out_indices_count / 3;
+    //triangles = memory_Malloc(sizeof(mpk_triangle_t) * triangle_count);
+
+    //triangle_count = 0;
+
+    /*for(i = 0; i < out_params->in_batches_count; i++)
+    {
+        batch = out_params->in_batches + i;
+
+        for(j = 0; j < batch->indice_count; j++)
+        {
+            triangles[triangle_count].material_name = batch->material_name;
+            triangles[triangle_count].verts = out_params->out_indices + batch->indice_start + triangle_count * 3;
+
+            triangle_count++;
+        }
+    }*/
+
+    //triangles = in_params->in_triangles;
+    //triangle_count = in_params->in_triangles_count;
+
+    //indices = in_params->in_indices;
 
 	/* Find duplicate verts, and make the triangles using those duplicate verts
 	point to the same vert... */
 
     if(vertices)
 	{
-		vertices = memory_Malloc(sizeof(vertex_t) * vertice_count);
-		memcpy(vertices, in_params->in_vertices, sizeof(vertex_t) * vertice_count);
 
-		//out_vertice_count = vertice_count;
+        /*for(i = 0; i < out_params->in_batches_count; i++)
+        {
+            batch = out_params->in_batches + i;
 
-		#if 0
+            triangle_count = 0;
+            triangles = memory_Malloc(sizeof(mpk_triangle_t) * (batch->indice_count / 3));
+
+            for(j = 0; j < batch->indice_count; j += 3)
+            {
+                triangles[triangle_count].verts = indices + batch->indice_start + triangle_count * 3;
+                triangle_count++;
+            }
+
+            for(j = 0; j < triangle_count; j++)
+            {
+                triangle = triangles + j;
+
+                for(k = j + 1; k < triangle_count; k++)
+                {
+
+                }
+            }
+        }*/
+
+
+		#ifdef OPTIMIZE_VERTICES
 
 		for(i = 0; i < batch_count; i++)
 		{
@@ -1410,10 +1333,12 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 
 		#endif
 
-		out_params->out_vertices = vertices;
-		out_params->out_vertices_count = vertice_count;
+		/*memory_Free(out_params->out_vertices);
 
-		#if 0
+		out_params->out_vertices = vertices;
+		out_params->out_vertices_count = vertice_count;*/
+
+		#ifdef OPTIMIZE_VERTICES
 		m = in_params->in_vertices_count;
 
 		for(i = 0; i < in_params->in_vertices_count && m; i++)
@@ -1431,7 +1356,9 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 		#endif
 
 
-		out_params->out_indices = memory_Malloc(sizeof(int) * in_params->in_indices_count);
+    /*    memory_Free(out_params->out_indices);
+
+		out_params->out_indices = memory_Malloc(sizeof(int) * out_params->out_indices_count);
 		out_params->out_indices_count = 0;
 
 		for(i = 0; i < triangle_count; i++)
@@ -1443,42 +1370,120 @@ void mpk_optmize(struct input_params_t *in_params, struct output_params_t *out_p
 				out_params->out_indices[out_params->out_indices_count] = triangle->verts[j];
 				out_params->out_indices_count++;
 			}
-		}
+		}*/
 
-		for(i = 0; i < out_params->out_indices_count; i++)
+		/*for(i = 0; i < out_params->out_indices_count; i++)
 		{
 			printf("[%f %f %f]\n", vertices[out_params->out_indices[i]].position.x,
 								   vertices[out_params->out_indices[i]].position.y,
 								   vertices[out_params->out_indices[i]].position.z);
-		}
+		}*/
 	}
 }
 
-void mpk_convert(char *output_name, char *input_file)
-{
 
-	FILE *file;
+void mpk_serialize(void **output_buffer, int *output_buffer_size, struct output_params_t *out_params)
+{
+	struct mpk_header_t *header;
+	struct mpk_batch_t *batch;
+	struct mpk_lod_t *lod;
+
+	//struct output_params_t out_params;
+
+	mpk_vertex_t *verts;
 
 	int i;
-
-	vertex_t *vertices;
-	int vertice_count;
-
-	struct material_record_t *material_records;
-	int material_record_count;
-
-	struct mpk_vertex_record_t *vertex_records;
-	int vertex_record_count;
-
-	struct mpk_header_t *header;
-	struct mpk_vertex_record_t *record;
-	vertex_t *verts;
-
-	struct input_params_t params;
+	int j;
 
 	unsigned int file_size;
 	char *file_buffer;
 	char *out;
+
+	*output_buffer = NULL;
+	*output_buffer_size = 0;
+
+	if(out_params->vertices_count)
+	{
+		file_size = sizeof(struct mpk_header_t);
+		file_size += sizeof(mpk_vertex_t ) * out_params->vertices_count;
+
+		for(i = 0; i < out_params->lods_count; i++)
+		{
+			file_size += sizeof(struct mpk_lod_t);
+			file_size += sizeof(int) * out_params->lods[i].indice_count;
+			file_size += sizeof(struct mpk_batch_t) * out_params->batches_count;
+		}
+
+		file_buffer = calloc(file_size, 1);
+
+		out = file_buffer;
+
+		header = (struct mpk_header_t *)out;
+		out += sizeof(struct mpk_header_t);
+
+        memset(header, 0, sizeof(struct mpk_header_t ));
+        strcpy(header->tag, mpk_header_tag);
+
+		header->batch_count = out_params->batches_count;
+		header->vertice_count = out_params->vertices_count;
+		header->lod_count = out_params->lods_count;
+		header->indice_count = out_params->indices_count;
+
+
+        /* write all the vertices. Those are the vertices accessed by lod 0... */
+		memcpy(out, out_params->vertices, sizeof(mpk_vertex_t) * header->vertice_count);
+		out += sizeof(struct mpk_vertex_t) * header->vertice_count;
+
+        /* write all indices... */
+		memcpy(out, out_params->indices, sizeof(int) * header->indice_count);
+		out += sizeof(int) * header->indice_count;
+
+        /* write all lods... */
+		memcpy(out, out_params->lods, sizeof(struct mpk_lod_t) * header->lod_count);
+		out += sizeof(struct mpk_lod_t) * header->lod_count;
+
+		/* write all batches... */
+		memcpy(out, out_params->batches, sizeof(struct mpk_batch_t) * header->batch_count * header->lod_count);
+		out += sizeof(struct mpk_batch_t) * header->batch_count * header->lod_count;
+
+
+		*output_buffer = file_buffer;
+		*output_buffer_size = file_size;
+	}
+}
+
+void mpk_convert(struct input_params_t *in_params, struct output_params_t *out_params)
+{
+
+	if(in_params->vertices_count)
+	{
+        memset(out_params, 0, sizeof(struct output_params_t));
+
+	    out_params->vertices = in_params->vertices;
+	    out_params->vertices_count = in_params->vertices_count;
+
+	    out_params->indices = in_params->indices;
+	    out_params->indices_count = in_params->indices_count;
+
+	    out_params->batches = in_params->batches;
+	    out_params->batches_count = in_params->batches_count;
+
+		mpk_index(out_params);
+		mpk_optmize(out_params);
+		mpk_lod(out_params, 0);
+	}
+}
+
+void mpk_write(char *output_name, char *input_file)
+{
+	FILE *file;
+
+	struct input_params_t in_params;
+	struct output_params_t out_params;
+
+	unsigned int file_size;
+	void *file_buffer;
+	//char *out;
 
 	file = fopen(input_file, "rb");
 
@@ -1488,15 +1493,21 @@ void mpk_convert(char *output_name, char *input_file)
 		return;
 	}
 
+	load_obj(file, &in_params);
 
-	load_obj(file, &params);
+	//printf("read %d vertices\n read %d indices\n", in_params.vertices_count, in_params.indices_count);
 
-	if(params.in_vertices_count)
+	if(in_params.vertices_count)
 	{
-		mpk_write(output_name, &params);
-		//memory_Free(material_records);
-		//memory_Free(vertices);
-		//memory_Free(vertex_records);
+		mpk_convert(&in_params, &out_params);
+		mpk_serialize(&file_buffer, &file_size, &out_params);
+
+		file = fopen(output_name, "wb");
+		fwrite(file_buffer, file_size, 1, file);
+		fclose(file);
+		free(file_buffer);
+
+		printf("statistics for file [%s]:\nvertices: %d\nindices: %d\nbatches: %d\n", output_name, out_params.vertices_count, out_params.indices_count, out_params.batches_count);
 	}
 }
 

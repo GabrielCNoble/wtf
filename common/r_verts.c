@@ -208,6 +208,7 @@ struct gpu_alloc_handle_t renderer_AllocAlign(int size, int alignment, int index
 				new_alloc->size = size;
 				new_alloc->start = free_list[free_index].start;
 				new_alloc->align_offset = 0;
+	//			new_alloc->alignment = alignment;
 
 				if(free_list[free_index].size > size)
 				{

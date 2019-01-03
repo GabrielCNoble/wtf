@@ -8,15 +8,16 @@
 #include "r_imediate.h"
 #include "r_gl.h"
 #include "r_vis.h"
-#include "r_text.h"
+//#include "r_text.h"
 #include "r_verts.h"
+#include "r_view.h"
 //#include "r_draw.h"
 
-#include "stack_list.h"
+#include "containers/stack_list.h"
 
 //#include "..\editor\level editor\ed_level_draw.h"
 
-#include "camera.h"
+//#include "camera.h"
 //#include "player.h"
 #include "log.h"
 #include "shader.h"
@@ -100,8 +101,18 @@ vec3_t r_clear_color = {0.0, 0.0, 0.0};
 //extern int *w_index_buffer;
 extern int w_world_batch_count;
 extern struct batch_t *w_world_batches;
+
+extern int w_world_z_batch_count;
+extern struct batch_t *w_world_z_batches;
 //extern int w_world_start;
 extern int w_world_index_start;
+extern int w_world_sorted_index_start;
+extern int w_world_sorted_index_count;
+
+extern vertex_t *w_world_vertices;
+extern int w_world_vertices_count;
+
+unsigned int *r_occlusion_queries;
 //extern int w_world_vertices_count;
 //extern int w_world_leaves_count;
 //extern struct bsp_dleaf_t *w_world_leaves;
@@ -184,11 +195,12 @@ unsigned int query_object;
 
 int r_max_batch_size = 10;
 int r_draw_command_group_count = 0;
-int r_draw_cmds_count = 0;
-int r_max_draw_cmds_count = 0;
+//int r_draw_cmds_count = 0;
+//int r_max_draw_cmds_count = 0;
 draw_command_group_t *r_draw_command_groups = NULL;
-static draw_command_t *r_sorted_draw_cmds = NULL;
-static draw_command_t *r_unsorted_draw_cmds = NULL;
+//static struct draw_command_t *r_sorted_draw_cmds = NULL;
+static struct list_t r_sorted_draw_cmds;
+//static struct draw_command_t *r_unsorted_draw_cmds = NULL;
 
 float r_fade_value = 0.1;
 
@@ -254,6 +266,9 @@ int r_wireframe = 0;
 int r_debug = 1;
 
 
+int r_caps[R_LAST_CAP] = {0};
+
+
 
 
 int r_max_portal_recursion_level = 3;
@@ -269,15 +284,26 @@ mat4_t r_view_projection_matrix;
 mat4_t r_model_view_matrix;
 mat4_t r_model_view_projection_matrix;
 
-view_def_t *r_active_view = NULL;
+//view_def_t *r_active_view = NULL;
 //camera_t *r_main_view = NULL;
+
+
+
+
+struct stack_list_t r_views;
+struct view_data_t *r_active_views[R_MAX_ACTIVE_VIEWS];
+struct view_handle_t r_main_view = INVALID_VIEW_HANDLE;
 
 
 unsigned int r_cluster_texture = 0;
 unsigned int r_light_uniform_buffer = 0;
 unsigned int r_bsp_uniform_buffer = 0;
+unsigned int r_world_vertices_uniform_buffer = 0;
+
+
 struct gpu_light_t *r_light_buffer = NULL;
 struct gpu_bsp_node_t *r_bsp_buffer = NULL;
+vec4_t *r_world_vertices_buffer = NULL;
 int r_bsp_node_count = 0;
 
 
@@ -313,7 +339,7 @@ struct bsp_dleaf_t **r_visible_leaves;
 
 
 
-view_def_t r_default_view;
+struct view_def_t r_default_view;
 
 
 #ifdef __cplusplus
@@ -398,23 +424,31 @@ int renderer_Init(int width, int height, int init_mode)
     glBindVertexArray(r_default_vao);*/
 
 
+    r_views = stack_list_create(sizeof(struct view_def_t), 32, NULL);
+
+    r_occlusion_queries = memory_Calloc(65536, sizeof(unsigned int ));
+
+    glGenQueries(65356, r_occlusion_queries);
+
     renderer_CheckFunctionPointers();
 
-    renderer_SetActiveView(NULL);
+    renderer_SetMainView(INVALID_VIEW_HANDLE);
 
-    r_default_view.bm_flags = 0;
+    r_default_view.flags = 0;
     r_default_view.fov_y = 0.68;
     r_default_view.world_orientation = mat3_t_id();
     r_default_view.world_position = vec3_t_c(0.0, 0.0, 0.0);
-    r_default_view.zoom = 1.0;
-    r_default_view.x_shift = 0.0;
-    r_default_view.y_shift = 0.0;
+    //r_default_view.zoom = 1.0;
+    //r_default_view.x_shift = 0.0;
+    //r_default_view.y_shift = 0.0;
 
     r_default_view.width = r_window_width;
     r_default_view.height = r_window_height;
+    r_default_view.name = "default view";
+    renderer_CreateViewData(&r_default_view.view_data);
 
     CreatePerspectiveMatrix(&r_default_view.view_data.projection_matrix, r_default_view.fov_y, (float)r_default_view.width / (float)r_default_view.height, 0.1, 500.0, 0.0, 0.0, &r_default_view.frustum);
-    renderer_ComputeActiveViewMatrix();
+    renderer_ComputeMainViewMatrix();
 
 
 
@@ -456,6 +490,22 @@ int renderer_Init(int width, int height, int init_mode)
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 
+
+
+	glGenBuffers(1, &r_world_vertices_uniform_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, r_world_vertices_uniform_buffer);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(vec4_t) * 32, NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+
+	/*glGenBuffers(1, &r_world_index_uniform_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, r_world_index_uniform_buffer);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct int) * R_MAX_BSP_NODES, NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);*/
+
+
+
+
 	r_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * R_MAX_VISIBLE_LIGHTS);
 	r_bsp_buffer = memory_Malloc(sizeof(struct gpu_bsp_node_t) * R_MAX_BSP_NODES);
 
@@ -477,9 +527,10 @@ int renderer_Init(int width, int height, int init_mode)
 		r_draw_command_groups[i].
 	}*/
 
-	r_max_draw_cmds_count = 32768;
-	r_unsorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * r_max_draw_cmds_count);
-	r_sorted_draw_cmds = memory_Malloc(sizeof(draw_command_t) * r_max_draw_cmds_count);
+	//r_max_draw_cmds_count = R_MAX_DRAW_COMMANDS;
+	//r_unsorted_draw_cmds = memory_Malloc(sizeof(struct draw_command_t) * r_max_draw_cmds_count);
+	r_sorted_draw_cmds = list_create(sizeof(struct draw_command_t), R_MAX_DRAW_COMMANDS, NULL);
+	//r_sorted_draw_cmds = memory_Malloc(sizeof(struct draw_command_t) * r_max_draw_cmds_count);
 
 
 
@@ -520,14 +571,19 @@ void renderer_Finish()
 	free(r_translucent_draw_cmds);
 	free(r_translucent_draw_groups);*/
 
-	memory_Free(r_sorted_draw_cmds);
-	memory_Free(r_unsorted_draw_cmds);
+	//memory_Free(r_sorted_draw_cmds);
+	//memory_Free(r_unsorted_draw_cmds);
 	memory_Free(r_draw_command_groups);
 	memory_Free(r_light_buffer);
+
+	stack_list_destroy(&r_views);
+	list_destroy(&r_sorted_draw_cmds);
 
 	renderer_FinishDebug();
 	renderer_FinishImediateDrawing();
 	renderer_FinishVerts();
+
+	glDeleteQueries(65536, r_occlusion_queries);
 	//memory_Free(r_translucent_draw_cmds);
 	//memory_Free(r_translucent_draw_groups);
 
@@ -661,10 +717,35 @@ void renderer_SetClearColor(float r, float g, float b)
 void renderer_SetUniformBuffers()
 {
 	R_DBG_PUSH_FUNCTION_NAME();
+
+	struct view_def_t *main_view;
+	int i;
+
+
+    if(w_world_vertices)
+    {
+        main_view = renderer_GetMainViewPointer();
+
+        for(i = 0; i < w_world_vertices_count; i++)
+        {
+            r_world_vertices_buffer[i].vec3 = w_world_vertices[i].position;
+            r_world_vertices_buffer[i].w = 1.0;
+
+            mat4_t_vec4_t_mult(&main_view->view_data.view_matrix, r_world_vertices_buffer + i);
+        }
+
+        glBindBuffer(GL_UNIFORM_BUFFER, r_world_vertices_uniform_buffer);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(vec4_t) * w_world_vertices_count, r_world_vertices_buffer, GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    }
+
+
+
 	//int cpu_timer = renderer_StartCpuTimer("renderer_SetUniformBuffers");
     //int gpu_timer = renderer_StartGpuTimer("renderer_SetUniformBuffers");
 	glBindBufferBase(GL_UNIFORM_BUFFER, R_LIGHT_UNIFORM_BUFFER_BINDING, r_light_uniform_buffer);
 	glBindBufferBase(GL_UNIFORM_BUFFER, R_BSP_UNIFORM_BUFFER_BINDING, r_bsp_uniform_buffer);
+	glBindBufferBase(GL_UNIFORM_BUFFER, R_WORLD_VERTICES_UNIFORM_BUFFER_BINDING, r_world_vertices_uniform_buffer);
 	//renderer_StopTimer(cpu_timer);
 	//renderer_StopTimer(gpu_timer);
 	R_DBG_POP_FUNCTION_NAME();
@@ -986,10 +1067,72 @@ void renderer_UpdateDrawCommandGroups(view_data_t *view_data)
 	}
 }*/
 
+void renderer_SubmitDrawCommandToView(struct view_data_t *view_data, mat4_t *transform, unsigned short draw_mode, unsigned int start, unsigned int count, int material_index, int indexed_draw)
+{
+    draw_command_group_t *draw_group;
+	struct draw_command_t *draw_command;
+	material_t *material;
 
+	view_material_ref_record_t *ref;
+
+	if(material_index < -1 || material_index >= mat_material_count)
+	{
+		material_index = -1;
+	}
+
+	material = &mat_materials[material_index];
+
+	if(material->flags & MATERIAL_INVALID)
+	{
+		material = &mat_materials[-1];
+		material_index = -1;
+	}
+
+	/*if(view_data->draw_commands_frame != r_frame)
+    {
+        view_data->draw_commands_frame = r_frame;
+        view_data->draw_commands.element_count = 0;
+    }*/
+
+	//if(view_data->draw_commands.element_count >= view_data->draw_commands.max_elements)
+	//{
+		/* we reached the limit for this frame, so
+		don't accept anything else until next frame,
+		where the list will have been resized... */
+	//	return;
+	//}
+
+	//printf("wow\n");
+
+	draw_command = (struct draw_command_t *)view_data->draw_commands.elements + view_data->draw_commands.element_count;
+	view_data->draw_commands.element_count++;
+	//draw_command = &view_data->view_draw_commands[view_data->view_draw_command_list_cursor];
+	//view_data->view_draw_command_list_cursor++;
+
+	draw_command->draw_mode = draw_mode;
+	draw_command->flags = 0;
+
+	if(indexed_draw)
+	{
+		draw_command->flags |= DRAW_COMMAND_FLAG_INDEXED_DRAW;
+	}
+
+	draw_command->material_index = material_index;
+	draw_command->transform = transform;
+	draw_command->start = start;
+	draw_command->count = count;
+}
 
 void renderer_SubmitDrawCommand(mat4_t *transform, unsigned short draw_mode, unsigned int start, unsigned int count, int material_index, int indexed_draw)
 {
+
+    struct view_def_t *main_view;
+
+    main_view = renderer_GetMainViewPointer();
+
+    renderer_SubmitDrawCommandToView(&main_view->view_data, transform, draw_mode, start, count, material_index, indexed_draw);
+
+    #if 0
 	draw_command_group_t *draw_group;
 	draw_command_t *draw_command;
 	material_t *material;
@@ -1034,10 +1177,87 @@ void renderer_SubmitDrawCommand(mat4_t *transform, unsigned short draw_mode, uns
 	draw_command->transform = transform;
 	draw_command->start = start;
 	draw_command->count = count;
+
+	#endif
+}
+
+void renderer_SortViewDrawCommands(struct view_data_t *view)
+{
+
+	int i;
+	int c;
+	int group_index = 0;
+	int material_index;
+	draw_command_group_t *group;
+	view_material_ref_record_t *ref;
+	//draw_command_t *view_draw_commands;
+	struct draw_command_t *unsorted_draw_commands;
+	struct draw_command_t *sorted_draw_commands;
+	int count;
+
+	static char material_draw_groups[MAX_MATERIALS + 1];
+
+	r_draw_command_group_count = 0;
+
+	if(view->draw_commands.element_count >= r_sorted_draw_cmds.max_elements)
+	{
+	    list_resize(&r_sorted_draw_cmds, r_sorted_draw_cmds.max_elements + R_DRAW_COMMAND_LIST_RESIZE_INCREMENT);
+	}
+
+	for(i = 0; i <= MAX_MATERIALS; i++)
+	{
+		material_draw_groups[i] = -1;
+	}
+
+    sorted_draw_commands = (struct draw_command_t *)r_sorted_draw_cmds.elements;
+    unsorted_draw_commands = (struct draw_command_t *)view->draw_commands.elements;
+
+	for(i = 0; i < view->draw_commands.element_count; i++)
+	{
+		//material_index = r_unsorted_draw_cmds[i].material_index + 1;
+		material_index = unsorted_draw_commands[i].material_index + 1;
+
+		if(material_draw_groups[material_index] < 0)
+		{
+			material_draw_groups[material_index] = r_draw_command_group_count;
+			r_draw_command_groups[r_draw_command_group_count].material_index = material_index - 1;
+			r_draw_command_groups[r_draw_command_group_count].max_draw_cmds = 0;
+			r_draw_command_groups[r_draw_command_group_count].draw_cmds_count = 0;
+			r_draw_command_group_count++;
+		}
+
+		group_index = material_draw_groups[material_index];
+		r_draw_command_groups[group_index].max_draw_cmds++;
+	}
+
+	r_draw_command_groups[0].draw_cmds = sorted_draw_commands;
+
+	for(i = 1; i < r_draw_command_group_count; i++)
+	{
+		r_draw_command_groups[i].draw_cmds = r_draw_command_groups[i - 1].draw_cmds + r_draw_command_groups[i - 1].max_draw_cmds;
+	}
+
+	for(i = 0; i < view->draw_commands.element_count; i++)
+	{
+		group_index = material_draw_groups[unsorted_draw_commands[i].material_index + 1];
+		group = &r_draw_command_groups[group_index];
+		group->draw_cmds[group->draw_cmds_count] = unsorted_draw_commands[i];
+		group->draw_cmds_count++;
+	}
+
+
+    view->draw_commands.element_count = 0;
+	//r_draw_cmds_count = 0;
 }
 
 void renderer_SortDrawCommands()
 {
+    struct view_def_t *main_view;
+
+    main_view = renderer_GetMainViewPointer();
+
+    renderer_SortViewDrawCommands(&main_view->view_data);
+    #if 0
 	int i;
 	int c;
 	int group_index = 0;
@@ -1115,6 +1335,8 @@ void renderer_SortDrawCommands()
 	}
 
 	r_draw_cmds_count = 0;
+
+	#endif
 }
 
 /*
@@ -1228,7 +1450,7 @@ void renderer_SetRendererResolution(int width, int height, int samples)
 	{
 		r_cbuffer = renderer_CreateFramebuffer(r_width, r_height);
 		renderer_AddAttachment(&r_cbuffer, GL_COLOR_ATTACHMENT0, GL_RGBA16F, 1, GL_LINEAR);
-		renderer_AddAttachment(&r_cbuffer, GL_COLOR_ATTACHMENT1, GL_RGBA8, 1, GL_LINEAR);
+		//renderer_AddAttachment(&r_cbuffer, GL_COLOR_ATTACHMENT1, GL_RGBA8, 1, GL_LINEAR);
 		renderer_AddAttachment(&r_cbuffer, GL_DEPTH_STENCIL_ATTACHMENT, 0, 1, GL_NEAREST);
 	}
 	else
@@ -1526,32 +1748,60 @@ void renderer_ClearRegisteredCallbacks()
 ====================================================================
 */
 
-void renderer_SetActiveView(view_def_t *view)
-{
+#if 0
 
-    if(!view)
+void renderer_SetMainView(struct view_handle_t view)
+{
+    struct view_def_t *view_def;
+    /*if(view.view_index == INVALID_VIEW_INDEX)
     {
-        r_active_view = &r_default_view;
+        r_main_view = &r_default_view;
     }
     else
     {
-        r_active_view = view;
+        r_main_view = view;
+    }*/
+
+    r_main_view = view;
+
+    if(view.view_index == INVALID_VIEW_INDEX)
+    {
+
     }
 
-	renderer_SetProjectionMatrix(&r_active_view->view_data.projection_matrix);
-	renderer_SetViewMatrix(&r_active_view->view_data.view_matrix);
+	renderer_SetProjectionMatrix(&r_main_view->view_data.projection_matrix);
+	renderer_SetViewMatrix(&r_main_view->view_data.view_matrix);
 }
 
-view_def_t *renderer_GetActiveView()
+#endif
+
+
+#if 0
+view_def_t *renderer_GetMainView()
 {
-    return r_active_view;
+    return r_main_view;
 }
 
-view_def_t *renderer_GetView(char *name)
+#endif
+
+
+#if 0
+struct view_def_t *renderer_GetView(struct view_handle_t view)
 {
-    return (view_def_t *)camera_GetCamera(name);
-}
+    if(view.view_index == INVALID_VIEW_INDEX)
+    {
+        return &r_default_view;
+    }
 
+    if(view.view_index >= 0 && view.view_index < r_views.element_count)
+    {
+
+    }
+}
+#endif
+
+
+#if 0
 void renderer_ComputeViewMatrix(view_def_t *view)
 {
 
@@ -1590,11 +1840,14 @@ void renderer_ComputeViewMatrix(view_def_t *view)
 	view->view_data.view_matrix.floats[2][3] = 0.0;
 	view->view_data.view_matrix.floats[3][3] = 1.0;
 }
+#endif
 
+#if 0
 void renderer_ComputeActiveViewMatrix()
 {
-    renderer_ComputeViewMatrix(r_active_view);
+    renderer_ComputeViewMatrix(r_main_view);
 }
+#endif
 
 /*
 void renderer_SetMainView(camera_t *view)
@@ -1603,6 +1856,7 @@ void renderer_SetMainView(camera_t *view)
 	main_view = view;
 }*/
 
+#if 0
 void renderer_SetupView(camera_t *view)
 {
 	//renderer_SetActiveView(view);
@@ -1613,8 +1867,9 @@ void renderer_SetupView(camera_t *view)
 
 	//light_BindCache();
 }
+#endif
 
-void renderer_SetViewData(view_data_t *view_data)
+void renderer_SetViewData(struct view_data_t *view_data)
 {
 	//gpu_BindGpuHeap();
 	//light_BindCache();
@@ -1626,7 +1881,7 @@ void renderer_SetViewData(view_data_t *view_data)
 }
 
 
-void renderer_SetViewLightData(view_data_t *view_data)
+void renderer_SetViewLightData(struct view_data_t *view_data)
 {
 	#if 0
 	int i;
@@ -1764,7 +2019,7 @@ void renderer_SetViewLightData(view_data_t *view_data)
 	#endif
 }
 
-void renderer_SetViewDrawCommands(view_data_t *view_data)
+void renderer_SetViewDrawCommands(struct view_data_t *view_data)
 {
 	#if 0
 	int i;
@@ -1834,7 +2089,7 @@ void renderer_SetViewDrawCommands(view_data_t *view_data)
 }
 
 
-void renderer_SetViewVisibleWorld(view_data_t *view_data)
+void renderer_SetViewVisibleWorld(struct view_data_t *view_data)
 {
 	#if 0
 	int j;
@@ -1914,7 +2169,7 @@ void renderer_SetViewVisibleWorld(view_data_t *view_data)
 void renderer_StartFrame()
 {
     //int cpu_timer = renderer_StartCpuTimer("renderer_StartFrame");
-    renderer_ComputeActiveViewMatrix();
+    renderer_ComputeMainViewMatrix();
     renderer_VisibleWorld();
     renderer_VisibleLights();
     renderer_VisibleEntities();
@@ -1954,12 +2209,13 @@ void renderer_DrawFrame()
 		renderer_PreShadingRegisteredFunction[i]();
 	}
 
-    if(r_z_prepass)
-    {
-        renderer_ZPrePass();
-    }
-
 	renderer_SortDrawCommands();
+
+
+    //if(r_z_prepass)
+    //{
+    renderer_ZPrePass();
+    //}
 
     renderer_DrawWorld();
 
@@ -2014,56 +2270,23 @@ void renderer_EndFrame()
 	r_shader_swaps = 0;
 	r_shader_uniform_updates = 0;
 	r_frame_vert_count = 0;
-	r_draw_cmds_count = 0;
+//	r_draw_cmds_count = 0;
 }
 
 
 void renderer_ZPrePass()
 {
-
-	//return;
-
-
 	int i;
+	int j;
 	int c;
-//	camera_t *active_camera = camera_GetActiveCamera();
-    view_def_t *active_view = renderer_GetActiveView();
-	//material_t *material;
-	//mat4_t transform;
-	//mat4_t temp_transform;
-	//mat4_t camera_transform;
-	//mat4_t weapon_transform;
-	//mat4_t model_view_matrix;
-	//mat3_t weapon_rot = mat3_t_id();
-	//vec3_t weapon_position;
-	//triangle_group_t *triangle_group;
+
+	int result;
+
 	struct batch_t *batch;
+    int draw_cmd_count;
+    struct draw_command_t *draw_cmds;
 
-	float color[4];
-
-	//return;
-
-	/*#ifdef QUERY_STAGES
-	unsigned int elapsed;
-	glBeginQuery(GL_TIME_ELAPSED, renderer_ZPrePassQueryObject);
-	#endif*/
-
-	/*#ifdef QUERY_STAGES
-	renderer_BeginTimeElapsedQuery();
-	#endif*/
-
-
-	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	//glDrawBuffer(GL_BACK);
-
-	//glBindBuffer(GL_ARRAY_BUFFER, gpu_heap);
-//	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world_element_buffer);
-	//shader_UseShader(z_pre_pass_shader);
-
-	//int cpu_timer = renderer_StartCpuTimer("renderer_ZPrePass");
-	//int gpu_timer = renderer_StartGpuTimer("renderer_ZPrePass");
-
-	glDepthFunc(GL_LESS);
+    struct view_def_t *active_view = renderer_GetMainViewPointer();
 
 	renderer_SetShader(r_z_pre_pass_shader);
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->position);
@@ -2076,14 +2299,94 @@ void renderer_ZPrePass()
 
 
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	glDepthFunc(GL_LESS);
 	glEnable(GL_CULL_FACE);
 	c = w_world_batch_count;
 
-	for(i = 0; i < c; i++)
+	/*for(i = 0; i < c; i++)
 	{
 		batch = &w_world_batches[i];
 		renderer_DrawElements(GL_TRIANGLES, batch->next, GL_UNSIGNED_INT, (void *)((batch->start + w_world_index_start) * sizeof(int)));
-	}
+	}*/
+
+    /*#define BATCH_SIZE 30
+
+    i = 0;
+
+	while(i < w_world_sorted_index_count)
+    {
+        c = BATCH_SIZE;
+
+        if(i + c > w_world_sorted_index_count)
+        {
+            c = w_world_sorted_index_count - i;
+        }
+
+        renderer_DrawElements(GL_TRIANGLES, c, GL_UNSIGNED_INT, (void *)((w_world_sorted_index_start + i) * sizeof(int)));
+
+        i += BATCH_SIZE;
+    }*/
+
+
+    for(i = 0; i < w_world_z_batch_count; i++)
+    {
+        glBeginQuery(GL_ANY_SAMPLES_PASSED, r_occlusion_queries[i]);
+        batch = w_world_z_batches + i;
+        renderer_DrawElements(GL_TRIANGLES, batch->next, GL_UNSIGNED_INT, (void *)((w_world_sorted_index_start + batch->start) * sizeof(int)));
+        glEndQuery(GL_ANY_SAMPLES_PASSED);
+    }
+
+    glFlush();
+
+    //renderer_DrawElements(GL_TRIANGLES, w_world_sorted_index_count, GL_UNSIGNED_INT, (void *)(w_world_sorted_index_start * sizeof(int)));
+
+	/*for(i = 0; i < w_world_sorted_index_count; i += 3)
+    {
+        renderer_DrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, (void *)((w_world_sorted_index_start + i) * sizeof(int)));
+    }*/
+
+	/* draw movable geometry... */
+    /*for(i = 0; i < r_draw_command_group_count; i++)
+    {
+        draw_cmd_count = r_draw_command_groups[i].draw_cmds_count;
+        draw_cmds = r_draw_command_groups[i].draw_cmds;
+
+        for(j = 0; j < draw_cmd_count; j++)
+        {
+            renderer_SetModelMatrix(draw_cmds[j].transform);
+            renderer_UpdateMatrices();
+
+            if(draw_cmds[j].flags & DRAW_COMMAND_FLAG_INDEXED_DRAW)
+            {
+                renderer_DrawElements(draw_cmds[j].draw_mode, draw_cmds[j].count, GL_UNSIGNED_INT, (void *)(draw_cmds[j].start * sizeof(int)));
+            }
+            else
+            {
+                renderer_DrawArrays(draw_cmds[j].draw_mode, draw_cmds[j].start, draw_cmds[j].count);
+            }
+        }
+    }*/
+
+    c = 0;
+
+    //for(i = 0; i < w_world_z_batch_count; i++)
+    {
+        /*glGetQueryObjectiv(r_occlusion_queries[i], GL_QUERY_RESULT_AVAILABLE, &result);
+
+        if(!result)
+        {
+            w_world_z_batches[i].next = -1;
+        }*/
+
+        /*glGetQueryObjectiv(r_occlusion_queries[i], GL_QUERY_RESULT, &result);
+
+        if(!result)
+        {
+            w_world_z_batches[i].start = -1;
+        }*/
+    }
+
+    //printf("%d leafs visible\n", c);
 
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
@@ -2094,22 +2397,18 @@ void renderer_ZPrePass()
 void renderer_DrawWorld()
 {
 
-    view_def_t *active_view;
+    struct view_def_t *active_view;
     int i;
     int j;
     int c;
 
     struct batch_t *batch;
     int draw_cmd_count;
-    draw_command_t *draw_cmds;
+    struct draw_command_t *draw_cmds;
 
     int draw_count = 0;
 
-
-    active_view = renderer_GetActiveView();
-
-    //int cpu_timer = renderer_StartCpuTimer("renderer_ForwardPass");
-    //int gpu_timer = renderer_StartGpuTimer("renderer_ForwardPass");
+    active_view = renderer_GetMainViewPointer();
 
     if(r_flat)
 	{
@@ -2118,17 +2417,18 @@ void renderer_DrawWorld()
 	else
 	{
 
-	    if(r_wireframe)
+	    /*if(r_wireframe)
         {
             renderer_SetShader(r_wireframe_pass_shader);
         }
-        else
+        else*/
         {
             renderer_SetShader(r_forward_pass_shader);
             renderer_BindClusterTexture();
             renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
             renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
             renderer_SetDefaultUniform1i(UNIFORM_r_frame, r_frame);
+            renderer_SetDefaultUniform1i(UNIFORM_r_world_vertices_count, w_world_vertices_count);
         }
 	}
 
@@ -2147,7 +2447,7 @@ void renderer_DrawWorld()
     /* draw static geometry... */
 	c = w_world_batch_count;
 
-	if(r_wireframe)
+	/*if(r_wireframe)
     {
         glDepthFunc(GL_LEQUAL);
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -2161,10 +2461,18 @@ void renderer_DrawWorld()
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
-    else
+    else*/
     {
+        //if(r_z_prepass)
+        //{
         glDepthFunc(GL_EQUAL);
-        //glDepthMask(GL_FALSE);
+        glDepthMask(GL_FALSE);
+        /*}
+        else
+        {
+            glDepthFunc(GL_LESS);
+            glDepthMask(GL_TRUE);
+        }*/
 
         for(i = 0; i < c; i++)
         {
@@ -2172,18 +2480,16 @@ void renderer_DrawWorld()
             renderer_SetMaterial(batch->material_index);
             renderer_DrawElements(GL_TRIANGLES, batch->next, GL_UNSIGNED_INT, (void *)((batch->start + w_world_index_start) * sizeof(int)));
         }
-
-        //glDepthMask(GL_TRUE);
     }
 
-    glDepthFunc(GL_LESS);
-
-	if(r_wireframe)
+	/*if(r_wireframe)
     {
+        glDepthFunc(GL_LEQUAL);
+
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
         renderer_SetMaterialColor(vec4(0.0, 1.0, 0.0, 1.0));
-        /* draw movable geometry... */
+
         for(i = 0; i < r_draw_command_group_count; i++)
         {
             draw_cmd_count = r_draw_command_groups[i].draw_cmds_count;
@@ -2207,8 +2513,19 @@ void renderer_DrawWorld()
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
-    else
+    else*/
     {
+        //if(r_z_prepass)
+        //{
+        //glDepthFunc(GL_EQUAL);
+        //glDepthMask(GL_FALSE);
+        /*}
+        else
+        {*/
+            glDepthFunc(GL_LEQUAL);
+            glDepthMask(GL_TRUE);
+        /*}*/
+
         /* draw movable geometry... */
         for(i = 0; i < r_draw_command_group_count; i++)
         {
@@ -2233,10 +2550,8 @@ void renderer_DrawWorld()
         }
     }
 
-
-
-	//renderer_StopTimer(cpu_timer);
-	//renderer_StopTimer(gpu_timer);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LEQUAL);
 }
 
 
@@ -2401,7 +2716,7 @@ void renderer_DrawParticles()
 	struct particle_system_t *particle_systems;
 
 //	active_camera = camera_GetActiveCamera();
-    view_def_t *active_view = renderer_GetActiveView();
+    struct view_def_t *active_view = renderer_GetMainViewPointer();
 
 	renderer_SetShader(r_particle_forward_pass_shader);
 	renderer_BindClusterTexture();
@@ -3315,102 +3630,51 @@ void renderer_RecursiveDrawPortalsViews(portal_t *portal, int viewing_portal_ind
 
 void renderer_Enable(int cap)
 {
-    switch(cap)
+    if(cap > R_FIRST_CAP && cap < R_LAST_CAP)
     {
-        case R_CLEAR_COLOR_BUFFER:
-            r_clear_colorbuffer = 1;
-        break;
+        r_caps[R_FIRST_CAP] = R_FIRST_CAP;
 
-        case R_Z_PRE_PASS:
-            r_z_prepass = 1;
-        break;
+        switch(cap)
+        {
+            case R_FULLSCREEN:
+                renderer_Fullscreen(1);
+            break;
 
-        case R_TONEMAP:
-            r_tonemap = 1;
-        break;
-
-        case R_BLOOM:
-            r_bloom = 1;
-        break;
-
-        case R_WIREFRAME:
-            r_wireframe = 1;
-        break;
-
-        case R_FLAT:
-            r_flat = 1;
-        break;
-
-        case R_DEBUG:
-            r_debug = 1;
-        break;
-
-        case R_VERBOSE_DEBUG:
-            renderer_VerboseDebugOutput(1);
-        break;
-
-        case R_FULLSCREEN:
-            renderer_Fullscreen(1);
-        break;
+            case R_VERBOSE_DEBUG:
+                renderer_VerboseDebugOutput(1);
+            break;
+        }
     }
 }
 
 void renderer_Disable(int cap)
 {
-    switch(cap)
+    if(cap > R_FIRST_CAP && cap < R_LAST_CAP)
     {
-        case R_CLEAR_COLOR_BUFFER:
-            r_clear_colorbuffer = 0;
-        break;
+        r_caps[R_FIRST_CAP] = 0;
 
-        case R_Z_PRE_PASS:
-            r_z_prepass = 0;
-        break;
+        switch(cap)
+        {
+            case R_FULLSCREEN:
+                renderer_Fullscreen(0);
+            break;
 
-        case R_TONEMAP:
-            r_tonemap = 0;
-        break;
-
-         case R_BLOOM:
-            r_bloom = 0;
-        break;
-
-        case R_WIREFRAME:
-            r_wireframe = 0;
-        break;
-
-        case R_FLAT:
-            r_flat = 0;
-        break;
-
-        case R_DEBUG:
-            r_debug = 0;
-        break;
-
-        case R_VERBOSE_DEBUG:
-            renderer_VerboseDebugOutput(0);
-        break;
-
-        case R_FULLSCREEN:
-            renderer_Fullscreen(0);
-        break;
+            case R_VERBOSE_DEBUG:
+                renderer_VerboseDebugOutput(0);
+            break;
+        }
     }
 }
 
-/*
-void renderer_StartGpuTimer()
+int renderer_IsEnabled(int cap)
 {
-	glBeginQuery(GL_TIME_ELAPSED, query_object);
+    if(cap > R_FIRST_CAP && cap < R_LAST_CAP)
+    {
+        return r_caps[cap];
+    }
 }
 
-float renderer_StopGpuTimer()
-{
-	unsigned int elapsed;
-	glEndQuery(GL_TIME_ELAPSED);
-	glGetQueryObjectuiv(query_object, GL_QUERY_RESULT, &elapsed);
-	return (float)elapsed / 1000000.0;
-}
-*/
+
 
 
 

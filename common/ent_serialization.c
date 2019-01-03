@@ -1,7 +1,8 @@
 #include "ent_serialization.h"
-#include "camera.h"
+//#include "camera.h"
 #include "entity.h"
 #include "script.h"
+#include "r_view.h"
 
 #include "stack_list.h"
 
@@ -38,11 +39,13 @@ struct component_record_t *entity_SerializeComponent(void **buffer)
 	return component_record;
 }
 
-void entity_WriteComponent(void **buffer, struct component_t *component, int nestled, int ref)
+void entity_WriteComponent(void **buffer, struct component_t *component, int nestled, int ref, int dry_fire)
 {
 	struct component_record_t *component_record;
 	struct transform_component_t *transform_component;
 	struct transform_component_t *parent_transform_component;
+
+	struct component_record_t dry_fire_component_record;
 
 	struct camera_component_t *camera_component;
 	struct model_component_t *model_component;
@@ -50,6 +53,7 @@ void entity_WriteComponent(void **buffer, struct component_t *component, int nes
 	struct physics_component_t *physics_component;
 
 	struct collider_t *collider;
+	struct collider_def_t *collider_def;
 	struct model_t *model;
 
 	struct entity_t *entity;
@@ -57,7 +61,7 @@ void entity_WriteComponent(void **buffer, struct component_t *component, int nes
 	int i;
 
 
-	camera_t *camera;
+	//camera_t *camera;
 
 	char *in;
 
@@ -79,15 +83,27 @@ void entity_WriteComponent(void **buffer, struct component_t *component, int nes
 
 		//memset(component_record, 0, sizeof(struct component_record_t));
 
-		component_record = entity_SerializeComponent(buffer);
+		//component_record = entity_SerializeComponent(buffer);
 
-		strcpy(component_record->tag, component_record_tag);
+		component_record = (struct component_record_t *)in;
+        in += sizeof(struct component_record_t );
 
-		nestled = nestled && 1;
+        *buffer = in;
 
-		component_record->type = component->type;
+        if(dry_fire)
+        {
+            component_record = &dry_fire_component_record;
+        }
 
-		if(nestled)
+        memset(component_record, 0, sizeof(struct component_record_t));
+
+        strcpy(component_record->tag, component_record_tag);
+
+        nestled = nestled && 1;
+
+        component_record->type = component->type;
+
+        if(nestled)
         {
             component_record->flags |= COMPONENT_RECORD_FLAG_NESTLED;
         }
@@ -96,7 +112,6 @@ void entity_WriteComponent(void **buffer, struct component_t *component, int nes
         {
             component_record->flags |= COMPONENT_RECORD_FLAG_REF;
         }
-
 
 		switch(component->type)
 		{
@@ -127,15 +142,14 @@ void entity_WriteComponent(void **buffer, struct component_t *component, int nes
 
 			case COMPONENT_TYPE_PHYSICS:
 				physics_component = (struct physics_component_t *)component;
-				if(!component->entity.def)
+
+				collider_def = physics_GetColliderDefPointerHandle(physics_component->collider);
+
+				strcpy(component_record->component.physics_component.collider_def_name, collider_def->name);
+
+				if(component->entity.def)
 				{
-					collider = physics_GetColliderPointerHandle(physics_component->collider.collider_handle);
-					strcpy(component_record->component.physics_component.collider_def_name, collider->def->name);
-				}
-				else
-				{
-					strcpy(component_record->component.physics_component.collider_def_name, physics_component->collider.collider_def->name);
-					entity_WriteCollider(buffer, physics_component->collider.collider_def);
+                    entity_WriteCollider(buffer, collider_def, dry_fire);
 				}
 
 				component_record->component.physics_component.flags = physics_component->flags;
@@ -213,7 +227,7 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t parent_entity, s
 	struct model_component_t *model_component;
 	struct script_component_t *script_component;
 
-	struct collider_def_t *collider_def;
+	struct collider_handle_t collider_def;
 
 	struct entity_t *entity_ptr;
 	struct entity_t *parent_entity_ptr;
@@ -299,7 +313,8 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t parent_entity, s
 		case COMPONENT_TYPE_CAMERA:
 			if(!entity.def)
 			{
-				camera_component->camera = camera_CreateCamera("camera", vec3_t_c(0.0, 0.0, 0.0), NULL, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
+				//camera_component->camera = camera_CreateCamera("camera", vec3_t_c(0.0, 0.0, 0.0), NULL, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
+				camera_component->view = renderer_CreateViewDef("view", vec3_t_c(0.0, 0.0, 0.0), NULL, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
 			}
 		break;
 
@@ -308,9 +323,9 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t parent_entity, s
 
 			if(!entity.def)
 			{
-				collider_def = physics_GetColliderDefPointer(component_record->component.physics_component.collider_def_name);
+				collider_def = physics_GetColliderDefByName(component_record->component.physics_component.collider_def_name);
 				transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
-				physics_component->collider.collider_handle = physics_CreateCollider(&transform_component->orientation, transform_component->position, transform_component->scale, collider_def, 0);
+				physics_component->collider = physics_CreateCollider(&transform_component->orientation, transform_component->position, transform_component->scale, collider_def, 0);
 				physics_component->flags = component_record->component.physics_component.flags;
 			}
 
@@ -358,7 +373,7 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t parent_entity, s
 
 
 
-void entity_WriteProp(void **buffer, struct entity_prop_t *prop)
+void entity_WriteProp(void **buffer, struct entity_prop_t *prop, int dry_fire)
 {
 	char *in;
 	struct entity_prop_record_t *prop_record;
@@ -370,18 +385,21 @@ void entity_WriteProp(void **buffer, struct entity_prop_t *prop)
 		prop_record = (struct entity_prop_record_t *)in;
 		in += sizeof(struct entity_prop_record_t);
 
-		memset(prop_record, 0, sizeof(struct entity_prop_record_t));
-		strcpy(prop_record->tag, entity_prop_record_tag);
-		strcpy(prop_record->name, prop->name);
+		if(!dry_fire)
+        {
+            memset(prop_record, 0, sizeof(struct entity_prop_record_t));
+            strcpy(prop_record->tag, entity_prop_record_tag);
+            strcpy(prop_record->name, prop->name);
 
-		prop_record->size = prop->size;
+            prop_record->size = prop->size;
 
-		/* the prop value gets written right after the record... */
-		value = (char *)prop_record + sizeof(struct entity_prop_record_t);
+            /* the prop value gets written right after the record... */
+            value = (char *)prop_record + sizeof(struct entity_prop_record_t);
 
-		memcpy(value, prop->memory, prop_record->size);
+            memcpy(value, prop->memory, prop->size);
+        }
 
-		in += prop_record->size;
+		in += prop->size;
 		*buffer = in;
 	}
 
@@ -414,9 +432,10 @@ void entity_ReadProp(void **buffer, struct entity_handle_t entity, struct entity
 }
 
 
-void entity_WriteCollider(void **buffer, struct collider_def_t *collider_def)
+void entity_WriteCollider(void **buffer, struct collider_def_t *collider_def, int dry_fire)
 {
 	struct physics_component_t *physics_component;
+	struct collision_shape_t *collision_shapes;
 	struct entity_t *entity_ptr;
 
 	struct collider_record_start_t *collider_record_start;
@@ -434,48 +453,67 @@ void entity_WriteCollider(void **buffer, struct collider_def_t *collider_def)
 		collider_record_start = (struct collider_record_start_t *)out;
 		out += sizeof(struct collider_record_start_t );
 
-		memset(collider_record_start, 0, sizeof(struct collider_record_start_t ));
-		strcpy(collider_record_start->tag, collider_record_start_tag);
+		if(!dry_fire)
+        {
+            memset(collider_record_start, 0, sizeof(struct collider_record_start_t ));
 
-		collider_record_start->type = collider_def->type;
-		strcpy(collider_record_start->name, collider_def->name);
+            strcpy(collider_record_start->tag, collider_record_start_tag);
+            collider_record_start->type = collider_def->collider_type;
 
-		collider_record_start->collider.collider_data.mass = collider_def->mass;
+            strcpy(collider_record_start->name, collider_def->name);
+            collider_record_start->collider.collider_data.mass = collider_def->mass;
+        }
 
-		switch(collider_def->type)
+
+		switch(collider_def->collider_type)
 		{
 			case COLLIDER_TYPE_CHARACTER_COLLIDER:
-				collider_record_start->collider.collider_data.radius = collider_def->radius;
-				collider_record_start->collider.collider_data.height = collider_def->height;
-				collider_record_start->collider.collider_data.max_slope_angle = collider_def->max_slope_angle;
-				collider_record_start->collider.collider_data.max_step_height = collider_def->max_step_height;
-				collider_record_start->collider.collider_data.jump_height = 0.0;
-				collider_record_start->collider.collider_data.max_walk_speed = collider_def->max_walk_speed;
-				collider_record_start->collider.collider_data.mass = collider_def->mass;
+			    if(!dry_fire)
+                {
+                    collider_record_start->collider.collider_data.radius = collider_def->radius;
+                    collider_record_start->collider.collider_data.height = collider_def->height;
+                    collider_record_start->collider.collider_data.max_slope_angle = collider_def->max_slope_angle;
+                    collider_record_start->collider.collider_data.max_step_height = collider_def->max_step_height;
+                    collider_record_start->collider.collider_data.jump_height = 0.0;
+                    collider_record_start->collider.collider_data.max_walk_speed = collider_def->max_walk_speed;
+                    collider_record_start->collider.collider_data.mass = collider_def->mass;
+                }
 			break;
 
 			case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
-				for(i = 0; i < collider_def->collision_shape_count; i++)
-				{
-					collision_shape_record = (struct collision_shape_record_t *)out;
-					out += sizeof(struct collision_shape_record_t );
 
-					memset(collision_shape_record, 0, sizeof(struct collision_shape_record_t ));
-					strcpy(collision_shape_record->tag, collision_shape_record_tag);
+			    collision_shapes = (struct collision_shape_t *)collider_def->collision_shape.elements;
 
-					collision_shape_record->type = collider_def->collision_shape[i].type;
-					collision_shape_record->orientation = collider_def->collision_shape[i].orientation;
-					collision_shape_record->position = collider_def->collision_shape[i].position;
-					collision_shape_record->scale = collider_def->collision_shape[i].scale;
-				}
+			    collision_shape_record = (struct collision_shape_record_t *)out;
+                out += sizeof(struct collision_shape_record_t ) * collider_def->collision_shape.element_count;
+
+                if(!dry_fire)
+                {
+                    for(i = 0; i < collider_def->collision_shape.element_count; i++)
+                    {
+                        memset(collision_shape_record, 0, sizeof(struct collision_shape_record_t ));
+                        strcpy(collision_shape_record->tag, collision_shape_record_tag);
+
+                        collision_shape_record->type = collision_shapes[i].type;
+                        collision_shape_record->orientation = collision_shapes[i].orientation;
+                        collision_shape_record->position = collision_shapes[i].position;
+                        collision_shape_record->scale = collision_shapes[i].scale;
+
+                        collision_shape_record++;
+                    }
+                }
+
 			break;
 		}
 
 		collider_record_end = (struct collider_record_end_t *)out;
 		out += sizeof(struct collider_record_end_t );
 
-		memset(collider_record_end, 0, sizeof(struct collider_record_end_t ));
-		strcpy(collider_record_end->tag, collider_record_end_tag);
+        if(!dry_fire)
+        {
+            memset(collider_record_end, 0, sizeof(struct collider_record_end_t ));
+            strcpy(collider_record_end->tag, collider_record_end_tag);
+        }
 
 		*buffer = out;
 	}
@@ -484,6 +522,7 @@ void entity_WriteCollider(void **buffer, struct collider_def_t *collider_def)
 void entity_ReadCollider(void **buffer, struct entity_handle_t entity)
 {
 	struct collider_def_t *def;
+	struct collider_handle_t def_handle;
 
 	struct collider_record_start_t *collider_record_start;
 	struct collider_record_end_t *collider_record_end;
@@ -504,17 +543,21 @@ void entity_ReadCollider(void **buffer, struct entity_handle_t entity)
 	switch(collider_record_start->type)
 	{
 		case COLLIDER_TYPE_CHARACTER_COLLIDER:
-			def = physics_CreateCharacterColliderDef(collider_record_start->name, collider_record_start->collider.collider_data.height,
+			def_handle = physics_CreateCharacterColliderDef(collider_record_start->name, collider_record_start->collider.collider_data.height,
 																			      collider_record_start->collider.collider_data.crouch_height,
 																				  collider_record_start->collider.collider_data.radius,
 																				  collider_record_start->collider.collider_data.max_step_height,
 																				  collider_record_start->collider.collider_data.max_slope_angle,
 																				  collider_record_start->collider.collider_data.max_walk_speed,
 																				  collider_record_start->collider.collider_data.mass);
+
+            def = physics_GetColliderDefPointerHandle(def_handle);
 		break;
 
 		case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
-			def = physics_CreateRigidBodyColliderDef(collider_record_start->name);
+			def_handle = physics_CreateRigidBodyColliderDef(collider_record_start->name);
+			def = physics_GetColliderDefPointerHandle(def_handle);
+
 			def->mass = collider_record_start->collider.collider_data.mass;
 			while(1)
 			{
@@ -523,7 +566,7 @@ void entity_ReadCollider(void **buffer, struct entity_handle_t entity)
 					collision_shape_record = (struct collision_shape_record_t *)in;
 					in += sizeof(struct collision_shape_record_t);
 
-					physics_AddCollisionShape(def, collision_shape_record->scale, collision_shape_record->position, &collision_shape_record->orientation, collision_shape_record->type);
+					physics_AddCollisionShape(def_handle, collision_shape_record->scale, collision_shape_record->position, &collision_shape_record->orientation, collision_shape_record->type);
 
 				}
 				else if(!strcmp(in, collider_record_end_tag))
@@ -546,7 +589,7 @@ void entity_ReadCollider(void **buffer, struct entity_handle_t entity)
 
 	assert(physics_component);
 
-	physics_component->collider.collider_def = def;
+	physics_component->collider = def_handle;
 
 
 	collider_record_end = (struct collider_record_end_t *)in;
@@ -556,13 +599,55 @@ void entity_ReadCollider(void **buffer, struct entity_handle_t entity)
 }
 
 
+void entity_ClearSerializedFlag(struct component_handle_t transform)
+{
+    struct entity_t *entity_ptr;
+    struct transform_component_t *transform_component;
+    struct component_t *component;
+    struct transform_component_t *nestled_transform_component;
 
-void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct component_handle_t referencing_transform, int write_def_as_file_ref)
+    int i;
+
+    transform_component = entity_GetComponentPointer(transform);
+
+    if(transform_component)
+    {
+        transform_component->flags &= ~COMPONENT_FLAG_SERIALIZED;
+
+        entity_ptr = entity_GetEntityPointerHandle(transform_component->base.entity);
+
+        if(entity_ptr)
+        {
+            entity_ptr->flags &= ~ENTITY_FLAG_SERIALIZED;
+
+            for(i = 0; i < COMPONENT_TYPE_LAST; i++)
+            {
+                component = entity_GetComponentPointer(entity_ptr->components[i]);
+
+                if(component)
+                {
+                    component->flags &= ~COMPONENT_FLAG_SERIALIZED;
+                }
+            }
+
+
+            for(i = 0; i < transform_component->children_count; i++)
+            {
+                entity_ClearSerializedFlag(transform_component->child_transforms[i]);
+            }
+        }
+    }
+}
+
+
+void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct component_handle_t referencing_transform, int write_def_as_file_ref, int dry_fire)
 {
 	struct entity_record_start_t *ent_record_start;
 	struct entity_record_end_t *ent_record_end;
 	struct entity_file_record_t *ent_file_record;
 	struct entity_source_file_t *ent_source_file;
+
+	struct entity_record_start_t ent_dry_fire_record_start;
 
 	struct entity_t *entity_def_ptr;
 	struct entity_t *entity_ptr;
@@ -594,14 +679,25 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 
 	if(entity_ptr)
 	{
+
+	    if(!depth_level)
+        {
+            entity_ClearSerializedFlag(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+        }
+
+
 		if(entity_ptr->flags & ENTITY_FLAG_SERIALIZED)
 		{
+		    /* this def was already serialized, which means that
+		    if we're here again, this is just a reference to this
+            entity def... */
 			if(entity.def)
 			{
 				/* this is a reference to an entity def... */
 				if(depth_level < 1)
 				{
-					/* if this ref isn't inside a hierarchy, don't serialize anything (an entity def has to be referenced FROM another entity...) */
+					/* if this ref isn't inside a hierarchy, don't serialize
+					anything (an entity def has to be referenced FROM another entity)... */
 					depth_level--;
 					return;
 				}
@@ -620,67 +716,77 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 
 		}
 
+		transform_component = entity_GetComponentPointer(referencing_transform);
+
 		/* write record start... */
 		ent_record_start = (struct entity_record_start_t *)out;
 		out += sizeof(struct entity_record_start_t);
 
-		record_start = out;
 
-		memset(ent_record_start, 0, sizeof(struct entity_record_start_t));
-		strcpy(ent_record_start->tag, entity_record_start_tag);
-		strcpy(ent_record_start->name, entity_ptr->name);
+        if(!dry_fire)
+        {
+            record_start = out;
+        }
+        else
+        {
+            /* we want to precisely calculate how much space an entity
+            will take. To avoid having similar code implemented in two
+            different places, this function calculates
+            the size of the entity in case dry_fire is true... */
+            ent_record_start = &ent_dry_fire_record_start;
+        }
 
-		ent_record_start->entity_flags = entity_ptr->flags;
+        memset(ent_record_start, 0, sizeof(struct entity_record_start_t));
+        strcpy(ent_record_start->tag, entity_record_start_tag);
+        strcpy(ent_record_start->name, entity_ptr->name);
 
-		transform_component = entity_GetComponentPointer(referencing_transform);
+        ent_record_start->entity_flags = entity_ptr->flags;
 
-	    if(transform_component)
+        if(transform_component)
         {
             if(transform_component->flags & COMPONENT_FLAG_ENTITY_DEF_REF)
             {
-            //	if(entity_ptr->ref_count > 1)
-			//	{
-				/* if the transform that brought us here is used to only
-				reference an entity def, mark the record as belonging to an
-				entity def ref... */
-				ent_record_start->flags |= ENTITY_RECORD_FLAG_DEF_REF;
-			//	}
-
+                /* if the transform that brought us here is used to only
+                reference an entity def, mark the record as belonging to a
+                reference to an entity def... */
+                ent_record_start->flags |= ENTITY_RECORD_FLAG_DEF_REF;
             }
         }
 
-		if(!entity.def)
-		{
-			entity_def_ptr = entity_GetEntityPointerHandle(entity_ptr->def);
-			strcpy(ent_record_start->def_name, entity_def_ptr->name);
-		}
-		else
-		{
-			ent_record_start->flags |= ENTITY_RECORD_FLAG_DEF;
-		}
+        if(!entity.def)
+        {
+            entity_def_ptr = entity_GetEntityPointerHandle(entity_ptr->def);
+            strcpy(ent_record_start->def_name, entity_def_ptr->name);
 
-		if(entity_ptr->flags & ENTITY_FLAG_MODIFIED)
+            if(entity_ptr->flags & ENTITY_FLAG_MODIFIED)
+            {
+                ent_record_start->flags |= ENTITY_RECORD_FLAG_MODIFIED;
+            }
+        }
+        else
+        {
+            ent_record_start->flags |= ENTITY_RECORD_FLAG_DEF;
+        }
+
+		if((ent_record_start->flags & ENTITY_RECORD_FLAG_DEF) && (!(ent_record_start->flags & ENTITY_RECORD_FLAG_DEF_REF)) &&
+            write_def_as_file_ref && (entity_ptr->flags & ENTITY_FLAG_ON_DISK))
 		{
-			ent_record_start->flags |= ENTITY_RECORD_FLAG_MODIFIED;
-		}
-
-
-
-		if((ent_record_start->flags & ENTITY_RECORD_FLAG_DEF) && (!(ent_record_start->flags & ENTITY_RECORD_FLAG_DEF_REF)) && write_def_as_file_ref && (entity_ptr->flags & ENTITY_FLAG_ON_DISK))
-		{
-			/* don't serialize this entity def data, but instead just the file name
-			where it exists... */
+            /* if this is a def (but not a reference to a def), and it has been read from
+            the disk, serialize only the name of the file it came from... */
 
 			ent_record_start->flags |= ENTITY_RECORD_FLAG_FILE_REF;
 
 			ent_file_record = (struct entity_file_record_t *)out;
 			out += sizeof(struct entity_file_record_t);
 
-			memset(ent_file_record, 0, sizeof(struct entity_file_record_t));
+            if(!dry_fire)
+            {
+                memset(ent_file_record, 0, sizeof(struct entity_file_record_t));
 
-			ent_source_file = entity_GetSourceFile(entity);
-			strcpy(ent_file_record->tag, entity_file_record_tag);
-            strcpy(ent_file_record->file_name, ent_source_file->file_name);
+                ent_source_file = entity_GetSourceFile(entity);
+                strcpy(ent_file_record->tag, entity_file_record_tag);
+                strcpy(ent_file_record->file_name, ent_source_file->file_name);
+            }
 		}
 		else
 		{
@@ -692,12 +798,12 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 			/* Always write props, regardless of the entity having been modified or not... */
 			for(i = 0; i < entity_ptr->props.element_count; i++)
 			{
-				entity_WriteProp((void **)&out, props + i);
+				entity_WriteProp((void **)&out, props + i, dry_fire);
 			}
 
 			if(entity.def || (entity_ptr->flags & ENTITY_FLAG_MODIFIED))
 			{
-				/* If this is a def or it is a post-spawn modified entity,
+				/* If this is a def or an entity that got modified after being spawn,
 				write its stuff down... */
 
 				/* write components... */
@@ -706,7 +812,7 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 					if(entity_ptr->components[i].type != COMPONENT_TYPE_NONE)
 					{
 						component = entity_GetComponentPointer(entity_ptr->components[i]);
-						entity_WriteComponent((void **)&out, component, 0, 0);
+						entity_WriteComponent((void **)&out, component, 0, 0, dry_fire);
 					}
 				}
 
@@ -727,7 +833,7 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 						   /* this child transform component points to an entity,
 						   so write it to the buffer before continuing with the
 						   current entity... */
-						   entity_WriteEntity((void **)&out, component->entity, transform_component->child_transforms[i], write_def_as_file_ref);
+						   entity_WriteEntity((void **)&out, component->entity, transform_component->child_transforms[i], write_def_as_file_ref, dry_fire);
 						}
 						else if(entity_ptr->flags & ENTITY_FLAG_MODIFIED)
 						{
@@ -737,7 +843,7 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 
 							This just gets written if this isn't a reference to
 							an entity def or it is a post-spawn modified entity... */
-							entity_WriteComponent((void **)&out, component, 1, k);
+							entity_WriteComponent((void **)&out, component, 1, k, dry_fire);
 						}
 					}
 
@@ -764,7 +870,7 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 						/* We write this ref's transform component, so we can have both
 						nestled transforms from the original def and from this ref... */
 						transform_component = entity_GetComponentPointer(referencing_transform);
-						entity_WriteComponent((void **)&out, (struct component_t *)transform_component, 1, 1);
+						entity_WriteComponent((void **)&out, (struct component_t *)transform_component, 1, 1, dry_fire);
 					}
 				}
 			}
@@ -773,7 +879,7 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 				/* if this is the root of the hierarchy of an unmodified entity, write
 				only it's transform... */
 				component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
-				entity_WriteComponent((void **)&out, component, 0, 0);
+				entity_WriteComponent((void **)&out, component, 0, 0, dry_fire);
 			}
 		}
 
@@ -785,8 +891,11 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
 		ent_record_end = (struct entity_record_end_t *)out;
 		out += sizeof(struct entity_record_end_t );
 
-		memset(ent_record_end, 0, sizeof(struct entity_record_end_t));
-		strcpy(ent_record_end->tag, entity_record_end_tag);
+		if(!dry_fire)
+        {
+            memset(ent_record_end, 0, sizeof(struct entity_record_end_t));
+            strcpy(ent_record_end->tag, entity_record_end_tag);
+        }
 
 		*buffer = out;
 	}
@@ -1038,7 +1147,7 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 
 
 	/* clear the COMPONENT_FLAG_SERIALIZED from every component... */
-	for(i = 0; i < 2; i++)
+	/*for(i = 0; i < 2; i++)
 	{
 		for(j = 0; j < COMPONENT_TYPE_LAST; j++)
 		{
@@ -1050,7 +1159,7 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 				component->flags &= ~COMPONENT_FLAG_SERIALIZED;
 			}
 		}
-	}
+	}*/
 
 
 
@@ -1074,8 +1183,18 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 				continue;
 			}
 
-			entity->flags &= ~ENTITY_FLAG_SERIALIZED;
+			transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
 
+			if(transform_component->parent.type == COMPONENT_TYPE_NONE)
+            {
+                entity_WriteEntity((void **)&out_size, handle, INVALID_COMPONENT_HANDLE, 1, 1);
+            }
+
+
+
+			//entity->flags &= ~ENTITY_FLAG_SERIALIZED;
+
+            #if 0
 			if(entity)
 			{
 				/* record start + end... */
@@ -1105,6 +1224,8 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 				transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
 				out_size += sizeof(struct component_record_t) * transform_component->children_count;
 			}
+
+			#endif
 		}
 	}
 
@@ -1129,7 +1250,7 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 	section_start = (struct entity_section_start_t *)out;
 	out += sizeof(struct entity_section_start_t);
 
-	//memset(header, 0, sizeof(struct entity_section_header_t));
+//	memset(header, 0, sizeof(struct entity_section_header_t));
 	strcpy(section_start->tag, entity_section_start_tag);
 
 	section_start->entity_count = entity_count;
@@ -1196,10 +1317,9 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 
 				if(transform_component)
 				{
-					if(transform_component->parent.type == COMPONENT_TYPE_NONE && (!(entity->flags & ENTITY_FLAG_SERIALIZED)))
+					if(transform_component->parent.type == COMPONENT_TYPE_NONE)
 					{
-						//if(!(entity->flags & ENTITY_FLAG_ON_DISK))
-						entity_WriteEntity((void **)&out, handle, INVALID_COMPONENT_HANDLE, 1);
+						entity_WriteEntity((void **)&out, handle, INVALID_COMPONENT_HANDLE, 1, 0);
 					}
 				}
 			}
@@ -1219,7 +1339,7 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 
 
 
-void entity_CalculateBufferSize(int *buffer_size, struct entity_handle_t entity, struct component_handle_t transform)
+void entity_CalculateBufferSize(int *buffer_size, struct entity_handle_t entity, struct component_handle_t from_transform)
 {
 	struct entity_t *entity_ptr;
 	struct physics_component_t *physics_component;
@@ -1240,17 +1360,6 @@ void entity_CalculateBufferSize(int *buffer_size, struct entity_handle_t entity,
 
 	entity_ptr = entity_GetEntityPointerHandle(entity);
 
-//	transform_component = entity_GetComponentPointer(transform);
-//
-//    if(!transform_component)
-//	{
-//		entity_ptr = entity_GetEntityPointerHandle(entity);
-//	}
-//	else
-//	{
-//		entity_ptr = entity_GetEntityPointerHandle(transform_component->base.entity);
-//	}
-
 	if(entity_ptr)
 	{
 		depth_level++;
@@ -1270,8 +1379,6 @@ void entity_CalculateBufferSize(int *buffer_size, struct entity_handle_t entity,
 			{
 				size += sizeof(struct component_record_t);
 				component = entity_GetComponentPointer(entity_ptr->components[i]);
-
-				component->flags &= ~COMPONENT_FLAG_SERIALIZED;
 			}
 		}
 
@@ -1281,19 +1388,21 @@ void entity_CalculateBufferSize(int *buffer_size, struct entity_handle_t entity,
 
 		if(physics_component)
 		{
+		    collider_def = physics_GetColliderDefPointerHandle(physics_component->collider);
+
 			size += sizeof(struct collider_record_start_t);
-			size += sizeof(struct collision_shape_record_t) * physics_component->collider.collider_def->collision_shape_count;
+			size += sizeof(struct collision_shape_record_t) * collider_def->collision_shape.element_count;
 			size += sizeof(struct collider_record_end_t);
 		}
 
 
-		/* transform contains the transform component that brought us
+		/* from_transform contains the transform component that brought us
 		here.
 
-		If this is a ref, then transform is the transform component that
+		If this is a ref, then from_transform is the transform component that
 		points to the entity def it references.
 
-		If this isn't a ref, then transform is equal to the transform component
+		If this isn't a ref, then from_transform is equal to the from_transform component
 		this entity def has. */
 
 
@@ -1311,11 +1420,14 @@ void entity_CalculateBufferSize(int *buffer_size, struct entity_handle_t entity,
 				}
 				else
 				{
+				    /* this transform is used by some other thing
+				    that needs to keep transformation data (lights,
+                    particle systems, sound sources, etc)... */
 					size += sizeof(struct component_record_t);
 				}
 			}
 
-			transform_component = entity_GetComponentPointer(transform);
+			transform_component = entity_GetComponentPointer(from_transform);
 
 			if(!transform_component)
 			{
@@ -1336,19 +1448,25 @@ void entity_CalculateBufferSize(int *buffer_size, struct entity_handle_t entity,
 	}
 }
 
+void entity_SerializeEntity(void **buffer, int *buffer_size, struct entity_handle_t entity)
+{
+
+}
+
 
 void entity_SerializeEntityDef(void **buffer, int *buffer_size, struct entity_handle_t entity_def)
 {
-	int out_size;
+	int out_size = 0;
 	void *out_buffer;
 	void *write_buffer;
 
-	entity_CalculateBufferSize(&out_size, entity_def, INVALID_COMPONENT_HANDLE);
+	//entity_CalculateBufferSize(&out_size, entity_def, INVALID_COMPONENT_HANDLE);
+	entity_WriteEntity((void **)&out_size, entity_def, INVALID_COMPONENT_HANDLE, 0, 1);
 	out_buffer = memory_Calloc(out_size, 1);
 
 	write_buffer = out_buffer;
 
-	entity_WriteEntity(&write_buffer, entity_def, INVALID_COMPONENT_HANDLE, 0);
+	entity_WriteEntity(&write_buffer, entity_def, INVALID_COMPONENT_HANDLE, 0, 0);
 
 	*buffer = out_buffer;
 	*buffer_size = out_size;

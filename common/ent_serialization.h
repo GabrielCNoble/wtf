@@ -147,7 +147,7 @@ struct component_record_t
 
 		struct
 		{
-			char camera_name[CAMERA_NAME_MAX_LEN];
+			char camera_name[R_VIEW_NAME_MAX_LEN];
 			int transform_index;
 		}camera_component;
 
@@ -281,15 +281,17 @@ extern "C"
 {
 #endif
 
-void entity_WriteComponent(void **buffer, struct component_t *component, int nestled, int ref);
+void entity_WriteComponent(void **buffer, struct component_t *component, int nestled, int ref, int dry_fire);
 
-void entity_WriteProp(void **buffer, struct entity_prop_t *prop);
+void entity_WriteProp(void **buffer, struct entity_prop_t *prop, int dry_fire);
 
-void entity_WriteCollider(void **buffer, struct collider_def_t *collider_def);
+void entity_WriteCollider(void **buffer, struct collider_def_t *collider_def, int dry_fire);
 
-void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct component_handle_t referencing_transform, int write_def_as_file_ref);
+void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct component_handle_t referencing_transform, int write_def_as_file_ref, int dry_fire);
 
 void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_defs);
+
+void entity_SerializeEntity(void **buffer, int *buffer_size, struct entity_handle_t entity);
 
 void entity_SerializeEntityDef(void **buffer, int *buffer_size, struct entity_handle_t entity_def);
 

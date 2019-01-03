@@ -75,7 +75,11 @@ void renderer_SetMaterialColor(vec4_t color);
 
 //void renderer_SubmitDrawCommand(view_data_t *view_data, mat4_t *transform, unsigned short draw_mode, unsigned int start, unsigned int count, int material_index, int indexed_draw);
 
+void renderer_SubmitDrawCommandToView(struct view_data_t *view, mat4_t *transform, unsigned short draw_mode, unsigned int start, unsigned int count, int material_index, int indexed_draw);
+
 void renderer_SubmitDrawCommand(mat4_t *transform, unsigned short draw_mode, unsigned int start, unsigned int count, int material_index, int indexed_draw);
+
+void renderer_SortViewDrawCommands(struct view_data_t *view);
 
 void renderer_SortDrawCommands();
 
@@ -143,15 +147,17 @@ void renderer_ClearRegisteredCallbacks();
 ====================================================================
 */
 
-void renderer_SetActiveView(view_def_t *view);
+//void renderer_SetActiveView(view_def_t *view);
 
-view_def_t *renderer_GetActiveView();
+//void renderer_SetMainView(struct view_handle_t view);
 
-view_def_t *renderer_GetView(char *name);
+//struct view_def_t *renderer_GetMainView();
 
-void renderer_ComputeViewMatrix(view_def_t *view);
+//struct view_def_t *renderer_GetView(struct view_handle_t view);
 
-void renderer_ComputeActiveViewMatrix();
+//void renderer_ComputeViewMatrix(view_def_t *view);
+
+//void renderer_ComputeActiveViewMatrix();
 
 //void renderer_SetMainView(camera_t *view);
 
@@ -220,6 +226,12 @@ void renderer_BlitBackbuffer();
 void renderer_Enable(int cap);
 
 void renderer_Disable(int cap);
+
+int renderer_IsEnabled(int cap);
+
+void renderer_SetIntegerv(int param_name, int *param);
+
+void renderer_GetIntegerv(int param_name, int *param);
 
 
 /*

@@ -103,6 +103,7 @@ int shader_Init()
 	SHADER_UNIFORM(UNIFORM_r_cluster_rows, GL_INT);
 	SHADER_UNIFORM(UNIFORM_r_cluster_layers, GL_INT);
 	SHADER_UNIFORM(UNIFORM_r_bloom_radius, GL_INT);
+	SHADER_UNIFORM(UNIFORM_r_world_vertices_count, GL_INT);
 	SHADER_UNIFORM(UNIFORM_r_bsp_node_count, GL_INT);
 	SHADER_UNIFORM(UNIFORM_cluster_texture, GL_UNSIGNED_INT_SAMPLER_3D);
 	SHADER_UNIFORM(UNIFORM_material_flags, GL_UNSIGNED_INT);
@@ -242,6 +243,10 @@ void shader_GetShaderDefaultUniformsLocations(struct shader_t *shader)
         glUniformBlockBinding(shader->shader_program, i, R_BSP_UNIFORM_BUFFER_BINDING);
     }
 
+    if((i = glGetUniformBlockIndex(shader->shader_program, "r_world_vertices_uniform_block")) != GL_INVALID_INDEX)
+    {
+        glUniformBlockBinding(shader->shader_program, i, R_WORLD_VERTICES_UNIFORM_BUFFER_BINDING);
+    }
 
 	//log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "**************************\n");
 }

@@ -66,6 +66,11 @@ bsp_entities_t *w_leaf_entities = NULL;
 //int world_hull_node_count = 0;
 //bsp_pnode_t *world_hull = NULL;
 
+
+struct world_level_t *w_levels = NULL;
+struct world_level_t *w_last_level = NULL;
+struct world_level_t *w_current_level = NULL;
+
 int w_visible_leaves_count = 0;
 struct bsp_dleaf_t **w_visible_leaves = NULL;
 
@@ -91,6 +96,11 @@ int w_world_index_start = -1;
 int w_world_index_count = -1;
 unsigned int *w_index_buffer = NULL;
 
+struct gpu_alloc_handle_t w_world_sorted_index_handle = INVALID_GPU_ALLOC_HANDLE;
+int w_world_sorted_index_start = -1;
+int w_world_sorted_index_count = -1;
+unsigned int *w_sorted_index_buffer = NULL;
+
 unsigned int w_max_visible_indexes = 0;
 unsigned int w_max_visible_batches = 0;
 unsigned int w_max_portal_recursion_level = 3;
@@ -100,6 +110,8 @@ int w_need_to_clear_world = 0;
 int w_world_batch_count = 0;
 struct batch_t *w_world_batches = NULL;
 
+int w_world_z_batch_count = 0;
+struct batch_t *w_world_z_batches = NULL;
 
 struct list_t w_world_vars;
 
@@ -132,7 +144,7 @@ extern struct stack_list_t l_light_clusters;
 //extern cluster_t *l_clusters;
 
 /* from camera.c */
-extern camera_t *cameras;
+//extern camera_t *cameras;
 
 
 /* from portal.c */
@@ -150,6 +162,8 @@ extern struct cluster_t *r_clusters;
 extern unsigned int r_cluster_texture;
 extern unsigned int r_light_uniform_buffer;
 extern unsigned int r_bsp_uniform_buffer;
+extern unsigned int r_world_vertices_uniform_buffer;
+extern vec4_t *r_world_vertices_buffer;
 
 
 #ifdef __cplusplus
@@ -159,9 +173,18 @@ extern "C"
 
 int world_Init()
 {
-	w_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS);
-	w_bsp_buffer = memory_Malloc(sizeof(struct gpu_bsp_node_t) * W_MAX_BSP_NODES);
-	w_visible_entities = list_create(sizeof(struct entity_handle_t), 128, NULL);
+
+    FILE *maps;
+    unsigned long maps_file_buffer_size;
+    char *maps_file_buffer;
+
+    struct world_level_t *map;
+
+    int i;
+    int j;
+	//w_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * MAX_VISIBLE_LIGHTS);
+	//w_bsp_buffer = memory_Malloc(sizeof(struct gpu_bsp_node_t) * W_MAX_BSP_NODES);
+	//w_visible_entities = list_create(sizeof(struct entity_handle_t), 128, NULL);
 
 	w_world_vars = list_create(sizeof(struct world_var_t), 128, NULL);
 
@@ -184,6 +207,71 @@ int world_Init()
 	script_RegisterGlobalFunction("void world_ClearWorld()", world_ScriptClearWorld);
 
 
+    maps = fopen("game.cfg", "r");
+
+    if(maps)
+    {
+        maps_file_buffer_size = path_GetFileSize(maps);
+
+        if(maps_file_buffer_size)
+        {
+            maps_file_buffer = memory_Calloc(1, maps_file_buffer_size + 1);
+            fread(maps_file_buffer, maps_file_buffer_size, 1, maps);
+            fclose(maps);
+
+
+            maps_file_buffer[maps_file_buffer_size] = '\0';
+
+
+            i = 0;
+
+            while(maps_file_buffer[i])
+            {
+                if(maps_file_buffer[i] == '[')
+                {
+                    i++;
+
+                    j = i;
+
+                    while(maps_file_buffer[j] != ']' &&
+                          maps_file_buffer[j] != '\n' &&
+                          maps_file_buffer[j] != '\r' &&
+                          maps_file_buffer[j] != '\0')
+                    {
+                        j++;
+                    }
+
+                    if(maps_file_buffer[j] == ']')
+                    {
+                        maps_file_buffer[j] = '\0';
+
+                        map = memory_Calloc(1, sizeof(struct world_level_t));
+
+                        map->level_name = memory_Strdup(maps_file_buffer + i);
+
+                        if(!w_levels)
+                        {
+                            w_levels = map;
+                        }
+                        else
+                        {
+                            w_last_level->next = map;
+                            map->prev = w_last_level;
+                        }
+
+                        w_last_level = map;
+                    }
+
+                    i = j;
+                }
+            }
+
+            memory_Free(maps_file_buffer);
+        }
+
+    }
+
+
 	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 	return 1;
@@ -194,8 +282,8 @@ void world_Finish()
 	world_Clear(WORLD_CLEAR_FLAG_BSP | WORLD_CLEAR_FLAG_ENTITIES | WORLD_CLEAR_FLAG_LIGHTS | WORLD_CLEAR_FLAG_PHYSICS_MESH);
 
 	list_destroy(&w_world_vars);
-	memory_Free(w_light_buffer);
-	list_destroy(&w_visible_entities);
+	//memory_Free(w_light_buffer);
+	//list_destroy(&w_visible_entities);
 }
 
 
@@ -404,6 +492,8 @@ void world_MarkLightsOnLeaves()
 
         position->flags &= ~LIGHT_MOVED;
 
+        #if 0
+
 		//l_light_params[i].bm_flags &= ~LIGHT_MOVED;
 
 		light_leaf = bsp_GetCurrentLeaf(w_world_nodes, position->position);
@@ -435,17 +525,6 @@ void world_MarkLightsOnLeaves()
 					{
 						leaf_index = leaves[j] - w_world_leaves;
 						w_leaf_lights[leaf_index].lights[int_index] &= ~(1 << bit_index);
-
-					//	r = 1 << (j % 8);
-
-					//	if(!leaf->pvs)
-					//		break;
-
-					//	if(leaf->pvs[j >> 3] & r)
-					//	{
-							//lleaf_index = 1 << (leaf->pvs[j >> 3] & r);
-					//		w_leaf_lights[j].lights[int_index] &= ~(1 << bit_index);
-					//	}
 					}
 				}
 			}
@@ -590,6 +669,8 @@ void world_MarkLightsOnLeaves()
 
 
 		}
+
+		#endif
 	}
 }
 
@@ -3083,7 +3164,7 @@ void world_VisibleLeaves()
 
 void world_UploadWorldBspNodes()
 {
-    glBindBuffer(GL_UNIFORM_BUFFER, r_bsp_uniform_buffer);
+    /*glBindBuffer(GL_UNIFORM_BUFFER, r_bsp_uniform_buffer);
 
     int i;
 
@@ -3101,7 +3182,7 @@ void world_UploadWorldBspNodes()
 
 
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(struct gpu_bsp_node_t) * W_MAX_BSP_NODES, w_bsp_buffer);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);*/
 }
 
 
@@ -3775,6 +3856,7 @@ int world_HasFadedOut()
 
 void world_ClearBsp()
 {
+    return ;
 	if(w_world_leaves)
 	{
 		renderer_Free(w_world_handle);
@@ -3783,6 +3865,7 @@ void world_ClearBsp()
 		memory_Free(w_world_nodes);
 		memory_Free(w_world_leaves);
 		memory_Free(w_world_batches);
+		memory_Free(w_world_z_batches);
 		memory_Free(w_index_buffer);
 
 		w_world_handle = INVALID_GPU_ALLOC_HANDLE;
@@ -3790,6 +3873,9 @@ void world_ClearBsp()
 		w_index_buffer = NULL;
 
 		w_world_batches = NULL;
+		w_world_batch_count = 0;
+
+		w_world_z_batches = NULL;
 		w_world_batch_count = 0;
 
 		w_world_vertices_count = 0;
@@ -3834,6 +3920,9 @@ void world_Update()
 
 	w_leaf_lights = memory_Malloc(sizeof(bsp_lights_t ) * w_world_leaves_count);
 	w_index_buffer = memory_Malloc(sizeof(unsigned int ) * w_world_vertices_count);
+	w_sorted_index_buffer = memory_Malloc(sizeof(unsigned int ) * w_world_vertices_count);
+
+	w_world_z_batches = memory_Calloc(w_world_leaves_count, sizeof(struct batch_t));
 
 	for(i = 0; i < w_world_leaves_count; i++)
 	{
@@ -3843,11 +3932,27 @@ void world_Update()
 		}
 	}
 
-	w_world_handle = renderer_AllocVerticesAlign(sizeof(struct compact_vertex_t) * w_world_vertices_count + 1024 * 64, sizeof(struct compact_vertex_t));
+	if(r_world_vertices_buffer)
+    {
+        memory_Free(r_world_vertices_buffer);
+    }
+
+	r_world_vertices_buffer = memory_Malloc(sizeof(vec4_t) * w_world_vertices_count);
+
+	w_world_handle = renderer_AllocVerticesAlign(sizeof(struct compact_vertex_t) * w_world_vertices_count, sizeof(struct compact_vertex_t));
 	w_world_start = renderer_GetAllocStart(w_world_handle) / sizeof(struct compact_vertex_t);
 
-	w_world_index_handle = renderer_AllocIndexesAlign(sizeof(int) * w_world_vertices_count + 1024 * 64, sizeof(int));
+	w_world_index_handle = renderer_AllocIndexesAlign(sizeof(int) * w_world_vertices_count, sizeof(int));
 	w_world_index_start = renderer_GetAllocStart(w_world_index_handle) / sizeof(int);
+
+    w_world_sorted_index_handle = renderer_AllocIndexesAlign(sizeof(int) * w_world_vertices_count, sizeof(int));
+    w_world_sorted_index_start = renderer_GetAllocStart(w_world_sorted_index_handle) / sizeof(int);
+
+
+    glBindBuffer(GL_UNIFORM_BUFFER, r_world_vertices_uniform_buffer);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(vec4_t) * w_world_vertices_count, NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
 
 	compact_world_vertices = model_ConvertVertices(w_world_vertices, w_world_vertices_count);
 	renderer_Write(w_world_handle, 0, compact_world_vertices, sizeof(struct compact_vertex_t) * w_world_vertices_count);
@@ -3864,7 +3969,7 @@ void world_Update()
 void world_Clear(int clear_flags)
 {
 
-	if(clear_flags &  WORLD_CLEAR_FLAG_LIGHT_LEAVES)
+	if(clear_flags & WORLD_CLEAR_FLAG_LIGHT_LEAVES)
 	{
 		light_ClearLightLeaves();
 	}
@@ -3893,6 +3998,42 @@ void world_Clear(int clear_flags)
 	{
 		world_ClearBsp();
 	}
+}
+
+struct world_level_t *world_GetLevel(char *level_name)
+{
+    struct world_level_t *level;
+
+    level = w_levels;
+
+    while(level)
+    {
+        if(!strcmp(level_name, level->level_name))
+        {
+            break;
+        }
+
+        level = level->next;
+    }
+
+    return level;
+}
+
+void world_ChangeLevel(char *level_name)
+{
+    struct world_level_t *level;
+
+    level = world_GetLevel(level_name);
+
+    if(level)
+    {
+        if(level != w_current_level)
+        {
+            world_Clear(WORLD_CLEAR_FLAG_ALL);
+            world_LoadBsp(level->level_name);
+            w_current_level = level;
+        }
+    }
 }
 
 

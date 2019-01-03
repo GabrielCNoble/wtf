@@ -32,7 +32,7 @@ enum PLAYER_MOVEMENT
 	MOVE_STRAFE_LEFT = 1 << 2,
 	MOVE_STRAFE_RIGHT = 1 << 3,
 	MOVE_JUMP = 1 << 4,
-	
+
 	PLAYER_FLYING = 1 << 5,
 	PLAYER_JUMPED = 1 << 6,
 	PLAYER_FIRED = 1 << 7,
@@ -58,9 +58,9 @@ typedef struct player_def_t
 {
 	struct player_def_t *next;
 	struct player_def_t *prev;
-	
+
 	char *name;
-	
+
 	struct collider_def_t *collider_def;
 }player_def_t;
 
@@ -69,24 +69,24 @@ struct ai_script_t
 {
 	struct script_t script;
 	void *ai_controller;
-	
+
 };
 
 
-
+#if 0
 typedef struct
 {
 	mat3_t player_orientation;
 	//vec3_t collision_box_position;
 	vec3_t player_position;
-	
+
 	int collider_index;
 	//vec3_t delta;
-	
-	
+
+
 	camera_t *player_camera;
 	char *player_name;
-	
+
 	int gun_entity_index;
 	//int weapon_start;
 	//int weapon_count;
@@ -95,17 +95,19 @@ typedef struct
 	float weapon_x_shift;
 	float weapon_y_shift;
 	float weapon_z_shift;
-	
+
 	float pitch;
 	float yaw;
 	float max_slope;						/* max slope angle cosine */
 	float health;
-	
+
 	short bm_movement;
 	short bm_flags;
 	int fire_timer;
 	int player_type;
 }player_t;
+
+#endif
 
 
 typedef struct
@@ -179,7 +181,7 @@ void player_UpdatePlayers(double delta_time);
 
 void player_PostUpdatePlayers(double delta_time);
 
-void player_Move(player_t *player, float delta_time);
+//void player_Move(player_t *player, float delta_time);
 
 void player_TransformPlayers();
 

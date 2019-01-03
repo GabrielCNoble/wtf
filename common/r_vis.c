@@ -1,5 +1,6 @@
 #include "r_vis.h"
 #include "r_main.h"
+#include "r_view.h"
 #include "r_common.h"
 #include "r_debug.h"
 #include "l_common.h"
@@ -37,8 +38,18 @@ extern struct gpu_alloc_handle_t w_world_index_handle;
 extern int w_world_leaves_count;
 extern struct bsp_dleaf_t *w_world_leaves;
 extern struct bsp_pnode_t *w_world_nodes;
+
 extern struct batch_t *w_world_batches;
+
+extern int w_world_z_batch_count;
+extern struct batch_t *w_world_z_batches;
+
 extern unsigned int *w_index_buffer;
+
+extern struct gpu_alloc_handle_t w_world_sorted_index_handle;
+extern unsigned int w_world_sorted_index_count;
+extern unsigned int w_world_sorted_index_start;
+extern unsigned int *w_sorted_index_buffer;
 extern int w_world_batch_count;
 extern int w_world_start;
 extern int w_world_vertices_count;
@@ -64,6 +75,9 @@ void renderer_VisibleWorld()
 	int i;
 	int c;
 	int j;
+	int k;
+
+	int next_leaf;
 
 	int start;
 	int next;
@@ -72,7 +86,7 @@ void renderer_VisibleWorld()
 
 	//camera_t *active_camera = camera_GetActiveCamera();
 
-    view_def_t *active_view = renderer_GetActiveView();
+    struct view_def_t *active_view = renderer_GetMainViewPointer();
 
 	float nzfar = -active_view->frustum.zfar;
 	float nznear = -active_view->frustum.znear;
@@ -105,7 +119,10 @@ void renderer_VisibleWorld()
 
 	//visible_leaves_count = 0;
 	//leaf = bsp_GetCurrentLeaf(world_nodes, active_camera->world_position);
-	r_visible_leaves = bsp_PotentiallyVisibleLeaves(&r_visible_leaves_count, active_view->world_position);
+	//r_visible_leaves = bsp_PotentiallyVisibleLeaves(&r_visible_leaves_count, active_view->world_position);
+
+
+    r_visible_leaves = bsp_FrontToBackWalk(&r_visible_leaves_count, active_view->world_position);
 
 	/*e = engine_GetDeltaTime();
 
@@ -123,100 +140,40 @@ void renderer_VisibleWorld()
 		{
 			leaf = r_visible_leaves[j];
 
-			corners[0].x = leaf->center.x - leaf->extents.x;
-			corners[0].y = leaf->center.y + leaf->extents.y;
-			corners[0].z = leaf->center.z + leaf->extents.z;
-			corners[0].w = 1.0;
-
-			corners[1].x = leaf->center.x - leaf->extents.x;
-			corners[1].y = leaf->center.y - leaf->extents.y;
-			corners[1].z = leaf->center.z + leaf->extents.z;
-			corners[1].w = 1.0;
-
-			corners[2].x = leaf->center.x + leaf->extents.x;
-			corners[2].y = leaf->center.y - leaf->extents.y;
-			corners[2].z = leaf->center.z + leaf->extents.z;
-			corners[2].w = 1.0;
-
-			corners[3].x = leaf->center.x + leaf->extents.x;
-			corners[3].y = leaf->center.y + leaf->extents.y;
-			corners[3].z = leaf->center.z + leaf->extents.z;
-			corners[3].w = 1.0;
-
-
-
-			corners[4].x = leaf->center.x - leaf->extents.x;
-			corners[4].y = leaf->center.y + leaf->extents.y;
-			corners[4].z = leaf->center.z - leaf->extents.z;
-			corners[4].w = 1.0;
-
-			corners[5].x = leaf->center.x - leaf->extents.x;
-			corners[5].y = leaf->center.y - leaf->extents.y;
-			corners[5].z = leaf->center.z - leaf->extents.z;
-			corners[5].w = 1.0;
-
-			corners[6].x = leaf->center.x + leaf->extents.x;
-			corners[6].y = leaf->center.y - leaf->extents.y;
-			corners[6].z = leaf->center.z - leaf->extents.z;
-			corners[6].w = 1.0;
-
-			corners[7].x = leaf->center.x + leaf->extents.x;
-			corners[7].y = leaf->center.y + leaf->extents.y;
-			corners[7].z = leaf->center.z - leaf->extents.z;
-			corners[7].w = 1.0;
-
-			x_max = -10.9;
-			x_min = 10.9;
-
-			y_max = -10.9;
-			y_min = 10.9;
-
-			positive_z = 0;
-			for(i = 0; i < 8; i++)
+			if(renderer_BoxScreenArea(active_view, &leaf->center, &leaf->extents) <= 0.0)
 			{
-				mat4_t_vec4_t_mult(&active_view->view_data.view_matrix, &corners[i]);
-				if(corners[i].z > nznear)
-				{
-					corners[i].z = nznear;
-					positive_z++;
-				}
-
-				corners[i].x = (corners[i].x * qr) / corners[i].z;
-				corners[i].y = (corners[i].y * qt) / corners[i].z;
-
-				if(corners[i].x > x_max) x_max = corners[i].x;
-				if(corners[i].x < x_min) x_min = corners[i].x;
-
-				if(corners[i].y > y_max) y_max = corners[i].y;
-				if(corners[i].y < y_min) y_min = corners[i].y;
-
-			}
-
-
-			if(x_max > 1.0) x_max = 1.0;
-			else if(x_max < -1.0) x_max = -1.0;
-
-			if(x_min > 1.0) x_min = 1.0;
-			else if(x_min < -1.0) x_min = -1.0;
-
-			if(y_max > 1.0) y_max = 1.0;
-			else if(y_max < -1.0) y_max = -1.0;
-
-			if(y_min > 1.0) y_min = 1.0;
-			else if(y_min < -1.0) y_min = -1.0;
-
-
-			if((x_max - x_min) * (y_max - y_min) <= 0.0 || positive_z == 8)
-			{
-				if(j < r_visible_leaves_count - 1)
+			    r_visible_leaves[j] = NULL;
+				/*if(j < r_visible_leaves_count - 1)
 				{
 					r_visible_leaves[j] = r_visible_leaves[r_visible_leaves_count - 1];
 					j--;
 				}
-				r_visible_leaves_count--;
+				r_visible_leaves_count--;*/
 			}
 
 		}
+
+        j = 0;
+
+        next_leaf = j;
+
+        while(j < r_visible_leaves_count)
+        {
+            if(!r_visible_leaves[j])
+            {
+                j++;
+                continue;
+            }
+
+            r_visible_leaves[next_leaf] = r_visible_leaves[j];
+
+            next_leaf++;
+            j++;
+        }
+
+        r_visible_leaves_count = next_leaf;
+
+        //w_world_z_batch_count = r_visible_leaves_count;
 
 		/* for each leaf on the list... */
 		for(j = 0; j < r_visible_leaves_count; j++)
@@ -245,9 +202,43 @@ void renderer_VisibleWorld()
 		}
 
 		renderer_WriteNonMapped(w_world_index_handle, 0, w_index_buffer, sizeof(int) * w_world_vertices_count);
+
+
+        w_world_sorted_index_count = 0;
+        w_world_z_batch_count = 0;
+
+		for(j = 0; j < r_visible_leaves_count; j++)
+        {
+            leaf = r_visible_leaves[j];
+
+			leaf->visible_frame = r_frame;
+
+			c = leaf->tris_count;
+
+			batch = w_world_z_batches + w_world_z_batch_count;
+
+			w_world_z_batch_count++;
+
+            batch->start = w_world_sorted_index_count;
+            batch->next = c * 3;
+            batch->material_index = leaf - w_world_leaves;
+
+			for(i = 0; i < c; i++)
+			{
+				triangle = &leaf->tris[i];
+
+                w_sorted_index_buffer[w_world_sorted_index_count] = w_world_start + triangle->first_vertex;
+				w_sorted_index_buffer[w_world_sorted_index_count + 1] = w_world_start + triangle->first_vertex + 1;
+				w_sorted_index_buffer[w_world_sorted_index_count + 2] = w_world_start + triangle->first_vertex + 2;
+
+                w_world_sorted_index_count += 3;
+			}
+        }
+
+		renderer_WriteNonMapped(w_world_sorted_index_handle, 0, w_sorted_index_buffer, sizeof(int) * w_world_sorted_index_count);
 	}
 
-    glBindBuffer(GL_UNIFORM_BUFFER, r_bsp_uniform_buffer);
+    /*glBindBuffer(GL_UNIFORM_BUFFER, r_bsp_uniform_buffer);
 
     for(i = 0; i < w_world_nodes_count; i++)
 	{
@@ -264,7 +255,7 @@ void renderer_VisibleWorld()
     r_bsp_buffer[0].node_count = i;
 
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(struct gpu_bsp_node_t) * R_MAX_BSP_NODES, r_bsp_buffer);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);*/
 }
 
 void renderer_VisibleLightsBounds()
@@ -278,7 +269,7 @@ void renderer_VisibleLightsBounds()
 	int z;
 
 //	camera_t *active_camera = camera_GetActiveCamera();
-    view_def_t *active_view = renderer_GetActiveView();
+    struct view_def_t *active_view = renderer_GetMainViewPointer();
 	//camera_t *active_camera = view;
 	vec4_t light_origin;
 
@@ -545,23 +536,13 @@ void renderer_VisibleLightsBounds()
 
 			if(cluster_z_end > r_cluster_layers) cluster_z_end = r_cluster_layers - 1;
 
-
             cluster->first_cluster.x = cluster_x_start;
             cluster->first_cluster.y = cluster_y_start;
             cluster->first_cluster.z = cluster_z_start;
 
-
             cluster->last_cluster.x = cluster_x_end;
             cluster->last_cluster.y = cluster_y_end;
             cluster->last_cluster.z = cluster_z_end;
-
-			//params->first_cluster.x = cluster_x_start;
-			//params->first_cluster.y = cluster_y_start;
-			//params->first_cluster.z = cluster_z_start;
-
-			//params->last_cluster.x = cluster_x_end;
-			//params->last_cluster.y = cluster_y_end;
-			//params->last_cluster.z = cluster_z_end;
 		}
 	}
 
@@ -586,7 +567,7 @@ void renderer_VisibleLights()
 	//struct bsp_dleaf_t *leaf;
 	//struct bsp_dleaf_t *cur_leaf;
 	//camera_t *active_camera = camera_GetActiveCamera();
-	view_def_t *active_view = renderer_GetActiveView();
+	struct view_def_t *active_view = renderer_GetMainViewPointer();
 	vec4_t light_origin;
 	vec3_t v;
 	//vec3_t farthest;
@@ -792,6 +773,8 @@ void renderer_UploadVisibleLights()
 	int cluster_y_start;
 	int cluster_z_start;
 
+	int cluster_count;
+
 	int cluster_x_end;
 	int cluster_y_end;
 	int cluster_z_end;
@@ -810,7 +793,7 @@ void renderer_UploadVisibleLights()
 	struct light_params_data_t *params;
 	struct light_cluster_data_t *cluster;
 
-    view_def_t *active_view;
+    struct view_def_t *active_view;
 
 	struct gpu_light_t *lights;
 
@@ -829,7 +812,7 @@ void renderer_UploadVisibleLights()
 //	proj_param_a = l_shadow_map_projection_matrix.floats[2][2];
 //	proj_param_b = l_shadow_map_projection_matrix.floats[3][2];
 
-	active_view = renderer_GetActiveView();
+	active_view = renderer_GetMainViewPointer();
 	glBindBuffer(GL_UNIFORM_BUFFER, r_light_uniform_buffer);
 	//lights = w_light_buffer;
 
@@ -902,8 +885,9 @@ void renderer_UploadVisibleLights()
 	#define CLUSTER_OFFSET(x, y, z) (x+y*r_clusters_per_row+z*r_clusters_per_row*r_cluster_rows)
 
 
+    //memset(r_clusters, 0, sizeof(struct cluster_t) * r_cluster_layers * r_cluster_rows * r_clusters_per_row);
 
-	for(z = 0; z < r_cluster_layers; z++)
+	/*for(z = 0; z < r_cluster_layers; z++)
 	{
 		for(y = 0; y < r_cluster_rows; y++)
 		{
@@ -913,7 +897,14 @@ void renderer_UploadVisibleLights()
 				r_clusters[cluster_index].light_indexes_bm = 0;
 			}
 		}
-	}
+	}*/
+
+	cluster_count = r_cluster_layers * r_cluster_rows * r_clusters_per_row;
+
+	for(x = 0; x < cluster_count; x++)
+    {
+        r_clusters[x].light_indexes_bm = 0;
+    }
 
 
 	//view_lights = view_data->view_lights;
@@ -982,9 +973,11 @@ void renderer_VisibleEntities()
 	struct batch_t *batch;
 	struct lod_t *lod;
 
+	int indice_start;
+
 	//camera_t *active_camera = camera_GetActiveCamera();
 
-	view_def_t *active_view = renderer_GetActiveView();
+	struct view_def_t *active_view = renderer_GetMainViewPointer();
 
 	vec3_t box[8];
 
@@ -1019,7 +1012,7 @@ void renderer_VisibleEntities()
 		world_transform = world_transforms + entity->components[COMPONENT_TYPE_TRANSFORM].index;
 		aabb = aabbs + entity->components[COMPONENT_TYPE_TRANSFORM].index;
 
-		if(camera_BoxScreenArea((camera_t *)active_view, vec3_t_c(world_transform->transform.floats[3][0], world_transform->transform.floats[3][1], world_transform->transform.floats[3][2]), aabb->current_extents))
+		if(renderer_BoxScreenArea(active_view, &vec3_t_c(world_transform->transform.floats[3][0], world_transform->transform.floats[3][1], world_transform->transform.floats[3][2]), &aabb->current_extents))
 		{
 			if(visible_entity_count >= r_visible_entities.max_elements)
 			{
@@ -1046,17 +1039,269 @@ void renderer_VisibleEntities()
 
 		lod = &model->lods[0];
 
+		indice_start = model->indice_buffer_start + lod->indice_start;
+
 		for(j = 0; j < model->batch_count; j++)
 		{
 			batch = lod->batches + j;
 			//renderer_SubmitDrawCommand(&world_transform->transform, lod->draw_mode, model->vert_start + batch->start, batch->next, batch->material_index, 0);
-			renderer_SubmitDrawCommand(&world_transform->transform, GL_TRIANGLES, lod->lod_indice_buffer_start + batch->start, batch->next, batch->material_index, 1);
+			renderer_SubmitDrawCommand(&world_transform->transform, GL_TRIANGLES, indice_start + batch->start, batch->next, batch->material_index, 1);
 		}
 	}
 
 	r_visible_entities.element_count = visible_entity_count;
+}
 
 
+
+
+
+
+
+void renderer_WorldOnView(struct view_def_t *view_def)
+{
+
+    #if 0
+    int i;
+	int c;
+	int j;
+
+	int start;
+	int next;
+	int leaf_index;
+	int positive_z;
+
+	//camera_t *active_camera = camera_GetActiveCamera();
+
+    //struct view_def_t *active_view = renderer_GetMainViewPointer();
+
+    struct view_def_t *active_view = view_def;
+
+	float nzfar = -active_view->frustum.zfar;
+	float nznear = -active_view->frustum.znear;
+	float ntop = active_view->frustum.top;
+	float nright = active_view->frustum.right;
+	float qt = nznear / ntop;
+	float qr = nznear / nright;
+	float x_max;
+	float x_min;
+	float y_max;
+	float y_min;
+
+	float s;
+	float e;
+
+	struct bsp_dleaf_t *leaf;
+	//triangle_group_t *group;
+	struct batch_t *batch;
+	struct bsp_striangle_t *triangle;
+	//bsp_dleaf_t **visible;
+	//int visible_count;
+	unsigned int *indexes;
+
+	vec4_t corners[8];
+
+	if(!w_world_nodes)
+		return;
+
+	//s = engine_GetDeltaTime();
+
+	//visible_leaves_count = 0;
+	//leaf = bsp_GetCurrentLeaf(world_nodes, active_camera->world_position);
+	r_visible_leaves = bsp_PotentiallyVisibleLeaves(&r_visible_leaves_count, active_view->world_position);
+
+	/*e = engine_GetDeltaTime();
+
+	printf("%f\n", e - s);*/
+
+	if(r_visible_leaves)
+	{
+		/* zero out the next index of every world batch... */
+		for(i = 0; i < w_world_batch_count; i++)
+		{
+			w_world_batches[i].next = 0;
+		}
+
+		for(j = 0; j < r_visible_leaves_count; j++)
+		{
+			leaf = r_visible_leaves[j];
+
+			if(renderer_BoxScreenArea(active_view, &leaf->center, &leaf->extents) <= 0.0)
+			{
+				if(j < r_visible_leaves_count - 1)
+				{
+					r_visible_leaves[j] = r_visible_leaves[r_visible_leaves_count - 1];
+					j--;
+				}
+				r_visible_leaves_count--;
+			}
+
+		}
+
+		/* for each leaf on the list... */
+		for(j = 0; j < r_visible_leaves_count; j++)
+		{
+			leaf = r_visible_leaves[j];
+
+			leaf->visible_frame = r_frame;
+
+			c = leaf->tris_count;
+
+			/* add it's triangles for rendering... */
+			for(i = 0; i < c; i++)
+			{
+				triangle = &leaf->tris[i];
+				batch = &w_world_batches[triangle->batch];
+
+				start = batch->start;
+				next = batch->next;
+
+				w_index_buffer[start + next	] = w_world_start + triangle->first_vertex;
+				w_index_buffer[start + next + 1] = w_world_start + triangle->first_vertex + 1;
+				w_index_buffer[start + next + 2] = w_world_start + triangle->first_vertex + 2;
+
+				batch->next += 3;
+			}
+		}
+
+		renderer_WriteNonMapped(w_world_index_handle, 0, w_index_buffer, sizeof(int) * w_world_vertices_count);
+	}
+
+	#endif
+}
+
+void renderer_LightBoundsOnView(struct view_def_t *view_def)
+{
+
+}
+
+void renderer_LightsOnView(struct view_def_t *view_def)
+{
+
+}
+
+void renderer_LightsOnViewClusters(struct view_def_t *view_def)
+{
+
+}
+
+
+
+
+
+float renderer_BoxScreenArea(struct view_def_t *view, vec3_t *center, vec3_t *extents)
+{
+    float x_min;
+    float x_max;
+    float y_min;
+    float y_max;
+
+    float nzfar = -view->frustum.zfar;
+	float nznear = -view->frustum.znear;
+	float ntop = view->frustum.top;
+	float nright = view->frustum.right;
+	float qt = nznear / ntop;
+	float qr = nznear / nright;
+
+    float area;
+
+    int positive_z;
+
+    int i;
+
+    vec4_t corners[8];
+
+    corners[0].x = center->x - extents->x;
+	corners[0].y = center->y + extents->y;
+	corners[0].z = center->z + extents->z;
+	corners[0].w = 1.0;
+
+	corners[1].x = center->x - extents->x;
+	corners[1].y = center->y - extents->y;
+	corners[1].z = center->z + extents->z;
+	corners[1].w = 1.0;
+
+	corners[2].x = center->x + extents->x;
+	corners[2].y = center->y - extents->y;
+	corners[2].z = center->z + extents->z;
+	corners[2].w = 1.0;
+
+	corners[3].x = center->x + extents->x;
+	corners[3].y = center->y + extents->y;
+	corners[3].z = center->z + extents->z;
+	corners[3].w = 1.0;
+
+
+
+    corners[4].x = center->x - extents->x;
+    corners[4].y = center->y + extents->y;
+    corners[4].z = center->z - extents->z;
+    corners[4].w = 1.0;
+
+    corners[5].x = center->x - extents->x;
+    corners[5].y = center->y - extents->y;
+    corners[5].z = center->z - extents->z;
+    corners[5].w = 1.0;
+
+    corners[6].x = center->x + extents->x;
+    corners[6].y = center->y - extents->y;
+    corners[6].z = center->z - extents->z;
+    corners[6].w = 1.0;
+
+    corners[7].x = center->x + extents->x;
+    corners[7].y = center->y + extents->y;
+    corners[7].z = center->z - extents->z;
+    corners[7].w = 1.0;
+
+    x_max = -10.9;
+    x_min = 10.9;
+
+    y_max = -10.9;
+    y_min = 10.9;
+
+    positive_z = 0;
+
+    for(i = 0; i < 8; i++)
+    {
+        mat4_t_vec4_t_mult(&view->view_data.view_matrix, &corners[i]);
+
+        if(corners[i].z > nznear)
+        {
+            corners[i].z = nznear;
+            positive_z++;
+        }
+
+        corners[i].x = (corners[i].x * qr) / corners[i].z;
+        corners[i].y = (corners[i].y * qt) / corners[i].z;
+
+        if(corners[i].x > x_max) x_max = corners[i].x;
+        if(corners[i].x < x_min) x_min = corners[i].x;
+
+        if(corners[i].y > y_max) y_max = corners[i].y;
+        if(corners[i].y < y_min) y_min = corners[i].y;
+    }
+
+
+    if(x_max > 1.0) x_max = 1.0;
+    else if(x_max < -1.0) x_max = -1.0;
+
+    if(x_min > 1.0) x_min = 1.0;
+    else if(x_min < -1.0) x_min = -1.0;
+
+    if(y_max > 1.0) y_max = 1.0;
+    else if(y_max < -1.0) y_max = -1.0;
+
+    if(y_min > 1.0) y_min = 1.0;
+    else if(y_min < -1.0) y_min = -1.0;
+
+    area = (x_max - x_min) * (y_max - y_min);
+
+    if(area > 0.0 || positive_z == 8)
+    {
+        return area;
+    }
+
+    return 0.0;
 }
 
 

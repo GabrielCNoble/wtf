@@ -61,6 +61,8 @@
     };
 
 
+
+
 	layout(std140) uniform r_lights_uniform_block
 	{
 		gpu_light_t r_lights[R_LIGHT_UNIFORM_BUFFER_SIZE];
@@ -70,6 +72,13 @@
 	{
         gpu_bsp_node_t r_bsp[R_BSP_UNIFORM_BUFFER_SIZE];
 	};
+
+    layout(std140) uniform r_world_vertices_uniform_block
+    {
+        vec4 r_world_vertices[1024];
+    };
+
+    uniform int UNIFORM_r_world_vertices_count;
 
 	uniform int UNIFORM_r_bsp_node_count;
 

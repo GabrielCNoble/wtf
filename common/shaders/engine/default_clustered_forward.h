@@ -36,11 +36,109 @@
 
 		vec3 eye_space_pixel_normal;
 
+		struct ray_t
+        {
+            vec3 origin;
+            vec3 direction;
+        };
+
+        struct hit_result_t
+        {
+            float t;
+            vec3 attenuation;
+            vec3 point;
+            vec3 normal;
+
+            int material_index;
+        };
+
+        struct triangle_t
+        {
+            vec4 vertices[3];
+        };
+
 		/*
 		===============================================================
 		===============================================================
 		===============================================================
 		*/
+
+
+
+
+        bool intersect_triangle(ray_t ray, /*out hit_result_t result,*/ triangle_t triangle, float t_min, float t_max)
+        {
+            vec3 normal;
+            vec3 direction;
+            float direction_len;
+            vec3 point;
+            vec3 e0;
+            vec3 e1;
+            vec3 e2;
+            vec3 v0;
+
+            float t;
+            float d;
+
+            float a0;
+            float a1;
+            float a2;
+            float at;
+
+            float u;
+            float v;
+            float w;
+
+
+            e0 = triangle.vertices[1].xyz - triangle.vertices[0].xyz;
+            e1 = triangle.vertices[2].xyz - triangle.vertices[1].xyz;
+            normal = (cross(e0, e1));
+            //normal = normalize(cross(e0, e1));
+
+            d = dot(ray.direction, normal);
+
+            if(d > 0.0)
+            {
+                //direction_len = length(ray.direction);
+
+                v0 = triangle.vertices[0].xyz - ray.origin;
+
+                t = dot(normal, v0) / d;
+
+                if(t >= t_min && t <= t_max)
+                {
+                    /* ray hits the place that contains the triangle... */
+                    point = ray.origin + ray.direction * t;
+                    //e2 = triangle.verts[0].xyz - triangle.verts[2].xyz;
+
+                    a0 = dot(normal, cross(e0, point - triangle.vertices[1].xyz));
+                    a1 = dot(normal, cross(e1, point - triangle.vertices[2].xyz));
+                    //a2 = dot(normal, cross(e2, point - triangle.verts[0].xyz)) * 0.5;
+                    at = dot(normal, normal);
+
+                    u = a0 / at;
+                    v = a1 / at;
+                    w = 1.0 - u - v;
+
+                    return (u >= 0.0 && u <= 1.0) && (v >= 0.0 && v <= 1.0) && (w >= 0.0 && w <= 1.0);
+                    //w = a2 / at;
+
+                    //if(u >= 0.0 && u <= 1.0)
+                    //{
+                    //    if(v >= 0.0 && v <= 1.0)
+                    //    {
+                    //        if(w >= 0.0 && w <= 1.0)
+                    //        {
+                     //           return true;
+                     //       }
+                    //    }
+                    //}
+                }
+            }
+
+            return false;
+        }
+
 
 		ivec3 cluster(float x, float y, float view_z, float znear, float zfar, float width, float height)
 		{
@@ -185,6 +283,55 @@
 		}
 
 		#endif
+
+		float pixel_rt_shadow(vec3 pixel_pos, int light_index)
+		{
+		    int i;
+		    int c;
+
+            float dist;
+
+		    triangle_t triangle;
+		    hit_result_t hit_result;
+		    ray_t ray;
+
+            /*if(UNIFORM_r_world_vertices_count == 0)
+            {
+                return 1.0;
+            }*/
+
+            float shadow = 1.0;
+
+            c = UNIFORM_r_world_vertices_count;
+
+            ray.origin = pixel_pos;
+            ray.direction = r_lights[light_index].position_radius.xyz - pixel_pos;
+
+            dist = length(ray.direction);
+            ray.direction /= dist;
+
+            for(i = 0; i < c;)
+            {
+                triangle.vertices[0] = r_world_vertices[i];
+                i++;
+                triangle.vertices[1] = r_world_vertices[i];
+                i++;
+                triangle.vertices[2] = r_world_vertices[i];
+                i++;
+
+                //shadow = shadow & !intersect_triangle(ray, triangle, 0.001, dist);
+
+                //intersect_triangle(ray, triangle, 0.0001, dist) ? shadow = 0.0; break; : ();
+
+                if(intersect_triangle(ray, triangle, 0.0001, dist))
+                {
+                    shadow = 0.0;
+                    //break;
+                }
+            }
+
+            return shadow;
+		}
 
 
 		float pixel_shadow(int light_index)
@@ -361,7 +508,7 @@
 
 					//#else
 
-					//shadow = pixel_shadow(light_index);
+					//shadow = pixel_rt_shadow(eye_space_position, light_index);
 
 					//#endif
 

@@ -52,7 +52,13 @@ void path_Init(char *path);
 
 void path_Finish();
 
-void path_ReadCfg();
+void path_ReadCfg(char *path);
+
+void path_ReadFile(char *file_name, void **file_buffer, int *file_size);
+
+void path_WriteFile(char *file_name, void *file_buffer, int file_size);
+
+int path_CopyFile(char *from, char *to);
 
 void path_AddSearchPath(char *path);
 
@@ -61,6 +67,8 @@ void path_ClearSearchPaths();
 char *path_GetPathToFile(char *file_name);
 
 int path_SetDir(char *dir);
+
+int path_MakeDir(char *dir);
 
 int path_CheckDir(char *dir);
 
@@ -86,8 +94,16 @@ char *path_AddExtToName(char *file_name, char *ext);
 
 char *path_FormatPath(char *path);
 
+char *path_GetPathSegment(char *path, int segment);
+
+char *path_GetLastPathSegment(char *path);
+
+char *path_DropPathSegment(char *path, int segment);
+
 
 FILE *path_TryOpenFile(char *file_name);
+
+int path_FileExists(char *file_name);
 
 unsigned long path_GetFileSize(FILE *file);
 

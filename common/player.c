@@ -483,6 +483,7 @@ void player_DestroyPlayerIndex(int player_index)
 	}
 }*/
 
+#if 0
 player_t *player_GetPlayer(char *name)
 {
 	int i;
@@ -497,18 +498,26 @@ player_t *player_GetPlayer(char *name)
 
 	return NULL;*/
 }
+#endif
 
+#if 0
 player_t *player_GetActivePlayer()
 {
 	//return active_player;
 }
+#endif
 
+
+#if 0
 void player_SetPlayerAsActive(player_t *player)
 {
 	/*active_player = player;
 	camera_SetCamera(player->player_camera);*/
 }
+#endif
 
+
+#if 0
 void player_SetPlayerAsActiveIndex(struct entity_handle_t player)
 {
 	/*struct entity_t *entity;
@@ -528,6 +537,7 @@ void player_SetPlayerAsActiveIndex(struct entity_handle_t player)
 
 	pl_active_player = player;	*/
 }
+#endif
 
 void player_UpdateActivePlayer(double delta_time)
 {
@@ -900,6 +910,7 @@ void player_PostUpdatePlayers(double delta_time)
 
 #define BUMP_COUNT 5
 #define SPEED_THRESHOLD 0.00001
+#if 0
 void player_Move(player_t *player, float delta_time)
 {
 	#if 0
@@ -1141,6 +1152,8 @@ void player_Move(player_t *player, float delta_time)
 	#endif
 
 }
+
+#endif
 
 
 

@@ -150,7 +150,17 @@ void resource_LoadResource(char *file_name)
 		}
 	}
 
-	printf("resurce_LoadResource: file [%s] is of unknown type\n", file_name);
+	printf("resource_LoadResource: file [%s] is of unknown type\n", file_name);
+}
+
+void resource_LoadResourceAsync(char *file_name)
+{
+
+}
+
+void resource_ProcessAsyncRequest()
+{
+
 }
 
 #ifdef __cplusplus

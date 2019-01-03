@@ -185,6 +185,7 @@ int model_LoadModel(char *file_name, char *model_name)
 {
 	struct output_params_t out_params;
 
+	struct lod_t *lod;
 	struct batch_t *batches;
 	int indice_buffer_start;
 
@@ -219,58 +220,112 @@ int model_LoadModel(char *file_name, char *model_name)
 
         model->file_name = memory_Strdup(path_GetFileNameFromPath(file_name));
 
-        model->vert_count = out_params.out_vertices_count;
-        model->vertices = out_params.out_vertices;
+        model->vert_count = out_params.vertices_count;
+        model->indice_count = out_params.indices_count;
+        model->batch_count = out_params.batches_count;
+        model->lod_count = out_params.lods_count;
 
-		model->lod_count = out_params.out_lods_count;
-		model->batch_count = out_params.out_batches_count;
+
+        model->vertices = (vertex_t *)out_params.vertices;
+
+      /*  for(i = 0; i < model->vert_count; i++)
+        {
+            printf("[%f %f %f]\n", model->vertices[i].position.x, model->vertices[i].position.y, model->vertices[i].position.z);
+        }*/
+
+        model->indices = out_params.indices;
+		//model->indices = memory_Malloc(sizeof(int) * model->indice_count);
+
+
+		model->batches = memory_Malloc(sizeof(struct batch_t) * model->batch_count * model->lod_count);
 		model->lods = memory_Malloc(sizeof(struct lod_t) * model->lod_count);
-		model->indices = memory_Malloc(sizeof(int) * out_params.out_indices_count);
+		for(i = 0; i < model->lod_count; i++)
+        {
+            lod = model->lods + i;
+
+            lod->draw_mode = GL_TRIANGLES;
+            lod->indice_start = out_params.lods[i].indice_start;
+            lod->indice_count = out_params.lods[i].indice_count;
+            lod->batches = model->batches + i * model->batch_count;
+
+            lod_batches = out_params.batches + i * model->batch_count;
+
+            for(j = 0; j < model->batch_count; j++)
+            {
+                lod->batches[j].start = lod_batches[j].indice_start;
+                lod->batches[j].next = lod_batches[j].indice_count;
+                lod->batches[j].material_index = material_MaterialIndex(lod_batches[j].material_name);
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+		//batches = model->batches;
 
 		/* the batch buffer gets shared with all the lods... */
-		batches = memory_Malloc(sizeof(struct batch_t) * model->lod_count * model->batch_count);
+		//batches = memory_Malloc(sizeof(struct batch_t) * model->lod_count * model->batch_count);
 
 		//model->vertice_buffer_handle = gpu_AllocVerticesAlign(sizeof(struct c_vertex_t) * model->vert_count, sizeof(struct c_vertex_t));
 		//model->vert_buffer_start = gpu_GetAllocStart(model->vertice_buffer_handle) / sizeof(struct c_vertex_t);
 
-		model->vertice_buffer_handle = renderer_AllocVerticesAlign(sizeof(struct compact_vertex_t) * model->vert_count, sizeof(struct compact_vertex_t));
-		model->vert_buffer_start = renderer_GetAllocStart(model->vertice_buffer_handle) / sizeof(struct compact_vertex_t);
+		//model->vertice_buffer_handle = renderer_AllocVerticesAlign(sizeof(struct compact_vertex_t) * model->vert_count, sizeof(struct compact_vertex_t));
+		//model->vert_buffer_start = renderer_GetAllocStart(model->vertice_buffer_handle) / sizeof(struct compact_vertex_t);
 
-		model->indice_buffer_handle = renderer_AllocIndexesAlign(sizeof(int) * out_params.out_indices_count, sizeof(int));
-		indice_buffer_start = renderer_GetAllocStart(model->indice_buffer_handle) / sizeof(int);
+	//	model->indice_buffer_handle = renderer_AllocIndexesAlign(sizeof(int) * model->indice_count, sizeof(int));
+		//indice_buffer_start = renderer_GetAllocStart(model->indice_buffer_handle) / sizeof(int);
 
-		indices_count = 0;
+        /*for(i = 0; i < out_params.indices_count; i++)
+        {
+            model->indices[i] = out_params.indices[i] + model->vert_buffer_start;
+        }*/
 
-        for(i = 0; i < model->lod_count; i++)
-		{
-			model->lods[i].lod_indice_buffer_start = indices_count + indice_buffer_start;
-            model->lods[i].lod_indice_count = out_params.out_lods[i].indice_count;
+		//indices_count = 0;
 
-			lod_indices = out_params.out_lods_indices[i];
-			lod_batches = out_params.out_lods_batches[i];
 
-            for(j = 0; j < model->lods[i].lod_indice_count; j++)
-			{
+
+
+
+       // for(i = 0; i < model->lod_count; i++)
+		//{
+		//    lod = out_params.lods + i;
+
+		//	model->lods[i].indice_start = indice_buffer_start + lod->indice_start;
+         //   model->lods[i].indice_count = lod->indice_count;
+
+			//lod_indices = out_params.out_lods_indices[i];
+			//lod_batches = out_params.out_lods_batches[i];
+
+			//lod_indices = out_params.lods[i].
+
+            //for(j = 0; j < model->lods[i].lod_indice_count; j++)
+			//{
 				/* add the offset of the first vertex of this model from the start
 				of the gpu buffer to the indices, since they'll represent 'absolute'
 				positions inside the heap... */
-				model->indices[indices_count + j] = lod_indices[j] + model->vert_buffer_start;
-			}
+			//	model->indices[indices_count + j] = lod_indices[j] + model->vert_buffer_start;
+			//}
 
-			model->lods[i].draw_mode = GL_TRIANGLES;
-			model->lods[i].batches = batches + model->batch_count * i;
+		//	model->lods[i].draw_mode = GL_TRIANGLES;
+		//	model->lods[i].batches = batches + model->batch_count * i;
 
-            for(j = 0; j < model->batch_count; j++)
-			{
-                model->lods[i].batches[j].material_index = material_MaterialIndex(lod_batches[j].material_name);
-				model->lods[i].batches[j].start = lod_batches[j].indice_start;
-				model->lods[i].batches[j].next = lod_batches[j].indice_count;
-			}
+         //   for(j = 0; j < model->batch_count; j++)
+		//	{
+         //       model->lods[i].batches[j].material_index = material_MaterialIndex(lod->batches[j].material_name);
+		//		model->lods[i].batches[j].start = lod->batches[j].indice_start;
+		//		model->lods[i].batches[j].next = lod->batches[j].indice_count;
+		//	}
 
-			indices_count += model->lods[i].lod_indice_count;
-		}
+			//indices_count += model->lods[i].lod_indice_count;
+		//}
 
-		renderer_Write(model->indice_buffer_handle, 0, model->indices, sizeof(int) * indices_count);
+		//renderer_Write(model->indice_buffer_handle, 0, model->indices, sizeof(int) * model->indice_count);
 
 		max_extents.x = FLT_MIN;
 		max_extents.y = FLT_MIN;
@@ -312,10 +367,12 @@ int model_LoadModel(char *file_name, char *model_name)
 
 		model->aabb_max = max_extents;
 
+		model_UploadModel(model_index);
+
 		//compact_vertices = model_ConvertVertices2(model->vertices, model->vert_count);
-		compact_vertices = model_ConvertVertices(model->vertices, model->vert_count);
+		//compact_vertices = model_ConvertVertices(model->vertices, model->vert_count);
         //gpu_Write(model->vertice_buffer_handle, 0, compact_vertices, sizeof(struct c_vertex_t) * model->vert_count);
-        renderer_Write(model->vertice_buffer_handle, 0, compact_vertices, sizeof(struct compact_vertex_t) * model->vert_count);
+      //  renderer_Write(model->vertice_buffer_handle, 0, compact_vertices, sizeof(struct compact_vertex_t) * model->vert_count);
 
 	}
 	else
@@ -328,6 +385,44 @@ int model_LoadModel(char *file_name, char *model_name)
 	renderer_PopFunctionName();
 
 	return model_index;
+}
+
+int model_UploadModel(int model_index)
+{
+    struct model_t *model;
+    int *indices;
+    struct compact_vertex_t *compact_vertices;
+
+    int i;
+
+    model = model_GetModelPointerIndex(model_index);
+
+    if(model)
+    {
+        model->vertice_buffer_handle = renderer_AllocVerticesAlign(sizeof(struct compact_vertex_t) * model->vert_count, sizeof(struct compact_vertex_t));
+        model->vert_buffer_start = renderer_GetAllocStart(model->vertice_buffer_handle) / sizeof(struct compact_vertex_t);
+
+        model->indice_buffer_handle = renderer_AllocIndexesAlign(sizeof(int) * model->indice_count, sizeof(int));
+        model->indice_buffer_start = renderer_GetAllocStart(model->indice_buffer_handle) / sizeof(int);
+
+
+        indices = memory_Malloc(sizeof(int) * model->indice_count);
+
+        for(i = 0; i < model->indice_count; i++)
+        {
+            indices[i] = model->indices[i] + model->vert_buffer_start;
+        }
+        renderer_Write(model->indice_buffer_handle, 0, indices, sizeof(int) * model->indice_count);
+
+
+        compact_vertices = model_ConvertVertices(model->vertices, model->vert_count);
+        renderer_Write(model->vertice_buffer_handle, 0, compact_vertices, sizeof(struct compact_vertex_t) * model->vert_count);
+
+
+
+        memory_Free(indices);
+        memory_Free(compact_vertices);
+    }
 }
 
 

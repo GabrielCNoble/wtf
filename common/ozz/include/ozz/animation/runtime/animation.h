@@ -112,6 +112,9 @@ class Animation {
                 size_t _rotation_count, size_t _scale_count);
   void Deallocate();
 
+ public:
+
+
   // Duration of the animation clip.
   float duration_;
 

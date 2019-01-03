@@ -105,6 +105,7 @@ void engine_Init(int width, int height, int init_mode, int argc, char *argv[])
 		{
 			b_init_properly &= shader_Init();
 			b_init_properly &= input_Init();
+			b_init_properly &= animation_Init();
 			//b_init_properly &= gpu_Init();
 			b_init_properly &= model_Init();
 			b_init_properly &= particle_Init();
@@ -112,7 +113,7 @@ void engine_Init(int width, int height, int init_mode, int argc, char *argv[])
 			b_init_properly &= light_Init();
 			b_init_properly &= event_Init();
 			b_init_properly &= world_Init();
-			b_init_properly &= camera_Init();
+			//b_init_properly &= camera_Init();
 			b_init_properly &= sound_Init();
 			b_init_properly &= gui_Init();
 			b_init_properly &= physics_Init();
@@ -156,13 +157,14 @@ void engine_Finish()
 		memory_CheckCorrupted();
 		shader_Finish();
 		navigation_Finish();
+		animation_Finish();
 		material_Finish();
 		input_Finish();
 		particle_Finish();
 		model_Finish();
 		world_Finish();
 		event_Finish();
-		camera_Finish();
+		//camera_Finish();
 		light_Finish();
 		texture_Finish();
 		sound_Finish();
@@ -241,6 +243,7 @@ void engine_MainLoop()
 		{
 			entity_UpdateTriggers();
 			entity_UpdateScriptComponents();
+			animation_UpdateAnimations(delta_time);
 			world_ExecuteWorldScript();
 			physics_ProcessCollisions(delta_time);
 		}

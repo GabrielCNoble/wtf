@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="mpkcvt" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="mpkcvt" prefix_auto="1" extension_auto="1" />
+				<Option object_output="." />
+				<Option external_deps="D:/Files/Gabriel Noble/Compiler/wtf/common/mpk_write.o;" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Option parameters="-f multi_cube.obj -o multi_cube" />
+				<Compiler>
+					<Add option="-m32" />
+					<Add option="-g" />
+					<Add option="-masm=intel" />
+					<Add directory="../gmath" />
+					<Add directory="../" />
+				</Compiler>
+				<Linker>
+					<Add option="-static-libgcc" />
+					<Add option="-static" />
+					<Add option="-m32" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-g" />
+		</Compiler>
+		<Linker>
+			<Add option="-L vector.o" />
+			<Add option="-L c_memory.o" />
+			<Add option="-L mpk_write.o" />
+		</Linker>
+		<Unit filename="../gmath/vector.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../gmath/vector.h" />
+		<Unit filename="../gmath/vector.inl" />
+		<Unit filename="../mpk_write.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../mpk_write.h" />
+		<Unit filename="mpkcvt.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

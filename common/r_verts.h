@@ -21,6 +21,7 @@ struct gpu_head_t
 	int start;
 	int size;
 	int align_offset;
+	//unsigned short alignment;
 };
 
 #ifdef __cplusplus

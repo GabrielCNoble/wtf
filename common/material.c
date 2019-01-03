@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "material.h"
+#include "texture.h"
 #include "vector.h"
 #include "c_memory.h"
 //#include "bsp_file.h"
@@ -590,7 +591,7 @@ int material_IncCurrentFrameRefCount(int material_index)
 	return 0;
 }
 
-
+#if 0
 int material_IncCurrentFrameRefCountView(int material_index, camera_t *view)
 {
 	/*if(material_index >= -1 && material_index < mat_material_list_cursor && view)
@@ -614,7 +615,7 @@ int material_IncCurrentFrameRefCountView(int material_index, camera_t *view)
 
 	return 0;*/
 }
-
+#endif
 
 
 void material_DestroyMaterialIndex(int material_index)
@@ -657,6 +658,55 @@ int material_SetMaterialName(char *name, int material_index)
 	}
 
 	return 0;
+}
+
+void material_SetMaterialTexture(int material_index, int texture_type, int texture_index)
+{
+    struct texture_t *texture;
+    material_t *material;
+    texture = texture_GetTexturePointer(texture_index);
+
+    /* default material won't allow texture assignment... */
+    if(material_index >= 0)
+    {
+        material = material_GetMaterialPointerIndex(material_index);
+
+        if(material)
+        {
+            if(texture_type >= MATERIAL_TEXTURE_TYPE_FIRST && texture_type < MATERIAL_TEXTURE_TYPE_LAST)
+            {
+                if(material->textures[texture_type] >= 0)
+                {
+                    texture = texture_GetTexturePointer(material->textures[texture_type]);
+
+                    if(texture)
+                    {
+                        /* only increment the ref count if this isn't the default texture... */
+                        texture->texture_info->ref_count--;
+                    }
+                }
+
+                texture = texture_GetTexturePointer(texture_index);
+
+                if(texture)
+                {
+                    if(texture_index >= 0)
+                    {
+                        /* only increment the ref count if this isn't the default texture... */
+                        texture->texture_info->ref_count++;
+                    }
+                }
+                else
+                {
+                    log_LogMessage(LOG_MESSAGE_ERROR, 1, "material_SetMaterialTexture: bad texture index! (%d)", texture_index);
+
+                    texture_index = -1;
+                }
+
+                material->textures[texture_type] = texture_index;
+            }
+        }
+    }
 }
 
 

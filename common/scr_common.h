@@ -59,12 +59,42 @@ enum SCRIPT_VAR_TYPE
 };
 
 
+enum SCR_SCRIPT_PROP_TYPE
+{
+    SCR_SCRIPT_PROP_TYPE_INT,
+    SCR_SCRIPT_PROP_TYPE_FLOAT,
+    SCR_SCRIPT_PROP_TYPE_VEC2_T,
+    SCR_SCRIPT_PROP_TYPE_VEC3_T,
+    SCR_SCRIPT_PROP_TYPE_VEC4_T,
+    SCR_SCRIPT_PROP_TYPE_MAT2_T,
+    SCR_SCRIPT_PROP_TYPE_MAT3_T,
+    SCR_SCRIPT_PROP_TYPE_MAT4_T,
+};
+
 struct script_prop_t
 {
 	char *name;
 	int size;
 	int type;
 	void *memory;
+};
+
+
+
+
+enum SCR_SCRIPT_TIMER_STATUS
+{
+    SCR_SCRIPT_TIMER_STATUS_IDLE,
+    SCR_SCRIPT_TIMER_STATUS_RUNNING,
+    SCR_SCRIPT_TIMER_STATUS_TIMED_OUT
+};
+
+
+struct script_timer_t
+{
+    char *name;
+    int timeout;            /* in ms... */
+    int status;
 };
 
 

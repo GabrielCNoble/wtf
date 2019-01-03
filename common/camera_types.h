@@ -65,8 +65,8 @@ typedef struct
 
 }view_material_ref_record_t;
 
-
-typedef struct
+#if 0
+struct view_data_t
 {
 
 	mat4_t projection_matrix;
@@ -105,7 +105,9 @@ typedef struct
 //	int view_leaves_list_cursor;
 //	int view_leaves_list_size;
 //	bsp_dleaf_t **view_leaves;
-}view_data_t;
+};
+
+#endif
 /*struct view_def
 {
 	struct view_def *next;
@@ -119,25 +121,20 @@ typedef struct
 	int type;
 };*/
 
+
+#if 0
 typedef struct camera_t
 {
 	struct camera_t *next;		/* cameras won't be created all the time, so a linked list will be easier to manage... */
 	struct camera_t *prev;
 
-	view_data_t view_data;
+	struct view_data_t view_data;
 
-	//mat4_t projection_matrix;
-	//mat4_t world_to_camera_matrix;
-	//mat3_t local_orientation;			/* this will be useful only when there's a scenegraph... */
+
 	mat3_t world_orientation;
-	//framebuffer_t geometry_buffer;
-	//framebuffer_t output_buffer;
 	frustum_t frustum;
-	//vec3_t local_position;			/* this will be useful only when there's a scenegraph... */
 	vec3_t world_position;
-	//node_t *assigned_node;
 	float zoom;
-	//float exposure;
 	float fov_y;
 	int width;
 	int height;
@@ -148,6 +145,8 @@ typedef struct camera_t
 	int bm_flags;
 	char *name;
 }camera_t;
+
+#endif
 
 /*typedef struct
 {

@@ -10,6 +10,7 @@
 
 #include "r_common.h"
 #include "r_main.h"
+#include "r_view.h"
 
 #include "al.h"
 #include "alc.h"
@@ -939,7 +940,7 @@ void sound_ProcessSound()
 {
 //	camera_t *active_camera = camera_GetActiveCamera();
 
-    view_def_t *active_view = renderer_GetActiveView();
+    struct view_def_t *active_view = renderer_GetMainViewPointer();
 
 	vec3_t orientation[2];
 

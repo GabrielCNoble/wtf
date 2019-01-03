@@ -9,6 +9,19 @@
 /* may be too little... */
 #define MAX_MATERIALS 128
 
+
+enum MATERIAL_TEXTURE_TYPES
+{
+    MATERIAL_TEXTURE_TYPE_FIRST = 0,
+    MATERIAL_TEXTURE_TYPE_DIFFUSE = MATERIAL_TEXTURE_TYPE_FIRST,
+    MATERIAL_TEXTURE_TYPE_NORMAL,
+    MATERIAL_TEXTURE_TYPE_HEIGHT,
+    MATERIAL_TEXTURE_TYPE_ROUGHNESS,
+    MATERIAL_TEXTURE_TYPE_METALNESS,
+    MATERIAL_TEXTURE_TYPE_LAST,
+};
+
+
 typedef struct
 {
 	unsigned char r;
@@ -19,11 +32,20 @@ typedef struct
 	unsigned char roughness;
 	unsigned char metalness;
 
-	short diffuse_texture;
-	short normal_texture;
-	short height_texture;
-	short metalness_texture;
-	short roughness_texture;
+    union
+    {
+        struct
+        {
+            short diffuse_texture;
+            short normal_texture;
+            short height_texture;
+            short metalness_texture;
+            short roughness_texture;
+        };
+
+        short textures[MATERIAL_TEXTURE_TYPE_LAST];
+    };
+
 
 	//short material_index;
 	short shader_index;					/* this should go away... */
@@ -52,6 +74,8 @@ typedef struct
 
 
 
+
+
 enum MATERIAL_FLAGS
 {
 	MATERIAL_INVALID = 1,
@@ -61,6 +85,7 @@ enum MATERIAL_FLAGS
 	MATERIAL_USE_HEIGHT_TEXTURE = 1 << 3,
 	MATERIAL_USE_ROUGHNESS_TEXTURE = 1 << 4,
 	MATERIAL_USE_METALNESS_TEXTURE = 1 << 5,
+
 
 	MATERIAL_INVERT_NORMAL_X = 1 << 6,
 	MATERIAL_INVERT_NORMAL_Y = 1 << 7,
@@ -172,13 +197,15 @@ int material_OpRefCount(int material_index, int count);
 
 int material_IncCurrentFrameRefCount(int material_index);
 
-int material_IncCurrentFrameRefCountView(int material_index, camera_t *view);
+//int material_IncCurrentFrameRefCountView(int material_index, camera_t *view);
 
 
 
 void material_DestroyMaterialIndex(int material_index);
 
 int material_SetMaterialName(char *name, int material_index);
+
+void material_SetMaterialTexture(int material_index, int texture_type, int texture_index);
 
 //char *material_GetMaterialName(int material_index);
 
@@ -189,6 +216,8 @@ material_t *material_GetMaterialPointer(char *material_name);
 material_t *material_GetMaterialPointerIndex(int material_index);
 
 void material_DestroyAllMaterials();
+
+
 
 
 /*

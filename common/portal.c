@@ -85,7 +85,7 @@ int portal_CreatePortal(vec3_t position, vec2_t extents, mat3_t *orientation, in
 
 	portal->max_recursion = max_recursion;
 
-	camera_InitViewData(&portal->portal_recursive_views[0].views[0].view_data);
+//	camera_InitViewData(&portal->portal_recursive_views[0].views[0].view_data);
 
 	for(i = 1; i < portal->max_recursion; i++)
 	{
@@ -237,10 +237,10 @@ void portal_ScalePortal(int portal_index, vec2_t scale, float amount)
 ==========================================================================
 */
 
-int portal_CalculateViewMatrix(camera_t *view, portal_t *portal)
+/*int portal_CalculateViewMatrix(camera_t *view, portal_t *portal)
 {
 
-}
+}*/
 
 int portal_CalculatePortalView(portal_t *portal, mat3_t *view_orientation, vec3_t view_position, int recursion_level, int viewing_portal_index)
 {

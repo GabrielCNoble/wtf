@@ -88,7 +88,7 @@ int input_Init()
 	mouse_dx=0.0;
 	mouse_dy=0.0;
 	//kb_event=(SDL_Event *)calloc(5, sizeof(SDL_Event));
-	SDL_WarpMouseInWindow(window, r_window_width / 2, r_window_height / 2);
+	//SDL_WarpMouseInWindow(window, r_window_width / 2, r_window_height / 2);
 	bm_mouse = 0;
 	registered_keys_count = 0;
 	//max_registered_keys = 0;

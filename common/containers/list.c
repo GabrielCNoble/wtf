@@ -36,6 +36,11 @@ void list_destroy(struct list_t *list)
 //	}
 
 	memory_Free(list->elements);
+
+	list->elements = NULL;
+	list->max_elements = 0;
+	list->element_count = 0;
+	list->element_size = 0;
 }
 
 int list_add(struct list_t *list, void *data)

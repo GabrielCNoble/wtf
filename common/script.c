@@ -2,6 +2,7 @@
 #include "scr_math.h"
 #include "script_types/scr_types.h"
 #include "script_types/scr_typeof.h"
+#include "containers/stack_list.h"
 //#include "scr_sound.h"
 #include "vector.h"
 #include "c_memory.h"
@@ -51,6 +52,8 @@ struct script_context_t *scr_contexts;
 struct script_t *scr_scripts = NULL;
 struct script_t *scr_last_script = NULL;
 
+
+struct stack_list_t scr_timers;
 
 
 
@@ -122,6 +125,8 @@ int script_Init()
 
 	scr_current_context_index = -1;
 
+	scr_timers = stack_list_create(sizeof(struct script_timer_t), 512, NULL);
+
 	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "%s: subsystem initialized properly!", __func__);
 
 	return 1;
@@ -139,6 +144,8 @@ void script_Finish()
 
 		scr_scripts = scr_last_script;
 	}
+
+	stack_list_destroy(&scr_timers);
 
 	scr_virtual_machine->ShutDownAndRelease();
 	memory_Free(scr_contexts);
@@ -1378,6 +1385,34 @@ void script_EndDebugSection()
     current_context->ClearLineCallback();
 }
 
+
+
+
+
+int script_CreateTimer(char *name, int timeout)
+{
+
+}
+
+void script_DestroyTimer(int timer_index)
+{
+
+}
+
+void script_DestroyTimerByName(char *timer_name)
+{
+
+}
+
+void script_ResetTimer(int timer_index)
+{
+
+}
+
+void script_CheckTimer(int timer_index)
+{
+
+}
 
 
 

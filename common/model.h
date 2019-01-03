@@ -75,8 +75,8 @@ typedef struct mesh_t
 
 struct lod_t
 {
-    int lod_indice_buffer_start;
-    int lod_indice_count;
+    int indice_start;
+    int indice_count;
     //int *indices;
 
     unsigned short draw_mode;
@@ -94,8 +94,10 @@ struct model_t
 
 	int vert_buffer_start;
 	int vert_count;
-
 	vertex_t *vertices;
+
+	int indice_buffer_start;
+	int indice_count;
 	int *indices;
 
 	struct batch_t *batches;
@@ -202,6 +204,8 @@ int model_DestroyModel(char *name);
 int model_DestroyModelIndex(int model_index);
 
 int model_LoadModel(char *file_name, char *model_name);
+
+int model_UploadModel(int model_index);
 
 int model_GetModel(char *model_name);
 

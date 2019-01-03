@@ -24,8 +24,8 @@ static int camera_list_size = 0;
 int camera_count = 0;
 //camera_t *camera_list = NULL;
 
-camera_t *cameras = NULL;
-camera_t *last_camera = NULL;
+//camera_t *cameras = NULL;
+//camera_t *last_camera = NULL;
 
 //camera_t *active_camera;
 //camera_t *main_view;
@@ -42,7 +42,7 @@ extern int r_width;
 extern int r_height;
 
 char default_camera_name[] = "default camera";
-camera_t default_camera;
+//camera_t default_camera;
 
 #define CLUSTER_WIDTH 32
 
@@ -57,6 +57,8 @@ extern "C"
 camera_Init
 =============
 */
+
+#if 0
 int camera_Init()
 {
 	int i;
@@ -99,8 +101,11 @@ int camera_Init()
 
 	return 1;
 }
+#endif
 
 
+
+#if 0
 /*
 =============
 camera_Finish
@@ -118,7 +123,11 @@ void camera_Finish()
 	free(camera_list);*/
 	return;
 }
+#endif
 
+
+
+#if 0
 camera_t *camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, float fovy, float width, float height, float znear, float zfar, int bm_flags)
 {
 	//int camera_index = camera_count++;
@@ -235,8 +244,11 @@ camera_t *camera_CreateCamera(char *name, vec3_t position, mat3_t *orientation, 
 
 	return camera;
 }
+#endif
 
-void camera_InitViewData(view_data_t *view_data)
+
+#if 0
+void camera_InitViewData(struct view_data_t *view_data)
 {
 	int i;
 
@@ -266,8 +278,11 @@ void camera_InitViewData(view_data_t *view_data)
 	view_data->view_triangles_cursor = 0;
 	view_data->view_triangles = memory_Malloc(sizeof(bsp_striangle_t) * view_data->view_triangles_size, "camera_InitViewData");*/
 }
+#endif
 
-void camera_DeleteViewData(view_data_t *view_data)
+
+#if 0
+void camera_DeleteViewData(struct view_data_t *view_data)
 {
 	/*memory_Free(view_data->view_lights);
 	memory_Free(view_data->view_portals);
@@ -276,19 +291,22 @@ void camera_DeleteViewData(view_data_t *view_data)
 	memory_Free(view_data->view_triangles);
 	memory_Free(view_data->view_leaves);*/
 }
+#endif
 
+
+#if 0
 void camera_DestroyCamera(camera_t *camera)
 {
     camera_t *active_camera;
 	if(camera)
 	{
 
-	    active_camera = (camera_t *)renderer_GetActiveView();
+	    active_camera = (camera_t *)renderer_GetMainView();
 
 		if(camera == active_camera)
 		{
 			//camera_SetCamera(NULL);
-			renderer_SetActiveView(NULL);
+			renderer_SetMainView(NULL);
 		}
 
 		if(camera == cameras)
@@ -321,7 +339,10 @@ void camera_DestroyCamera(camera_t *camera)
 		camera_count--;
 	}
 }
+#endif
 
+
+#if 0
 void camera_DestroyAllCameras()
 {
 	while(cameras)
@@ -331,15 +352,21 @@ void camera_DestroyAllCameras()
 
 	camera_count = 0;
 }
+#endif
 
+
+#if 0
 void camera_SetCameraProjectionMatrix(camera_t *camera, float width, float height, float znear, float zfar, float fovy)
 {
 	CreatePerspectiveMatrix(&camera->view_data.projection_matrix, fovy, width/height, znear, zfar, 0.0, 0.0, &camera->frustum);
 	camera->width = width;
 	camera->height = height;
 }
+#endif
 
 
+
+#if 0
 /*
 =============
 camera_SetCameraByIndex
@@ -358,6 +385,7 @@ camera_SetCameraByIndex
 		glMatrixMode(GL_MODELVIEW);
 	}
 }*/
+#endif
 
 #if 0
 
@@ -397,6 +425,7 @@ void camera_SetMainViewCamera(camera_t *camera)
 
 #endif
 
+#if 0
 void camera_Activate(camera_t *camera)
 {
 	if(camera)
@@ -404,7 +433,10 @@ void camera_Activate(camera_t *camera)
 		camera->bm_flags &= ~CAMERA_INACTIVE;
 	}
 }
+#endif
 
+
+#if 0
 void camera_Deactivate(camera_t *camera)
 {
 	if(camera)
@@ -412,8 +444,11 @@ void camera_Deactivate(camera_t *camera)
 		camera->bm_flags |= CAMERA_INACTIVE;
 	}
 }
+#endif
 
 
+
+#if 0
 /*
 =============
 camera_ComputeWorldToCameraMatrix
@@ -457,8 +492,11 @@ void camera_ComputeWorldToCameraMatrix(camera_t *camera)
 	camera->view_data.view_matrix.floats[3][3] = 1.0;
 
 }
+#endif
 
 
+
+#if 0
 /*
 =============
 camera_TranslateCamera
@@ -482,8 +520,11 @@ void camera_TranslateCamera(camera_t *camera, vec3_t direction, float amount, in
 	camera_ComputeWorldToCameraMatrix(camera);
 	return;
 }
+#endif
 
 
+
+#if 0
 /*
 =============
 camera_RotateCamera
@@ -496,8 +537,11 @@ void camera_RotateCamera(camera_t *camera, vec3_t axis, float angle, int b_set)
 	camera_ComputeWorldToCameraMatrix(camera);
 	return;
 }
+#endif
 
 
+
+#if 0
 void camera_PitchYawCamera(camera_t *camera, float yaw, float pitch)
 {
 
@@ -574,6 +618,7 @@ void camera_PitchYawCamera(camera_t *camera, float yaw, float pitch)
 	//mat3_t_mult(&camera->local_orientation, &y, &p);
 
 }
+#endif
 
 
 /*
@@ -592,6 +637,8 @@ camera_GetActiveCamera
 //	return r_main_view;
 //}
 
+
+#if 0
 camera_t *camera_GetCamera(char *name)
 {
 	camera_t *c;
@@ -613,9 +660,10 @@ camera_t *camera_GetCamera(char *name)
 
 	return NULL;
 }
+#endif
 
 
-
+#if 0
 float camera_BoxScreenArea(camera_t *camera, vec3_t center, vec3_t extents)
 {
 	int i;
@@ -738,6 +786,7 @@ float camera_BoxScreenArea(camera_t *camera, vec3_t center, vec3_t extents)
 
 	return 0.0;
 }
+#endif
 
 /*camera_t *camera_GetCameraByIndex(int camera_index)
 {

@@ -60,6 +60,10 @@
 			<Add library="vorbisfile" />
 			<Add library="vorbis" />
 			<Add library="ogg" />
+			<Add library="ozz_animation" />
+			<Add library="ozz_geometry" />
+			<Add library="ozz_options" />
+			<Add library="ozz_base" />
 			<Add directory="../common/SDL/lib/mingw" />
 			<Add directory="../common/OPENAL/Win32" />
 			<Add directory="../common/GLEW/lib" />
@@ -394,6 +398,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/r_verts.h" />
+		<Unit filename="../common/r_view.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_view.h" />
 		<Unit filename="../common/r_vis.c">
 			<Option compilerVar="CC" />
 		</Unit>

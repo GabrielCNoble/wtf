@@ -3,6 +3,7 @@
 
 #include "gmath/vector.h"
 #include "gmath/matrix.h"
+#include "containers/list.h"
 #include "model.h"
 
 
@@ -95,6 +96,7 @@ enum COLLIDER_TYPE
 	COLLIDER_TYPE_RIGID_BODY_COLLIDER,
 	COLLIDER_TYPE_PROJECTILE_COLLIDER,
 	COLLIDER_TYPE_TRIGGER_COLLIDER,
+	COLLIDER_TYPE_COLLIDER_DEF,
 	COLLIDER_TYPE_LAST,
 	COLLIDER_TYPE_NONE = COLLIDER_TYPE_LAST,
 };
@@ -130,13 +132,9 @@ enum COLLISION_SHAPES
 };
 
 
-struct collision_shape_t
-{
-	mat3_t orientation;
-	vec3_t position;
-	vec3_t scale;
-	int type;
-};
+
+
+#if 0
 
 struct collider_def_t
 {
@@ -175,6 +173,8 @@ struct collider_def_t
 	char *name;
 };
 
+#endif
+
 
 #define INVALID_COLLIDER_INDEX 0x1fffffff
 
@@ -195,7 +195,7 @@ struct collider_t
 	vec3_t scale;
 
 	void *collision_object;						/* opaque reference to a btRigidBody... */
-	struct collider_def_t *def;
+	struct collider_handle_t def;
 	unsigned short flags;
 	unsigned short type;
 
@@ -205,6 +205,61 @@ struct collider_t
 	unsigned short max_contact_records;
 	unsigned int first_contact_record;
 
+};
+
+struct collision_shape_t
+{
+	mat3_t orientation;
+	vec3_t position;
+	vec3_t scale;
+	int type;
+};
+
+enum PHY_CONSTRAINT_TYPE
+{
+    PHY_CONSTRAINT_TYPE_FIRST = -1,
+    PHY_CONSTRAINT_TYPE_SLIDE,
+    PHY_CONSTRAINT_TYPE_HINGE,
+    PHY_CONSTRAINT_TYPE_LAST,
+};
+
+struct constraint_t
+{
+    int type;
+    void *constraint;
+    struct collider_handle_t collider_a;
+    struct collider_handle_t collider_b;
+};
+
+struct collider_def_t
+{
+    struct collider_t base;
+
+    //int max_collision_shapes;
+	//int collision_shape_count;
+	//struct collision_shape_t *collision_shape;
+
+	struct list_t collision_shape;
+
+	void *cached_collision_shape;
+	vec3_t inertia_tensor;
+
+	//struct constraint_t *
+
+	float height;
+	float crouch_height;
+	float radius;
+	float max_step_height;
+	float max_slope_angle;
+	float max_walk_speed;
+
+	int ref_count;
+//	int flags;
+	//int type;
+	int def_flags;
+	int collider_type;
+	float mass;
+	char *name;
 };
 
 

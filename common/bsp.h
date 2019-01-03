@@ -27,11 +27,11 @@ struct bsp_pnode_t *bsp_HullForEntity(vec3_t mins, vec3_t max);
 
 int bsp_SolidPoint(struct bsp_pnode_t *node, vec3_t point);
 
-int bsp_FirstHit(struct bsp_pnode_t *bsp, vec3_t start, vec3_t end, trace_t *trace);
+int bsp_FirstHit(struct bsp_pnode_t *bsp, vec3_t start, vec3_t end, struct trace_t *trace);
 
-int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, trace_t *trace);
+int bsp_TryStepUp(vec3_t *position, vec3_t *velocity, struct trace_t *trace);
 
-int bsp_TryStepDown(vec3_t *position, vec3_t *velocity, trace_t *trace);
+int bsp_TryStepDown(vec3_t *position, vec3_t *velocity, struct trace_t *trace);
 
 void bsp_Move(vec3_t *position, vec3_t *velocity);
 
@@ -42,6 +42,8 @@ unsigned char *bsp_CompressPvs(unsigned char *uncompressed_pvs, int uncompressed
 struct bsp_dleaf_t **bsp_DecompressPvs(struct bsp_dleaf_t *leaf, int *leaves_count);
 
 struct bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t position);
+
+struct bsp_dleaf_t **bsp_FrontToBackWalk(int *leaf_count, vec3_t position);
 
 
 

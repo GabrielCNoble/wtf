@@ -1,0 +1,72 @@
+# depslib dependency file v1.0
+1542515391 source:d:\files\gabriel noble\compiler\wtf\common\mpkcvt\mpkcvt.c
+	<stdio.h>
+	<string.h>
+	"..\mpk_file.h"
+	"..\mpk_write.h"
+	"..\c_memory.h"
+
+1542510000 d:\files\gabriel noble\compiler\wtf\common\mpk_file.h
+	"vector_types.h"
+	<limits.h>
+	<limits.h>
+
+1542495738 d:\files\gabriel noble\compiler\wtf\common\model.h
+	"r_common.h"
+	"r_verts.h"
+	"gmath/vector.h"
+	<stdint.h>
+	<limits.h>
+
+1541648074 d:\files\gabriel noble\compiler\wtf\common\r_common.h
+	"gmath/vector.h"
+	"gmath/matrix.h"
+	"containers/list.h"
+
+1533169315 d:\files\gabriel noble\compiler\wtf\common\gmath\vector.h
+	<math.h>
+	"matrix_types.h"
+	"vector_types.h"
+
+1506646928 d:\files\gabriel noble\compiler\wtf\common\gmath\matrix_types.h
+	"vector_types.h"
+
+1525447707 d:\files\gabriel noble\compiler\wtf\common\gmath\vector_types.h
+	<stdint.h>
+
+1537744426 d:\files\gabriel noble\compiler\wtf\common\gmath\matrix.h
+	<math.h>
+	"frustum_types.h"
+	"matrix_types.h"
+	"vector.h"
+	<stdlib.h>
+	"matrix.inl"
+
+1526276025 d:\files\gabriel noble\compiler\wtf\common\gmath\frustum_types.h
+
+1506903484 d:\files\gabriel noble\compiler\wtf\common\gmath\matrix.inl
+	"matrix_types.h"
+
+1537067339 d:\files\gabriel noble\compiler\wtf\common\containers\list.h
+
+1541317204 d:\files\gabriel noble\compiler\wtf\common\r_verts.h
+
+1542342437 d:\files\gabriel noble\compiler\wtf\common\mpk_write.h
+	"mpk_file.h"
+
+1535646759 d:\files\gabriel noble\compiler\wtf\common\c_memory.h
+	<io.h>
+
+1542515421 source:d:\files\gabriel noble\compiler\wtf\common\mpk_write.c
+	"mpk_write.h"
+	"gmath/vector.h"
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<float.h>
+	<math.h>
+
+1533169735 source:d:\files\gabriel noble\compiler\wtf\common\gmath\vector.c
+	"vector.h"
+	<assert.h>
+
