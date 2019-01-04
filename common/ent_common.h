@@ -333,6 +333,7 @@ struct skeleton_component_t
 {
     struct component_t base;
     struct skeleton_handle_t skeleton;
+    struct list_t bone_transforms;
 };
 
 /*

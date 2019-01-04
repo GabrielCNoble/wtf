@@ -534,31 +534,8 @@ void editor_LevelEditorInit()
 
 	//entity_SpawnEntity(&r, vec3(0.0, 3.0, 0.0), vec3(1.0, 1.0, 1.0), entity_def, "cube");
 
-/*	void *buffer;
-	void *read_buffer;
-	int buffer_size;
-
-	entity_SerializeEntities(&buffer, &buffer_size, 0);
-	entity_RemoveAllEntities();
-
-	FILE *file;
-	file = fopen("test.dmp", "wb");
-	fwrite(buffer, buffer_size, 1, file);
-	fflush(file);
-	fclose(file);
-	file = fopen("test.dmp", "rb");
-	fread(buffer, buffer_size, 1, file);
-	fclose(file);
 
 
-	read_buffer = buffer;
-	entity_DeserializeEntities(&read_buffer, 0);
-
-	memory_Free(buffer);*/
-
-
-	//int trigger = entity_CreateTrigger(NULL, vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 5.0, 1.0), "Trigger", "trigger");
-	//entity_AddTriggerFilter(trigger, "player");
 
 
 	struct skeleton_handle_t skeleton_def = animation_LoadSkeleton("tri_anim.ozz");

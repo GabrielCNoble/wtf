@@ -82,10 +82,13 @@ void entity_ParentEntityToEntityTransform(struct component_handle_t parent_trans
 
 void entity_UnpparentEntityFromEntityTransform(struct component_handle_t parent_transform, struct entity_handle_t child);
 
-
 void entity_ParentEntity(struct entity_handle_t parent, struct entity_handle_t child);
 
 void entity_UnparentEntity(struct entity_handle_t parent, struct entity_handle_t child);
+
+void entity_ParentEntityToBone(struct component_handle_t skeleton_component, int bone_index, struct entity_handle_t entity);
+
+void entity_UnparentEntityToBone(struct component_handle_t skeleton_component, struct entity_handle_t entity);
 
 /*
 ==============================================================

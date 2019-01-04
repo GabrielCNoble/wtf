@@ -386,6 +386,7 @@ struct component_handle_t entity_AllocComponent(int component_type, int alloc_fo
 	struct script_component_t *script;
 	struct component_handle_t handle;
     struct physics_component_t *physics_component;
+    struct skeleton_component_t *skeleton_component;
     struct navigation_component_t *navigation_component;
 
 	handle.def = 0;
@@ -444,6 +445,11 @@ struct component_handle_t entity_AllocComponent(int component_type, int alloc_fo
                 physics_component->entity_contact_count = 0;
             break;
 
+            case COMPONENT_TYPE_SKELETON:
+                skeleton_component = (struct skeleton_component_t *)component;
+                skeleton_component->bone_transforms = list_create(sizeof(struct bone_transform_t), 1, NULL);
+            break;
+
             /*case COMPONENT_TYPE_NAVIGATION:
                 navigation_component = (struct navigation_component_t *)component;
 
@@ -470,6 +476,7 @@ void entity_DeallocComponent(struct component_handle_t component)
 	struct stack_list_t *list;
 	struct component_t *component_ptr;
 	struct camera_component_t *camera_component;
+	struct skeleton_component_t *skeleton_component;
 
 	//list = entity_ListForType(component.type, component.def);
 	list = &ent_components[component.def][component.type];
@@ -491,11 +498,10 @@ void entity_DeallocComponent(struct component_handle_t component)
 					stack_list_remove(&ent_entity_aabbs, component.index);
 				break;
 
-				/*case COMPONENT_TYPE_CAMERA:
-					camera_component = (struct camera_component_t *)component_ptr;
-
-					camera_DestroyCamera(camera_component->camera);
-				break;*/
+				case COMPONENT_TYPE_SKELETON:
+                    skeleton_component = (struct skeleton_component_t *)component;
+                    list_destroy(&skeleton_component->bone_transforms);
+                break;
 			}
 		}
 
@@ -576,7 +582,7 @@ void entity_ParentTransformComponent(struct component_handle_t parent_transform,
 
 	if(parent_transform.index == child_transform.index)
 	{
-		printf("entity_ParentTransformCompnent: cannot parent transform with itself\n");
+		printf("entity_ParentTransformComponent: cannot parent transform with itself\n");
 		return;
 	}
 
@@ -803,8 +809,6 @@ void entity_UnpparentEntityFromEntityTransform(struct component_handle_t parent_
 }
 
 
-
-
 void entity_ParentEntity(struct entity_handle_t parent, struct entity_handle_t child)
 {
 	struct entity_t *parent_entity;
@@ -850,6 +854,64 @@ void entity_UnparentEntity(struct entity_handle_t parent, struct entity_handle_t
 	child_entity = entity_GetEntityPointerHandle(child);
 
 	entity_UnpparentEntityFromEntityTransform(parent_entity->components[COMPONENT_TYPE_TRANSFORM], child);
+}
+
+void entity_ParentEntityToBone(struct component_handle_t skeleton, int bone_index, struct entity_handle_t entity)
+{
+    struct skeleton_component_t *skeleton_ptr;
+    struct entity_t *entity_ptr;
+    struct bone_transform_t *bone_transform;
+    struct transform_component_t *transform_component;
+    int i;
+    int c;
+
+
+    if(bone_index >= 0)
+    {
+        skeleton_ptr = entity_GetComponentPointer(skeleton);
+        entity_ptr = entity_GetEntityPointerHandle(entity);
+
+        if(skeleton_ptr && entity_ptr)
+        {
+
+            bone_transform = (struct bone_transform_t *)skeleton_ptr->bone_transforms.elements;
+
+            c = skeleton_ptr->bone_transforms.element_count;
+
+            for(i = 0; i < c; i++)
+            {
+                if(bone_transform[i].bone_index == bone_index)
+                {
+                    bone_transform = bone_transform + i;
+                    break;
+                }
+            }
+
+            if(i == c)
+            {
+                i = list_add(&skeleton_ptr->bone_transforms, NULL);
+                bone_transform = (struct bone_transform_t *)list_get(&skeleton_ptr->bone_transforms, i);
+                bone_transform->bone_index = bone_index;
+
+                if(!entity.def)
+                {
+                    bone_transform->transform = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, entity.def);
+                }
+            }
+
+            transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+            transform_component->bone = bone_transform->transform;
+
+            transform_component = entity_GetComponentPointer(bone_transform->transform);
+            transform_component->children_count++;
+        }
+    }
+
+}
+
+void entity_UnparentEntityToBone(struct component_handle_t skeleton_component, struct entity_handle_t entity)
+{
+
 }
 
 /*
@@ -1684,6 +1746,7 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 	struct model_component_t *model_component;
 	struct model_component_t *def_model_component;
 	struct transform_component_t *transform_component;
+	struct transform_component_t *entity_transform_component;
 	struct transform_component_t *child_transform;
 
 	struct camera_component_t *camera_component;
@@ -1707,6 +1770,7 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 	//struct controller_component_t *def_controller;
 	struct component_t *component_ptr;
 	struct component_handle_t component_transform;
+	struct component_handle_t component_handle;
 
 	struct entity_aabb_t *aabb;
 	struct model_t *model;
@@ -1739,9 +1803,10 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 		}
 	}
 
+	transform_component = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+
 	if(!level)
     {
-        transform_component = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_TYPE_TRANSFORM]);
         scale.x *= transform_component->scale.x;
         scale.y *= transform_component->scale.y;
         scale.z *= transform_component->scale.z;
@@ -1753,12 +1818,18 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 	{
 		if(entity_def_ptr->components[component_type].type != COMPONENT_TYPE_NONE)
 		{
-			entity_AddComponent(handle, component_type);
+			component_handle = entity_AddComponent(handle, component_type);
 
 			switch(component_type)
 			{
 				case COMPONENT_TYPE_TRANSFORM:
 					entity_SetTransform(handle, orientation, position, scale, 1);
+
+                    if(transform_component->bone.type != COMPONENT_TYPE_NONE)
+                    {
+                        entity_transform_component = entity_GetComponentPointer(component_handle);
+                    }
+
 				break;
 
 				case COMPONENT_TYPE_MODEL:
@@ -1800,6 +1871,10 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
                     camera_component->view = renderer_CreateViewDef("view", vec3_t_c(0.0, 0.0, 0.0), NULL, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
 					//camera_component->camera = camera_CreateCamera("camera", vec3_t_c(0.0, 0.0, 0.0), NULL, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
 				break;
+
+				case COMPONENT_TYPE_SKELETON:
+
+                break;
 			}
 		}
 	}
@@ -3017,8 +3092,10 @@ void entity_RecursiveUpdateTransform(struct entity_transform_t *parent_transform
 	struct entity_t *entity;
 	struct entity_transform_t *world_transform;
 	struct transform_component_t *transform_component;
+	struct transform_component_t *bone_transform_component;
 	struct entity_aabb_t *aabb;
 	mat4_t transform;
+	mat4_t bone_transform;
 	int i;
 
 	vec3_t aabb_extent_max;
@@ -3042,13 +3119,30 @@ void entity_RecursiveUpdateTransform(struct entity_transform_t *parent_transform
 		mat4_t_compose2(&world_transform->transform, &transform_component->orientation, transform_component->position, transform_component->scale);
 	}
 
-	aabb_extent_max.x = world_transform->transform.floats[3][0];
+	entity = entity_GetEntityPointerHandle(transform_component->base.entity);
+
+	if(entity)
+    {
+        if(transform_component->bone.type != COMPONENT_TYPE_NONE)
+        {
+            bone_transform_component = entity_GetComponentPointer(transform_component->bone);
+
+            mat4_t_compose2(&bone_transform, &bone_transform_component->orientation,
+                                              bone_transform_component->position,
+                                              bone_transform_component->scale);
+
+            mat4_t_mult_fast(&transform, &bone_transform, &world_transform->transform);
+            world_transform->transform = transform;
+        }
+    }
+
+	/*aabb_extent_max.x = world_transform->transform.floats[3][0];
 	aabb_extent_max.y = world_transform->transform.floats[3][1];
 	aabb_extent_max.z = world_transform->transform.floats[3][2];
 
 	aabb_extent_min.x = world_transform->transform.floats[3][0];
 	aabb_extent_min.y = world_transform->transform.floats[3][1];
-	aabb_extent_min.z = world_transform->transform.floats[3][2];
+	aabb_extent_min.z = world_transform->transform.floats[3][2];*/
 
 	//entity_AabbWorldExtents(transform_component->base.entity, &aabb_extent_max, &aabb_extent_min);
 
@@ -3057,12 +3151,12 @@ void entity_RecursiveUpdateTransform(struct entity_transform_t *parent_transform
 		entity_RecursiveUpdateTransform(world_transform, transform_component->child_transforms[i], &aabb_extent_max, &aabb_extent_min);
 	}
 
-	entity = entity_GetEntityPointerHandle(transform_component->base.entity);
+
 
 	if(entity)
 	{
 		entity_UpdateAabb(transform_component->base.entity);
-		aabb = entity_GetAabbPointer(child_transform);
+		//aabb = entity_GetAabbPointer(child_transform);
 
 	/*	max.x = aabb->current_extents.x + world_transform->transform.floats[3][0];
 		max.y = aabb->current_extents.y + world_transform->transform.floats[3][1];
@@ -3191,6 +3285,10 @@ void entity_UpdateTransformComponents()
 					mat4_t_compose2(&world_transform->transform, &local_transform->orientation, local_transform->position, local_transform->scale);
 				}
 			}
+            else
+            {
+
+            }
 			/*else if(local_transform->bone.type != COMPONENT_TYPE_NONE)
             {
 
