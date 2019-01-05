@@ -540,7 +540,6 @@ void editor_LevelEditorInit()
 
 	struct skeleton_handle_t skeleton_def = animation_LoadSkeleton("tri_anim.ozz");
 	struct animation_handle_t animation = animation_LoadAnimation("le_cool_animation.ozz");
-
 	struct skeleton_handle_t skeleton = animation_SpawnSkeleton(skeleton_def);
 
 	animation_PlayAnimation(skeleton, animation);

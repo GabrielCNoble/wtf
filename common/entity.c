@@ -428,7 +428,7 @@ struct component_handle_t entity_AllocComponent(int component_type, int alloc_fo
 				gets treated as the top of a hierarchy... */
 				if(!alloc_for_def)
 				{
-					entity_AddTransformToTopList(handle);
+					entity_AddTransformToTopList(handle);   /* should this be here? */
 					stack_list_add(&ent_world_transforms, NULL);
 					stack_list_add(&ent_entity_aabbs, NULL);
 				}
@@ -477,6 +477,9 @@ void entity_DeallocComponent(struct component_handle_t component)
 	struct component_t *component_ptr;
 	struct camera_component_t *camera_component;
 	struct skeleton_component_t *skeleton_component;
+	struct bone_transform_t *bone_transform;
+	int i;
+	int c;
 
 	//list = entity_ListForType(component.type, component.def);
 	list = &ent_components[component.def][component.type];
@@ -500,6 +503,15 @@ void entity_DeallocComponent(struct component_handle_t component)
 
 				case COMPONENT_TYPE_SKELETON:
                     skeleton_component = (struct skeleton_component_t *)component;
+
+                    c = skeleton_component->bone_transforms.element_count;
+                    bone_transform = (struct bone_transform_t *)skeleton_component->bone_transforms.elements;
+
+                    for(i = 0; i < c; i++)
+                    {
+                        entity_DeallocComponent(bone_transform[i].transform);
+                    }
+
                     list_destroy(&skeleton_component->bone_transforms);
                 break;
 			}
@@ -896,14 +908,16 @@ void entity_ParentEntityToBone(struct component_handle_t skeleton, int bone_inde
                 if(!entity.def)
                 {
                     bone_transform->transform = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, entity.def);
+
+                    /* when a transform gets alloc'd, it gets set as the top
+                    of a hierarchy. To avoid the engine uselessly updating this
+                    transform, it gets removed here... */
+                    entity_RemoveTransformFromTopList(bone_transform->transform);
                 }
             }
 
             transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
             transform_component->bone = bone_transform->transform;
-
-            transform_component = entity_GetComponentPointer(bone_transform->transform);
-            transform_component->children_count++;
         }
     }
 
@@ -911,7 +925,18 @@ void entity_ParentEntityToBone(struct component_handle_t skeleton, int bone_inde
 
 void entity_UnparentEntityToBone(struct component_handle_t skeleton_component, struct entity_handle_t entity)
 {
+    struct transform_component_t *transform_component;
+    struct entity_t *entity_ptr;
 
+
+    entity_ptr = entity_GetEntityPointerHandle(entity);
+
+    if(entity_ptr)
+    {
+        transform_component = (struct transform_component_t *)entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+
+        transform_component->
+    }
 }
 
 /*
