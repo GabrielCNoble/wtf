@@ -407,7 +407,7 @@ int renderer_Init(int width, int height, int init_mode)
 
 	//SDL_GL_SetSwapInterval(0);
 
-	renderer_SetFrameRateClamping(0);
+	renderer_SetFrameRateClamping(1);
 
 	int error = glewInit();
 

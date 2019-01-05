@@ -502,7 +502,7 @@ void entity_DeallocComponent(struct component_handle_t component)
 				break;
 
 				case COMPONENT_TYPE_SKELETON:
-                    skeleton_component = (struct skeleton_component_t *)component;
+                    skeleton_component = (struct skeleton_component_t *)component_ptr;
 
                     c = skeleton_component->bone_transforms.element_count;
                     bone_transform = (struct bone_transform_t *)skeleton_component->bone_transforms.elements;
@@ -935,7 +935,7 @@ void entity_UnparentEntityToBone(struct component_handle_t skeleton_component, s
     {
         transform_component = (struct transform_component_t *)entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
-        transform_component->
+        //transform_component->
     }
 }
 

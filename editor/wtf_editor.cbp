@@ -22,9 +22,6 @@
 			<Add option="-g" />
 			<Add option="-masm=intel" />
 			<Add option="-Wno-write-strings" />
-			<Add option="-static-libgcc" />
-			<Add option="-static-libstdc++" />
-			<Add option="-static" />
 			<Add directory="../common/SDL/include" />
 			<Add directory="../common/GLEW/include" />
 			<Add directory="../common/soil" />
@@ -45,6 +42,8 @@
 			<Add directory='&quot;level editor&quot;' />
 		</Compiler>
 		<Linker>
+			<Add option="-static-libstdc++" />
+			<Add option="-static-libgcc" />
 			<Add option="-m32" />
 			<Add library="mingw32" />
 			<Add library="opengl32" />
@@ -445,7 +444,9 @@
 			<Option compiler="gcc" use="1" buildCommand="g++.exe $options $includes -c $file -o $object" />
 		</Unit>
 		<Unit filename="../common/script_types/scr_types.h" />
-		<Unit filename="../common/script_types/scriptstdstring.cpp" />
+		<Unit filename="../common/script_types/scriptstdstring.cpp">
+			<Option compiler="gcc" use="0" buildCommand="g++.exe $options -c $file -o $object" />
+		</Unit>
 		<Unit filename="../common/script_types/scriptstdstring.h" />
 		<Unit filename="../common/shader.c">
 			<Option compilerVar="CC" />
