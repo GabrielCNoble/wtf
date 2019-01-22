@@ -208,6 +208,11 @@ void editor_EntityEditorDrawColliderDef(int pick)
 			transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
 			physics_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_PHYSICS]);
 
+            if(!physics_component)
+            {
+                continue;
+            }
+
 			collider_def = physics_GetColliderDefPointerHandle(physics_component->collider);
 
 			if(collider_def)

@@ -42,11 +42,10 @@ struct ClosestNotMeConvexResultCallback : public btCollisionWorld::ClosestConvex
 		m_convexFromWorld = convexFromWorld;
 		m_convexToWorld = convexToWorld;
 		m_caller = caller;
-		m_hitFraction = 1.0;
+		m_closestHitFraction = 1.0;
 	}
 
 	const btCollisionObject *m_caller;
-	btScalar m_hitFraction;
 
 	virtual	btScalar addSingleResult(btCollisionWorld::LocalConvexResult& convexResult,bool normalInWorldSpace)
 	{
@@ -60,9 +59,8 @@ struct ClosestNotMeConvexResultCallback : public btCollisionWorld::ClosestConvex
 			}
 		}
 
-		if(convexResult.m_hitFraction < m_hitFraction)
+		if(convexResult.m_hitFraction < m_closestHitFraction)
 		{
-			m_hitFraction = convexResult.m_hitFraction;
 			return ClosestConvexResultCallback::addSingleResult(convexResult, normalInWorldSpace);
 		}
 
@@ -161,6 +159,7 @@ void physics_Jump(struct collider_handle_t character_collider, float jump_force)
 			rigid_body = (btRigidBody *)collider->base.collision_object;
 			rigid_body->activate(true);
 			rigid_body->applyCentralImpulse(btVector3(0.0, jump_force, 0.0));
+			collider->flags |= CHARACTER_COLLIDER_FLAG_JUST_JUMPED;
 		}
 	}
 }
@@ -186,7 +185,7 @@ void physics_Move(struct collider_handle_t character_collider, vec3_t direction)
 
 	if(collider)
 	{
-		if(direction.x != 0.0 && direction.z != 0.0)
+		if(direction.x != 0.0 || direction.z != 0.0)
 		{
 			collider->flags |= CHARACTER_COLLIDER_FLAG_WALKING;
 			rigid_body = (btRigidBody *)collider->base.collision_object;
@@ -283,6 +282,10 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	btVector3 smallest_horizontal_contact_normal;
 	float smallest_horizontal_contact_time;
 
+    vec3_t base_position;
+	float spring_force;
+
+
 
 
 	int collision_with_world;
@@ -313,25 +316,84 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	collider = (struct character_collider_t *)physics_GetColliderPointer(character_collider);
 
 	rigid_body = (btRigidBody *)collider->base.collision_object;
-	//capsule = (btCapsuleShape *)rigid_body->getCollisionShape();
+    capsule = (btCapsuleShape *)rigid_body->getCollisionShape();
 
-	//to = btVector3(collider->position.x, collider->position.y - collider->step_height * 0.5, collider->position.z);
-	//from = btVector3(collider->position.x, collider->position.y, collider->position.z);
+    base_position = collider->base.position;
+    //base_position.y -= collider->height * 0.5;
+
+	to = btVector3(base_position.x, base_position.y - collider->max_step_height, base_position.z);
+	from = btVector3(base_position.x, base_position.y, base_position.z);
 
 	//AllConvexResultCallback result_callback(from, to, rigid_body);
-//	ClosestNotMeConvexResultCallback closest_result_callback(from, to, rigid_body);
+	ClosestNotMeConvexResultCallback closest_result_callback(from, to, rigid_body);
 	//btCollisionWorld::ClosestConvexResultCallback result_callback(from, to);
 
 
 
-	//transform_from.setIdentity();
-	//transform_from.setOrigin(from);
+	transform_from.setIdentity();
+	transform_from.setOrigin(from);
 
-	//transform_to.setIdentity();
-	//transform_to.setOrigin(to);
+	transform_to.setIdentity();
+	transform_to.setOrigin(to);
 
 //	physics_world->convexSweepTest((const btConvexShape *)rigid_body->getCollisionShape(), transform_from, transform_to, result_callback);
-//	physics_world->convexSweepTest(capsule, transform_from, transform_to, closest_result_callback);
+	physics_world->convexSweepTest(capsule, transform_from, transform_to, closest_result_callback);
+
+    contact_position.x = closest_result_callback.m_hitPointWorld[0];
+    contact_position.y = closest_result_callback.m_hitPointWorld[1];
+    contact_position.z = closest_result_callback.m_hitPointWorld[2];
+
+    collider->flags &= ~CHARACTER_COLLIDER_FLAG_ON_GROUND;
+
+    linear_velocity = rigid_body->getLinearVelocity();
+
+    if(closest_result_callback.m_closestHitFraction < 1.0 && (!(collider->flags & CHARACTER_COLLIDER_FLAG_JUST_JUMPED)))
+    {
+
+        collider->flags |= CHARACTER_COLLIDER_FLAG_ON_GROUND;
+
+        spring_force = (1.0 - closest_result_callback.m_closestHitFraction) * 100.0;
+
+        //if(linear_velocity[1] < 0.0)
+        {
+             spring_force -= (linear_velocity[1]) * 50.0;
+        }
+
+        rigid_body->applyCentralForce(btVector3(0.0, spring_force, 0.0));
+
+        renderer_DrawPoint(contact_position, vec3_t_c(0.0, 1.0, 0.0), 8.0, 1, 0, 1);
+    }
+
+    horizontal_delta = sqrt(linear_velocity[0] * linear_velocity[0] + linear_velocity[2] * linear_velocity[2]);
+
+    if(horizontal_delta > collider->max_walk_speed)
+    {
+        horizontal_delta = collider->max_walk_speed / horizontal_delta;
+
+        linear_velocity[0] *= horizontal_delta;
+        linear_velocity[2] *= horizontal_delta;
+
+        rigid_body->setLinearVelocity(linear_velocity);
+    }
+
+
+    if(!(collider->flags & CHARACTER_COLLIDER_FLAG_WALKING))
+    {
+        linear_velocity[0] *= 4.0;
+        linear_velocity[1] = 0.0;
+        linear_velocity[2] *= 4.0;
+        rigid_body->applyCentralForce(-linear_velocity);
+    }
+    /*else
+    {
+        linear_velocity[0] *= 4.0;
+        linear_velocity[1] = 0.0;
+        linear_velocity[2] *= 4.0;
+        rigid_body->applyCentralForce(-linear_velocity);
+    }*/
+
+    collider->flags &= ~CHARACTER_COLLIDER_FLAG_JUST_JUMPED;
+    collider->flags &= ~CHARACTER_COLLIDER_FLAG_WALKING;
 
 
 	//positions = result_callback.m_hitPointWorld;
@@ -343,8 +405,16 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	//smallest_hit_time = 1.0;
 	//smallest_hit_angle = 0.0;
 
+
+
+
+
+
+	#if 0
+
 	smallest_vertical_contact_dist = 2.0;
 	smallest_horizontal_contact_time = 2.0;
+
 
 
 	contact_records = physics_GetColliderContactRecords(character_collider);
@@ -543,6 +613,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 		}
 	}
 
+    #endif
 
     #if 0
 
@@ -600,10 +671,6 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	}
 
 	#endif
-
-
-
-	collider->flags &= ~CHARACTER_COLLIDER_FLAG_WALKING;
 
 	//world_collision_mesh->getMeshInterface()->unLockVertexBase(0);
 }

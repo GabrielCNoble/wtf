@@ -169,6 +169,10 @@ struct world_level_t *world_GetLevel(char *level_name);
 
 void world_ChangeLevel(char *level_name);
 
+struct world_level_t *world_LoadLevel(char *level_name);
+
+void world_UnloadCurrentLevel();
+
 
 #ifdef __cplusplus
 }

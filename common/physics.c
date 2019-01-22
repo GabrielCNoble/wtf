@@ -2295,7 +2295,7 @@ void physics_BuildWorldCollisionMesh()
 	world_collision_object->setCollisionShape(world_collision_mesh);
 	world_collision_object->setUserIndex(*(int *)&handle);
 
-	physics_world->addCollisionObject(world_collision_object, 0xffff, 0xffff);
+	physics_world->addCollisionObject(world_collision_object);
 }
 
 #ifdef __cplusplus

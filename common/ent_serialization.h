@@ -72,12 +72,12 @@ struct entity_record_end_t
 	char tag[(sizeof(entity_record_end_tag) + 3) & (~3)];
 };
 
-static char entity_file_record_tag[] = "[entity file record]";
+static char entity_name_record_tag[] = "[entity name record]";
 
-struct entity_file_record_t
+struct entity_name_record_t
 {
-	char tag[(sizeof(entity_file_record_tag) + 3) & (~3)];
-	char file_name[PATH_MAX];
+	char tag[(sizeof(entity_name_record_tag) + 3) & (~3)];
+	char entity_name[PATH_MAX];
 };
 
 
@@ -281,7 +281,7 @@ extern "C"
 {
 #endif
 
-void entity_WriteComponent(void **buffer, struct component_t *component, int nestled, int ref, int dry_fire);
+void entity_WriteComponent(void **buffer, struct component_handle_t component_handle, int nestled, int ref, int dry_fire);
 
 void entity_WriteProp(void **buffer, struct entity_prop_t *prop, int dry_fire);
 
@@ -294,6 +294,10 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 void entity_SerializeEntity(void **buffer, int *buffer_size, struct entity_handle_t entity);
 
 void entity_SerializeEntityDef(void **buffer, int *buffer_size, struct entity_handle_t entity_def);
+
+void entity_SerializeEntityDefName(void **buffer, int *buffer_size, struct entity_handle_t entity_def);
+
+char *entity_DeserializeEntityDefName(void **buffer);
 
 
 

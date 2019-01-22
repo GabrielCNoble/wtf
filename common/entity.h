@@ -195,6 +195,8 @@ static ALWAYS_FORCE_INLINE struct entity_handle_t entity_GetNestledEntityHandle(
 
 struct entity_source_file_t *entity_GetSourceFile(struct entity_handle_t entity);
 
+struct entity_handle_t *entity_GetEntityDefs();
+
 
 /*
 ==============================================================
@@ -302,9 +304,10 @@ void entity_EmitDrawCmdsForEntity(struct entity_handle_t entity, mat4_t *transfo
 */
 
 
-void entity_SaveEntityDef(char *file_name, struct entity_handle_t entity_def);
+void entity_SaveEntityDef(char *path, struct entity_handle_t entity_def);
 
 struct entity_handle_t entity_LoadEntityDef(char *file_name);
+
 
 
 

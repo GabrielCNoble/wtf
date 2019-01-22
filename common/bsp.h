@@ -54,7 +54,7 @@ void bsp_DeserializeBsp(void **buffer);
 
 void bsp_SaveBsp(char *output_name);
 
-void bsp_LoadBsp(char *file_name);
+void *bsp_LoadBsp(char *file_name);
 
 
 #ifdef __cplusplus

@@ -538,11 +538,11 @@ void editor_LevelEditorInit()
 
 
 
-	struct skeleton_handle_t skeleton_def = animation_LoadSkeleton("tri_anim.ozz");
+	/*struct skeleton_handle_t skeleton_def = animation_LoadSkeleton("tri_anim.ozz");
 	struct animation_handle_t animation = animation_LoadAnimation("le_cool_animation.ozz");
 	struct skeleton_handle_t skeleton = animation_SpawnSkeleton(skeleton_def);
 
-	animation_PlayAnimation(skeleton, animation);
+	animation_PlayAnimation(skeleton, animation);*/
 
 	level_editor_debug_draw_flags = R_DEBUG_DRAW_FLAG_DRAW_ENTITIES | R_DEBUG_DRAW_FLAG_DRAW_LIGHTS |
                                     R_DEBUG_DRAW_FLAG_DRAW_TRIGGERS | R_DEBUG_DRAW_FLAG_DRAW_WAYPOINTS;
@@ -1451,9 +1451,6 @@ void editor_LevelEditorCopyLevelData()
 		level_editor_world_batch_count = w_world_batch_count;
 		level_editor_world_batches = w_world_batches;
 
-
-
-
 		if(level_editor_entity_buffer)
 		{
 			memory_Free(level_editor_entity_buffer);
@@ -1475,98 +1472,6 @@ void editor_LevelEditorCopyLevelData()
 		}
 
 		light_SerializeLights(&level_editor_light_buffer, &level_editor_light_buffer_size);
-
-
-
-
-
-		/*FILE *file;
-
-		file = fopen("test.dmp", "wb");
-		fwrite(level_editor_entity_buffer, level_editor_entity_buffer_size, 1, file);
-		fclose(file);*/
-
-		/************************************************************************************************/
-
-	/*	if(ent_entity_list_size >= level_editor_entity_list_size)
-		{
-			if(level_editor_entities)
-			{
-				memory_Free(level_editor_entities);
-				memory_Free(level_editor_entity_aabbs);
-				memory_Free(level_editor_entity_free_stack);
-			}
-			level_editor_entities = memory_Malloc(sizeof(struct entity_t ) * ent_entity_list_size, "editor_LevelEditorCopyLevelData");
-			level_editor_entity_aabbs = memory_Malloc(sizeof(struct entity_aabb_t) * ent_entity_list_size, "editor_LevelEditorCopyLevelData");
-			level_editor_entity_free_stack = memory_Malloc(sizeof(int) * ent_entity_list_size, "editor_LevelEditorCopyLevelData");
-			level_editor_entity_list_size = ent_entity_list_size;
-		}*/
-
-		//for(i = 0; i < ent_entity_list_cursor; i++)
-		//{
-		//	level_editor_entities[i] = ent_entities[i];
-	//		level_editor_entity_aabbs[i] = ent_aabbs[i];
-		//	level_editor_entity_free_stack[i] = ent_free_stack[i];
-		//}
-
-		//level_editor_entity_list_cursor = ent_entity_list_cursor;
-		//level_editor_entity_free_stack_top = ent_free_stack_top;
-
-		/************************************************************************************************/
-
-		/*if(max_colliders >= level_editor_collider_list_size)
-		{
-			if(level_editor_colliders)
-			{
-				memory_Free(level_editor_colliders);
-				memory_Free(level_editor_collider_free_stack);
-			}
-
-			level_editor_colliders = memory_Malloc(sizeof(collider_t) * max_colliders, "editor_LevelEditorCopyLevelData");
-			level_editor_collider_free_stack = memory_Malloc(sizeof(int) * max_colliders, "editor_LevelEditorCopyLevelData");
-		}
-
-		for(i = 0; i < collider_list_cursor; i++)
-		{
-			level_editor_colliders[i] = colliders[i];
-			level_editor_collider_free_stack[i] = colliders_free_positions_stack[i];
-		}
-
-		level_editor_collider_list_size = max_colliders;
-		level_editor_collider_list_cursor = collider_list_cursor;
-		level_editor_collider_free_stack_top = colliders_free_positions_stack_top;*/
-
-
-
-		/************************************************************************************************/
-
-		/*if(l_light_list_size >= level_editor_light_list_size)
-		{
-			if(level_editor_light_params)
-			{
-				memory_Free(level_editor_light_params);
-				memory_Free(level_editor_light_positions);
-				memory_Free(level_editor_light_free_stack);
-			}
-
-			level_editor_light_params = memory_Malloc(sizeof(light_params_t) * l_light_list_size);
-			level_editor_light_positions = memory_Malloc(sizeof(light_position_t) * l_light_list_size);
-			level_editor_light_free_stack = memory_Malloc(sizeof(int) * l_light_list_size);
-
-			level_editor_light_list_size = l_light_list_size;
-		}
-
-		for(i = 0; i < l_light_list_cursor; i++)
-		{
-			level_editor_light_positions[i] = l_light_positions[i];
-			level_editor_light_params[i] = l_light_params[i];
-			level_editor_light_free_stack[i] = l_free_position_stack[i];
-		}
-
-		level_editor_light_list_cursor = l_light_list_cursor;
-		level_editor_light_free_stack_top = l_free_position_stack_top;*/
-
-		/************************************************************************************************/
 
 		level_editor_has_copied_data = 1;
 		level_editor_need_to_copy_data = 0;
@@ -1834,6 +1739,7 @@ void editor_LevelEditorNewLevel()
 {
 	world_Clear(WORLD_CLEAR_FLAG_ALL);
 	brush_DestroyAllBrushes();
+	script_DestroyAllScripts();
 
     level_editor_has_copied_data = 0;
     level_editor_need_to_copy_data = 0;
@@ -1882,6 +1788,9 @@ int editor_LevelEditorSaveLevel(char *file_path, char *file_name, void **file_bu
 
     void *buffer = NULL;
     int buffer_size = 0;
+
+    struct entity_handle_t *entity_defs;
+    int entity_defs_count;
 
     struct texture_t *texture;
 
@@ -1943,6 +1852,15 @@ int editor_LevelEditorSaveLevel(char *file_path, char *file_name, void **file_bu
 
             case LEVEL_EDITOR_FOLDER_SCRIPTS:
 
+            break;
+
+            case LEVEL_EDITOR_FOLDER_ENTITIES:
+                entity_defs = entity_GetEntityDefs(&entity_defs_count);
+
+                for(j = 0; j < entity_defs_count; j++)
+                {
+                    entity_SaveEntityDef(sub_path, entity_defs[j]);
+                }
             break;
         }
 

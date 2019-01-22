@@ -618,14 +618,41 @@ char *path_AddExtToName(char *file_name, char *ext)
 	{
 		if(ret[i] == '.')
 		{
-			break;
+		    /* this file name already has
+		    an extension... */
+
+
+		    if(ext[0] != '.')
+            {
+                /* if the extension string
+                doesn't have a '.', step
+                forward to test the extension
+                of the file name without its '.' ... */
+                i++;
+            }
+
+		    if(!strcmp(ret + i, ext))
+            {
+                /* this file name already
+                has this extension, so just
+                get out of here... */
+                break;
+            }
 		}
 	}
 
 	if(ret[i] == '\0')
 	{
+	    /* if we got to the end
+	    of the file name string, it
+	    means we need to add the
+	    extension... */
+
 		if(ext[0] != '.')
 		{
+		    /* ext string doesn't have a '.', so add
+		    one to the file name before concatenaing
+		    it... */
 			strcat(ret, ".");
 		}
 

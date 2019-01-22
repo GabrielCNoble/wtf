@@ -172,7 +172,7 @@ void editor_EntityEditorFinishUI()
 void editor_EntityEditorUpdateUI()
 {
 
-if(gui_ImGuiBeginMainMenuBar())
+    if(gui_ImGuiBeginMainMenuBar())
 	{
 		if(gui_ImGuiBeginMenu("File"))
 		{
@@ -333,7 +333,12 @@ void editor_EntityEditorAddComponentMenu()
 			if(gui_ImGuiMenuItem("Remove", NULL, NULL, 1))
 			{
 				transform_component = entity_GetComponentPointer(ed_entity_editor_selected_def_transform);
-				entity_UnpparentEntityFromEntityTransform(transform_component->parent, ed_entity_editor_selected_def);
+
+				if(transform_component)
+                {
+                    entity_UnpparentEntityFromEntityTransform(transform_component->parent, ed_entity_editor_selected_def);
+                }
+
 				ed_entity_editor_add_component_menu_open = 0;
 				ed_entity_editor_update_preview_entity = 1;
 			}
@@ -795,6 +800,11 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 				}
 
 				if(gui_ImGuiDragFloat("max walk speed", &collider_def->max_walk_speed, 0.01, 0.1, 10.0, "%0.3f", 1.0))
+				{
+					ed_entity_editor_update_preview_entity = 1;
+				}
+
+				if(gui_ImGuiDragFloat("max step height", &collider_def->max_step_height, 0.001, 0.001, collider_def->height * 0.5, "%.03f", 1.0))
 				{
 					ed_entity_editor_update_preview_entity = 1;
 				}

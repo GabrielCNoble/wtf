@@ -26,6 +26,8 @@
 
 #define INVALID_COMPONENT_HANDLE (struct component_handle_t){COMPONENT_TYPE_NONE,0,INVALID_COMPONENT_INDEX}
 #define COMPONENT_HANDLE(type, index, def) (struct component_handle_t){type, def, index}
+
+#define ENTITY_HANDLE(index, def) (struct entity_handle_t){def, index}
 #define INVALID_ENTITY_HANDLE (struct entity_handle_t){1, INVALID_ENTITY_INDEX}
 
 
@@ -102,6 +104,13 @@ enum COMPONENT_TYPES
 	COMPONENT_TYPE_BONE,
 	COMPONENT_TYPE_LAST,
 	COMPONENT_TYPE_NONE = COMPONENT_TYPE_LAST
+};
+
+enum ENTITY_ORIENTATION_AXIS
+{
+    ENTITY_ORIENTATION_AXIS_X = 0,
+    ENTITY_ORIENTATION_AXIS_Y,
+    ENTITY_ORIENTATION_AXIS_Z,
 };
 
 struct component_handle_t
@@ -335,6 +344,25 @@ struct skeleton_component_t
     struct component_t base;
     struct skeleton_handle_t skeleton;
     struct list_t bone_transforms;
+};
+
+/*
+==============================================================
+==============================================================
+==============================================================
+*/
+
+struct bone_component_t
+{
+    struct component_t base;
+    struct component_handle_t skeleton_component;
+
+
+    /* this allows for direct access to the bone transform. Queries to
+    which bone this component references won't be as common as accessing
+    its transform, hence the direct reference to the transform instead
+    of a bone index here... */
+    struct component_handle_t bone_transform;
 };
 
 /*

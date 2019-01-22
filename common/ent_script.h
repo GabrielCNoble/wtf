@@ -57,6 +57,10 @@ void *entity_ScriptGetForwardVector(int local);
 
 void *entity_ScriptGetEntityForwardVector(struct entity_handle_t entity, int local);
 
+void *entity_ScriptGetEntityRightVector(struct entity_handle_t entity, int local);
+
+void *entity_ScriptGetEntityVector(struct entity_handle_t entity, int axis, int local);
+
 
 
 void entity_ScriptTranslate(vec3_t *direction);

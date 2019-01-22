@@ -1496,11 +1496,11 @@ void bsp_DeserializeBsp(void **buffer)
 
 
 
-			log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "bsp deserialized succesfully!\nNodes: %d\nLeaves: %d\nTriangles: %d\nBatches: %d",
-																											record_start->node_count,
-																											record_start->leaf_count,
-																											record_start->triangle_count,
-																											record_start->batch_count);
+//			log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "bsp deserialized succesfully!\nNodes: %d\nLeaves: %d\nTriangles: %d\nBatches: %d",
+//																											record_start->node_count,
+//																											record_start->leaf_count,
+//																											record_start->triangle_count,
+//																											record_start->batch_count);
 
 
 			world_Update();
@@ -1541,7 +1541,7 @@ void bsp_SaveBsp(char *output_name)
     fclose(file);
 }
 
-void bsp_LoadBsp(char *file_name)
+void *bsp_LoadBsp(char *file_name)
 {
     void *file_buffer;
     void *read_buffer;
@@ -1562,13 +1562,15 @@ void bsp_LoadBsp(char *file_name)
 		fread(file_buffer, file_buffer_size, 1, file);
 		fclose(file);
 
-		read_buffer = file_buffer;
+		return file_buffer;
 
-		log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "bsp_LoadBsp: deserializing map [%s]", file_name);
+		//read_buffer = file_buffer;
 
-		bsp_DeserializeBsp(&read_buffer);
+		//log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "bsp_LoadBsp: deserializing map [%s]", file_name);
 
-		memory_Free(file_buffer);
+		//bsp_DeserializeBsp(&read_buffer);
+
+		//memory_Free(file_buffer);
 	}
 	else
 	{

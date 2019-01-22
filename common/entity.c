@@ -76,7 +76,8 @@ struct stack_list_t ent_world_transforms;
 struct list_t ent_top_transforms;
 
 struct list_t ent_entity_contacts;
-
+struct list_t ent_invalid_entities;
+struct list_t ent_valid_entity_defs;
 
 struct stack_list_t ent_triggers;
 
@@ -163,6 +164,8 @@ int entity_Init()
 	===============================================================
 	*/
 
+	ent_invalid_entities = list_create(sizeof(struct entity_handle_t ), 512, NULL);
+	ent_valid_entity_defs = list_create(sizeof(struct entity_handle_t), 512, NULL);
     ent_entity_contacts = list_create(sizeof(struct entity_contact_t), 65536, NULL);
 
 
@@ -177,6 +180,7 @@ int entity_Init()
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_LIFE, sizeof(struct life_component_t));
     DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_NAVIGATION, sizeof(struct navigation_component_t));
     DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_SKELETON, sizeof(struct skeleton_component_t));
+    DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_BONE, sizeof(struct bone_component_t));
 
 	DECLARE_COMPONENT_FIELDS(COMPONENT_TYPE_TRANSFORM, {
 															COMPONENT_FIELD("orientation", SCRIPT_VAR_TYPE_MAT3T, COMPONENT_FIELD_OFFSET(struct transform_component_t, orientation)),
@@ -224,7 +228,7 @@ int entity_Init()
     script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_LIFE", COMPONENT_TYPE_LIFE);
     script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_NAVIGATION", COMPONENT_TYPE_NAVIGATION);
     script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_SKELETON", COMPONENT_TYPE_SKELETON);
-
+    script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_BONE", COMPONENT_TYPE_BONE);
 
     script_RegisterObjectType("entity_handle_t", sizeof(struct entity_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
     script_RegisterObjectType("component_handle_t", sizeof(struct component_handle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
@@ -257,6 +261,9 @@ int entity_Init()
     script_RegisterGlobalFunction("void entity_Rotate(vec3_t &in axis, float angle, int set)", entity_ScriptRotate);
     script_RegisterGlobalFunction("void entity_RotateEntity(entity_handle_t entity, vec3_t &in ais, float angle, int set)", entity_ScriptRotateEntity);
 
+
+    script_RegisterGlobalFunction("vec3_t &entity_GetEntityForwardVector(entity_handle_t entity, int local)", entity_ScriptGetEntityForwardVector);
+    script_RegisterGlobalFunction("vec3_t &entity_GetEntityRightVector(entity_handle_t entity, int local)", entity_ScriptGetEntityRightVector);
 
     script_RegisterGlobalFunction("void entity_SetEntityVelocity(entity_handle_t entity, vec3_t &in velocity)", entity_ScriptSetEntityVelocity);
 
@@ -959,11 +966,6 @@ struct entity_handle_t entity_CreateEntityDef(char *name)
 	entity_SetTransform(handle, NULL, vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), 0);
 
 	return handle;
-}
-
-void entity_DestroyEntityDef(struct entity_handle_t entity)
-{
-	//if(entity_def_index)
 }
 
 struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int component_type)
@@ -1760,7 +1762,7 @@ struct entity_handle_t entity_CreateEntity(char *name, int def)
 }
 
 
-struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t position, vec3_t scale, struct entity_handle_t entity_def, struct component_handle_t transform, char *name)
+struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t position, vec3_t scale, struct entity_handle_t entity_def, struct component_handle_t referencing_transform, char *name)
 {
 	struct entity_t *entity_ptr;
 	struct entity_t *entity_def_ptr;
@@ -1787,6 +1789,11 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 
 	struct script_component_t *script_component;
 	struct script_component_t *def_script_component;
+
+	struct skeleton_component_t *def_skeleton_component;
+	struct skeleton_component_t *skeleton_component;
+	struct bone_transform_t *bone_transform;
+	struct bone_transform_t *def_bone_transform;
 
 	//struct physics_controller_component_t *physics_controller;
 	//struct physics_controller_component_t *def_physics_controller;
@@ -1898,6 +1905,25 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 				break;
 
 				case COMPONENT_TYPE_SKELETON:
+                    def_skeleton_component = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_TYPE_SKELETON]);
+                    skeleton_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SKELETON]);
+
+                    skeleton_component->skeleton = animation_SpawnSkeleton(def_skeleton_component->skeleton);
+
+                    skeleton_component->bone_transforms = list_create(sizeof(struct bone_transform_t), def_skeleton_component->bone_transforms.element_count, NULL);
+
+                    bone_transform = (struct bone_transform_t *)skeleton_component->bone_transforms.elements;
+                    def_bone_transform = (struct bone_transform_t *)def_skeleton_component->bone_transforms.elements;
+                    j = def_skeleton_component->bone_transforms.element_count;
+
+                    for(i = 0; i < j; i++)
+                    {
+                        bone_transform[i].bone_index = def_bone_transform[i].bone_index;
+                        bone_transform[i].transform = entity_AllocComponent(COMPONENT_TYPE_TRANSFORM, 0);
+                        entity_RemoveTransformFromTopList(bone_transform[i].transform);
+                    }
+
+
 
                 break;
 			}
@@ -1919,28 +1945,11 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 	entity_ptr->flags = 0;
 	entity_ptr->def = entity_def;
 
-	transform_component = entity_GetComponentPointer(transform);
-
-	if(transform_component)
-	{
-		for(i = 0; i < transform_component->children_count; i++)
-		{
-			child_transform = entity_GetComponentPointer(transform_component->child_transforms[i]);
-
-			if(child_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
-			{
-				rec_entity_def_ptr = entity_GetEntityPointerHandle(child_transform->base.entity);
-				child_handle = entity_RecursiveSpawnEntity(&child_transform->orientation, child_transform->position, child_transform->scale, child_transform->base.entity, transform_component->child_transforms[i], child_transform->instance_name);
-				entity_ParentEntity(handle, child_handle);
-			}
-		}
-	}
-
-	//entity_def_ptr = entity_GetEntityPointerHandle(entity_def);
 	transform_component = entity_GetComponentPointer(entity_def_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
 	for(i = 0; i < transform_component->children_count; i++)
 	{
+	    /* go over the list of nestled transforms and spawn everything... */
 		child_transform = entity_GetComponentPointer(transform_component->child_transforms[i]);
 
 		if(child_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
@@ -1950,6 +1959,35 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 			entity_ParentEntity(handle, child_handle);
 		}
 	}
+
+
+
+
+	transform_component = entity_GetComponentPointer(referencing_transform);
+
+	if(transform_component)
+	{
+	    if(referencing_transform.index != entity_def_ptr->components[COMPONENT_TYPE_TRANSFORM].index)
+        {
+            /* if the referencing transform is not the same that this entity def has, it means
+            this is just a reference to the entity def, and so we may have nestled entities
+            in this reference. If that's the case, go over its list of nestled transforms and
+            spawn anything that may need spawning... */
+            for(i = 0; i < transform_component->children_count; i++)
+            {
+                child_transform = entity_GetComponentPointer(transform_component->child_transforms[i]);
+
+                if(child_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
+                {
+                    rec_entity_def_ptr = entity_GetEntityPointerHandle(child_transform->base.entity);
+                    child_handle = entity_RecursiveSpawnEntity(&child_transform->orientation, child_transform->position, child_transform->scale, child_transform->base.entity, transform_component->child_transforms[i], child_transform->instance_name);
+                    entity_ParentEntity(handle, child_handle);
+                }
+            }
+	    }
+	}
+
+	//entity_def_ptr = entity_GetEntityPointerHandle(entity_def);
 
 	level--;
 
@@ -1974,54 +2012,32 @@ void entity_MarkForRemoval(struct entity_handle_t entity)
 	struct script_component_t *script_component;
 
 
-	if(entity.def)
+	/*if(entity.def)
 	{
 		printf("entity_MarkForRemoval: can't mark entity def for removal\n");
 		return;
-	}
+	}*/
 
 	entity_ptr = entity_GetEntityPointerHandle(entity);
 
 	if(entity_ptr)
 	{
 		entity_ptr->flags |= ENTITY_FLAG_MARKED_INVALID;
-
-
-
-		/*script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
-
-		if(script_component)
-		{
-			script = (struct entity_script_t *)script_component->script;
-
-			if(!script->on_die_entry_point)
-			{
-				entity_ptr->flags |= ENTITY_FLAG_EXECUTED_DIE_FUNCTION;
-			}
-		}*/
-
-		//if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type == COMPONENT_TYPE_NONE)
-		//{
-			/* no script component present, so just remove the
-			entity right away... */
-
-        //    entity_RemoveEntity(entity);
-
-			//script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
-			//script_ExecuteScriptImediate(script_component->script, script_component);
-		//}
+		list_add(&ent_invalid_entities, &entity);
 	}
 }
 
 void entity_RemoveEntity(struct entity_handle_t entity)
 {
 	struct entity_t *entity_ptr;
+	struct entity_t *child_entity_ptr;
 	struct component_handle_t component;
 
 	struct camera_component_t *camera_component;
 	struct physics_component_t *physics_component;
 	struct script_component_t *script_component;
 	struct transform_component_t *transform_component;
+	struct transform_component_t *child_transform_component;
 	struct component_t *component_ptr;
 
 	int component_type;
@@ -2038,24 +2054,30 @@ void entity_RemoveEntity(struct entity_handle_t entity)
 	if(entity_ptr)
 	{
 
-		//entity_ptr->flags |= ENTITY_FLAG_MARKED_INVALID;
+        if(!entity.def)
+        {
+            if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type != COMPONENT_TYPE_NONE)
+            {
+                script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
 
-		if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type != COMPONENT_TYPE_NONE)
-		{
-			script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
-
-			script_ExecuteScriptImediate(script_component->script, script_component);
-		}
+                script_ExecuteScriptImediate(script_component->script, script_component);
+            }
+        }
 
 		transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
 		for(i = 0; i < transform_component->children_count; i++)
 		{
-			component_ptr = entity_GetComponentPointer(transform_component->child_transforms[i]);
+			child_transform_component = (struct transform_component_t *)entity_GetComponentPointer(transform_component->child_transforms[i]);
 
-			if(component_ptr->entity.entity_index != INVALID_ENTITY_INDEX)
+			if(child_transform_component->base.entity.entity_index != INVALID_ENTITY_INDEX)
 			{
-				entity_RemoveEntity(component_ptr->entity);
+			    //if(!(child_transform_component->flags & COMPONENT_FLAG_ENTITY_DEF_REF))
+                {
+                    /* for entity defs only, make sure this isn't a reference to another
+                    def... */
+                    entity_RemoveEntity(child_transform_component->base.entity);
+                }
 			}
 		}
 
@@ -2084,7 +2106,7 @@ void entity_RemoveEntity(struct entity_handle_t entity)
 
 		entity_ptr->flags = ENTITY_FLAG_INVALID;
 
-		stack_list_remove(&ent_entities[0], entity.entity_index);
+		stack_list_remove(&ent_entities[entity.def], entity.entity_index);
 	}
 
 }
@@ -2113,12 +2135,43 @@ void entity_RemoveAllEntities()
 void entity_RemoveMarkedEntities()
 {
 	struct entity_t *entity;
+	struct entity_t *entity_defs;
 	struct entity_handle_t handle;
+	struct entity_handle_t *invalid_entities;
 
 	int i;
 	int c;
 
-	handle.def = 0;
+	invalid_entities = (struct entity_handle_t *)ent_invalid_entities.elements;
+	i = ent_invalid_entities.element_count - 1;
+
+
+	for(i = 0; i >= 0; i--)
+    {
+        handle = invalid_entities[i];
+        entity = (struct entity_t *)ent_entities[handle.def].elements + handle.entity_index;
+
+        if(entity->flags & ENTITY_FLAG_MARKED_INVALID)
+        {
+            switch(handle.def)
+            {
+                case 1:
+//                    entity_DestroyEntityDef(handle);
+                break;
+
+                case 0:
+                    entity_RemoveEntity(handle);
+                break;
+            }
+        }
+    }
+
+    ent_invalid_entities.element_count = 0;
+
+
+
+
+	/*handle.def = 0;
 
 	c = ent_entities[0].element_count;
 
@@ -2136,6 +2189,18 @@ void entity_RemoveMarkedEntities()
 			}
 		}
 	}
+
+
+	entity_defs = (struct entity_t *)ent_entities[1].elements;
+
+	c = ent_entities[1].elements;
+
+	for(i = 0; i < c; i++)
+    {
+        entity = entity_defs + i;
+
+        if(entity)
+    }*/
 }
 
 /* editor specific kludge... */
@@ -2515,6 +2580,35 @@ struct entity_source_file_t *entity_GetSourceFile(struct entity_handle_t entity)
 	}
 
 	return source_file;
+}
+
+struct entity_handle_t *entity_GetEntityDefs(int *count)
+{
+    struct entity_t *entity_defs;
+    struct entity_t *entity_def;
+    int i;
+    int c;
+
+
+    entity_defs = (struct entity_t *) ent_entities[1].elements;
+    c = ent_entities[1].element_count;
+
+
+    ent_valid_entity_defs.element_count = 0;
+
+    for(i = 0; i < c; i++)
+    {
+        entity_def = entity_GetEntityPointerHandle(ENTITY_HANDLE(i, 1));
+
+        if(entity_def)
+        {
+            list_add(&ent_valid_entity_defs, &ENTITY_HANDLE(i, 1));
+        }
+    }
+
+    *count = ent_valid_entity_defs.element_count;
+
+    return (struct entity_handle_t *)ent_valid_entity_defs.elements;
 }
 
 
@@ -3117,6 +3211,7 @@ void entity_RecursiveUpdateTransform(struct entity_transform_t *parent_transform
 	struct entity_t *entity;
 	struct entity_transform_t *world_transform;
 	struct transform_component_t *transform_component;
+	struct bone_component_t *bone_component;
 	struct transform_component_t *bone_transform_component;
 	struct entity_aabb_t *aabb;
 	mat4_t transform;
@@ -3139,18 +3234,19 @@ void entity_RecursiveUpdateTransform(struct entity_transform_t *parent_transform
 		mat4_t_compose2(&transform, &transform_component->orientation, transform_component->position, transform_component->scale);
 		mat4_t_mult(&world_transform->transform, &transform, &parent_transform->transform);
 	}
-	else
-	{
-		mat4_t_compose2(&world_transform->transform, &transform_component->orientation, transform_component->position, transform_component->scale);
-	}
+//	else
+//	{
+//		mat4_t_compose2(&world_transform->transform, &transform_component->orientation, transform_component->position, transform_component->scale);
+//	}
 
 	entity = entity_GetEntityPointerHandle(transform_component->base.entity);
 
 	if(entity)
     {
-        if(transform_component->bone.type != COMPONENT_TYPE_NONE)
+        if(entity->components[COMPONENT_TYPE_BONE].type != COMPONENT_TYPE_NONE)
         {
-            bone_transform_component = entity_GetComponentPointer(transform_component->bone);
+            bone_component = (struct bone_component_t *)entity_GetComponentPointer(entity->components[COMPONENT_TYPE_BONE]);
+            bone_transform_component = entity_GetComponentPointer(bone_component->bone_transform);
 
             mat4_t_compose2(&bone_transform, &bone_transform_component->orientation,
                                               bone_transform_component->position,
@@ -3310,18 +3406,18 @@ void entity_UpdateTransformComponents()
 					mat4_t_compose2(&world_transform->transform, &local_transform->orientation, local_transform->position, local_transform->scale);
 				}
 			}
-            else
+            /*else
             {
 
-            }
+            }*/
 			/*else if(local_transform->bone.type != COMPONENT_TYPE_NONE)
             {
 
             }*/
-			/*else
+			else
 			{
 				mat4_t_compose2(&world_transform->transform, &local_transform->orientation, local_transform->position, local_transform->scale);
-			}*/
+			}
 
 			entity_RecursiveUpdateTransform(NULL, top_transforms[i], &aabb_max, &aabb_min);
 
@@ -4027,7 +4123,7 @@ void entity_EmitDrawCmdsForEntity(struct entity_handle_t entity, mat4_t *transfo
 ==============================================================
 */
 
-void entity_SaveEntityDef(char *file_name, struct entity_handle_t entity_def)
+void entity_SaveEntityDef(char *path, struct entity_handle_t entity_def)
 {
 	FILE *file;
 	int i;
@@ -4037,25 +4133,37 @@ void entity_SaveEntityDef(char *file_name, struct entity_handle_t entity_def)
 	struct entity_source_file_t *source_file;
 	int buffer_size;
 
+	char full_path[PATH_MAX];
+
 	struct entity_t *entity = entity_GetEntityPointerHandle(entity_def);
 	entity_SerializeEntityDef(&buffer, &buffer_size, entity_def);
 
-    entity->flags |= ENTITY_FLAG_ON_DISK;
+    //entity->flags |= ENTITY_FLAG_ON_DISK;
 
-	fname = path_AddExtToName(file_name, ".ent");
+	fname = path_AddExtToName(entity->name, ".ent");
+
+	if(path)
+    {
+        strcpy(full_path, path);
+        strcat(full_path, "/");
+        strcat(full_path, fname);
+
+        fname = full_path;
+    }
+
 	file = fopen(fname, "wb");
 	fwrite(buffer, buffer_size, 1, file);
 	fclose(file);
 
 
-    source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
-
-    if((!source_file) || strcmp(source_file->file_name, fname))
-	{
-		entity->spawn_time = stack_list_add(&ent_entity_def_source_files, NULL);
-		source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
-		strcpy(source_file->file_name, fname);
-	}
+//    source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
+//
+//    if((!source_file) || strcmp(source_file->file_name, fname))
+//	{
+//		entity->spawn_time = stack_list_add(&ent_entity_def_source_files, NULL);
+//		source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
+//		strcpy(source_file->file_name, fname);
+//	}
 }
 
 struct entity_handle_t entity_LoadEntityDef(char *file_name)
@@ -4063,6 +4171,8 @@ struct entity_handle_t entity_LoadEntityDef(char *file_name)
 	FILE *file;
 	struct entity_t *entity;
 	struct entity_source_file_t *source_file;
+
+	//char *file_name = path_AddExtToName(entity_name, ".ent");
 
 	file = path_TryOpenFile(file_name);
 	unsigned long int file_size = 0;
@@ -4079,10 +4189,11 @@ struct entity_handle_t entity_LoadEntityDef(char *file_name)
 		return INVALID_ENTITY_HANDLE;
 	}
 
-	fseek(file, 0, SEEK_END);
-	file_size = ftell(file);
-	rewind(file);
+//	fseek(file, 0, SEEK_END);
+//	file_size = ftell(file);
+//	rewind(file);
 
+    file_size = path_GetFileSize(file);
 
 	buffer = memory_Calloc(file_size, 1);
 	read_buffer = buffer;
@@ -4094,21 +4205,21 @@ struct entity_handle_t entity_LoadEntityDef(char *file_name)
 
 	memory_Free(buffer);
 
-	entity = entity_GetEntityPointerHandle(entity_def);
-
-	if(entity)
-	{
-		entity->flags |= ENTITY_FLAG_ON_DISK;
-
-		source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
-
-        if((!source_file) || strcmp(source_file->file_name, file_name))
-		{
-			entity->spawn_time = stack_list_add(&ent_entity_def_source_files, NULL);
-			source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
-			strcpy(source_file->file_name, path_GetFileNameFromPath(file_name));
-		}
-	}
+//	entity = entity_GetEntityPointerHandle(entity_def);
+//
+//	if(entity)
+//	{
+//		entity->flags |= ENTITY_FLAG_ON_DISK;
+//
+//		source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
+//
+//        if((!source_file) || strcmp(source_file->file_name, file_name))
+//		{
+//			entity->spawn_time = stack_list_add(&ent_entity_def_source_files, NULL);
+//			source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
+//			strcpy(source_file->file_name, path_GetFileNameFromPath(file_name));
+//		}
+//	}
 
 	return entity_def;
 }

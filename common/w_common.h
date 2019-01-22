@@ -54,6 +54,7 @@ struct world_script_t
 {
 	struct script_t script;
 
+    void *on_map_load;
 	void *on_map_enter;
 	void *on_map_exit;
 	void *on_map_update;
@@ -69,6 +70,9 @@ struct world_level_t
     struct world_level_t *next;
     struct world_level_t *prev;
     char *level_name;
+
+    struct world_script_t *script;
+    void *bsp;
 };
 
 enum WORLD_CLEAR_FLAGS
@@ -90,6 +94,25 @@ enum WORLD_CLEAR_FLAGS
 						   WORLD_CLEAR_FLAG_PHYSICS_MESH |
 						   WORLD_CLEAR_FLAG_BSP |
 						   WORLD_CLEAR_FLAG_WAYPOINTS,
+};
+
+
+
+
+static char world_record_start_tag[] = "[world record start]";
+
+struct world_record_start_t
+{
+    char tag[(sizeof(world_record_start_tag) + 3) & (~3)];
+};
+
+
+
+static char world_record_end_tag[] = "[world record end]";
+
+struct world_record_end_t
+{
+    char tag[(sizeof(world_record_end_tag) + 3) & (~3)];
 };
 
 

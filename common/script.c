@@ -746,6 +746,7 @@ struct script_t *script_CreateScript(char *file_name, char *script_name, int scr
 
 	script->main_entry_point = NULL;
 	script->script_module = NULL;
+	script->script_source = NULL;
 	script->setup_data_callback = setup_data_callback;
 	script->get_data_callback = get_data_callback;
 	script->update_count = 0;
@@ -767,6 +768,64 @@ struct script_t *script_CreateScript(char *file_name, char *script_name, int scr
 
 	return script;
 
+}
+
+void script_DestroyScript(struct script_t *script)
+{
+    if(script)
+    {
+        memory_Free(script->file_name);
+        memory_Free(script->name);
+
+
+        if(script->script_module)
+        {
+            ((asIScriptModule *)script->script_module)->Discard();
+        }
+
+        if(script->script_source)
+        {
+            memory_Free(script->script_source);
+        }
+
+        if(script == scr_scripts)
+        {
+            scr_scripts = scr_scripts->next;
+
+            if(scr_scripts)
+            {
+                scr_scripts->prev = NULL;
+            }
+        }
+        else
+        {
+            script->prev->next = script->next;
+
+            if(script->next)
+            {
+                script->next->prev = script->prev;
+            }
+            else
+            {
+                scr_last_script = scr_last_script->prev;
+                scr_last_script->next = NULL;
+            }
+        }
+
+        memory_Free(script);
+    }
+}
+
+void script_DestroyAllScripts()
+{
+    struct script_t *next;
+
+    while(scr_scripts)
+    {
+        next = scr_scripts->next;
+        script_DestroyScript(scr_scripts);
+        scr_scripts = next;
+    }
 }
 
 struct script_t *script_LoadScript(char *file_name, char *script_name, int script_type_size, int (*get_data_callback)(struct script_t *script), void *(*setup_data_callback)(struct script_t *script, void *data))
@@ -901,6 +960,13 @@ int script_CompileScriptSource(char *source, struct script_t *script)
 			script->update_count++;
 		}
 
+		if(script->script_source)
+        {
+            memory_Free(script->script_source);
+        }
+
+        script->script_source = source;
+
 	}
 
 	return success;
@@ -915,7 +981,6 @@ void script_ReloadScript(script_t *script)
 	if(script_source)
 	{
 		script_CompileScriptSource(script_source, script);
-		memory_Free(script_source);
 	}
 }
 

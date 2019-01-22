@@ -112,6 +112,8 @@ void renderer_VisibleWorld()
 
 	vec4_t corners[8];
 
+	w_world_z_batch_count = 0;
+
 	if(!w_world_nodes)
 		return;
 
@@ -205,7 +207,6 @@ void renderer_VisibleWorld()
 
 
         w_world_sorted_index_count = 0;
-        w_world_z_batch_count = 0;
 
 		for(j = 0; j < r_visible_leaves_count; j++)
         {

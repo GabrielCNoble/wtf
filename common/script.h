@@ -46,6 +46,10 @@ void script_PushArg(void *arg, int arg_type);
 
 struct script_t *script_CreateScript(char *file_name, char *script_name, int script_type_size, int (*get_data_callback)(struct script_t *script), void *(*setup_data_callback)(struct script_t *script, void *data));
 
+void script_DestroyScript(struct script_t *script);
+
+void script_DestroyAllScripts();
+
 struct script_t *script_LoadScript(char *file_name, char *script_name, int script_type_size, int (*get_data_callback)(struct script_t *script), void *(*setup_data_callback)(struct script_t *script, void *data));
 
 char *script_LoadScriptSource(char *file_name);

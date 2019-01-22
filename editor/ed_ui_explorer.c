@@ -152,7 +152,7 @@ void editor_ExplorerTopWindow()
 			case EXPLORER_FILE_MODE_WRITE:
 				if(gui_ImGuiButton("Save", vec2(80.0, 22.0)))
 				{
-					if(ed_explorer_file_text_buffer[0])
+					//if(ed_explorer_file_text_buffer[0])
 					{
 						/* only save the file if there's a valid name string... */
 						editor_ExplorerWriteFile(ed_explorer_path_text_buffer, ed_explorer_file_text_buffer);

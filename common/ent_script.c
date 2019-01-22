@@ -234,6 +234,17 @@ void *entity_ScriptGetForwardVector(int local)
 
 void *entity_ScriptGetEntityForwardVector(struct entity_handle_t entity, int local)
 {
+    return entity_ScriptGetEntityVector(entity, ENTITY_ORIENTATION_AXIS_Z, local);
+}
+
+void *entity_ScriptGetEntityRightVector(struct entity_handle_t entity, int local)
+{
+    return entity_ScriptGetEntityVector(entity, ENTITY_ORIENTATION_AXIS_X, local);
+}
+
+
+void *entity_ScriptGetEntityVector(struct entity_handle_t entity, int axis, int local)
+{
     struct entity_t *entity_ptr;
     struct transform_component_t *local_transform;
     struct entity_transform_t *world_transform;
@@ -246,17 +257,17 @@ void *entity_ScriptGetEntityForwardVector(struct entity_handle_t entity, int loc
 		{
 			local_transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
-			vec3_ret.x = local_transform->orientation.floats[0][2];
-			vec3_ret.y = local_transform->orientation.floats[1][2];
-			vec3_ret.z = local_transform->orientation.floats[2][2];
+			vec3_ret.x = local_transform->orientation.floats[0][axis];
+			vec3_ret.y = local_transform->orientation.floats[1][axis];
+			vec3_ret.z = local_transform->orientation.floats[2][axis];
 		}
 		else
 		{
 			world_transform = entity_GetWorldTransformPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
-			vec3_ret.x = world_transform->transform.floats[0][2];
-			vec3_ret.y = world_transform->transform.floats[1][2];
-			vec3_ret.z = world_transform->transform.floats[2][2];
+			vec3_ret.x = world_transform->transform.floats[0][axis];
+			vec3_ret.y = world_transform->transform.floats[1][axis];
+			vec3_ret.z = world_transform->transform.floats[2][axis];
 		}
 	}
 	else
@@ -268,6 +279,8 @@ void *entity_ScriptGetEntityForwardVector(struct entity_handle_t entity, int loc
 
 	return &vec3_ret;
 }
+
+
 
 
 

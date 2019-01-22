@@ -80,6 +80,7 @@ struct bsp_dleaf_t **w_visible_leaves = NULL;
 
 struct world_script_t *w_world_script = NULL;
 int w_execute_on_map_enter = 0;
+int w_execute_on_map_load = 0;
 
 struct list_t w_visible_entities;
 
@@ -3620,6 +3621,12 @@ void *world_SetupScriptDataCallback(struct script_t *script, void *data)
 
     world_script = (struct world_script_t *)script;
 
+    if(w_execute_on_map_load)
+    {
+        script_QueueEntryPoint(world_script->on_map_load);
+        w_execute_on_map_load = 0;
+    }
+
     if(w_execute_on_map_enter)
     {
         script_QueueEntryPoint(world_script->on_map_enter);
@@ -3639,6 +3646,7 @@ void *world_SetupScriptDataCallback(struct script_t *script, void *data)
 
 char on_map_enter_function_name[] = "OnMapEnter";
 char on_map_exit_function_name[] = "OnMapExit";
+char on_map_load_function_name[] = "OnMapLoad";
 
 int world_GetScriptDataCallback(struct script_t *script)
 {
@@ -3660,6 +3668,7 @@ int world_GetScriptDataCallback(struct script_t *script)
 
 	world_script->on_map_exit = script_GetFunctionAddress(on_map_exit_function_name, script);
     world_script->on_map_enter = script_GetFunctionAddress(on_map_enter_function_name, script);
+    world_script->on_map_load = script_GetFunctionAddress(on_map_load_function_name, script);
     world_script->current_event = -1;
 
 	if(function_count)
@@ -3730,11 +3739,6 @@ void world_ExecuteWorldScript()
 
     if(w_world_script)
     {
-        //if(engine_GetEngineState() & ENGINE_JUST_RESUMED)
-        //{
-        //    world_StopAllEvents();
-        //}
-
         script_ExecuteScriptImediate((struct script_t *)w_world_script, NULL);
     }
 }
@@ -4022,18 +4026,84 @@ struct world_level_t *world_GetLevel(char *level_name)
 void world_ChangeLevel(char *level_name)
 {
     struct world_level_t *level;
+    void *read_buffer;
 
     level = world_GetLevel(level_name);
 
-    if(level)
+    if(!level)
     {
-        if(level != w_current_level)
-        {
-            world_Clear(WORLD_CLEAR_FLAG_ALL);
-            world_LoadBsp(level->level_name);
-            w_current_level = level;
-        }
+        level = world_LoadLevel(level_name);
     }
+
+    if(level != w_current_level)
+    {
+        world_UnloadCurrentLevel();
+
+        w_current_level = level;
+
+        read_buffer = w_current_level->bsp;
+        w_world_script = w_current_level->script;
+
+        bsp_DeserializeBsp(&read_buffer);
+
+        w_execute_on_map_load = 1;
+
+        world_ExecuteWorldScript();
+    }
+}
+
+struct world_level_t *world_LoadLevel(char *level_name)
+{
+    struct world_script_t *world_script;
+    char world_script_full_name[512];
+    char *world_script_name;
+
+    struct world_level_t *level;
+
+    void *world_bsp;
+
+    if(path_FileExists(level_name))
+    {
+        world_script_name = path_GetNameNoExt(level_name);
+        strcpy(world_script_full_name, world_script_name);
+        strcat(world_script_full_name, ".was");
+
+        world_script = (struct world_script_t *)script_GetScript(world_script_full_name);
+
+        if(!world_script)
+        {
+            world_script = world_LoadScript(world_script_full_name, world_script_full_name);
+        }
+
+        world_bsp = bsp_LoadBsp(level_name);
+
+
+        level = memory_Calloc(sizeof(struct world_level_t), 1);
+
+        level->script = world_script;
+        level->bsp = world_bsp;
+
+
+        if(!w_levels)
+        {
+            w_levels = level;
+        }
+        else
+        {
+            level->next = w_last_level;
+            w_last_level->prev = level;
+        }
+
+        w_last_level = level;
+
+        return level;
+    }
+}
+
+
+void world_UnloadCurrentLevel()
+{
+    world_Clear(WORLD_CLEAR_FLAG_ALL);
 }
 
 

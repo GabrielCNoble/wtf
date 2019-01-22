@@ -185,6 +185,8 @@ struct script_t
 	char *name;
 	char *file_name;
 
+	char *script_source;
+
 	int update_count;
 };
 
