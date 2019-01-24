@@ -1170,83 +1170,50 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 
 	serialize_defs = serialize_defs && 1;
 
-	for(write_entity_def = 0; write_entity_def <= serialize_defs; write_entity_def++)
-	{
-		list = &ent_entities[write_entity_def];
-		j = list->element_count;
+	//for(write_entity_def = 0; write_entity_def <= serialize_defs; write_entity_def++)
+	//{
 
-		handle.def = write_entity_def;
+    list = &ent_entities[serialize_defs];
+    j = list->element_count;
 
-		for(i = 0; i < j; i++)
-		{
-			handle.entity_index = i;
+    handle.def = serialize_defs;
 
-			entity = entity_GetEntityPointerHandle(handle);
+    for(i = 0; i < j; i++)
+    {
+        handle.entity_index = i;
 
-			if(!entity)
-			{
-				continue;
-			}
+        entity = entity_GetEntityPointerHandle(handle);
 
-			transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+        if(!entity)
+        {
+            continue;
+        }
 
-			if(transform_component->parent.type == COMPONENT_TYPE_NONE)
+        transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+
+        if(transform_component->parent.type == COMPONENT_TYPE_NONE)
+        {
+            entity_WriteEntity((void **)&out_size, handle, INVALID_COMPONENT_HANDLE, 1, 1);
+        }
+    }
+	//}
+
+	if(!serialize_defs)
+    {
+        triggers = (struct trigger_t *)ent_triggers.elements;
+
+        for(i = 0; i < ent_triggers.element_count; i++)
+        {
+            trigger = triggers + i;
+
+            if(trigger->flags & TRIGGER_FLAG_INVALID)
             {
-                entity_WriteEntity((void **)&out_size, handle, INVALID_COMPONENT_HANDLE, 1, 1);
+                continue;
             }
 
-
-
-			//entity->flags &= ~ENTITY_FLAG_SERIALIZED;
-
-            #if 0
-			if(entity)
-			{
-				/* record start + end... */
-				out_size += sizeof(struct entity_record_start_t) + sizeof(struct entity_record_end_t);
-
-				/* components... */
-				for(k = 0; k < COMPONENT_TYPE_LAST; k++)
-				{
-					if(entity->components[k].type != COMPONENT_TYPE_NONE)
-					{
-						out_size += sizeof(struct component_record_t);
-					}
-				}
-
-				props = (struct entity_prop_t *)entity->props.elements;
-
-				for(k = 0; k < entity->props.element_count; k++)
-				{
-					/* props... */
-					out_size += sizeof(struct entity_prop_record_t) + props[k].size;
-				}
-
-
-
-
-				/* nestled transforms... */
-				transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
-				out_size += sizeof(struct component_record_t) * transform_component->children_count;
-			}
-
-			#endif
-		}
-	}
-
-	triggers = (struct trigger_t *)ent_triggers.elements;
-
-	for(i = 0; i < ent_triggers.element_count; i++)
-	{
-		trigger = triggers + i;
-
-		if(trigger->flags & TRIGGER_FLAG_INVALID)
-		{
-			continue;
-		}
-
-        out_size += sizeof(struct trigger_record_t) + sizeof(struct trigger_filter_record_t) * (trigger->trigger_filters.element_count - 1);
-	}
+            out_size += sizeof(struct trigger_record_t) + sizeof(struct trigger_filter_record_t) * (trigger->trigger_filters.element_count - 1);
+        }
+    }
 
 	out = memory_Calloc(2, out_size);
 
@@ -1304,32 +1271,33 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 
 
 
-	for(k = serialize_defs; k >= 0; k--)
-	{
-		list = &ent_entities[k];
-		j = list->element_count;
-		handle.def = k;
+	//for(k = serialize_defs; k >= 0; k--)
+	//{
 
-		for(i = 0; i < j; i++)
-		{
-			handle.entity_index = i;
+    list = &ent_entities[serialize_defs];
+    j = list->element_count;
+    handle.def = k;
 
-			entity = entity_GetEntityPointerHandle(handle);
+    for(i = 0; i < j; i++)
+    {
+        handle.entity_index = i;
 
-			if(entity)
-			{
-				transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+        entity = entity_GetEntityPointerHandle(handle);
 
-				if(transform_component)
-				{
-					if(transform_component->parent.type == COMPONENT_TYPE_NONE)
-					{
-						entity_WriteEntity((void **)&out, handle, INVALID_COMPONENT_HANDLE, 1, 0);
-					}
-				}
-			}
-		}
-	}
+        if(entity)
+        {
+            transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+
+            if(transform_component)
+            {
+                if(transform_component->parent.type == COMPONENT_TYPE_NONE)
+                {
+                    entity_WriteEntity((void **)&out, handle, INVALID_COMPONENT_HANDLE, 1, 0);
+                }
+            }
+        }
+    }
+	//}
 
 	section_end = (struct entity_section_end_t *)out;
 	out += sizeof(struct entity_section_end_t );

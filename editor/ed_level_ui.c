@@ -1368,7 +1368,7 @@ void editor_LevelEditorEntityWindow(int entity_index)
 		if(entity)
 		{
 			transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
-            gui_ImGuiText("Instance name: %s", transform_component->instance_name);
+            gui_ImGuiText("Instance name: %s", entity->name);
 
 
             physics_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_PHYSICS]);

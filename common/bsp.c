@@ -1060,6 +1060,9 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
     void *entity_buffer = NULL;
     int entity_buffer_size = 0;
 
+    void *entity_def_buffer = NULL;
+    int entity_def_buffer_size = 0;
+
     void *waypoint_buffer = NULL;
     int waypoint_buffer_size = 0;
 
@@ -1072,12 +1075,13 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
     out_buffer_size = sizeof(struct bsp_section_start_t) + sizeof(struct bsp_section_end_t);
 
 
-    entity_SerializeEntities(&entity_buffer, &entity_buffer_size, 1);
+    entity_SerializeEntities(&entity_buffer, &entity_buffer_size, 0);
+    entity_SerializeEntities(&entity_def_buffer, &entity_def_buffer_size, 0);
     light_SerializeLights(&light_buffer, &light_buffer_size);
     navigation_SerializeWaypoints(&waypoint_buffer, &waypoint_buffer_size);
     material_SerializeMaterials(&material_buffer, &material_buffer_size);
 
-	out_buffer_size += entity_buffer_size + light_buffer_size + waypoint_buffer_size + material_buffer_size;
+	out_buffer_size += entity_buffer_size + entity_def_buffer_size + light_buffer_size + waypoint_buffer_size + material_buffer_size;
 
 
 	if(w_world_leaves)
@@ -1122,12 +1126,6 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
 
 	out = out_buffer;
 
-	section_start = (struct bsp_section_start_t *)out;
-	out += sizeof(struct bsp_section_start_t);
-
-	strcpy(section_start->tag, bsp_section_start_tag);
-
-
 	if(material_buffer)
 	{
         memcpy(out, material_buffer, material_buffer_size);
@@ -1146,12 +1144,23 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
 		out += waypoint_buffer_size;
 	}
 
+	if(entity_def_buffer)
+	{
+		memcpy(out, entity_def_buffer, entity_def_buffer_size);
+		out += entity_def_buffer_size;
+	}
+
     if(entity_buffer)
 	{
 		memcpy(out, entity_buffer, entity_buffer_size);
 		out += entity_buffer_size;
 	}
 
+
+    section_start = (struct bsp_section_start_t *)out;
+	out += sizeof(struct bsp_section_start_t);
+
+	strcpy(section_start->tag, bsp_section_start_tag);
 
 
     if(w_world_leaves)

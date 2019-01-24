@@ -10257,7 +10257,7 @@
 1545376046 d:\files\gabriel noble\compiler\wtf\common\animation.h
 	"anim_common.h"
 
-1547972018 source:d:\files\gabriel noble\compiler\wtf\common\bsp.c
+1548154583 source:d:\files\gabriel noble\compiler\wtf\common\bsp.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -10979,7 +10979,7 @@
 
 1540514984 d:\files\gabriel noble\compiler\wtf\common\resource.h
 
-1548118316 source:d:\files\gabriel noble\compiler\wtf\common\ent_serialization.c
+1548154653 source:d:\files\gabriel noble\compiler\wtf\common\ent_serialization.c
 	"ent_serialization.h"
 	"entity.h"
 	"script.h"
@@ -11885,7 +11885,7 @@
 	"LinearMath/btScalar.h"
 	"btRigidBody.h"
 
-1548119701 source:d:\files\gabriel noble\compiler\wtf\common\entity.c
+1548299796 source:d:\files\gabriel noble\compiler\wtf\common\entity.c
 	"entity.h"
 	"ent_serialization.h"
 	"ent_script.h"
@@ -11893,6 +11893,7 @@
 	"r_view.h"
 	"stack_list.h"
 	"list.h"
+	"id_cache.h"
 	"c_memory.h"
 	"log.h"
 	"physics.h"
@@ -12667,7 +12668,7 @@
 	"..\brush.h"
 	<math.h>
 
-1543374668 source:d:\files\gabriel noble\compiler\wtf\editor\ed_level_ui.c
+1548300024 source:d:\files\gabriel noble\compiler\wtf\editor\ed_level_ui.c
 	"ed_level_ui.h"
 	"..\ed_level.h"
 	"..\..\common\gui.h"
@@ -13538,4 +13539,14 @@
 
 1540433057 e:\files\gabriel noble\compiler\wtf\common\w_script.h
 	"script_types/scr_string.h"
+
+1548303270 source:d:\files\gabriel noble\compiler\wtf\common\id_cache.c
+	"c_memory.h"
+	<stdlib.h>
+	<string.h>
+	<stdio.h>
+	"id_cache.h"
+
+1548155160 d:\files\gabriel noble\compiler\wtf\common\id_cache.h
+	"containers/list.h"
 

@@ -257,6 +257,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../common/gui_script.h" />
+		<Unit filename="../common/id_cache.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/id_cache.h" />
 		<Unit filename="../common/imgui/imconfig.h" />
 		<Unit filename="../common/imgui/imgui.cpp" />
 		<Unit filename="../common/imgui/imgui.h" />

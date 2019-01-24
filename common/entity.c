@@ -6,6 +6,7 @@
 
 #include "stack_list.h"
 #include "list.h"
+#include "id_cache.h"
 
 #include "c_memory.h"
 #include "log.h"
@@ -35,6 +36,8 @@ extern bsp_entities_t *w_leaf_entities;
 extern int w_visible_leaves_count;
 extern struct bsp_dleaf_t **w_visible_leaves;
 
+
+struct id_cache_t ent_id_cache;
 
 /* from model.c */
 extern struct model_t *mdl_models;
@@ -167,6 +170,8 @@ int entity_Init()
 	ent_invalid_entities = list_create(sizeof(struct entity_handle_t ), 512, NULL);
 	ent_valid_entity_defs = list_create(sizeof(struct entity_handle_t), 512, NULL);
     ent_entity_contacts = list_create(sizeof(struct entity_contact_t), 65536, NULL);
+
+    ent_id_cache = idcache_Create();
 
 
 
@@ -1822,10 +1827,12 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 
 	level++;
 
-	handle = entity_CreateEntity(name, 0);
+	entity_def_ptr = entity_GetEntityPointerHandle(entity_def);
+
+	handle = entity_CreateEntity(idcache_AllocUniqueName(&ent_id_cache, entity_def_ptr->name), 0);
 
 	entity_ptr = entity_GetEntityPointerHandle(handle);
-	entity_def_ptr = entity_GetEntityPointerHandle(entity_def);
+
 
 	if(entity_ptr->components)
 	{
@@ -1955,7 +1962,7 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 		if(child_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
 		{
 			rec_entity_def_ptr = entity_GetEntityPointerHandle(child_transform->base.entity);
-			child_handle = entity_RecursiveSpawnEntity(&child_transform->orientation, child_transform->position, child_transform->scale, child_transform->base.entity, transform_component->child_transforms[i], child_transform->instance_name);
+			child_handle = entity_RecursiveSpawnEntity(&child_transform->orientation, child_transform->position, child_transform->scale, child_transform->base.entity, transform_component->child_transforms[i], NULL);
 			entity_ParentEntity(handle, child_handle);
 		}
 	}
@@ -1980,7 +1987,7 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
                 if(child_transform->base.entity.entity_index != INVALID_ENTITY_INDEX)
                 {
                     rec_entity_def_ptr = entity_GetEntityPointerHandle(child_transform->base.entity);
-                    child_handle = entity_RecursiveSpawnEntity(&child_transform->orientation, child_transform->position, child_transform->scale, child_transform->base.entity, transform_component->child_transforms[i], child_transform->instance_name);
+                    child_handle = entity_RecursiveSpawnEntity(&child_transform->orientation, child_transform->position, child_transform->scale, child_transform->base.entity, transform_component->child_transforms[i], NULL);
                     entity_ParentEntity(handle, child_handle);
                 }
             }
@@ -2063,6 +2070,8 @@ void entity_RemoveEntity(struct entity_handle_t entity)
                 script_ExecuteScriptImediate(script_component->script, script_component);
             }
         }
+
+        idcache_FreeUniqueName(&ent_id_cache, entity_ptr->name);
 
 		transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
