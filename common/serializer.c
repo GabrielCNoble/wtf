@@ -100,17 +100,23 @@ void serializer_Serialize(struct serializer_t *serializer, void **buffer, int *b
     void *serializer_buffer = NULL;
     char *out = NULL;
     int serializer_buffer_size = 0;
+    int first_entry_offset;
 
     struct serializer_entry_t *entry;
 
 
-    serializer_buffer_size = sizeof(struct serializer_header_t) + sizeof(struct serializer_tail_t);
+    serializer_buffer_size = sizeof(struct serializer_header_t) +
+                             sizeof(struct serializer_tail_t) +
+                             sizeof(struct serializer_entry_data_t) * serializer->entry_count;
+
+    first_entry_offset = serializer_buffer_size;
 
     entry = serializer->entries;
 
     while(entry)
     {
-        serializer_buffer_size += entry->data.size + sizeof(struct serializer_entry_data_t);
+        /* make sure the buffer is even-sized... */
+        serializer_buffer_size += (entry->data.size + 3) & (~3);
         entry = entry->next;
     }
 
@@ -138,13 +144,17 @@ void serializer_Serialize(struct serializer_t *serializer, void **buffer, int *b
     {
         memcpy(entry_data, &entry->data, sizeof(struct serializer_entry_data_t));
 
+        entry_data->offset = serializer_buffer_size;
+
         if(header->entry_count)
         {
-            entry_data->offset = (entry_data - 1)->offset + (entry_data - 1)->size;
+            entry_data->offset += (entry_data - 1)->offset + (entry_data - 1)->size;
         }
 
         memcpy(out, entry->entry_buffer, entry->data.size);
-        out += entry->data.size;
+
+        /* make sure every entry begins at 4 byte boundary... */
+        out += (entry->data.size + 3) & (~3);
 
         header->entry_count++;
         entry_data++;
