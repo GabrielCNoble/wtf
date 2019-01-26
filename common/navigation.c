@@ -813,72 +813,77 @@ void navigation_DeserializeWaypoints(void **buffer)
 
 	in = *buffer;
 
-	while(1)
-	{
-		if(header_found && records_found && links_found)
-		{
-			for(i = 0; i < header->waypoint_count; i++)
-			{
-				/* first create the waypoints, and store their
-				indexes into the waypoint records, so they can
-				be properly linked...*/
-				waypoint_record = first_waypoint_record + i;
-				waypoint_record->waypoint_index = navigation_CreateWaypoint(waypoint_record->position);
-			}
+	if(in)
+    {
+        while(1)
+        {
+            if(header_found && records_found && links_found)
+            {
+                for(i = 0; i < header->waypoint_count; i++)
+                {
+                    /* first create the waypoints, and store their
+                    indexes into the waypoint records, so they can
+                    be properly linked...*/
+                    waypoint_record = first_waypoint_record + i;
+                    waypoint_record->waypoint_index = navigation_CreateWaypoint(waypoint_record->position);
+                }
 
-			for(i = 0; i < header->waypoint_count; i++)
-			{
-				waypoint_record = first_waypoint_record + i;
+                for(i = 0; i < header->waypoint_count; i++)
+                {
+                    waypoint_record = first_waypoint_record + i;
 
-				link_record = (struct waypoint_link_record_t *)in;
-				in += sizeof(struct waypoint_link_record_t);
+                    link_record = (struct waypoint_link_record_t *)in;
+                    in += sizeof(struct waypoint_link_record_t);
 
-				links = (int *)in;
-				in += sizeof(int) * link_record->link_count;
+                    links = (int *)in;
+                    in += sizeof(int) * link_record->link_count;
 
-				for(j = 0; j < link_record->link_count; j++)
-				{
-					/* go over the links inside this link record, and
-					use the waypoint record it references to get the real
-					waypoint index back... */
-					linked_waypoint_record = first_waypoint_record + links[j];
-					navigation_LinkWaypoints(waypoint_record->waypoint_index, linked_waypoint_record->waypoint_index);
-				}
-			}
+                    for(j = 0; j < link_record->link_count; j++)
+                    {
+                        /* go over the links inside this link record, and
+                        use the waypoint record it references to get the real
+                        waypoint index back... */
+                        linked_waypoint_record = first_waypoint_record + links[j];
+                        navigation_LinkWaypoints(waypoint_record->waypoint_index, linked_waypoint_record->waypoint_index);
+                    }
+                }
 
-			header_found = 0;
-			records_found = 0;
-			links_found = 0;
-		}
-        else if(!strcmp(in, waypoint_section_start_tag))
-		{
-			header = (struct waypoint_section_start_t *)in;
-			in += sizeof(struct waypoint_section_start_t);
-			header_found = 1;
-		}
-		else if(!strcmp(in, waypoint_record_tag))
-		{
-			first_waypoint_record = (struct waypoint_record_t *)in;
-			in += sizeof(struct waypoint_record_t) * header->waypoint_count;
-			records_found = 1;
-		}
-		else if(!strcmp(in, waypoint_link_record_tag))
-		{
-            first_link_record = (struct waypoint_link_record_t *)in;
-            links_found = 1;
-		}
-		else if(!strcmp(in, waypoint_section_end_tag))
-		{
-            in += sizeof(struct waypoint_section_end_t);
-			break;
-		}
-		else
-		{
-			in++;
-		}
-	}
+                header_found = 0;
+                records_found = 0;
+                links_found = 0;
+            }
+            else if(!strcmp(in, waypoint_section_start_tag))
+            {
+                header = (struct waypoint_section_start_t *)in;
+                in += sizeof(struct waypoint_section_start_t);
+                header_found = 1;
+            }
+            else if(!strcmp(in, waypoint_record_tag))
+            {
+                first_waypoint_record = (struct waypoint_record_t *)in;
+                in += sizeof(struct waypoint_record_t) * header->waypoint_count;
+                records_found = 1;
+            }
+            else if(!strcmp(in, waypoint_link_record_tag))
+            {
+                first_link_record = (struct waypoint_link_record_t *)in;
+                links_found = 1;
+            }
+            else if(!strcmp(in, waypoint_section_end_tag))
+            {
+                in += sizeof(struct waypoint_section_end_t);
+                break;
+            }
+            else
+            {
+                in++;
+            }
+        }
 
-	*buffer = in;
+        *buffer = in;
+    }
+
+
 }
 
 

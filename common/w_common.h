@@ -2,6 +2,7 @@
 #define W_COMMON_H
 
 #include "scr_common.h"
+#include "serializer.h"
 
 
 #define W_MAX_WORLD_LIGHTS 512
@@ -72,7 +73,8 @@ struct world_level_t
     char *level_name;
 
     struct world_script_t *script;
-    void *bsp;
+    struct serializer_t serializer;
+
 };
 
 enum WORLD_CLEAR_FLAGS

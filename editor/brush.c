@@ -2924,63 +2924,66 @@ void brush_DeserializeBrushes(void **buffer)
 	int k;
 	char *in;
 
-	in = (char *)*buffer;
+	in = *(char **)buffer;
 
-	while(1)
-	{
-        if(!strcmp(in, brush_section_start_tag))
-		{
-			header = (struct brush_section_start_t *)in;
-			in += sizeof(struct brush_section_start_t );
+	if(in)
+    {
+        while(1)
+        {
+            if(!strcmp(in, brush_section_start_tag))
+            {
+                header = (struct brush_section_start_t *)in;
+                in += sizeof(struct brush_section_start_t );
 
-			for(i = 0; i < header->brush_count; i++)
-			{
-				brush_record = (struct brush_record_t *)in;
-				in += sizeof(struct brush_record_t);
+                for(i = 0; i < header->brush_count; i++)
+                {
+                    brush_record = (struct brush_record_t *)in;
+                    in += sizeof(struct brush_record_t);
 
-				brush = brush_CreateEmptyBrush();
-				brush_InitializeBrush(brush, &brush_record->orientation, brush_record->position, brush_record->scale, brush_record->type, brush_record->vertex_count, brush_record->polygon_count);
+                    brush = brush_CreateEmptyBrush();
+                    brush_InitializeBrush(brush, &brush_record->orientation, brush_record->position, brush_record->scale, brush_record->type, brush_record->vertex_count, brush_record->polygon_count);
 
-				//brush->bm_flags = brush_record->bm_flags;
+                    //brush->bm_flags = brush_record->bm_flags;
 
-				if(brush_record->bm_flags & BRUSH_SUBTRACTIVE)
-				{
-					brush->bm_flags |= BRUSH_SUBTRACTIVE;
-				}
+                    if(brush_record->bm_flags & BRUSH_SUBTRACTIVE)
+                    {
+                        brush->bm_flags |= BRUSH_SUBTRACTIVE;
+                    }
 
-				if(brush_record->bm_flags & BRUSH_USE_WORLD_SPACE_TEX_COORDS)
-				{
-					brush->bm_flags |= BRUSH_USE_WORLD_SPACE_TEX_COORDS;
-				}
+                    if(brush_record->bm_flags & BRUSH_USE_WORLD_SPACE_TEX_COORDS)
+                    {
+                        brush->bm_flags |= BRUSH_USE_WORLD_SPACE_TEX_COORDS;
+                    }
 
-				//brush->bm_flags |= BRUSH_MOVED;
+                    //brush->bm_flags |= BRUSH_MOVED;
 
-				for(j = 0; j < brush_record->polygon_count; j++)
-				{
-					polygon_record = (struct polygon_record_t *)in;
-					in += sizeof(struct polygon_record_t);
+                    for(j = 0; j < brush_record->polygon_count; j++)
+                    {
+                        polygon_record = (struct polygon_record_t *)in;
+                        in += sizeof(struct polygon_record_t);
 
-					vertices = (vertex_t *)in;
-					in += sizeof(vertex_t) * polygon_record->vert_count;
+                        vertices = (vertex_t *)in;
+                        in += sizeof(vertex_t) * polygon_record->vert_count;
 
-					brush_AddPolygonToBrush(brush, vertices, polygon_record->normal, polygon_record->tiling, polygon_record->vert_count, material_MaterialIndex(polygon_record->material_name));
-				}
+                        brush_AddPolygonToBrush(brush, vertices, polygon_record->normal, polygon_record->tiling, polygon_record->vert_count, material_MaterialIndex(polygon_record->material_name));
+                    }
 
-				brush_FinalizeBrush(brush, 0);
-			}
-		}
-		else if(!strcmp(in, brush_section_end_tag))
-		{
-            in += sizeof(struct brush_section_end_t);
-			break;
-		}
-		else
-		{
-			in++;
-		}
-	}
+                    brush_FinalizeBrush(brush, 0);
+                }
+            }
+            else if(!strcmp(in, brush_section_end_tag))
+            {
+                in += sizeof(struct brush_section_end_t);
+                break;
+            }
+            else
+            {
+                in++;
+            }
+        }
 
-	*buffer = in;
+        *buffer = in;
+    }
 }
 
 

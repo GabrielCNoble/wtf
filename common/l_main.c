@@ -1212,32 +1212,35 @@ void light_DeserializeLights(void **buffer)
 
 	in = *buffer;
 
-	while(1)
-	{
-        if(!strcmp(in, light_section_start_tag))
-		{
-			section_start = (struct light_section_start_t *)in;
-			in += sizeof(struct light_section_start_t);
+	if(in)
+    {
+        while(1)
+        {
+            if(!strcmp(in, light_section_start_tag))
+            {
+                section_start = (struct light_section_start_t *)in;
+                in += sizeof(struct light_section_start_t);
 
-			for(i = 0; i < section_start->light_count; i++)
-			{
-				record = (struct light_record_t *)in;
-				in += sizeof(struct light_record_t);
-				light_CreateLight(record->name, &record->orientation, record->position, record->color, record->radius, record->energy, record->flags);
-			}
-		}
-		else if(!strcmp(in, light_section_end_tag))
-		{
-			in += sizeof(struct light_section_end_t);
-			break;
-		}
-		else
-		{
-			in++;
-		}
-	}
+                for(i = 0; i < section_start->light_count; i++)
+                {
+                    record = (struct light_record_t *)in;
+                    in += sizeof(struct light_record_t);
+                    light_CreateLight(record->name, &record->orientation, record->position, record->color, record->radius, record->energy, record->flags);
+                }
+            }
+            else if(!strcmp(in, light_section_end_tag))
+            {
+                in += sizeof(struct light_section_end_t);
+                break;
+            }
+            else
+            {
+                in++;
+            }
+        }
 
-	*buffer = in;
+        *buffer = in;
+    }
 }
 
 

@@ -993,54 +993,56 @@ void material_DeserializeMaterials(void **buffer)
 
 	in = *buffer;
 
+    if(in)
+    {
+        while(1)
+        {
+            if(!strcmp(in, material_section_start_tag))
+            {
+                section_start = (struct material_section_start_t *)in;
+                in += sizeof(struct material_section_start_t);
+            }
+            else if(!strcmp(in, material_section_end_tag))
+            {
+                section_end = (struct material_section_end_t *)in;
+                in += sizeof(struct material_section_end_t);
+                break;
+            }
+            else if(!strcmp(in, material_record_tag))
+            {
+                record = (struct material_record_t *)in;
+                in += sizeof(struct material_record_t);
 
-	while(1)
-	{
-        if(!strcmp(in, material_section_start_tag))
-		{
-            section_start = (struct material_section_start_t *)in;
-            in += sizeof(struct material_section_start_t);
-		}
-		else if(!strcmp(in, material_section_end_tag))
-		{
-			section_end = (struct material_section_end_t *)in;
-            in += sizeof(struct material_section_end_t);
-            break;
-		}
-		else if(!strcmp(in, material_record_tag))
-		{
-            record = (struct material_record_t *)in;
-			in += sizeof(struct material_record_t);
+                diffuse_texture = 0xffff;
+                normal_texture = 0xffff;
+                height_texture = 0xffff;
+                metalness_texture = 0xffff;
+                roughness_texture = 0xffff;
 
-			diffuse_texture = 0xffff;
-			normal_texture = 0xffff;
-			height_texture = 0xffff;
-			metalness_texture = 0xffff;
-			roughness_texture = 0xffff;
+                if(record->flags & MATERIAL_USE_DIFFUSE_TEXTURE)
+                {
+                    diffuse_texture = texture_LoadTexture(record->diffuse_texture_name, path_GetFileNameFromPath(record->diffuse_texture_name), 0);
+                }
 
-            if(record->flags & MATERIAL_USE_DIFFUSE_TEXTURE)
-			{
-				diffuse_texture = texture_LoadTexture(record->diffuse_texture_name, path_GetFileNameFromPath(record->diffuse_texture_name), 0);
-			}
+                if(record->flags & MATERIAL_USE_NORMAL_TEXTURE)
+                {
+                    normal_texture = texture_LoadTexture(record->normal_texture_name, path_GetFileNameFromPath(record->normal_texture_name), 0);
+                }
 
-			if(record->flags & MATERIAL_USE_NORMAL_TEXTURE)
-			{
-				normal_texture = texture_LoadTexture(record->normal_texture_name, path_GetFileNameFromPath(record->normal_texture_name), 0);
-			}
+                material_index = material_CreateMaterial(record->material_name, record->base, record->metalness, record->roughness, -1, diffuse_texture, normal_texture);
 
-			material_index = material_CreateMaterial(record->material_name, record->base, record->metalness, record->roughness, -1, diffuse_texture, normal_texture);
+                material = material_GetMaterialPointerIndex(material_index);
 
-			material = material_GetMaterialPointerIndex(material_index);
+                material->flags |= record->flags & (MATERIAL_INVERT_NORMAL_X | MATERIAL_INVERT_NORMAL_Y);
+            }
+            else
+            {
+                in++;
+            }
+        }
 
-			material->flags |= record->flags & (MATERIAL_INVERT_NORMAL_X | MATERIAL_INVERT_NORMAL_Y);
-		}
-		else
-		{
-			in++;
-		}
-	}
-
-	*buffer = in;
+        *buffer = in;
+    }
 }
 
 

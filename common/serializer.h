@@ -30,6 +30,7 @@ static char serializer_header_tag[] = "[serializer header]";
 struct serializer_header_t
 {
     char tag[(sizeof(serializer_header_tag) + 3) & (~3)];
+    uint64_t buffer_size;
     int32_t entry_count;
 };
 
@@ -48,6 +49,7 @@ struct serializer_tail_t
 
 struct serializer_t
 {
+    char buffer_label[32];
     struct serializer_entry_t *entries;
     struct serializer_entry_t *last_entry;
     int entry_count;
@@ -66,7 +68,7 @@ void serializer_Serialize(struct serializer_t *serializer, void **buffer, int *b
 
 void serializer_Deserialize(struct serializer_t *serializer, void **buffer);
 
-void serializer_FreeSerializer(struct serializer_t *serializer, int free_buffers);
+void serializer_FreeSerializer(struct serializer_t *serializer, int free_entry_buffers);
 
 #endif // SERIALIZER_H
 

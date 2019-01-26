@@ -6,6 +6,7 @@
 #include "scr_common.h"
 #include "camera.h"
 #include "portal.h"
+#include "serializer.h"
 
 
 #ifdef __cplusplus
@@ -165,13 +166,25 @@ void world_Update();
 
 void world_Clear(int clear_flags);
 
+struct world_level_t *world_CreateLevel(char *level_name, struct serializer_t serializer, struct world_script_t *world_script);
+
+void world_DestroyLevel(char *level_name);
+
 struct world_level_t *world_GetLevel(char *level_name);
+
+struct world_level_t *world_GetCurrentLevel();
 
 void world_ChangeLevel(char *level_name);
 
 struct world_level_t *world_LoadLevel(char *level_name);
 
+struct world_level_t *world_LoadLevelFromMemory(char *level_name, void **buffer);
+
 void world_UnloadCurrentLevel();
+
+void world_SerializeWorld(void **buffer, int *buffer_size);
+
+struct serializer_t world_DeserializeWorld(void **buffer);
 
 
 #ifdef __cplusplus

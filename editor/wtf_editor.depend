@@ -10257,7 +10257,7 @@
 1545376046 d:\files\gabriel noble\compiler\wtf\common\animation.h
 	"anim_common.h"
 
-1548154583 source:d:\files\gabriel noble\compiler\wtf\common\bsp.c
+1548532336 source:d:\files\gabriel noble\compiler\wtf\common\bsp.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -10277,6 +10277,7 @@
 	"path.h"
 	"log.h"
 	"navigation.h"
+	"serializer.h"
 
 1548118038 d:\files\gabriel noble\compiler\wtf\common\ent_serialization.h
 	"ent_common.h"
@@ -10358,8 +10359,9 @@
 
 1537067339 d:\files\gabriel noble\compiler\wtf\common\containers\list.h
 
-1547515789 d:\files\gabriel noble\compiler\wtf\common\w_common.h
+1548477951 d:\files\gabriel noble\compiler\wtf\common\w_common.h
 	"scr_common.h"
+	"serializer.h"
 
 1501550740 d:\files\gabriel noble\compiler\wtf\common\glew\include\gl\glew.h
 	<stddef.h>
@@ -10979,7 +10981,7 @@
 
 1540514984 d:\files\gabriel noble\compiler\wtf\common\resource.h
 
-1548154653 source:d:\files\gabriel noble\compiler\wtf\common\ent_serialization.c
+1548463894 source:d:\files\gabriel noble\compiler\wtf\common\ent_serialization.c
 	"ent_serialization.h"
 	"entity.h"
 	"script.h"
@@ -11218,7 +11220,7 @@
 
 1538398698 d:\files\gabriel noble\compiler\wtf\common\l_globals.h
 
-1543192033 source:d:\files\gabriel noble\compiler\wtf\common\l_main.c
+1548463864 source:d:\files\gabriel noble\compiler\wtf\common\l_main.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -11250,7 +11252,7 @@
 	<string.h>
 	<stdarg.h>
 
-1543373517 source:d:\files\gabriel noble\compiler\wtf\common\material.c
+1548463945 source:d:\files\gabriel noble\compiler\wtf\common\material.c
 	<stdlib.h>
 	<stdio.h>
 	<string.h>
@@ -11314,7 +11316,7 @@
 1542342437 d:\files\gabriel noble\compiler\wtf\common\mpk_write.h
 	"mpk_file.h"
 
-1537136280 source:d:\files\gabriel noble\compiler\wtf\common\navigation.c
+1548463925 source:d:\files\gabriel noble\compiler\wtf\common\navigation.c
 	"navigation.h"
 	"physics.h"
 	"c_memory.h"
@@ -12076,12 +12078,13 @@
 	"SDL2\SDL_surface.h"
 	"vector.h"
 
-1547971987 d:\files\gabriel noble\compiler\wtf\common\world.h
+1548528240 d:\files\gabriel noble\compiler\wtf\common\world.h
 	"w_common.h"
 	"bsp_common.h"
 	"scr_common.h"
 	"camera.h"
 	"portal.h"
+	"serializer.h"
 
 1539918008 source:d:\files\gabriel noble\compiler\wtf\common\r_shader.c
 	"r_common.h"
@@ -12409,7 +12412,7 @@
 	"IL/ilut.h"
 	"IL/il.h"
 
-1547971979 source:d:\files\gabriel noble\compiler\wtf\common\world.c
+1548532050 source:d:\files\gabriel noble\compiler\wtf\common\world.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -12421,6 +12424,7 @@
 	"material.h"
 	"shader.h"
 	"entity.h"
+	"ent_serialization.h"
 	"camera.h"
 	"world.h"
 	"script.h"
@@ -12437,7 +12441,7 @@
 	"portal.h"
 	"r_debug.h"
 
-1540684986 source:d:\files\gabriel noble\compiler\wtf\editor\brush.c
+1548529372 source:d:\files\gabriel noble\compiler\wtf\editor\brush.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -12598,7 +12602,7 @@
 1540527992 d:\files\gabriel noble\compiler\wtf\editor\ed_ui.h
 	"gui.h"
 
-1547974405 source:d:\files\gabriel noble\compiler\wtf\editor\ed_level.c
+1548531486 source:d:\files\gabriel noble\compiler\wtf\editor\ed_level.c
 	"ed_level.h"
 	"ed_level_draw.h"
 	"ed_level_ui.h"
@@ -12632,10 +12636,11 @@
 	"..\..\common\navigation.h"
 	"..\..\common\resource.h"
 	"..\..\common\sound.h"
+	"..\..\common\serializer.h"
 	"..\..\common\containers\stack_list.h"
 	"..\..\common\GLEW\include\GL\glew.h"
 
-1547972392 d:\files\gabriel noble\compiler\wtf\editor\ed_level.h
+1548528340 d:\files\gabriel noble\compiler\wtf\editor\ed_level.h
 	"..\ed_common.h"
 	"..\brush.h"
 
@@ -13540,7 +13545,7 @@
 1540433057 e:\files\gabriel noble\compiler\wtf\common\w_script.h
 	"script_types/scr_string.h"
 
-1548303270 source:d:\files\gabriel noble\compiler\wtf\common\id_cache.c
+1548303445 source:d:\files\gabriel noble\compiler\wtf\common\id_cache.c
 	"c_memory.h"
 	<stdlib.h>
 	<string.h>
@@ -13549,4 +13554,13 @@
 
 1548155160 d:\files\gabriel noble\compiler\wtf\common\id_cache.h
 	"containers/list.h"
+
+1548532542 source:d:\files\gabriel noble\compiler\wtf\common\serializer.c
+	<stdio.h>
+	<string.h>
+	"serializer.h"
+	"c_memory.h"
+
+1548482798 d:\files\gabriel noble\compiler\wtf\common\serializer.h
+	<stdint.h>
 

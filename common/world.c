@@ -11,6 +11,7 @@
 #include "material.h"
 #include "shader.h"
 #include "entity.h"
+#include "ent_serialization.h"
 
 #include "camera.h"
 
@@ -4004,6 +4005,72 @@ void world_Clear(int clear_flags)
 	}
 }
 
+struct world_level_t *world_CreateLevel(char *level_name, struct serializer_t serializer, struct world_script_t *world_script)
+{
+    struct world_level_t *level;
+
+    level = memory_Calloc(1, sizeof(struct world_level_t ));
+
+    level->level_name = memory_Strdup(level_name);
+    level->script = world_script;
+    level->serializer = serializer;
+
+    if(!w_levels)
+    {
+        w_levels = level;
+    }
+    else
+    {
+        w_last_level->next = level;
+        level->prev = w_last_level;
+    }
+
+    w_last_level = level;
+
+    return level;
+}
+
+void world_DestroyLevel(char *level_name)
+{
+    struct world_level_t *level;
+
+    level = world_GetLevel(level_name);
+
+    if(level)
+    {
+        serializer_FreeSerializer(&level->serializer, 0);
+
+        memory_Free(level->level_name);
+        script_DestroyScript((struct script_t *)&level->script);
+
+
+        if(level == w_levels)
+        {
+            w_levels = level->next;
+
+            if(w_levels)
+            {
+                w_levels->prev = NULL;
+            }
+        }
+        else
+        {
+            level->prev->next = level->next;
+
+            if(level->next)
+            {
+                level->next->prev = level->prev;
+            }
+            else
+            {
+                w_last_level = level->prev;
+            }
+        }
+
+        memory_Free(level);
+    }
+}
+
 struct world_level_t *world_GetLevel(char *level_name)
 {
     struct world_level_t *level;
@@ -4023,9 +4090,15 @@ struct world_level_t *world_GetLevel(char *level_name)
     return level;
 }
 
+struct world_level_t *world_GetCurrentLevel()
+{
+    return w_current_level;
+}
+
 void world_ChangeLevel(char *level_name)
 {
     struct world_level_t *level;
+    struct serializer_entry_t *entry;
     void *read_buffer;
 
     level = world_GetLevel(level_name);
@@ -4041,14 +4114,61 @@ void world_ChangeLevel(char *level_name)
 
         w_current_level = level;
 
-        read_buffer = w_current_level->bsp;
-        w_world_script = w_current_level->script;
+        entry = serializer_GetEntry(&level->serializer, "materials");
+        if(entry)
+        {
+            read_buffer = entry->entry_buffer;
+            material_DeserializeMaterials(&read_buffer);
+        }
 
-        bsp_DeserializeBsp(&read_buffer);
 
-        w_execute_on_map_load = 1;
+        entry = serializer_GetEntry(&level->serializer, "waypoints");
+        if(entry)
+        {
+            read_buffer = entry->entry_buffer;
+            navigation_DeserializeWaypoints(&read_buffer);
+        }
 
-        world_ExecuteWorldScript();
+
+        entry = serializer_GetEntry(&level->serializer, "lights");
+        if(entry)
+        {
+            read_buffer = entry->entry_buffer;
+            light_DeserializeLights(&read_buffer);
+        }
+
+
+        entry = serializer_GetEntry(&level->serializer, "bsp");
+        if(entry)
+        {
+            read_buffer = entry->entry_buffer;
+            bsp_DeserializeBsp(&read_buffer);
+        }
+
+
+        entry = serializer_GetEntry(&level->serializer, "entity defs");
+        if(entry)
+        {
+            read_buffer = entry->entry_buffer;
+            entity_DeserializeEntities(&read_buffer, 1);
+        }
+
+
+        entry = serializer_GetEntry(&level->serializer, "entities");
+        if(entry)
+        {
+            read_buffer = entry->entry_buffer;
+            entity_DeserializeEntities(&read_buffer, 0);
+        }
+
+        world_SetWorldScript(level->script);
+
+
+//        navigation_DeserializeWaypoints(serializer_GetEntry(&level->serializer, "waypoints")->entry_buffer);
+//        light_DeserializeLights(serializer_GetEntry(&level->serializer, "lights")->entry_buffer);
+//        bsp_DeserializeBsp(serializer_GetEntry(&level->serializer, "bsp")->entry_buffer);
+//        entity_DeserializeEntities(serializer_GetEntry(&level->serializer, "entity defs")->entry_buffer, 1);
+//        entity_DeserializeEntities(serializer_GetEntry(&level->serializer, "entities")->entry_buffer, 0);
     }
 }
 
@@ -4058,52 +4178,185 @@ struct world_level_t *world_LoadLevel(char *level_name)
     char world_script_full_name[512];
     char *world_script_name;
 
-    struct world_level_t *level;
+    struct world_level_t *level = NULL;
+    struct serializer_t serializer;
 
-    void *world_bsp;
+    void *world_buffer = NULL;
+    void *read_buffer;
+    int world_buffer_size = 0;
+
+    FILE *file;
+
+    //void *world_bsp;
+
+    level = world_GetLevel(level_name);
+
+    if(level)
+    {
+        return level;
+    }
 
     if(path_FileExists(level_name))
     {
-        world_script_name = path_GetNameNoExt(level_name);
-        strcpy(world_script_full_name, world_script_name);
-        strcat(world_script_full_name, ".was");
+        file = path_TryOpenFile(level_name);
 
-        world_script = (struct world_script_t *)script_GetScript(world_script_full_name);
-
-        if(!world_script)
+        if(file)
         {
-            world_script = world_LoadScript(world_script_full_name, world_script_full_name);
+            world_buffer_size = path_GetFileSize(file);
+
+            world_buffer = memory_Calloc(1, world_buffer_size);
+            fread(world_buffer, 1, world_buffer_size, file);
+            fclose(file);
+
+            read_buffer = world_buffer;
+
+            level = world_LoadLevelFromMemory(level_name, &read_buffer);
+
+            memory_Free(world_buffer);
         }
-
-        world_bsp = bsp_LoadBsp(level_name);
-
-
-        level = memory_Calloc(sizeof(struct world_level_t), 1);
-
-        level->script = world_script;
-        level->bsp = world_bsp;
-
-
-        if(!w_levels)
-        {
-            w_levels = level;
-        }
-        else
-        {
-            level->next = w_last_level;
-            w_last_level->prev = level;
-        }
-
-        w_last_level = level;
-
-        return level;
     }
+
+    return level;
+}
+
+struct world_level_t *world_LoadLevelFromMemory(char *level_name, void **buffer)
+{
+    struct serializer_t serializer;
+    char *world_script_name;
+    char world_script_full_name[512];
+    struct world_script_t *world_script;
+    struct world_level_t *level;
+
+    serializer = world_DeserializeWorld(buffer);
+
+    world_script_name = path_GetNameNoExt(level_name);
+    strcpy(world_script_full_name, world_script_name);
+    strcat(world_script_full_name, ".was");
+
+    world_script = (struct world_script_t *)script_GetScript(world_script_full_name);
+
+    if(!world_script)
+    {
+        world_script = world_LoadScript(world_script_full_name, world_script_full_name);
+    }
+
+    level = world_CreateLevel(level_name, serializer, world_script);
 }
 
 
 void world_UnloadCurrentLevel()
 {
     world_Clear(WORLD_CLEAR_FLAG_ALL);
+}
+
+void world_SerializeWorld(void **buffer, int *buffer_size)
+{
+    struct world_record_start_t *record_start;
+    struct world_record_end_t *record_end;
+
+    struct serializer_t serializer;
+
+    void *entity_buffer = NULL;
+    int entity_buffer_size = 0;
+
+    void *entity_def_buffer = NULL;
+    int entity_def_buffer_size = 0;
+
+    void *waypoint_buffer = NULL;
+    int waypoint_buffer_size = 0;
+
+    void *light_buffer = NULL;
+    int light_buffer_size = 0;
+
+    void *material_buffer = NULL;
+    int material_buffer_size = 0;
+
+    void *bsp_buffer = NULL;
+    int bsp_buffer_size = 0;
+
+    char *out = NULL;
+    int out_size = 0;
+
+    void *level_buffer = NULL;
+    int level_buffer_size = 0;
+
+
+    entity_SerializeEntities(&entity_buffer, &entity_buffer_size, 0);
+    entity_SerializeEntities(&entity_def_buffer, &entity_def_buffer_size, 1);
+    light_SerializeLights(&light_buffer, &light_buffer_size);
+    navigation_SerializeWaypoints(&waypoint_buffer, &waypoint_buffer_size);
+    material_SerializeMaterials(&material_buffer, &material_buffer_size);
+    bsp_SerializeBsp(&bsp_buffer, &bsp_buffer_size);
+
+    memset(&serializer, 0, sizeof(struct serializer_t));
+
+    serializer_AddEntry(&serializer, "entity defs", entity_def_buffer_size, entity_def_buffer);
+    serializer_AddEntry(&serializer, "entities", entity_buffer_size, entity_buffer);
+    serializer_AddEntry(&serializer, "lights", light_buffer_size, light_buffer);
+    serializer_AddEntry(&serializer, "waypoints", waypoint_buffer_size, waypoint_buffer);
+    serializer_AddEntry(&serializer, "materials", material_buffer_size, material_buffer);
+    serializer_AddEntry(&serializer, "bsp", bsp_buffer_size, bsp_buffer);
+
+    serializer_Serialize(&serializer, &level_buffer, &level_buffer_size);
+    serializer_FreeSerializer(&serializer, 1);
+
+    out_size = level_buffer_size + sizeof(struct world_record_start_t ) + sizeof(struct world_record_end_t);
+
+    out = memory_Calloc(1, out_size);
+
+    *buffer = out;
+    *buffer_size = out_size;
+
+    record_start = (struct world_record_start_t *)out;
+    out += sizeof(struct world_record_start_t );
+
+    strcpy(record_start->tag, world_record_start_tag);
+
+    memcpy(out, level_buffer, level_buffer_size);
+    out += level_buffer_size;
+
+
+    record_end = (struct world_record_end_t *)out;
+    out += sizeof(struct world_record_end_t);
+
+    strcpy(record_end->tag, world_record_end_tag);
+}
+
+struct serializer_t world_DeserializeWorld(void **buffer)
+{
+    struct world_record_start_t *record_start;
+    struct world_record_end_t *record_end;
+
+    struct serializer_t serializer;
+
+    char *in;
+
+
+    in = *(char **)buffer;
+
+    if(in)
+    {
+        while(1)
+        {
+            if(!strcmp(in, world_record_start_tag))
+            {
+                in += sizeof(struct world_record_start_t);
+                serializer_Deserialize(&serializer, (void **)&in);
+                continue;
+            }
+            else if(!strcmp(in, world_record_end_tag))
+            {
+                in += sizeof(struct world_record_end_t);
+                break;
+            }
+
+            in++;
+        }
+
+        *buffer = in;
+    }
+
+    return serializer;
 }
 
 

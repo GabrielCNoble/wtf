@@ -35,6 +35,7 @@
 #include "..\..\common\navigation.h"
 #include "..\..\common\resource.h"
 #include "..\..\common\sound.h"
+#include "..\..\common\serializer.h"
 
 #include "..\..\common\containers\stack_list.h"
 
@@ -1407,7 +1408,7 @@ void editor_LevelEditorStartPIE()
 
 	/* this makes the "OnMapEntry" function to be
 	called... */
-	world_SetWorldScript(world_GetWorldScript());
+	//world_SetWorldScript(world_GetWorldScript());
 
 }
 
@@ -1433,45 +1434,52 @@ void editor_LevelEditorCopyLevelData()
 {
 	int i;
 
+	struct world_level_t *current_level;
+
 	if(level_editor_need_to_copy_data)
 	{
 		level_editor_brushes = brushes;
 		level_editor_last_brush = last_brush;
 		level_editor_brush_count = brush_count;
 
-		level_editor_world_vertices_count = w_world_vertices_count;
-		level_editor_world_vertices = w_world_vertices;
+		current_level = world_GetCurrentLevel();
 
-		level_editor_world_nodes_count = w_world_nodes_count;
-		level_editor_world_nodes = w_world_nodes;
+		serializer_FreeSerializer(&current_level->serializer);
+		current_level->serializer = world_Serialize
 
-		level_editor_world_leaves_count = w_world_leaves_count;
-		level_editor_world_leaves = w_world_leaves;
-
-		level_editor_world_batch_count = w_world_batch_count;
-		level_editor_world_batches = w_world_batches;
-
-		if(level_editor_entity_buffer)
-		{
-			memory_Free(level_editor_entity_buffer);
-		}
-
-		entity_SerializeEntities(&level_editor_entity_buffer, &level_editor_entity_buffer_size, 0);
-
-
-        if(level_editor_waypoint_buffer)
-		{
-			memory_Free(level_editor_waypoint_buffer);
-		}
-
-		navigation_SerializeWaypoints(&level_editor_waypoint_buffer, &level_editor_waypoint_buffer_size);
-
-		if(level_editor_light_buffer)
-		{
-			memory_Free(level_editor_light_buffer);
-		}
-
-		light_SerializeLights(&level_editor_light_buffer, &level_editor_light_buffer_size);
+//		level_editor_world_vertices_count = w_world_vertices_count;
+//		level_editor_world_vertices = w_world_vertices;
+//
+//		level_editor_world_nodes_count = w_world_nodes_count;
+//		level_editor_world_nodes = w_world_nodes;
+//
+//		level_editor_world_leaves_count = w_world_leaves_count;
+//		level_editor_world_leaves = w_world_leaves;
+//
+//		level_editor_world_batch_count = w_world_batch_count;
+//		level_editor_world_batches = w_world_batches;
+//
+//		if(level_editor_entity_buffer)
+//		{
+//			memory_Free(level_editor_entity_buffer);
+//		}
+//
+//		entity_SerializeEntities(&level_editor_entity_buffer, &level_editor_entity_buffer_size, 0);
+//
+//
+//        if(level_editor_waypoint_buffer)
+//		{
+//			memory_Free(level_editor_waypoint_buffer);
+//		}
+//
+//		navigation_SerializeWaypoints(&level_editor_waypoint_buffer, &level_editor_waypoint_buffer_size);
+//
+//		if(level_editor_light_buffer)
+//		{
+//			memory_Free(level_editor_light_buffer);
+//		}
+//
+//		light_SerializeLights(&level_editor_light_buffer, &level_editor_light_buffer_size);
 
 		level_editor_has_copied_data = 1;
 		level_editor_need_to_copy_data = 0;
@@ -1598,81 +1606,23 @@ void editor_LevelEditorSerialize(void **buffer, int *buffer_size)
 	char *out = NULL;
 	int out_size = 0;
 
-	struct level_editor_buffer_start_t *buffer_start;
-	struct level_editor_buffer_end_t *buffer_end;
-
+	struct serializer_t serializer;
 
     void *brush_buffer;
     int brush_buffer_size;
 
-    void *waypoint_buffer;
-	int waypoint_buffer_size;
+	void *world_buffer;
+	int world_buffer_size;
 
-	void *light_buffer;
-	int light_buffer_size;
-
-	void *entity_buffer;
-	int entity_buffer_size;
-
-	void *material_buffer;
-	int material_buffer_size;
-
-	material_SerializeMaterials(&material_buffer, &material_buffer_size);
     brush_SerializeBrushes(&brush_buffer, &brush_buffer_size);
-    navigation_SerializeWaypoints(&waypoint_buffer, &waypoint_buffer_size);
-    light_SerializeLights(&light_buffer, &light_buffer_size);
-    entity_SerializeEntities(&entity_buffer, &entity_buffer_size, 1);
+    world_SerializeWorld(&world_buffer, &world_buffer_size);
 
+    memset(&serializer, 0, sizeof(struct serializer_t));
 
-    out_size = material_buffer_size + brush_buffer_size + waypoint_buffer_size + light_buffer_size + entity_buffer_size + sizeof(struct level_editor_buffer_start_t) + sizeof(struct level_editor_buffer_end_t);
-    out = memory_Calloc(out_size, 1);
-
-	*buffer = out;
-    *buffer_size = out_size;
-
-
-    buffer_start = (struct level_editor_buffer_start_t *)out;
-    out += sizeof(struct level_editor_buffer_start_t);
-
-    strcpy(buffer_start->tag, level_editor_buffer_start_tag);
-
-    if(material_buffer_size)
-	{
-		memcpy(out, material_buffer, material_buffer_size);
-		out += material_buffer_size;
-	}
-
-	if(brush_buffer_size)
-	{
-		memcpy(out, brush_buffer, brush_buffer_size);
-		out += brush_buffer_size;
-	}
-
-	if(waypoint_buffer_size)
-	{
-		memcpy(out, waypoint_buffer, waypoint_buffer_size);
-		out += waypoint_buffer_size;
-	}
-
-	if(light_buffer_size)
-	{
-		memcpy(out, light_buffer, light_buffer_size);
-		out += light_buffer_size;
-	}
-
-	if(entity_buffer_size)
-	{
-		memcpy(out, entity_buffer, entity_buffer_size);
-		out += entity_buffer_size;
-	}
-
-    buffer_end = (struct level_editor_buffer_end_t *)out;
-    out += sizeof(struct level_editor_buffer_end_t);
-
-	strcpy(buffer_end->tag, level_editor_buffer_end_tag);
-
-	memory_Free(brush_buffer);
-	memory_Free(waypoint_buffer);
+    serializer_AddEntry(&serializer, "brush buffer", brush_buffer_size, brush_buffer);
+    serializer_AddEntry(&serializer, "world buffer", world_buffer_size, world_buffer);
+    serializer_Serialize(&serializer, buffer, buffer_size);
+    serializer_FreeSerializer(&serializer, 1);
 }
 
 
@@ -1681,56 +1631,35 @@ extern char brush_section_start_tag[];
 extern char light_section_start_tag[];
 
 
-void editor_LevelEditorDeserialize(void **buffer)
+void editor_LevelEditorDeserialize(void **buffer, char *file_name)
 {
-	char *in;
-	int i = 0;
+    struct serializer_t serializer;
 
-	struct level_editor_buffer_start_t *buffer_start;
-	struct level_editor_buffer_end_t *buffer_end;
+    memset(&serializer, 0, sizeof(struct serializer_t));
 
-	in = *buffer;
+    void *read_buffer = *(char **)buffer;
 
-    while(1)
-	{
-        if(!strcmp(in, level_editor_buffer_start_tag))
-		{
-			buffer_start = (struct level_editor_buffer_start_t *)in;
-			in += sizeof(struct level_editor_buffer_start_t );
-		}
-		else if(!strcmp(in, material_section_start_tag))
-		{
-            material_DeserializeMaterials((void **)&in);
-		}
-		else if(!strcmp(in, waypoint_section_start_tag))
-		{
-            navigation_DeserializeWaypoints((void **)&in);
-		}
-		else if(!strcmp(in, brush_section_start_tag))
-		{
-			brush_DeserializeBrushes((void **)&in);
-		}
-		else if(!strcmp(in, light_section_start_tag))
-		{
-			light_DeserializeLights((void **)&in);
-		}
-		else if(!strcmp(in, entity_section_start_tag))
-		{
-			entity_DeserializeEntities((void **)&in, 1);
-		}
-		else if(!strcmp(in, level_editor_buffer_end_tag))
-		{
-			buffer_end = (struct level_editor_buffer_end_t *)in;
-			in += sizeof(struct level_editor_buffer_end_t );
-			break;
-		}
-		else
-		{
-			in++;
-		}
-	}
+    serializer_Deserialize(&serializer, &read_buffer);
 
-    *buffer = in;
+
+    struct serializer_entry_t *brush_entry;
+    struct serializer_entry_t *world_entry;
+
+    brush_entry = serializer_GetEntry(&serializer, "brush buffer");
+    world_entry = serializer_GetEntry(&serializer, "world buffer");
+
+    if(brush_entry)
+    {
+        read_buffer = brush_entry->entry_buffer;
+        brush_DeserializeBrushes(&read_buffer);
+    }
+
+    if(world_entry)
+    {
+        read_buffer = world_entry->entry_buffer;
+        struct world_level_t *level = world_LoadLevelFromMemory(file_name, &read_buffer);
+        world_ChangeLevel(file_name);
+    }
 }
 
 
@@ -1855,6 +1784,7 @@ int editor_LevelEditorSaveLevel(char *file_path, char *file_name, void **file_bu
             break;
 
             case LEVEL_EDITOR_FOLDER_ENTITIES:
+
                 entity_defs = entity_GetEntityDefs(&entity_defs_count);
 
                 for(j = 0; j < entity_defs_count; j++)
@@ -1883,7 +1813,6 @@ int editor_LevelEditorSaveLevel(char *file_path, char *file_name, void **file_bu
     }*/
 
     fclose(path_file);
-
 
     strcat(path, "/");
     strcat(path, level_editor_level_name);
@@ -1968,7 +1897,7 @@ int editor_LevelEditorLoadLevel(char *path, char *file_name)
 
             read_buffer = file_buffer;
 
-            editor_LevelEditorDeserialize(&read_buffer);
+            editor_LevelEditorDeserialize(&read_buffer, file_name);
 
             memory_Free(file_buffer);
 

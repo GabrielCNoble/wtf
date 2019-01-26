@@ -20,6 +20,7 @@
 #include "path.h"
 #include "log.h"
 #include "navigation.h"
+#include "serializer.h"
 
 /* from world.c */
 extern int w_world_vertices_count;
@@ -1038,6 +1039,8 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
 	struct bsp_pvs_record_t *pvs_record;
 	struct bsp_vertice_record_t *vertice_record;
 
+	struct serializer_t serializer;
+
 	//FILE *debug_file;
     //debug_file = fopen("serialize_out.txt", "w");
 
@@ -1056,33 +1059,7 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
 	char *out;
 	int out_buffer_size = 0;
 
-
-    void *entity_buffer = NULL;
-    int entity_buffer_size = 0;
-
-    void *entity_def_buffer = NULL;
-    int entity_def_buffer_size = 0;
-
-    void *waypoint_buffer = NULL;
-    int waypoint_buffer_size = 0;
-
-    void *light_buffer = NULL;
-    int light_buffer_size = 0;
-
-    void *material_buffer = NULL;
-    int material_buffer_size = 0;
-
-    out_buffer_size = sizeof(struct bsp_section_start_t) + sizeof(struct bsp_section_end_t);
-
-
-    entity_SerializeEntities(&entity_buffer, &entity_buffer_size, 0);
-    entity_SerializeEntities(&entity_def_buffer, &entity_def_buffer_size, 0);
-    light_SerializeLights(&light_buffer, &light_buffer_size);
-    navigation_SerializeWaypoints(&waypoint_buffer, &waypoint_buffer_size);
-    material_SerializeMaterials(&material_buffer, &material_buffer_size);
-
-	out_buffer_size += entity_buffer_size + entity_def_buffer_size + light_buffer_size + waypoint_buffer_size + material_buffer_size;
-
+    out_buffer_size = sizeof(struct bsp_record_start_t) + sizeof(struct bsp_record_end_t);
 
 	if(w_world_leaves)
 	{
@@ -1095,10 +1072,7 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
 		}*/
 
 
-		out_buffer_size += sizeof(struct bsp_record_start_t) + sizeof(struct bsp_record_end_t) +
-
-
-						   sizeof(struct bsp_batch_record_t) * w_world_batch_count +
+		out_buffer_size += sizeof(struct bsp_batch_record_t) * w_world_batch_count +
 
 							/* bsp_leaf_record_t already has space for a single leaf, so that's why we take one leaf away here... */
 					       sizeof(struct bsp_leaf_record_t) + sizeof(struct bsp_dleaf_t) * (w_world_leaves_count - 1) +
@@ -1116,60 +1090,26 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
 					       //sizeof(struct bsp_pvs_record_t) + pvs_byte_count - 1;
 	}
 
-
-
-
 	out_buffer = memory_Calloc(1, out_buffer_size);
 
-    *buffer = out_buffer;
+	*buffer = out_buffer;
 	*buffer_size = out_buffer_size;
 
 	out = out_buffer;
 
-	if(material_buffer)
-	{
-        memcpy(out, material_buffer, material_buffer_size);
-		out += material_buffer_size;
-	}
+//    section_start = (struct bsp_section_start_t *)out;
+//	out += sizeof(struct bsp_section_start_t);
+//
+//	strcpy(section_start->tag, bsp_section_start_tag);
 
-    if(light_buffer)
-	{
-		memcpy(out, light_buffer, light_buffer_size);
-		out += light_buffer_size;
-	}
+    record_start = (struct bsp_record_start_t *)out;
+    out += sizeof(struct bsp_record_start_t);
 
-	if(waypoint_buffer)
-	{
-		memcpy(out, waypoint_buffer, waypoint_buffer_size);
-		out += waypoint_buffer_size;
-	}
-
-	if(entity_def_buffer)
-	{
-		memcpy(out, entity_def_buffer, entity_def_buffer_size);
-		out += entity_def_buffer_size;
-	}
-
-    if(entity_buffer)
-	{
-		memcpy(out, entity_buffer, entity_buffer_size);
-		out += entity_buffer_size;
-	}
-
-
-    section_start = (struct bsp_section_start_t *)out;
-	out += sizeof(struct bsp_section_start_t);
-
-	strcpy(section_start->tag, bsp_section_start_tag);
+    strcpy(record_start->tag, bsp_record_start_tag);
 
 
     if(w_world_leaves)
 	{
-		record_start = (struct bsp_record_start_t *)out;
-		out += sizeof(struct bsp_record_start_t);
-
-		strcpy(record_start->tag, bsp_record_start_tag);
-
         if(w_world_script)
         {
             strcpy(record_start->script_name, w_world_script->script.file_name);
@@ -1287,27 +1227,18 @@ void bsp_SerializeBsp(void **buffer, int *buffer_size)
 		#endif
 
 		/* write end of the record... */
-        record_end = (struct bsp_record_end_t *)out;
-        out += sizeof(struct bsp_record_end_t);
-
-        strcpy(record_end->tag, bsp_record_end_tag);
 	}
 
+	record_end = (struct bsp_record_end_t *)out;
+    out += sizeof(struct bsp_record_end_t);
 
+    strcpy(record_end->tag, bsp_record_end_tag);
 
-
-	section_end = (struct bsp_section_end_t *)out;
-	out += sizeof(struct bsp_section_end_t);
-
-	strcpy(section_end->tag, bsp_section_end_tag);
+//	section_end = (struct bsp_section_end_t *)out;
+//	out += sizeof(struct bsp_section_end_t);
+//
+//	strcpy(section_end->tag, bsp_section_end_tag);
 }
-
-
-
-//extern char material_section_start_tag[];
-extern char light_section_start_tag[];
-extern char waypoint_section_start_tag[];
-//extern char entity_section_start_tag[];
 
 
 void bsp_DeserializeBsp(void **buffer)
@@ -1330,205 +1261,183 @@ void bsp_DeserializeBsp(void **buffer)
 	int i;
 	int j;
 
-	in = *buffer;
+	in = *(char **)buffer;
 
-
-    while(1)
-	{
-		if(!strcmp(in, bsp_section_start_tag))
-		{
-            section_start = (struct bsp_section_start_t *)in;
-			in += sizeof(struct bsp_section_start_t );
-		}
-		else if(!strcmp(in, bsp_section_end_tag))
-		{
-            section_end = (struct bsp_section_end_t *)in;
-			in += sizeof(struct bsp_section_end_t );
-			break;
-		}
-		else if(!strcmp(in, light_section_start_tag))
-		{
-            light_DeserializeLights((void **)&in);
-		}
-		else if(!strcmp(in, entity_section_start_tag))
-		{
-            entity_DeserializeEntities((void **)&in, 1);
-		}
-		else if(!strcmp(in, waypoint_section_start_tag))
-		{
-            navigation_DeserializeWaypoints((void **)&in);
-		}
-		else if(!strcmp(in, material_section_start_tag))
-		{
-            material_DeserializeMaterials((void **)&in);
-		}
-		else if(!strcmp(in, bsp_record_start_tag))
-		{
-			record_start = (struct bsp_record_start_t *)in;
-			in += sizeof(struct bsp_record_start_t );
-
-            while(1)
+    if(in)
+    {
+        while(1)
+        {
+            if(!strcmp(in, bsp_record_start_tag))
             {
-                if(!strcmp(in, bsp_vertice_record_tag))
+                record_start = (struct bsp_record_start_t *)in;
+                in += sizeof(struct bsp_record_start_t );
+
+                while(1)
                 {
-                    /* read vertices... */
-                    vertice_record = (struct bsp_vertice_record_t *)in;
-                    in += sizeof(struct bsp_vertice_record_t ) + sizeof(vertex_t) * (record_start->vertice_count - 1);
-
-                    w_world_vertices_count = record_start->vertice_count;
-                    w_world_vertices = memory_Calloc(w_world_vertices_count, sizeof(vertex_t));
-
-                    for(i = 0; i < w_world_vertices_count; i++)
+                    if(!strcmp(in, bsp_vertice_record_tag))
                     {
-                        w_world_vertices[i] = vertice_record->vertices[i];
-                    }
-                }
-                else if(!strcmp(in, bsp_batch_record_tag))
-                {
-                    /* read batches... */
-                    //while(strcmp(in, bsp_batch_record_tag))i++;
+                        /* read vertices... */
+                        vertice_record = (struct bsp_vertice_record_t *)in;
+                        in += sizeof(struct bsp_vertice_record_t ) + sizeof(vertex_t) * (record_start->vertice_count - 1);
 
-                    batch_records = (struct bsp_batch_record_t *)in;
-                    in += sizeof(struct bsp_batch_record_t ) * record_start->batch_count;
+                        w_world_vertices_count = record_start->vertice_count;
+                        w_world_vertices = memory_Calloc(w_world_vertices_count, sizeof(vertex_t));
 
-                    w_world_batches = memory_Calloc(record_start->batch_count, sizeof(struct batch_t));
-                    w_world_batch_count = record_start->batch_count;
-
-
-                    for(i = 0; i < record_start->batch_count; i++)
-                    {
-                        w_world_batches[i].next = batch_records[i].count;
-                        w_world_batches[i].start = batch_records[i].start;
-                        w_world_batches[i].material_index = material_MaterialIndex(batch_records[i].material_name);
-
-                        //if(i)
-                        //{
-                        //	w_world_batches[i].start = w_world_batches[i - 1].start + w_world_batches[i - 1].next;
-                        //}
-                    }
-
-                }
-                else if(!strcmp(in, bsp_node_record_tag))
-                {
-                    /* read nodes... */
-                    //while(strcmp(in, bsp_node_record_tag))in++;
-
-                    node_record = (struct bsp_node_record_t *)in;
-                    in += sizeof(struct bsp_node_record_t) + sizeof(struct bsp_pnode_t) * (record_start->node_count - 1);
-
-                    w_world_nodes = memory_Calloc(record_start->node_count, sizeof(struct bsp_pnode_t));
-                    w_world_nodes_count = record_start->node_count;
-
-                    for(i = 0; i < w_world_nodes_count; i++)
-                    {
-                        w_world_nodes[i] = node_record->nodes[i];
-                    }
-                }
-                else if(!strcmp(in, bsp_leaf_record_tag))
-                {
-                    /* read leaves... */
-                    //while(strcmp(in, bsp_leaf_record_tag))in++;
-
-                    leaf_record = (struct bsp_leaf_record_t *)in;
-                    in += sizeof(struct bsp_leaf_record_t) + sizeof(struct bsp_dleaf_t) * (record_start->leaf_count - 1);
-
-                    w_world_leaves = memory_Calloc(record_start->leaf_count, sizeof(struct bsp_dleaf_t));
-                    w_world_leaves_count = record_start->leaf_count;
-
-                    for(i = 0; i < w_world_leaves_count; i++)
-                    {
-                        w_world_leaves[i] = leaf_record->leaves[i];
-                    }
-                }
-                else if(!strcmp(in, bsp_triangle_record_tag))
-                {
-                    /* read triangles... */
-                   // while(strcmp(in, bsp_triangle_record_tag))in++;
-
-                    triangle_record = (struct bsp_triangle_record_t *)in;
-                    in += sizeof(struct bsp_triangle_record_t) + sizeof(struct bsp_striangle_t ) * (record_start->triangle_count - 1);
-
-                    w_world_triangle_count = record_start->triangle_count;
-
-                    for(i = 0; i < w_world_leaves_count; i++)
-                    {
-                        w_world_leaves[i].tris = memory_Calloc(leaf_record->leaves[i].tris_count, sizeof(struct bsp_striangle_t));
-                        w_world_leaves[i].tris_count = leaf_record->leaves[i].tris_count;
-
-                        for(j = 0; j < leaf_record->leaves[i].tris_count; j++)
+                        for(i = 0; i < w_world_vertices_count; i++)
                         {
-                            w_world_leaves[i].tris[j].first_vertex = (triangle_record->triangles + (int)leaf_record->leaves[i].tris + j)->first_vertex;
-                            w_world_leaves[i].tris[j].batch = (triangle_record->triangles + (int)leaf_record->leaves[i].tris + j)->batch;
+                            w_world_vertices[i] = vertice_record->vertices[i];
+                        }
+                    }
+                    else if(!strcmp(in, bsp_batch_record_tag))
+                    {
+                        /* read batches... */
+                        //while(strcmp(in, bsp_batch_record_tag))i++;
+
+                        batch_records = (struct bsp_batch_record_t *)in;
+                        in += sizeof(struct bsp_batch_record_t ) * record_start->batch_count;
+
+                        w_world_batches = memory_Calloc(record_start->batch_count, sizeof(struct batch_t));
+                        w_world_batch_count = record_start->batch_count;
+
+
+                        for(i = 0; i < record_start->batch_count; i++)
+                        {
+                            w_world_batches[i].next = batch_records[i].count;
+                            w_world_batches[i].start = batch_records[i].start;
+                            w_world_batches[i].material_index = material_MaterialIndex(batch_records[i].material_name);
+
+                            //if(i)
+                            //{
+                            //	w_world_batches[i].start = w_world_batches[i - 1].start + w_world_batches[i - 1].next;
+                            //}
                         }
 
-                        //memcpy(w_world_leaves[i].tris, triangle_record->triangles + (int)leaf_record->leaves[i].tris, sizeof(struct bsp_striangle_t) * w_world_leaves[i].tris_count);
+                    }
+                    else if(!strcmp(in, bsp_node_record_tag))
+                    {
+                        /* read nodes... */
+                        //while(strcmp(in, bsp_node_record_tag))in++;
+
+                        node_record = (struct bsp_node_record_t *)in;
+                        in += sizeof(struct bsp_node_record_t) + sizeof(struct bsp_pnode_t) * (record_start->node_count - 1);
+
+                        w_world_nodes = memory_Calloc(record_start->node_count, sizeof(struct bsp_pnode_t));
+                        w_world_nodes_count = record_start->node_count;
+
+                        for(i = 0; i < w_world_nodes_count; i++)
+                        {
+                            w_world_nodes[i] = node_record->nodes[i];
+                        }
+                    }
+                    else if(!strcmp(in, bsp_leaf_record_tag))
+                    {
+                        /* read leaves... */
+                        //while(strcmp(in, bsp_leaf_record_tag))in++;
+
+                        leaf_record = (struct bsp_leaf_record_t *)in;
+                        in += sizeof(struct bsp_leaf_record_t) + sizeof(struct bsp_dleaf_t) * (record_start->leaf_count - 1);
+
+                        w_world_leaves = memory_Calloc(record_start->leaf_count, sizeof(struct bsp_dleaf_t));
+                        w_world_leaves_count = record_start->leaf_count;
+
+                        for(i = 0; i < w_world_leaves_count; i++)
+                        {
+                            w_world_leaves[i] = leaf_record->leaves[i];
+                        }
+                    }
+                    else if(!strcmp(in, bsp_triangle_record_tag))
+                    {
+                        /* read triangles... */
+                       // while(strcmp(in, bsp_triangle_record_tag))in++;
+
+                        triangle_record = (struct bsp_triangle_record_t *)in;
+                        in += sizeof(struct bsp_triangle_record_t) + sizeof(struct bsp_striangle_t ) * (record_start->triangle_count - 1);
+
+                        w_world_triangle_count = record_start->triangle_count;
+
+                        for(i = 0; i < w_world_leaves_count; i++)
+                        {
+                            w_world_leaves[i].tris = memory_Calloc(leaf_record->leaves[i].tris_count, sizeof(struct bsp_striangle_t));
+                            w_world_leaves[i].tris_count = leaf_record->leaves[i].tris_count;
+
+                            for(j = 0; j < leaf_record->leaves[i].tris_count; j++)
+                            {
+                                w_world_leaves[i].tris[j].first_vertex = (triangle_record->triangles + (int)leaf_record->leaves[i].tris + j)->first_vertex;
+                                w_world_leaves[i].tris[j].batch = (triangle_record->triangles + (int)leaf_record->leaves[i].tris + j)->batch;
+                            }
+
+                            //memcpy(w_world_leaves[i].tris, triangle_record->triangles + (int)leaf_record->leaves[i].tris, sizeof(struct bsp_striangle_t) * w_world_leaves[i].tris_count);
+                        }
+                    }
+                    else if(!strcmp(in, bsp_record_end_tag))
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        in++;
                     }
                 }
-                else if(!strcmp(in, bsp_record_end_tag))
+
+
+                #if 0
+
+                /* read pvs... */
+                while(strcmp(in, bsp_pvs_record_tag))in++;
+
+                pvs_record =  (struct bsp_pvs_record_t *)in;
+                in += sizeof(struct bsp_pvs_record_t ) + pvs_record->byte_count - 1;
+
+                for(i = 0; i < w_world_leaves_count; i++)
                 {
-                    break;
+                    w_world_leaves[i].pvs_lenght = leaf_record->leaves[i].pvs_lenght;
+                    w_world_leaves[i].pvs = memory_Calloc(w_world_leaves[i].pvs_lenght, 1);
+
+                    //log_LogMessage(LOG_MESSAGE_NOTIFY, "deserialize leaf %d pvs:\n", i);
+
+                    for(j = 0; j < w_world_leaves[i].pvs_lenght; j++)
+                    {
+                        w_world_leaves[i].pvs[j] = *(pvs_record->pvs + (int)leaf_record->leaves[i].pvs + j);
+                        //log_LogMessage(LOG_MESSAGE_NOTIFY, "%d ", w_world_leaves[i].pvs[j]);
+                    }
+
+                    //log_LogMessage(LOG_MESSAGE_NOTIFY, "\n");
+
+                    //memcpy(w_world_leaves[i].pvs, pvs_record->pvs + (int)leaf_record->leaves[i].pvs, w_world_leaves[i].pvs_lenght);
                 }
-                else
-                {
-                    in++;
-                }
+
+                #endif
+
+
+
+    //			log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "bsp deserialized succesfully!\nNodes: %d\nLeaves: %d\nTriangles: %d\nBatches: %d",
+    //																											record_start->node_count,
+    //																											record_start->leaf_count,
+    //																											record_start->triangle_count,
+    //																											record_start->batch_count);
+
+
+                world_Update();
+
+
+
             }
+            else if(!strcmp(in, bsp_record_end_tag))
+            {
+                record_end = (struct bsp_record_end_t *)in;
+                in += sizeof(struct bsp_record_end_t);
+                break;
+            }
+            else
+            {
+                in++;
+            }
+        }
+
+        *buffer = in;
+    }
 
 
-            #if 0
-
-			/* read pvs... */
-			while(strcmp(in, bsp_pvs_record_tag))in++;
-
-			pvs_record =  (struct bsp_pvs_record_t *)in;
-			in += sizeof(struct bsp_pvs_record_t ) + pvs_record->byte_count - 1;
-
-			for(i = 0; i < w_world_leaves_count; i++)
-			{
-				w_world_leaves[i].pvs_lenght = leaf_record->leaves[i].pvs_lenght;
-                w_world_leaves[i].pvs = memory_Calloc(w_world_leaves[i].pvs_lenght, 1);
-
-				//log_LogMessage(LOG_MESSAGE_NOTIFY, "deserialize leaf %d pvs:\n", i);
-
-                for(j = 0; j < w_world_leaves[i].pvs_lenght; j++)
-				{
-					w_world_leaves[i].pvs[j] = *(pvs_record->pvs + (int)leaf_record->leaves[i].pvs + j);
-					//log_LogMessage(LOG_MESSAGE_NOTIFY, "%d ", w_world_leaves[i].pvs[j]);
-				}
-
-				//log_LogMessage(LOG_MESSAGE_NOTIFY, "\n");
-
-                //memcpy(w_world_leaves[i].pvs, pvs_record->pvs + (int)leaf_record->leaves[i].pvs, w_world_leaves[i].pvs_lenght);
-			}
-
-			#endif
-
-
-
-//			log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "bsp deserialized succesfully!\nNodes: %d\nLeaves: %d\nTriangles: %d\nBatches: %d",
-//																											record_start->node_count,
-//																											record_start->leaf_count,
-//																											record_start->triangle_count,
-//																											record_start->batch_count);
-
-
-			world_Update();
-
-
-
-		}
-		else if(!strcmp(in, bsp_record_end_tag))
-		{
-			record_end = (struct bsp_record_end_t *)in;
-			in += sizeof(struct bsp_record_end_t);
-		}
-		else
-		{
-			in++;
-		}
-	}
-
-	*buffer = in;
 
 }
 

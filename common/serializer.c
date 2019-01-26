@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "serializer.h"
 #include "c_memory.h"
 
@@ -106,17 +107,19 @@ void serializer_Serialize(struct serializer_t *serializer, void **buffer, int *b
 
 
     serializer_buffer_size = sizeof(struct serializer_header_t) +
-                             sizeof(struct serializer_tail_t) +
                              sizeof(struct serializer_entry_data_t) * serializer->entry_count;
 
     first_entry_offset = serializer_buffer_size;
+
+    serializer_buffer_size += sizeof(struct serializer_tail_t);
 
     entry = serializer->entries;
 
     while(entry)
     {
         /* make sure the buffer is even-sized... */
-        serializer_buffer_size += (entry->data.size + 3) & (~3);
+        //serializer_buffer_size += (entry->data.size + 3) & (~3);
+        serializer_buffer_size += entry->data.size;
         entry = entry->next;
     }
 
@@ -130,7 +133,9 @@ void serializer_Serialize(struct serializer_t *serializer, void **buffer, int *b
 
     header = (struct serializer_header_t *)out;
     out += sizeof(struct serializer_header_t);
+
     strcpy(header->tag, serializer_header_tag);
+    header->buffer_size = serializer_buffer_size;
 
 
     entry_data = (struct serializer_entry_data_t *)out;
@@ -144,17 +149,20 @@ void serializer_Serialize(struct serializer_t *serializer, void **buffer, int *b
     {
         memcpy(entry_data, &entry->data, sizeof(struct serializer_entry_data_t));
 
-        entry_data->offset = serializer_buffer_size;
-
         if(header->entry_count)
         {
-            entry_data->offset += (entry_data - 1)->offset + (entry_data - 1)->size;
+            entry_data->offset = (entry_data - 1)->offset + (entry_data - 1)->size;
+        }
+        else
+        {
+            entry_data->offset = first_entry_offset;
         }
 
         memcpy(out, entry->entry_buffer, entry->data.size);
 
         /* make sure every entry begins at 4 byte boundary... */
-        out += (entry->data.size + 3) & (~3);
+        //out += (entry_data->size + 3) & (~3);
+        out += entry_data->size;
 
         header->entry_count++;
         entry_data++;
@@ -171,10 +179,110 @@ void serializer_Serialize(struct serializer_t *serializer, void **buffer, int *b
 
 void serializer_Deserialize(struct serializer_t *serializer, void **buffer)
 {
+    struct serializer_header_t *header;
+    struct serializer_tail_t *tail;
 
+    struct serializer_entry_data_t *entries_data;
+    struct serializer_entry_data_t *entry_data;
+
+
+    struct serializer_entry_t *entry;
+
+    char *in;
+    void *buffer_start;
+    int i;
+
+
+    in = *(char **)buffer;
+
+    while(1)
+    {
+        if(!strcmp(serializer_header_tag, in))
+        {
+            break;
+        }
+        else if(!strcmp(serializer_tail_tag, in))
+        {
+            return;
+        }
+
+        in++;
+    }
+
+    buffer_start = in;
+
+    header = (struct serializer_header_t *)in;
+    in += sizeof(struct serializer_header_t );
+
+    serializer->entry_count = header->entry_count;
+    serializer->entries = NULL;
+    serializer->last_entry = NULL;
+
+
+    entries_data = (struct serializer_entry_data_t *)in;
+    in += sizeof(struct serializer_entry_data_t ) * header->entry_count;
+
+    for(i = 0; i < header->entry_count; i++)
+    {
+        entry_data = entries_data + i;
+
+        entry = memory_Calloc(1, sizeof(struct serializer_entry_t));
+
+        memcpy(&entry->data, entry_data, sizeof(struct serializer_entry_data_t));
+
+
+        entry->entry_buffer = memory_Calloc(entry_data->size, 1);
+        memcpy(entry->entry_buffer, buffer_start + entry_data->offset, entry_data->size);
+
+        //entry->entry_buffer = buffer_start + entry_data->offset;
+
+        if(!serializer->entries)
+        {
+            serializer->entries = entry;
+        }
+        else
+        {
+            serializer->last_entry->next = entry;
+        }
+        serializer->last_entry = entry;
+
+        in += entry->data.size;
+    }
+
+    tail = (struct serializer_tail_t *)in;
+    in += sizeof(struct serializer_tail_t );
+
+    *buffer = in;
 }
 
-void serializer_FreeSerializer(struct serializer_t *serializer, int free_buffers)
+void serializer_FreeSerializer(struct serializer_t *serializer, int free_entry_buffers)
 {
+    struct serializer_entry_t *entry;
+    struct serializer_entry_t *next_entry;
 
+    entry = serializer->entries;
+
+    while(entry)
+    {
+        next_entry = entry->next;
+
+        if(free_entry_buffers)
+        {
+            memory_Free(entry->entry_buffer);
+        }
+
+        memory_Free(entry);
+
+        entry = next_entry;
+    }
+
+    serializer->entries = NULL;
+    serializer->last_entry = NULL;
+    serializer->entry_count = 0;
 }
+
+
+
+
+
+

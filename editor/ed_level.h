@@ -110,7 +110,7 @@ void editor_LevelEditorRestoreLevelData();
 
 void editor_LevelEditorSerialize(void **buffer, int *buffer_size);
 
-void editor_LevelEditorDeserialize(void **buffer);
+void editor_LevelEditorDeserialize(void **buffer, char *file_name);
 
 
 void editor_LevelEditorNewLevel();

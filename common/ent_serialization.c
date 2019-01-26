@@ -1488,48 +1488,51 @@ void entity_DeserializeEntities(void **buffer, int deserialize_defs)
 
 	in = *buffer;
 
-	handle.entity_index = INVALID_ENTITY_INDEX;
+	if(in)
+    {
+        handle.entity_index = INVALID_ENTITY_INDEX;
 
-	while(1)
-	{
-		if(!strcmp(in, entity_section_start_tag))
-		{
-			section_start = (struct entity_section_start_t *)in;
-			in += sizeof(struct entity_section_start_t);
-		}
-		if(!strcmp(in, trigger_record_tag))
-		{
-            trigger_record = (struct trigger_record_t *)in;
-			in += sizeof(struct trigger_record_t) + sizeof(struct trigger_filter_record_t) * (trigger_record->filter_count - 1);
+        while(1)
+        {
+            if(!strcmp(in, entity_section_start_tag))
+            {
+                section_start = (struct entity_section_start_t *)in;
+                in += sizeof(struct entity_section_start_t);
+            }
+            if(!strcmp(in, trigger_record_tag))
+            {
+                trigger_record = (struct trigger_record_t *)in;
+                in += sizeof(struct trigger_record_t) + sizeof(struct trigger_filter_record_t) * (trigger_record->filter_count - 1);
 
-			trigger_index = entity_CreateTrigger(&trigger_record->orientation, trigger_record->positon, trigger_record->scale, trigger_record->event_name, trigger_record->trigger_name);
+                trigger_index = entity_CreateTrigger(&trigger_record->orientation, trigger_record->positon, trigger_record->scale, trigger_record->event_name, trigger_record->trigger_name);
 
-			for(i = 0; i < trigger_record->filter_count; i++)
-			{
-				entity_AddTriggerFilter(trigger_index, trigger_record->filters[i].filter_name);
-			}
+                for(i = 0; i < trigger_record->filter_count; i++)
+                {
+                    entity_AddTriggerFilter(trigger_index, trigger_record->filters[i].filter_name);
+                }
 
-			continue;
+                continue;
 
-		}
-		if(!strcmp(in, entity_record_start_tag))
-		{
-			entity_ReadEntity((void **)&in, handle);
-			continue;
-		}
-		if(!strcmp(in, entity_section_end_tag))
-		{
-			section_end = (struct entity_section_end_t *)in;
-			in += sizeof(struct entity_section_end_t);
-			break;
-		}
-		else
-		{
-			in++;
-		}
-	}
+            }
+            if(!strcmp(in, entity_record_start_tag))
+            {
+                entity_ReadEntity((void **)&in, handle);
+                continue;
+            }
+            if(!strcmp(in, entity_section_end_tag))
+            {
+                section_end = (struct entity_section_end_t *)in;
+                in += sizeof(struct entity_section_end_t);
+                break;
+            }
+            else
+            {
+                in++;
+            }
+        }
 
-	*buffer = in;
+        *buffer = in;
+    }
 }
 
 

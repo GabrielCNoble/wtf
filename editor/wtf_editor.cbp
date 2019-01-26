@@ -452,6 +452,10 @@
 			<Option compiler="gcc" use="0" buildCommand="g++.exe $options -c $file -o $object" />
 		</Unit>
 		<Unit filename="../common/script_types/scriptstdstring.h" />
+		<Unit filename="../common/serializer.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/serializer.h" />
 		<Unit filename="../common/shader.c">
 			<Option compilerVar="CC" />
 		</Unit>
