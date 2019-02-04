@@ -35,7 +35,10 @@ void list_destroy(struct list_t *list)
 //		}
 //	}
 
-	memory_Free(list->elements);
+    if(list->elements)
+    {
+        memory_Free(list->elements);
+    }
 
 	list->elements = NULL;
 	list->max_elements = 0;

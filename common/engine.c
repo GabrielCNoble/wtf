@@ -223,14 +223,22 @@ void engine_MainLoop()
 
 		engine_UpdateDeltaTime();
 
+		//printf("a: %llu\n", start_delta);
+
+		//printf("%f %llu\n", delta_time, end_delta - start_delta);
+
 		//s = engine_GetDeltaTime();
 		//renderer_StartGpuTimer();
 
 
 		input_GetInput(delta_time);
+
+		//printf("b: %llu\n", start_delta);
 		//gui_ProcessGUI();
 
 		gui_OpenGuiFrame();
+
+		//printf("c: %llu\n", start_delta);
 
 		//int cpu_timer = renderer_StartCpuTimer("engine_MainLoop");
         //cpu_timer = renderer_StartCpuTimer("engine_GameMain");
@@ -238,6 +246,8 @@ void engine_MainLoop()
 		{
 			engine_GameMain(delta_time);
 		}
+
+		//printf("d: %llu\n", start_delta);
 
 		if(engine_state & ENGINE_PLAYING)
 		{
@@ -247,38 +257,30 @@ void engine_MainLoop()
 			world_ExecuteWorldScript();
 			physics_ProcessCollisions(delta_time);
 		}
-		//renderer_StopTimer(cpu_timer);
 
-        //cpu_timer = renderer_StartCpuTimer("update components");
+
+        //printf("e: %llu\n", start_delta);
+		//entity_RemoveMarkedEntities(1);
+
         entity_UpdatePhysicsComponents();
 		entity_UpdateTransformComponents();
 		entity_UpdateCameraComponents();
-		//renderer_StopTimer(cpu_timer);
 
-		//script_ExecuteScripts(delta_time);
-
-
-		//entity_ClearMarkedEntities();
-
+		//printf("f: %llu\n", start_delta);
 
 		sound_ProcessSound();
 		particle_UpdateParticleSystems(delta_time);
 
-        //cpu_timer = renderer_StartCpuTimer("mark on leaves");
+		//printf("g: %llu\n", start_delta);
+
 		world_MarkLightsOnLeaves();
 		world_MarkEntitiesOnLeaves();
-		//renderer_StopTimer(cpu_timer);
 
-		//world_VisibleWorld();
-		//world_VisibleEntities();
-		//world_VisibleLights();
+		//printf("h: %llu\n", start_delta);
 
-        //renderer_StopTimer(cpu_timer);
-
-		//gui_CloseGuiFrame();
-
-		//renderer_StartFrame();
 		renderer_DrawFrame();
+
+		//printf("i: %llu\n", start_delta);
 
 		engine_state &= ~(ENGINE_JUST_PAUSED | ENGINE_JUST_RESUMED);
 	}
@@ -352,6 +354,7 @@ int engine_GetEngineState()
 void engine_UpdateDeltaTime()
 {
 	end_delta = SDL_GetPerformanceCounter();
+	performance_frequency = SDL_GetPerformanceFrequency();
 	delta_time = (float)((float)(end_delta - start_delta) * 1000) / performance_frequency;
 	start_delta = end_delta;
 }

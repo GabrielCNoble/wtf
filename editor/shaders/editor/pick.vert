@@ -1,4 +1,4 @@
-#version 400 compatibility
+
 
 in vec4 vertex_position;
 

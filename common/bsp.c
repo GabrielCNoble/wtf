@@ -834,7 +834,7 @@ struct bsp_dleaf_t **bsp_PotentiallyVisibleLeaves(int *leaf_count, vec3_t positi
 
 
 
-struct bsp_dleaf_t *front_to_back_buffer[512];
+struct bsp_dleaf_t *front_to_back_buffer[0xffffff];
 
 
 void bsp_RecursiveFrontToBackWalk(struct bsp_pnode_t *node, int *cursor, vec3_t *position)

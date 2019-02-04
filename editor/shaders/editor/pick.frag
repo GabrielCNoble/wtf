@@ -1,10 +1,10 @@
-#version 400 compatibility
+
 
 uniform float pick_type;
 uniform float pick_index;
 
 void main()
 {
-	gl_FragColor.r = pick_type;
-	gl_FragColor.g = pick_index;
+	gl_FragData[0].r = pick_type;
+	gl_FragData[0].g = pick_index;
 }

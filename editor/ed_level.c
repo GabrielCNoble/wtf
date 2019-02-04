@@ -210,8 +210,8 @@ void *level_editor_waypoint_buffer = NULL;
 int level_editor_light_buffer_size = 0;
 void *level_editor_light_buffer = NULL;
 
-int level_editor_buffer_size = 0;
-void *level_editor_buffer = NULL;
+int level_editor_world_buffer_size = 0;
+void *level_editor_world_buffer = NULL;
 
 //int level_editor_entity_list_cursor = 0;
 //int level_editor_entity_list_size = 0;
@@ -324,229 +324,16 @@ void editor_LevelEditorInit()
 
 	brush_transforms = stack_list_create(sizeof(mat4_t), 1024, NULL);
 
-
 	brush_Init();
-
-	//camera_t *camera = camera_CreateCamera("entity_camera", vec3(0.0, 0.0, 0.0), &r, 0.68, 1366.0, 768.0, 0.1, 500.0, 0);
-
-	//struct particle_system_script_t *script = particle_LoadParticleSystemScript("scripts/particle_system.as", "particle_system_test_script");
-	//struct script_t *particle_system_script = script_LoadScript("scripts/particle_system.as", "particle_system_test_script");
-
-	//int texture = texture_LoadTexture("Branches0013_1_S.png", "cloud", 0);
-
-	//int texture2 = texture_LoadTexture("explosion2.ptx", "explosion", 0);
-
-	//int ps_def = particle_CreateParticleSystemDef("particle system", 1, 120, 1, 0, texture2, script);
-
-//	int explosion_texture = texture_LoadTexture("explosion2.ptx", "explosion", 0);
-//	struct particle_system_script_t *ps_script = particle_LoadParticleSystemScript("explosion.pas", "explosion");
-//	particle_CreateParticleSystemDef("explosion", 1, 60, 1, 0, explosion_texture, ps_script);
-
-	//particle_SpawnParticleSystem(vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), &r, ps_def);
 
     gui_ImGuiAddFontFromFileTTF("fixedsys.ttf", 32.0);
 
-	//struct entity_script_t *player_script = entity_LoadScript("scripts/player.as", "player");
-	//struct entity_script_t *enemy_script = entity_LoadScript("scripts/enemy.as", "enemy");
-	//struct entity_script_t *bullet_script = entity_LoadScript("scripts/bullet.as", "bullet");
-
-	//struct collider_def_t *def;
-
-	//def = physics_CreateCharacterColliderDef("test collider", 1.0, 0.5, 0.3, 0.15, 0.7);
-	//int model_index2 = model_LoadModel("cube.mpk", "cube");
-	//int portal_gun_model = model_LoadModel("portal_gun.mpk", "portal gun");
-	//int model_index = model_LoadModel("toilet2.mpk", "toilet");
-
-	/*resource_LoadResource("toilet2.mpk");
-	resource_LoadResource("toilet.mpk");
-	resource_LoadResource("cube.mpk");*/
-
-	/*struct entity_handle_t body_entity;
-	struct entity_handle_t camera_entity;
-	struct entity_handle_t weapon_entity;
-	struct entity_handle_t spawn_entity;
-	int model_index;
-	int model_index2;*/
-
-	//model_index = model_GetModel("toilet2");
-	//model_index2 = model_GetModel("cube");
-
-
-	/*def = physics_CreateCharacterColliderDef("test collider", 1.0, 0.5, 0.3, 0.15, 0.7);
-
-	body_entity = entity_CreateEntityDef("body entity");
-	entity_AddComponent(body_entity, COMPONENT_TYPE_SCRIPT);
-	entity_AddComponent(body_entity, COMPONENT_TYPE_PHYSICS);
-	entity_AddComponent(body_entity, COMPONENT_TYPE_MODEL);
-	entity_SetModel(body_entity, model_index);
-	entity_SetCollider(body_entity, def);
-	entity_SetScript(body_entity, (struct script_t *)player_script);
-
-	camera_entity = entity_CreateEntityDef("camera entity");
-	entity_AddComponent(camera_entity, COMPONENT_TYPE_CAMERA);
-	mat3_t_rotate(&r, vec3_t_c(0.0, 1.0, 0.0), -0.5, 1);
-	entity_SetTransform(camera_entity, NULL, vec3_t_c(0.0, 0.25, 0.0), vec3_t_c(1.0, 1.0, 1.0), 1);
-
-	weapon_entity = entity_CreateEntityDef("weapon entity");
-	entity_AddComponent(weapon_entity, COMPONENT_TYPE_MODEL);
-	entity_SetModel(weapon_entity, model_index2);
-	entity_SetTransform(weapon_entity, NULL, vec3_t_c(0.3, -0.15, -0.15), vec3_t_c(0.1, 0.1, 0.3), 1);
-
-
-	spawn_entity = entity_CreateEntityDef("spawn entity");
-	entity_SetTransform(spawn_entity, NULL, vec3_t_c(0.0, 0.0, -1.1), vec3_t_c(1.0, 1.0, 1.0), 0);
-
-
-	entity_ParentEntity(body_entity, camera_entity);
-	entity_ParentEntity(camera_entity, weapon_entity);
-	entity_ParentEntity(weapon_entity, spawn_entity);*/
-
-
-
-//	entity_LoadEntityDef("entity.ent");
-
-	//body_entity = entity_GetEntityHandle("body entity", 1);
-
-	//struct entity_handle_t entity = entity_SpawnEntity(NULL, vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), body_entity, "test");
-
-
-
-	//entity_SaveEntityDef("entity", body_entity);
-
-
-
-	//entity = entity_GetNestledEntityHandle(entity, "weapon entity");
-
-    //struct world_script_t *world_script = world_LoadScript("map.was", "map");
-    //world_SetWorldScript(world_script);
-
-
-    //struct sound_handle_t noise = sound_GenerateNoise("noise", 2.0);
-
-   // struct sound_handle_t sine = sound_GenerateSineWave("sine", 10.0, 60.0);
-
-//    sound_PlaySound(sine, vec3_t_c(0.0, 0.0, 0.0), 0.5);
-
-  //  sine = sound_GenerateSineWave("sine", 10.0, 61.0);
-
-   // sound_PlaySound(sine, vec3_t_c(0.0, 0.0, 0.0), 0.5);
-
-
-	/*struct sound_handle_t sound = sound_LoadSound("Groaning Ambience.ogg", "music");
-
-
-	sound_LoadSound("explode3.wav", "explosion0");
-	sound_LoadSound("explode4.wav", "explosion1");
-	sound_LoadSound("explode5.wav", "explosion2");
-
-	sound_LoadSound("laser4.wav", "laser");*/
-
-	//sound_LoadSound("pokey.ogg", "pokey");
-	/*sound_LoadSound("pokey_intro.ogg", "pokey_intro");
-	sound_LoadSound("pokey_loop.ogg", "pokey_loop");
-
-
-	sound_LoadSound("wilhelm.ogg", "death");
-
-	sound_LoadSound("SCREAM_4.ogg", "scream");
-
-	sound_LoadSound("pain0.ogg", "pain");
-
-	sound_LoadSound("doh0.ogg", "doh0");
-	sound_LoadSound("doh1.ogg", "doh1");
-	sound_LoadSound("doh2.ogg", "doh2");
-	sound_LoadSound("doh3.ogg", "doh3");
-	sound_LoadSound("doh4.ogg", "doh4");
-	sound_LoadSound("doh5.ogg", "doh5");
-	sound_LoadSound("doh6.ogg", "doh6");
-	sound_LoadSound("doh7.ogg", "doh7");
-	sound_LoadSound("doh8.ogg", "doh8");
-	sound_LoadSound("doh9.ogg", "doh9");
-	sound_LoadSound("doh10.ogg", "doh10");
-	sound_LoadSound("doh11.ogg", "doh11");
-	sound_LoadSound("doh12.ogg", "doh12");
-	sound_LoadSound("doh13.ogg", "doh13");
-	sound_LoadSound("doh14.ogg", "doh14");
-	sound_LoadSound("doh15.ogg", "doh15");
-	sound_LoadSound("doh16.ogg", "doh16");
-	sound_LoadSound("doh17.ogg", "doh17");
-	sound_LoadSound("doh18.ogg", "doh18");
-	sound_LoadSound("doh19.ogg", "doh19");
-	sound_LoadSound("doh20.ogg", "doh20");*/
-
-	//sound_PlaySound(sound, vec3_t_c(0.0, 0.0, 0.0), 1.0, 0);
-
-    /*sine = sound_GenerateSineWave("sine", 5.0, 240.0);
-
-    sound_PlaySound(sine, vec3_t_c(0.0, 0.0, 0.0), 1.0);*/
-
-
-	//r = mat3_t_id();
-
-	//entity_SpawnEntity(&r, vec3_t_c(0.0, 2.0, -10.0), vec3_t_c(1.0, 1.0, 1.0), body_entity, "test player");
-
-//	def = physics_CreateRigidBodyColliderDef("box collider");
-//	physics_AddCollisionShape(def, vec3_t_c(1.0, 1.0, 1.0), vec3_t_c(0.0, 0.0, 0.0), NULL, COLLISION_SHAPE_BOX);
-
-//	struct entity_handle_t enemy_def = entity_CreateEntityDef("enemy");
-
-//	entity_AddComponent(enemy_def, COMPONENT_TYPE_PHYSICS);
-//	entity_AddComponent(enemy_def, COMPONENT_TYPE_MODEL);
-//	entity_AddComponent(enemy_def, COMPONENT_TYPE_SCRIPT);
-
-//	entity_SetModel(enemy_def, model_index2);
-//	entity_SetCollider(enemy_def, def);
-//	entity_SetScript(enemy_def, (struct script_t *)enemy_script);
-
-
-
-
-	//def = physics_CreateRigidBodyColliderDef("bullet collider");
-	//physics_AddCollisionShape(def, vec3_t_c(1.0, 1.0, 1.0), vec3_t_c(0.0, 0.0, 0.0), NULL, COLLISION_SHAPE_SPHERE);
-
-	//struct entity_handle_t bullet_def = entity_CreateEntityDef("bullet");
-
-	//entity_AddComponent(bullet_def, COMPONENT_TYPE_PHYSICS);
-	//entity_AddComponent(bullet_def, COMPONENT_TYPE_MODEL);
-	//entity_AddComponent(bullet_def, COMPONENT_TYPE_SCRIPT);
-
-	//entity_SetCollider(bullet_def, def);
-	//entity_SetModel(bullet_def, model_index2);
-	//entity_SetScript(bullet_def, (struct script_t *)bullet_script);
-
-
-
-	//int diffuse_texture = texture_LoadTexture("textures/world/concrete_01_diffuse.png", "concrete_diffuse", 0);
-	//int normal_texture = texture_LoadTexture("textures/world/concrete_01_normal.png", "concrete_normal", 0);
-	//material_CreateMaterial("concrete", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, shader_GetShaderIndex("forward pass"), diffuse_texture, normal_texture);
-
-	//diffuse_texture = texture_LoadTexture("textures/world/oakfloor_basecolor.png", "oakfloor_diffuse", 0);
-	//normal_texture = texture_LoadTexture("textures/world/oakfloor_normal.png", "oakfloor_normal", 0);
-	//material_CreateMaterial("oakfloor", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, shader_GetShaderIndex("forward pass"), diffuse_texture, normal_texture);
-
-	//diffuse_texture = texture_LoadTexture("textures/world/tile_d.png", "tile_diffuse", 0);
-	//normal_texture = texture_LoadTexture("textures/world/tile_n.png", "tile_normal", 0);
-	//material_CreateMaterial("tile", vec4(1.0, 1.0, 1.0, 1.0), 1.0, 1.0, shader_GetShaderIndex("forward pass"), diffuse_texture, normal_texture);
-
-	//collider_def_t *projectile_def = physics_CreateProjectileColliderDef("projectile", 2.0, 1.0);
-
-	//struct collider_handle_t bullet = physics_CreateCollider(NULL, vec3(0.0, 5.0, 0.0), vec3(1.0, 1.0, 1.0), projectile_def, 0);
-	//physics_ApplyCentralImpulse(bullet, vec3(0.0, -5000.0, 0.0));
-
-	//entity_SpawnEntity(&r, vec3(0.0, 3.0, 0.0), vec3(1.0, 1.0, 1.0), entity_def, "cube");
-
-
-
-
-
-	/*struct skeleton_handle_t skeleton_def = animation_LoadSkeleton("tri_anim.ozz");
-	struct animation_handle_t animation = animation_LoadAnimation("le_cool_animation.ozz");
-	struct skeleton_handle_t skeleton = animation_SpawnSkeleton(skeleton_def);
-
-	animation_PlayAnimation(skeleton, animation);*/
 
 	level_editor_debug_draw_flags = R_DEBUG_DRAW_FLAG_DRAW_ENTITIES | R_DEBUG_DRAW_FLAG_DRAW_LIGHTS |
                                     R_DEBUG_DRAW_FLAG_DRAW_TRIGGERS | R_DEBUG_DRAW_FLAG_DRAW_WAYPOINTS;
+
+
+    editor_LevelEditorNewLevel();
 }
 
 void editor_LevelEditorFinish()
@@ -1404,12 +1191,7 @@ void editor_LevelEditorStartPIE()
 	engine_SetEngineState(ENGINE_PLAYING);
 	level_editor_state = EDITOR_PIE;
 
-	entity_ResetEntitySpawnTimes();
-
-	/* this makes the "OnMapEntry" function to be
-	called... */
-	//world_SetWorldScript(world_GetWorldScript());
-
+//	entity_ResetEntitySpawnTimes();
 }
 
 void editor_LevelEditorStopPIE()
@@ -1435,6 +1217,7 @@ void editor_LevelEditorCopyLevelData()
 	int i;
 
 	struct world_level_t *current_level;
+	void *read_buffer;
 
 	if(level_editor_need_to_copy_data)
 	{
@@ -1442,50 +1225,17 @@ void editor_LevelEditorCopyLevelData()
 		level_editor_last_brush = last_brush;
 		level_editor_brush_count = brush_count;
 
+		world_SerializeWorld(&level_editor_world_buffer, &level_editor_world_buffer_size);
+        read_buffer = level_editor_world_buffer;
 		current_level = world_GetCurrentLevel();
+		serializer_FreeSerializer(&current_level->serializer, 1);
+		current_level->serializer = world_DeserializeWorld(&read_buffer);
 
-		serializer_FreeSerializer(&current_level->serializer);
-		current_level->serializer = world_Serialize
-
-//		level_editor_world_vertices_count = w_world_vertices_count;
-//		level_editor_world_vertices = w_world_vertices;
-//
-//		level_editor_world_nodes_count = w_world_nodes_count;
-//		level_editor_world_nodes = w_world_nodes;
-//
-//		level_editor_world_leaves_count = w_world_leaves_count;
-//		level_editor_world_leaves = w_world_leaves;
-//
-//		level_editor_world_batch_count = w_world_batch_count;
-//		level_editor_world_batches = w_world_batches;
-//
-//		if(level_editor_entity_buffer)
-//		{
-//			memory_Free(level_editor_entity_buffer);
-//		}
-//
-//		entity_SerializeEntities(&level_editor_entity_buffer, &level_editor_entity_buffer_size, 0);
-//
-//
-//        if(level_editor_waypoint_buffer)
-//		{
-//			memory_Free(level_editor_waypoint_buffer);
-//		}
-//
-//		navigation_SerializeWaypoints(&level_editor_waypoint_buffer, &level_editor_waypoint_buffer_size);
-//
-//		if(level_editor_light_buffer)
-//		{
-//			memory_Free(level_editor_light_buffer);
-//		}
-//
-//		light_SerializeLights(&level_editor_light_buffer, &level_editor_light_buffer_size);
+		memory_Free(level_editor_world_buffer);
 
 		level_editor_has_copied_data = 1;
 		level_editor_need_to_copy_data = 0;
 	}
-
-
 }
 
 void editor_LevelEditorClearLevelData()
@@ -1496,29 +1246,8 @@ void editor_LevelEditorClearLevelData()
 		last_brush = NULL;
 		brush_count = 0;
 
-        entity_RemoveAllEntities();
-        entity_DestroyAllTriggers();
-		navigation_DestroyAllWaypoints();
-		light_DestroyAllLights();
-
-		w_world_vertices_count = 0;
-		w_world_vertices = NULL;
-
-		w_world_nodes_count = 0;
-		w_world_nodes = NULL;
-
-		w_world_leaves_count = 0;
-		w_world_leaves = NULL;
-
-		w_world_batch_count = 0;
-		w_world_batches = NULL;
-
-
-
-//		l_light_list_cursor = 0;
-//		l_free_position_stack_top = -1;
+        world_Clear(WORLD_CLEAR_FLAG_ALL & (~WORLD_CLEAR_FLAG_ENTITY_DEFS));
 	}
-
 }
 
 void editor_LevelEditorRestoreLevelData()
@@ -1530,53 +1259,17 @@ void editor_LevelEditorRestoreLevelData()
 	struct collider_def_t *collider_def;
 	struct collider_t *collider;
 
+	struct world_level_t *current_level;
+
 	void *read_buffer;
 
 	if(level_editor_has_copied_data && (!level_editor_need_to_copy_data))
 	{
-
 		brushes = level_editor_brushes;
 		last_brush = level_editor_last_brush;
 		brush_count = level_editor_brush_count;
 
-		w_world_vertices_count = level_editor_world_vertices_count;
-		w_world_vertices = level_editor_world_vertices;
-
-		w_world_nodes_count = level_editor_world_nodes_count;
-		w_world_nodes = level_editor_world_nodes;
-
-		w_world_leaves_count = level_editor_world_leaves_count;
-		w_world_leaves = level_editor_world_leaves;
-
-		w_world_batch_count = level_editor_world_batch_count;
-		w_world_batches = level_editor_world_batches;
-
-
-
-
-		read_buffer = level_editor_entity_buffer;
-		entity_DeserializeEntities(&read_buffer, 0);
-
-		read_buffer = level_editor_waypoint_buffer;
-		navigation_DeserializeWaypoints(&read_buffer);
-
-		read_buffer = level_editor_light_buffer;
-		light_DeserializeLights(&read_buffer);
-
-
-		/************************************************************************************************/
-
-
-		/*for(i = 0; i < level_editor_light_list_cursor; i++)
-		{
-			l_light_params[i] = level_editor_light_params[i];
-			l_light_positions[i] = level_editor_light_positions[i];
-			l_free_position_stack[i] = level_editor_light_free_stack[i];
-		}
-
-		l_light_list_cursor = level_editor_light_list_cursor;
-		l_free_position_stack_top = level_editor_light_free_stack_top;*/
-
+		world_ChangeLevel("current_level");
 	}
 }
 
@@ -1657,8 +1350,8 @@ void editor_LevelEditorDeserialize(void **buffer, char *file_name)
     if(world_entry)
     {
         read_buffer = world_entry->entry_buffer;
-        struct world_level_t *level = world_LoadLevelFromMemory(file_name, &read_buffer);
-        world_ChangeLevel(file_name);
+        struct world_level_t *level = world_LoadLevelFromMemory("current_level", &read_buffer);
+        world_ChangeLevel("current_level");
     }
 }
 
@@ -1666,43 +1359,59 @@ void editor_LevelEditorDeserialize(void **buffer, char *file_name)
 
 void editor_LevelEditorNewLevel()
 {
-	world_Clear(WORLD_CLEAR_FLAG_ALL);
-	brush_DestroyAllBrushes();
-	script_DestroyAllScripts();
+    struct serializer_t serializer;
+
+    editor_LevelEditorClearLevel();
+
+    serializer.entries = NULL;
+    serializer.entry_count = 0;
+    serializer.last_entry = NULL;
+
+    world_CreateLevel("current_level", serializer, NULL);
+    world_ChangeLevel("current_level");
+}
+
+void editor_LevelEditorClearLevel()
+{
+    world_Clear(WORLD_CLEAR_FLAG_ALL);
+    brush_DestroyAllBrushes();
+    script_DestroyAllScripts();
 
     level_editor_has_copied_data = 0;
     level_editor_need_to_copy_data = 0;
 
     editor_LevelEditorSetNameAndPath(NULL, NULL);
+
+    world_DestroyLevel("current_level");
 }
 
-int editor_LevelEditorWriteLevelFile(char *file_path, char *file_name)
-{
-    FILE *file;
-
-    char path[PATH_MAX];
-
-    void *buffer = NULL;
-    int buffer_size = 0;
-
-    int i;
-
-	editor_LevelEditorSetNameAndPath(file_name, file_path);
-
-    editor_LevelEditorSerialize(&buffer, &buffer_size);
-
-    strcpy(path, level_editor_level_path);
-    strcat(path, "/");
-    strcat(path, level_editor_level_name);
-
-    file = fopen(path, "wb");
-    fwrite(buffer, buffer_size, 1, file);
-    fclose(file);
-
-    memory_Free(buffer);
-
-	return 0;
-}
+//int editor_LevelEditorWriteLevelFile(char *file_path, char *file_name)
+//{
+//    FILE *file;
+//
+//    char path[PATH_MAX];
+//
+//    void *buffer = NULL;
+//    int buffer_size = 0;
+//
+//    int i;
+//
+//	editor_LevelEditorSetNameAndPath(file_name, file_path);
+//
+//    editor_LevelEditorSerialize(&buffer, &buffer_size);
+//
+//    strcpy(path, level_editor_level_path);
+//    strcat(path, "/");
+//    strcat(path, level_editor_level_name);
+//
+//    file = fopen(path, "wb");
+//    fwrite(buffer, buffer_size, 1, file);
+//    fclose(file);
+//
+//    memory_Free(buffer);
+//
+//	return 0;
+//}
 
 
 
@@ -1857,6 +1566,8 @@ int editor_LevelEditorLoadLevel(char *path, char *file_name)
 
 	if(!strcmp(path_GetFileExtension(file_name), "wtf"))
     {
+        editor_LevelEditorClearLevel();
+
         if(!strcmp(path_GetNameNoExt(file_name), path_GetLastPathSegment(path)))
         {
             strcpy(folder_path, path_DropPathSegment(path, 0));

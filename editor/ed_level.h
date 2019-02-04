@@ -113,9 +113,12 @@ void editor_LevelEditorSerialize(void **buffer, int *buffer_size);
 void editor_LevelEditorDeserialize(void **buffer, char *file_name);
 
 
+
 void editor_LevelEditorNewLevel();
 
-int editor_LevelEditorWriteLevelFile(char *file_path, char *file_name);
+void editor_LevelEditorClearLevel();
+
+//int editor_LevelEditorWriteLevelFile(char *file_path, char *file_name);
 
 int editor_LevelEditorSaveLevel(char *file_path, char *file_name, void **file_buffer, int *file_buffer_size);
 

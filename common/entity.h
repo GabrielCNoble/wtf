@@ -173,11 +173,9 @@ void entity_MarkForRemoval(struct entity_handle_t entity);
 
 void entity_RemoveEntity(struct entity_handle_t entity);
 
-void entity_RemoveAllEntities();
+void entity_RemoveAllEntities(int remove_defs);
 
-void entity_RemoveMarkedEntities();
-
-void entity_ResetEntitySpawnTimes();
+void entity_RemoveMarkedEntities(int remove_defs);
 
 struct entity_t *entity_GetEntityPointer(char *name, int get_def);
 

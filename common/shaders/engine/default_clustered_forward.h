@@ -474,7 +474,7 @@
 			vec3 specular;
 			vec3 diffuse;
 
-			vec4 accum = vec4(albedo * 0.5, 0.0);
+			vec4 accum = vec4(albedo * 0.01, 0.0);
 
 
 			shininess = 512.0;

@@ -69,6 +69,7 @@ extern struct stack_list_t ent_entities[];
 extern struct stack_list_t ent_world_transforms;
 extern struct stack_list_t ent_entity_aabbs;
 
+extern unsigned long long start_delta;
 
 void renderer_VisibleWorld()
 {
@@ -682,7 +683,7 @@ void renderer_VisibleLights()
 			}
 
 			r_visible_lights_count--;
-			c--;
+			//c--;
 		}
 	}
 

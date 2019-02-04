@@ -222,7 +222,15 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	//unsigned int q[4];
 	unsigned int pick_sample[4];
 
-	int value;
+    /* some gpus don't seem to bother working
+    with subnormal numbers, so they get rounded
+    to zero. To overcome that, we'll set the
+    leftmost bit of the mantissa. This leaves
+    us with 30 bits of value, which is... good
+    enough... */
+	#define SUBNORMAL_MASK 0x40000000
+
+	unsigned int value;
 
 	editor_EnablePicking(r_window_width, r_window_height);
 
@@ -236,16 +244,38 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	renderer_SetModelMatrix(NULL);
 	renderer_EnableImediateDrawing();
 
-	value = PICK_BRUSH;
+//	pick_sample[0] = 0xffffffff;
+//	pick_sample[1] = 0xffffffff;
+//	pick_sample[2] = 0xffffffff;
+//	pick_sample[3] = 0xffffffff;
+//    value = ((PICK_BRUSH & 0x000000ff) << 24)|
+//            ((PICK_BRUSH & 0x0000ff00) << 8)|
+//            ((PICK_BRUSH & 0x00ff0000) >> 8)|
+//            ((PICK_BRUSH & 0xff000000) >> 24);
+
+
+    value = PICK_BRUSH | SUBNORMAL_MASK;
+
+    //value = PICK_BRUSH;
+
+    printf("%x %x\n", value, PICK_BRUSH);
 	renderer_SetNamedUniform1f("pick_type", *(float *)&value);
 
 	brush = brushes;
 	i = 1;
+
 	while(brush)
 	{
-		value = i;
-		renderer_SetNamedUniform1f("pick_index", *(float *)&value);
+		//pick_sample[0] = i;
+//		pick_sample[0] = i;
+//        pick_sample[1] = 0xffffffff;
+//        pick_sample[2] = 0xffffffff;
+//        pick_sample[3] = 0xffffffff;
 
+        value = i | SUBNORMAL_MASK;
+
+        //printf("render brush as 0x%x\n", brush);
+		renderer_SetNamedUniform1f("pick_index", *(float *)&value);
 
 		polygon = brush->base_polygons;
 
@@ -261,8 +291,6 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 			polygon = polygon->next;
 		}
 
-
-		//renderer_DrawVertsIndexed(GL_TRIANGLES, brush->base_polygons_index_count, 4, sizeof(vertex_t), brush->base_polygons_vertices, brush->base_polygons_indexes);
 		brush = brush->next;
 		i++;
 	}
@@ -271,7 +299,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	entities = (struct entity_t *)ent_entities[0].elements;
 	c = ent_entities[0].element_count;
 
-	value = PICK_ENTITY;
+	value = PICK_ENTITY | SUBNORMAL_MASK;
 	renderer_SetNamedUniform1f("pick_type", *(float *)&value);
 
 	for(i = 0; i < c; i++)
@@ -291,7 +319,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 			continue;
 		}
 
-		value = i + 1;
+		value = (i + 1) | SUBNORMAL_MASK;
 		renderer_SetNamedUniform1f("pick_index", *(float *)&value);
 
 		next_top = 0;
@@ -380,7 +408,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	glPointSize(24.0);
 	glEnable(GL_POINT_SMOOTH);
 
-	value = PICK_LIGHT;
+	value = PICK_LIGHT | SUBNORMAL_MASK;
 	renderer_SetNamedUniform1f("pick_type", *(float *)&value);
 
 	for(i = 0; i < c; i++)
@@ -395,7 +423,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 		//if(l_light_params[i].bm_flags & LIGHT_INVALID)
 		//	continue;
 
-		value = i + 1;
+		value = (i + 1) | SUBNORMAL_MASK;
 		renderer_SetNamedUniform1f("pick_index", *(float *)&value);
 
 		renderer_Begin(GL_POINTS);
@@ -439,7 +467,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 		renderer_End();
 	}*/
 
-	value = PICK_WAYPOINT;
+	value = PICK_WAYPOINT | SUBNORMAL_MASK;
 	renderer_SetNamedUniform1f("pick_type", *(float *)&value);
 	renderer_SetModelMatrix(NULL);
 
@@ -450,7 +478,7 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 	{
 		waypoint = waypoints + i;
 
-		value = i + 1;
+		value = (i + 1) | SUBNORMAL_MASK;
 		renderer_SetNamedUniform1f("pick_index", *(float *)&value);
 
 		mat4_t_compose2(&transform, NULL, waypoint->position, vec3_t_c(0.2, 0.2, 0.2));
@@ -489,6 +517,11 @@ pick_record_t editor_PickObject(float mouse_x, float mouse_y)
 
 
 	editor_SamplePickingBuffer(mouse_x, mouse_y, pick_sample);
+
+	pick_sample[0] = pick_sample[0] & (~SUBNORMAL_MASK);
+	pick_sample[1] = pick_sample[1] & (~SUBNORMAL_MASK);
+
+	//printf("[%d %d]\n", pick_sample[0], pick_sample[1]);
 
 	editor_DisablePicking();
 
@@ -616,6 +649,8 @@ int editor_Check3dHandle(double mouse_x, double mouse_y, vec3_t handle_position,
 
 	editor_SamplePickingBuffer(mouse_x, mouse_y, (int *)q);
 	editor_DisablePicking();
+
+	//printf("[%f %f %f]\n", q[0], q[1], q[2]);
 
 	if(q[0])
 	{

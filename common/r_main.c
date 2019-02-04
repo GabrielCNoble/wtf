@@ -2165,10 +2165,9 @@ void renderer_SetViewVisibleWorld(struct view_data_t *view_data)
 ====================================================================
 ====================================================================
 */
-
+extern unsigned long long start_delta;
 void renderer_StartFrame()
 {
-    //int cpu_timer = renderer_StartCpuTimer("renderer_StartFrame");
     renderer_ComputeMainViewMatrix();
     renderer_VisibleWorld();
     renderer_VisibleLights();
@@ -2185,11 +2184,7 @@ void renderer_StartFrame()
     glClearColor(r_clear_color.r, r_clear_color.g, r_clear_color.b, 1.0);
 	glClear(mask);
 
-	//gpu_BindGpuHeap();
-
 	renderer_EnableVertexReads();
-
-	//renderer_StopTimer(cpu_timer);
 }
 
 void renderer_DrawFrame()
@@ -2211,15 +2206,10 @@ void renderer_DrawFrame()
 
 	renderer_SortDrawCommands();
 
-
-    //if(r_z_prepass)
-    //{
     renderer_ZPrePass();
-    //}
-
     renderer_DrawWorld();
-
     renderer_DrawParticles();
+
 
 	//if(r_bloom && (!r_flat))
 	//{
@@ -2249,6 +2239,7 @@ void renderer_DrawFrame()
 
 	gui_DrawGUI();
 	renderer_EndFrame();
+
 }
 
 

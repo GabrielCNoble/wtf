@@ -3861,7 +3861,6 @@ int world_HasFadedOut()
 
 void world_ClearBsp()
 {
-    return ;
 	if(w_world_leaves)
 	{
 		renderer_Free(w_world_handle);
@@ -3986,8 +3985,13 @@ void world_Clear(int clear_flags)
 
 	if(clear_flags & WORLD_CLEAR_FLAG_ENTITIES)
 	{
-        entity_RemoveAllEntities();
+        entity_RemoveAllEntities(0);
 	}
+
+	if(clear_flags & WORLD_CLEAR_FLAG_ENTITY_DEFS)
+    {
+        entity_RemoveAllEntities(1);
+    }
 
 	if(clear_flags & WORLD_CLEAR_FLAG_PHYSICS_MESH)
 	{
@@ -4041,8 +4045,11 @@ void world_DestroyLevel(char *level_name)
         serializer_FreeSerializer(&level->serializer, 0);
 
         memory_Free(level->level_name);
-        script_DestroyScript((struct script_t *)&level->script);
 
+        if(level->script)
+        {
+            script_DestroyScript((struct script_t *)&level->script);
+        }
 
         if(level == w_levels)
         {
@@ -4108,7 +4115,7 @@ void world_ChangeLevel(char *level_name)
         level = world_LoadLevel(level_name);
     }
 
-    if(level != w_current_level)
+    //if(level != w_current_level)
     {
         world_UnloadCurrentLevel();
 
@@ -4314,7 +4321,6 @@ void world_SerializeWorld(void **buffer, int *buffer_size)
 
     memcpy(out, level_buffer, level_buffer_size);
     out += level_buffer_size;
-
 
     record_end = (struct world_record_end_t *)out;
     out += sizeof(struct world_record_end_t);

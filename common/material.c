@@ -10,6 +10,7 @@
 #include "texture.h"
 #include "path.h"
 #include "log.h"
+#include "id_cache.h"
 
 
 static int mat_material_list_size = 0;
@@ -29,7 +30,7 @@ material_name_record_t *mat_material_name_records = NULL;
 material_t *default_material;
 char *default_material_name = "default material";
 
-
+struct id_cache_t mat_id_cache;
 
 
 /* from r_main.c */
@@ -55,6 +56,9 @@ int material_Init()
 	mat_free_position_stack = memory_Malloc(sizeof(int) * mat_material_list_size);
 
 	default_material = mat_materials;
+
+
+	mat_id_cache = idcache_Create();
 
 	mat_materials++;
 	//mat_material_names++;
@@ -102,203 +106,203 @@ void material_Finish()
 
 	memory_Free(mat_materials);
 	//memory_Free(mat_material_names);
-	memory_Free(mat_material_name_records);
+	//memory_Free(mat_material_name_records);
 	memory_Free(mat_free_position_stack);
 }
 
 
-void material_GetNameBaseAndSuffix(char *name, char *base, char *suffix, int *suffix_pos, int *suffix_byte_index, int *suffix_bit_index)
-{
-	int i;
+//void material_GetNameBaseAndSuffix(char *name, char *base, char *suffix, int *suffix_pos, int *suffix_byte_index, int *suffix_bit_index)
+//{
+//	int i;
+//
+//	int j;
+//	int point_index = 0;
+//	int name_len;
+//	int suffix_index = 0;
+//	int byte_index = 0;
+//	int bit_index = 0;
+//
+//	name_len = strlen(name);
+//
+//	for(point_index = name_len; point_index > 0; point_index--)
+//	{
+//		if(name[point_index] == '.')
+//		{
+//			break;
+//		}
+//	}
+//
+//	if(point_index)
+//	{
+//		for(i = 0; i < point_index; i++)
+//		{
+//			base[i] = name[i];
+//		}
+//
+//		base[point_index] = '\0';
+//
+//
+//		suffix_index = 0;
+//		for(point_index++; point_index <= name_len; point_index++)
+//		{
+//			suffix[suffix_index] = name[point_index];
+//			suffix_index++;
+//		}
+//
+//		suffix_index = atoi(suffix);
+//		byte_index = suffix_index >> 3;
+//		bit_index = suffix_index % 8;
+//
+//		if(!suffix_index)
+//		{
+//			/* name.0000 is not allowed, given
+//			that the base name already represents
+//			that... */
+//			strcpy(base, name);
+//		}
+//	}
+//	else
+//	{
+//		strcpy(base, name);
+//	}
+//
+//	*suffix_pos = point_index;
+//	*suffix_byte_index = byte_index;
+//	*suffix_bit_index = bit_index;
+//}
 
-	int j;
-	int point_index = 0;
-	int name_len;
-	int suffix_index = 0;
-	int byte_index = 0;
-	int bit_index = 0;
 
-	name_len = strlen(name);
+//char base_name[512];
+//char suffix[8];
 
-	for(point_index = name_len; point_index > 0; point_index--)
-	{
-		if(name[point_index] == '.')
-		{
-			break;
-		}
-	}
+//char *material_AddNameRecord(char *name)
+//{
+//	int i;
+//
+//	int j;
+//	int point_index = 0;
+//	int name_len;
+//	int suffix_index = 0;
+//	int suffix_byte_index = 0;
+//	int suffix_bit_index = 0;
+//	material_name_record_t *record;
+//
+//	material_GetNameBaseAndSuffix(name, base_name, suffix, &point_index, &suffix_byte_index, &suffix_bit_index);
+//
+//	for(i = 0; i < mat_material_name_record_count; i++)
+//	{
+//		if(!strcmp(mat_material_name_records[i].base_name, base_name))
+//		{
+//			break;
+//		}
+//	}
+//
+//	if(i >= mat_material_name_record_count)
+//	{
+//		/* name doesn't exist, so create a new record... */
+//		record = &mat_material_name_records[mat_material_name_record_count];
+//		mat_material_name_record_count++;
+//
+//		record->base_name = memory_Strdup(base_name);
+//
+//		for(j = 0; j < MAX_MATERIALS >> 3; j++)
+//		{
+//			record->used_suffixes[j] = 0;
+//		}
+//
+//		strcpy(base_name, name);
+//	}
+//	else
+//	{
+//		record = &mat_material_name_records[i];
+//
+//		/* check if the name is already in use... */
+//		if(!(record->used_suffixes[suffix_byte_index] & (1 << suffix_bit_index)))
+//		{
+//			/* not in use, so just return the original name... */
+//			strcpy(base_name, name);
+//		}
+//		else
+//		{
+//			/* this name is already in use, so go over
+//			the bitvector and find the first unused
+//			suffix... */
+//			for(j = 0; j < MAX_MATERIALS >> 3; j++)
+//			{
+//				suffix_byte_index = j >> 3;
+//				suffix_bit_index = j % 8;
+//
+//				if(!(record->used_suffixes[suffix_byte_index] & (1 << suffix_bit_index)))
+//				{
+//					/* found an unused suffix... */
+//					break;
+//				}
+//			}
+//
+//			/* add the new suffix to
+//			this name, and return it... */
+//			sprintf(suffix, ".%04d", j);
+//			strcat(base_name, suffix);
+//		}
+//	}
+//
+//	/* mark this suffix as being used... */
+//	record->used_suffixes[suffix_byte_index] |= 1 << suffix_bit_index;
+//
+//	return base_name;
+//
+//}
 
-	if(point_index)
-	{
-		for(i = 0; i < point_index; i++)
-		{
-			base[i] = name[i];
-		}
-
-		base[point_index] = '\0';
-
-
-		suffix_index = 0;
-		for(point_index++; point_index <= name_len; point_index++)
-		{
-			suffix[suffix_index] = name[point_index];
-			suffix_index++;
-		}
-
-		suffix_index = atoi(suffix);
-		byte_index = suffix_index >> 3;
-		bit_index = suffix_index % 8;
-
-		if(!suffix_index)
-		{
-			/* name.0000 is not allowed, given
-			that the base name already represents
-			that... */
-			strcpy(base, name);
-		}
-	}
-	else
-	{
-		strcpy(base, name);
-	}
-
-	*suffix_pos = point_index;
-	*suffix_byte_index = byte_index;
-	*suffix_bit_index = bit_index;
-}
-
-
-char base_name[512];
-char suffix[8];
-
-char *material_AddNameRecord(char *name)
-{
-	int i;
-
-	int j;
-	int point_index = 0;
-	int name_len;
-	int suffix_index = 0;
-	int suffix_byte_index = 0;
-	int suffix_bit_index = 0;
-	material_name_record_t *record;
-
-	material_GetNameBaseAndSuffix(name, base_name, suffix, &point_index, &suffix_byte_index, &suffix_bit_index);
-
-	for(i = 0; i < mat_material_name_record_count; i++)
-	{
-		if(!strcmp(mat_material_name_records[i].base_name, base_name))
-		{
-			break;
-		}
-	}
-
-	if(i >= mat_material_name_record_count)
-	{
-		/* name doesn't exist, so create a new record... */
-		record = &mat_material_name_records[mat_material_name_record_count];
-		mat_material_name_record_count++;
-
-		record->base_name = memory_Strdup(base_name);
-
-		for(j = 0; j < MAX_MATERIALS >> 3; j++)
-		{
-			record->used_suffixes[j] = 0;
-		}
-
-		strcpy(base_name, name);
-	}
-	else
-	{
-		record = &mat_material_name_records[i];
-
-		/* check if the name is already in use... */
-		if(!(record->used_suffixes[suffix_byte_index] & (1 << suffix_bit_index)))
-		{
-			/* not in use, so just return the original name... */
-			strcpy(base_name, name);
-		}
-		else
-		{
-			/* this name is already in use, so go over
-			the bitvector and find the first unused
-			suffix... */
-			for(j = 0; j < MAX_MATERIALS >> 3; j++)
-			{
-				suffix_byte_index = j >> 3;
-				suffix_bit_index = j % 8;
-
-				if(!(record->used_suffixes[suffix_byte_index] & (1 << suffix_bit_index)))
-				{
-					/* found an unused suffix... */
-					break;
-				}
-			}
-
-			/* add the new suffix to
-			this name, and return it... */
-			sprintf(suffix, ".%04d", j);
-			strcat(base_name, suffix);
-		}
-	}
-
-	/* mark this suffix as being used... */
-	record->used_suffixes[suffix_byte_index] |= 1 << suffix_bit_index;
-
-	return base_name;
-
-}
-
-void material_RemoveNameRecord(char *name)
-{
-	material_name_record_t *record;
-	int point_index;
-	int suffix_byte_index;
-	int suffix_bit_index;
-
-	int i;
-
-	material_GetNameBaseAndSuffix(name, base_name, suffix, &point_index, &suffix_byte_index, &suffix_bit_index);
-
-	for(i = 0; i < mat_material_name_record_count; i++)
-	{
-		if(!strcmp(mat_material_name_records[i].base_name, base_name))
-		{
-			break;
-		}
-	}
-
-	if(i >= mat_material_name_record_count)
-	{
-		/* no material name record with this base
-		name, so do nothing... */
-		return;
-	}
-	else
-	{
-		/* mark this suffix as not used... */
-		record = &mat_material_name_records[i];
-		record->used_suffixes[suffix_byte_index] &= ~(1 << suffix_bit_index);
-
-		/* check to see if there's any reference to this name... */
-		for(i = 0; i < MAX_MATERIALS >> 3; i++)
-		{
-			if(record->used_suffixes[i])
-			{
-				return;
-			}
-		}
-
-		/* this record has no references, so get rid of it... */
-		memory_Free(record->base_name);
-
-		if(i < mat_material_name_record_count - 1)
-		{
-			mat_material_name_records[i] = mat_material_name_records[mat_material_name_record_count - 1];
-		}
-		mat_material_name_record_count--;
-	}
-}
+//void material_RemoveNameRecord(char *name)
+//{
+//	material_name_record_t *record;
+//	int point_index;
+//	int suffix_byte_index;
+//	int suffix_bit_index;
+//
+//	int i;
+//
+//	material_GetNameBaseAndSuffix(name, base_name, suffix, &point_index, &suffix_byte_index, &suffix_bit_index);
+//
+//	for(i = 0; i < mat_material_name_record_count; i++)
+//	{
+//		if(!strcmp(mat_material_name_records[i].base_name, base_name))
+//		{
+//			break;
+//		}
+//	}
+//
+//	if(i >= mat_material_name_record_count)
+//	{
+//		/* no material name record with this base
+//		name, so do nothing... */
+//		return;
+//	}
+//	else
+//	{
+//		/* mark this suffix as not used... */
+//		record = &mat_material_name_records[i];
+//		record->used_suffixes[suffix_byte_index] &= ~(1 << suffix_bit_index);
+//
+//		/* check to see if there's any reference to this name... */
+//		for(i = 0; i < MAX_MATERIALS >> 3; i++)
+//		{
+//			if(record->used_suffixes[i])
+//			{
+//				return;
+//			}
+//		}
+//
+//		/* this record has no references, so get rid of it... */
+//		memory_Free(record->base_name);
+//
+//		if(i < mat_material_name_record_count - 1)
+//		{
+//			mat_material_name_records[i] = mat_material_name_records[mat_material_name_record_count - 1];
+//		}
+//		mat_material_name_record_count--;
+//	}
+//}
 
 
 
@@ -352,49 +356,7 @@ int material_CreateMaterial(char *name, vec4_t base_color, float metalness, floa
 	}
 
 	material = &mat_materials[material_index];
-	//material_name = &mat_material_names[material_index];
-	name = material_AddNameRecord(name);
-
-
-	/*for(i = 0; i < mat_material_count - 1; i++)
-	{
-		if(!(mat_materials[i].flags & MATERIAL_INVALID))
-		{
-			if(!strcmp(mat_material_names[i], name))
-			{
-
-				material_name_len = strlen(mat_material_names[i]);
-				j = material_name_len;
-
-
-				while(mat_material_names[i][j] != '.' && j > 0)
-				{
-					j--;
-				}
-
-				if(j)
-				{
-					if(mat_material_names[i][j + 1] >= '0' && mat_material_names[i][j + 1] <= '9')
-					{
-						if(mat_material_names[i][j + 2] >= '0' && mat_material_names[i][j + 2] <= '9')
-						{
-							if(mat_material_names[i][j + 3] >= '0' && mat_material_names[i][j + 3] <= '9')
-							{
-								if(mat_material_names[i][j + 4] >= '0' && mat_material_names[i][j + 4] <= '9')
-								{
-									unique_material_name[j] = '\0';
-								}
-							}
-						}
-					}
-				}
-
-				strcat(unique_material_name, ".");
-				strcat(unique_material_name, repetition_value_str);
-
-			}
-		}
-	}*/
+	name = idcache_AllocUniqueName(&mat_id_cache, name);
 
 	if(base_color.r > 1.0) base_color.r = 1.0;
 	else if(base_color.r < 0.0) base_color.r = 0.0;
@@ -625,7 +587,8 @@ void material_DestroyMaterialIndex(int material_index)
 	{
 		if(!(mat_materials[material_index].flags & MATERIAL_INVALID))
 		{
-			material_RemoveNameRecord(mat_materials[material_index].name);
+			//material_RemoveNameRecord(mat_materials[material_index].name);
+			idcache_FreeUniqueName(&mat_id_cache, mat_materials[material_index].name);
 			memory_Free(mat_materials[material_index].name);
 
 			material_OpRefCount(-1, mat_materials[material_index].ref_count);
@@ -650,9 +613,11 @@ int material_SetMaterialName(char *name, int material_index)
 	{
 		if(!(mat_materials[material_index].flags & MATERIAL_INVALID))
 		{
-			material_RemoveNameRecord(mat_materials[material_index].name);
+			//material_RemoveNameRecord(mat_materials[material_index].name);
+			idcache_FreeUniqueName(&mat_id_cache, mat_materials[material_index].name);
 			memory_Free(mat_materials[material_index].name);
-			mat_materials[material_index].name = memory_Strdup(material_AddNameRecord(name));
+			mat_materials[material_index].name = memory_Strdup(idcache_AllocUniqueName(&mat_id_cache, name));
+			//mat_materials[material_index].name = memory_Strdup(material_AddNameRecord(name));
 			return 1;
 		}
 	}

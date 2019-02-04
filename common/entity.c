@@ -45,6 +45,8 @@ extern struct model_t *mdl_models;
 
 extern int r_frame;
 
+unsigned int ent_frame;
+
 //struct entity_aabb_t *ent_aabbs = NULL;
 
 
@@ -79,7 +81,7 @@ struct stack_list_t ent_world_transforms;
 struct list_t ent_top_transforms;
 
 struct list_t ent_entity_contacts;
-struct list_t ent_invalid_entities;
+struct list_t ent_invalid_entities[2];
 struct list_t ent_valid_entity_defs;
 
 struct stack_list_t ent_triggers;
@@ -161,13 +163,16 @@ int entity_Init()
 	ent_world_transforms = stack_list_create(sizeof(struct entity_transform_t), 512, NULL);
 	ent_top_transforms = list_create(sizeof(struct component_handle_t), 512, NULL);
 
+	ent_frame = 0;
+
 	/*
 	===============================================================
 	===============================================================
 	===============================================================
 	*/
 
-	ent_invalid_entities = list_create(sizeof(struct entity_handle_t ), 512, NULL);
+	ent_invalid_entities[0] = list_create(sizeof(struct entity_handle_t ), 512, NULL);
+	ent_invalid_entities[1] = list_create(sizeof(struct entity_handle_t ), 512, NULL);
 	ent_valid_entity_defs = list_create(sizeof(struct entity_handle_t), 512, NULL);
     ent_entity_contacts = list_create(sizeof(struct entity_contact_t), 65536, NULL);
 
@@ -1948,7 +1953,7 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 		entity_SetProp(handle, props[i].name, props[i].memory);
 	}
 
-	entity_ptr->spawn_time = r_frame;
+	entity_ptr->spawn_time = ent_frame;
 	entity_ptr->flags = 0;
 	entity_ptr->def = entity_def;
 
@@ -2018,25 +2023,19 @@ void entity_MarkForRemoval(struct entity_handle_t entity)
 	struct entity_script_t *script;
 	struct script_component_t *script_component;
 
-
-	/*if(entity.def)
-	{
-		printf("entity_MarkForRemoval: can't mark entity def for removal\n");
-		return;
-	}*/
-
 	entity_ptr = entity_GetEntityPointerHandle(entity);
 
 	if(entity_ptr)
 	{
 		entity_ptr->flags |= ENTITY_FLAG_MARKED_INVALID;
-		list_add(&ent_invalid_entities, &entity);
+		list_add(&ent_invalid_entities[entity.def], &entity);
 	}
 }
 
-void entity_RemoveEntity(struct entity_handle_t entity)
+
+void entity_RecursiveRemoveEntity(struct component_handle_t referencing_transform)
 {
-	struct entity_t *entity_ptr;
+    struct entity_t *entity_ptr;
 	struct entity_t *child_entity_ptr;
 	struct component_handle_t component;
 
@@ -2050,98 +2049,198 @@ void entity_RemoveEntity(struct entity_handle_t entity)
 	int component_type;
 	int i;
 
-	if(entity.def)
-	{
-		printf("entity_RemoveEntity: can't remove entity def\n");
-		return;
-	}
+	transform_component = entity_GetComponentPointer(referencing_transform);
 
-	entity_ptr = entity_GetEntityPointerHandle(entity);
+	entity_ptr = entity_GetEntityPointerHandle(transform_component->base.entity);
 
 	if(entity_ptr)
 	{
-
-        if(!entity.def)
+        if(!transform_component->base.entity.def)
         {
+            /* if this is an entity instance... */
             if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type != COMPONENT_TYPE_NONE)
             {
+                /* if it has a script component, execute its die function... */
                 script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
 
                 script_ExecuteScriptImediate(script_component->script, script_component);
             }
         }
 
+        /* free the unique name allocated for this entity... */
         idcache_FreeUniqueName(&ent_id_cache, entity_ptr->name);
-
-		transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
 		for(i = 0; i < transform_component->children_count; i++)
 		{
+		    /* if this is a def, this will remove everything it has nestled to
+		    its transform component. If this is a def ref, the same will happen,
+		    but the original def remains untouched...  */
 			child_transform_component = (struct transform_component_t *)entity_GetComponentPointer(transform_component->child_transforms[i]);
 
 			if(child_transform_component->base.entity.entity_index != INVALID_ENTITY_INDEX)
 			{
 			    //if(!(child_transform_component->flags & COMPONENT_FLAG_ENTITY_DEF_REF))
+                //{
+                /* for entity defs only, make sure this isn't a reference to another
+                def... */
+                entity_RecursiveRemoveEntity(transform_component->child_transforms[i]);
+                //}
+			}
+		}
+
+        if((!transform_component->base.entity.def) ||
+           (!(transform_component->flags & COMPONENT_FLAG_ENTITY_DEF_REF)))
+        {
+
+            /* if this is an instance, or if this is a entity def, not a reference to an
+            entity def... */
+
+
+
+
+            /* an entity def shouldn't be marked as invalid
+            through a reference... */
+            entity_ptr->flags = ENTITY_FLAG_INVALID;
+
+            stack_list_remove(&ent_entities[transform_component->base.entity.def], transform_component->base.entity.entity_index);
+
+
+            for(component_type = 0; component_type < COMPONENT_TYPE_LAST; component_type++)
+            {
+                component = entity_ptr->components[component_type];
+                if(component.type != COMPONENT_TYPE_NONE)
                 {
-                    /* for entity defs only, make sure this isn't a reference to another
-                    def... */
-                    entity_RemoveEntity(child_transform_component->base.entity);
+                    switch(component_type)
+                    {
+                        case COMPONENT_TYPE_CAMERA:
+                            camera_component = entity_GetComponentPointer(component);
+                            renderer_DestroyViewDef(camera_component->view);
+                        break;
+
+                        case COMPONENT_TYPE_PHYSICS:
+                            physics_component = entity_GetComponentPointer(component);
+                            physics_DestroyCollider(physics_component->collider);
+                        break;
+                    }
+                    entity_DeallocComponent(component);
                 }
-			}
-		}
-
-		for(component_type = 0; component_type < COMPONENT_TYPE_LAST; component_type++)
-		{
-			component = entity_ptr->components[component_type];
-			if(component.type != COMPONENT_TYPE_NONE)
-			{
-				switch(component_type)
-				{
-					case COMPONENT_TYPE_CAMERA:
-						camera_component = entity_GetComponentPointer(component);
-//						camera_DestroyCamera(camera_component->camera);
-                        renderer_DestroyViewDef(camera_component->view);
-			//			entity_DeallocComponent(camera_component->transform);
-					break;
-
-					case COMPONENT_TYPE_PHYSICS:
-						physics_component = entity_GetComponentPointer(component);
-						physics_DestroyCollider(physics_component->collider);
-					break;
-				}
-				entity_DeallocComponent(component);
-			}
-		}
-
-		entity_ptr->flags = ENTITY_FLAG_INVALID;
-
-		stack_list_remove(&ent_entities[entity.def], entity.entity_index);
+            }
+        }
 	}
+}
+
+void entity_RemoveEntity(struct entity_handle_t entity)
+{
+	struct entity_t *entity_ptr;
+
+    entity_ptr = entity_GetEntityPointerHandle(entity);
+
+    if(entity_ptr)
+    {
+        entity_RecursiveRemoveEntity(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+    }
+
+
+//	if(entity.def)
+//	{
+//		printf("entity_RemoveEntity: can't remove entity def\n");
+//		return;
+//	}
+
+//	entity_ptr = entity_GetEntityPointerHandle(entity);
+//
+//	if(entity_ptr)
+//	{
+//
+//        if(!entity.def)
+//        {
+//            if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type != COMPONENT_TYPE_NONE)
+//            {
+//                script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
+//
+//                script_ExecuteScriptImediate(script_component->script, script_component);
+//            }
+//        }
+//
+//        idcache_FreeUniqueName(&ent_id_cache, entity_ptr->name);
+//
+//		transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+//
+//		for(i = 0; i < transform_component->children_count; i++)
+//		{
+//			child_transform_component = (struct transform_component_t *)entity_GetComponentPointer(transform_component->child_transforms[i]);
+//
+//			if(child_transform_component->base.entity.entity_index != INVALID_ENTITY_INDEX)
+//			{
+//			    if(!(child_transform_component->flags & COMPONENT_FLAG_ENTITY_DEF_REF))
+//                {
+//                    /* for entity defs only, make sure this isn't a reference to another
+//                    def... */
+//                    entity_RemoveEntity(child_transform_component->base.entity);
+//                }
+//			}
+//		}
+//
+//		for(component_type = 0; component_type < COMPONENT_TYPE_LAST; component_type++)
+//		{
+//			component = entity_ptr->components[component_type];
+//			if(component.type != COMPONENT_TYPE_NONE)
+//			{
+//				switch(component_type)
+//				{
+//					case COMPONENT_TYPE_CAMERA:
+//						camera_component = entity_GetComponentPointer(component);
+////						camera_DestroyCamera(camera_component->camera);
+//                        renderer_DestroyViewDef(camera_component->view);
+//			//			entity_DeallocComponent(camera_component->transform);
+//					break;
+//
+//					case COMPONENT_TYPE_PHYSICS:
+//						physics_component = entity_GetComponentPointer(component);
+//						physics_DestroyCollider(physics_component->collider);
+//					break;
+//				}
+//				entity_DeallocComponent(component);
+//			}
+//		}
+//
+//		entity_ptr->flags = ENTITY_FLAG_INVALID;
+//
+//		stack_list_remove(&ent_entities[entity.def], entity.entity_index);
+//	}
 
 }
 
-void entity_RemoveAllEntities()
+void entity_RemoveAllEntities(int remove_defs)
 {
 	int i;
 	int c;
 	struct entity_handle_t handle;
 
-	c = ent_entities[0].element_count;
+	remove_defs = remove_defs && 1;
+
+	c = ent_entities[remove_defs].element_count;
 
 	for(i = 0; i < c; i++)
 	{
-		handle.def = 0;
-		handle.entity_index = i;
+        handle = ENTITY_HANDLE(i, remove_defs);
 
 		if(entity_GetEntityPointerHandle(handle))
 		{
-			entity_RemoveEntity(handle);
+		    if(remove_defs)
+            {
+                entity_MarkForRemoval(handle);
+            }
+            else
+            {
+                entity_RemoveEntity(handle);
+            }
 		}
 	}
 }
 
 
-void entity_RemoveMarkedEntities()
+void entity_RemoveMarkedEntities(int remove_defs)
 {
 	struct entity_t *entity;
 	struct entity_t *entity_defs;
@@ -2151,89 +2250,31 @@ void entity_RemoveMarkedEntities()
 	int i;
 	int c;
 
-	invalid_entities = (struct entity_handle_t *)ent_invalid_entities.elements;
-	i = ent_invalid_entities.element_count - 1;
+	remove_defs = remove_defs && 1;
 
+	if(remove_defs)
+    {
+        return;
+    }
 
-	for(i = 0; i >= 0; i--)
+	invalid_entities = (struct entity_handle_t *)ent_invalid_entities[remove_defs].elements;
+	c = ent_invalid_entities[remove_defs].element_count;
+
+	for(i = 0; i < c; i++)
     {
         handle = invalid_entities[i];
-        entity = (struct entity_t *)ent_entities[handle.def].elements + handle.entity_index;
+        entity = entity_GetEntityPointerHandle(handle);
 
-        if(entity->flags & ENTITY_FLAG_MARKED_INVALID)
+        if(entity)
         {
-            switch(handle.def)
+            if(entity->flags & ENTITY_FLAG_MARKED_INVALID)
             {
-                case 1:
-//                    entity_DestroyEntityDef(handle);
-                break;
-
-                case 0:
-                    entity_RemoveEntity(handle);
-                break;
+                entity_RemoveEntity(handle);
             }
         }
     }
 
-    ent_invalid_entities.element_count = 0;
-
-
-
-
-	/*handle.def = 0;
-
-	c = ent_entities[0].element_count;
-
-	for(i = 0; i < c; i++)
-	{
-		handle.entity_index = i;
-
-		entity = entity_GetEntityPointerHandle(handle);
-
-		if(entity)
-		{
-			if(entity->flags & ENTITY_FLAG_MARKED_INVALID)
-			{
-				entity_RemoveEntity(handle);
-			}
-		}
-	}
-
-
-	entity_defs = (struct entity_t *)ent_entities[1].elements;
-
-	c = ent_entities[1].elements;
-
-	for(i = 0; i < c; i++)
-    {
-        entity = entity_defs + i;
-
-        if(entity)
-    }*/
-}
-
-/* editor specific kludge... */
-void entity_ResetEntitySpawnTimes()
-{
-    int i;
-	int c;
-	struct entity_handle_t handle;
-	struct entity_t *entity;
-
-	c = ent_entities[0].element_count;
-
-	for(i = 0; i < c; i++)
-	{
-		handle.def = 0;
-		handle.entity_index = i;
-
-		entity = entity_GetEntityPointerHandle(handle);
-
-		if(entity)
-		{
-            entity->spawn_time = r_frame;
-		}
-	}
+    ent_invalid_entities[remove_defs].element_count = 0;
 }
 
 struct entity_t *entity_GetEntityPointer(char *name, int get_def)
@@ -3125,7 +3166,9 @@ void entity_UpdateScriptComponents()
 		}
 	}
 
-	entity_RemoveMarkedEntities();
+	entity_RemoveMarkedEntities(0);
+
+	ent_frame++;
 }
 
 void entity_UpdatePhysicsComponents()
@@ -4180,55 +4223,46 @@ struct entity_handle_t entity_LoadEntityDef(char *file_name)
 	FILE *file;
 	struct entity_t *entity;
 	struct entity_source_file_t *source_file;
+	unsigned long int file_size = 0;
+	void *buffer;
+	void *read_buffer;
+	struct entity_handle_t entity_def;
+
+	char *entity_name = path_GetNameNoExt(path_GetFileNameFromPath(file_name));
+
+
 
 	//char *file_name = path_AddExtToName(entity_name, ".ent");
 
-	file = path_TryOpenFile(file_name);
-	unsigned long int file_size = 0;
+	entity_def = entity_GetEntityHandle(entity_name, 1);
+	entity = entity_GetEntityPointerHandle(entity_def);
 
-	void *buffer;
-	void *read_buffer;
-	//char *source_file_name;
+	if(!entity)
+    {
+        file = path_TryOpenFile(file_name);
 
-	struct entity_handle_t entity_def;
+        if(!file)
+        {
+            printf("entity_LoadEntityDef: couldn't load entity def [%s]\n", file_name);
+            return INVALID_ENTITY_HANDLE;
+        }
 
-	if(!file)
-	{
-		printf("entity_LoadEntityDef: couldn't load entity def [%s]\n", file_name);
-		return INVALID_ENTITY_HANDLE;
-	}
+        file_size = path_GetFileSize(file);
 
-//	fseek(file, 0, SEEK_END);
-//	file_size = ftell(file);
-//	rewind(file);
+        buffer = memory_Calloc(file_size, 1);
+        read_buffer = buffer;
 
-    file_size = path_GetFileSize(file);
+        fread(buffer, file_size, 1, file);
+        fclose(file);
 
-	buffer = memory_Calloc(file_size, 1);
-	read_buffer = buffer;
+        entity_def = entity_ReadEntity(&read_buffer, (struct entity_handle_t){1, INVALID_ENTITY_INDEX});
 
-	fread(buffer, file_size, 1, file);
-	fclose(file);
-
-	entity_def = entity_ReadEntity(&read_buffer, (struct entity_handle_t){1, INVALID_ENTITY_INDEX});
-
-	memory_Free(buffer);
-
-//	entity = entity_GetEntityPointerHandle(entity_def);
-//
-//	if(entity)
-//	{
-//		entity->flags |= ENTITY_FLAG_ON_DISK;
-//
-//		source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
-//
-//        if((!source_file) || strcmp(source_file->file_name, file_name))
-//		{
-//			entity->spawn_time = stack_list_add(&ent_entity_def_source_files, NULL);
-//			source_file = stack_list_get(&ent_entity_def_source_files, entity->spawn_time);
-//			strcpy(source_file->file_name, path_GetFileNameFromPath(file_name));
-//		}
-//	}
+        memory_Free(buffer);
+    }
+    else
+    {
+        entity->flags &= ~ENTITY_FLAG_MARKED_INVALID;
+    }
 
 	return entity_def;
 }

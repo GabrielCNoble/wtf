@@ -516,6 +516,16 @@ void renderer_AddAttachment(struct framebuffer_t *framebuffer, int attachment, i
 
 	switch(internal_format)
 	{
+	    case GL_R32F:
+            format = GL_RED;
+            type = GL_FLOAT;
+	    break;
+
+	    case GL_RG32F:
+            format = GL_RG;
+            type = GL_FLOAT;
+        break;
+
 		case GL_RGBA8:
 			format = GL_RGBA;
 			type = GL_UNSIGNED_BYTE;
@@ -1061,7 +1071,12 @@ unsigned int renderer_GenGLTexture(int target, int min_filter, int mag_filter, i
 	glTexParameteri(target, GL_TEXTURE_MAG_FILTER, mag_filter);
 	glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap_s);
 	glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap_t);
-	glTexParameteri(target, GL_TEXTURE_WRAP_R, wrap_r);
+
+	if(target == GL_TEXTURE_3D)
+    {
+        glTexParameteri(target, GL_TEXTURE_WRAP_R, wrap_r);
+    }
+
 	glTexParameteri(target, GL_TEXTURE_BASE_LEVEL, base_level);
 	glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, max_level);
 

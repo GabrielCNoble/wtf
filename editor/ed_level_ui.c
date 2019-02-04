@@ -1510,7 +1510,11 @@ void editor_LevelEditorWorldMenu()
 			}*/
 
 
-
+            if(gui_ImGuiMenuItem("Clear bsp", NULL, NULL, 1))
+			{
+				world_Clear(WORLD_CLEAR_FLAG_BSP | WORLD_CLEAR_FLAG_LIGHT_LEAVES);
+				level_editor_need_to_copy_data = 1;
+			}
 			if(level_editor_draw_brushes)
 			{
 				if(gui_ImGuiMenuItem("Hide brushes", NULL, NULL, 1))

@@ -1276,7 +1276,7 @@ void entity_SerializeEntities(void **buffer, int *buffer_size, int serialize_def
 
     list = &ent_entities[serialize_defs];
     j = list->element_count;
-    handle.def = k;
+    handle.def = serialize_defs;
 
     for(i = 0; i < j; i++)
     {

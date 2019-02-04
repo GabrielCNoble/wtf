@@ -285,6 +285,8 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
     vec3_t base_position;
 	float spring_force;
 
+	float sweep_base_radius;
+
 
 
 
@@ -329,11 +331,23 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 	//btCollisionWorld::ClosestConvexResultCallback result_callback(from, to);
 
 
+    sweep_base_radius = collider->radius - 0.1;
 
-	transform_from.setIdentity();
+    if(sweep_base_radius <= 0.0)
+    {
+        sweep_base_radius = collider->radius;
+    }
+
+    btMatrix3x3 sweep_basis(sweep_base_radius, 0.0, 0.0,
+                            0.0, 1.0, 0.0,
+                            0.0, 0.0, sweep_base_radius);
+
+
+	//transform_from.setIdentity();
+	transform_from.setBasis(sweep_basis);
 	transform_from.setOrigin(from);
 
-	transform_to.setIdentity();
+	transform_to.setBasis(sweep_basis);
 	transform_to.setOrigin(to);
 
 //	physics_world->convexSweepTest((const btConvexShape *)rigid_body->getCollisionShape(), transform_from, transform_to, result_callback);
@@ -356,7 +370,7 @@ void physics_UpdateCharacterCollider(struct collider_handle_t character_collider
 
         //if(linear_velocity[1] < 0.0)
         {
-             spring_force -= (linear_velocity[1]) * 50.0;
+             spring_force -= (linear_velocity[1]) * 20.0;
         }
 
         rigid_body->applyCentralForce(btVector3(0.0, spring_force, 0.0));
