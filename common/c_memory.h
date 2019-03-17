@@ -15,7 +15,7 @@ extern "C"
 {
 #endif
 
-void memory_Init(int memory_mode);
+void memory_Init();
 
 void memory_Finish();
 

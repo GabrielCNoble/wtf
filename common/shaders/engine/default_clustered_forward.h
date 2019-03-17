@@ -336,59 +336,61 @@
 
 		float pixel_shadow(int light_index)
 		{
-			vec3 eye_space_light_position;
-			vec3 eye_space_light_vec;
-			vec3 light_space_vec;
-			vec3 abs_light_space_vec;
-			vec3 light_space_normal;
+//			vec3 eye_space_light_position;
+//			vec3 eye_space_light_vec;
+//			vec3 light_space_vec;
+//			vec3 abs_light_space_vec;
+//			vec3 light_space_normal;
+//
+//			float shadow_sample;
+//			float largest;
+//
+//			float shadow = 1.0;
+//
+//			float light_z;
+//			float pixel_z;
+//
+//            eye_space_light_position = r_lights[light_index].position_radius.xyz;
+//            eye_space_light_vec = eye_space_position - eye_space_light_position;
+//
+//			light_space_vec = vec3(vec4(eye_space_light_vec, 0.0) * UNIFORM_view_matrix);
+//			light_space_normal = vec3(vec4(eye_space_normal, 0.0) * UNIFORM_view_matrix);
+//
+//			//light_space_vec.z = -light_space_vec.z;
+//
+//			shadow_sample = -(texture(UNIFORM_texture_cube_array_sampler0, vec4(light_space_vec, float(r_lights[light_index].shadow_map))).r * 2.0 - 1.0);
+//
+//			//shadow_sample = texture(UNIFORM_texture_cube_array_sampler0, vec4(light_space_vec, float(light_params[light_index].shadow_map))).r * 2.0 - 1.0;
+//
+//			//shadow_sample = texture(UNIFORM_texture_cube_array_sampler0, vec4(eye_space_light_vec, 0.0)).r;
+//
+//            abs_light_space_vec = abs(light_space_vec);
+//
+//			largest = max(abs_light_space_vec.x, max(abs_light_space_vec.y, abs_light_space_vec.z));
+//
+//			//pixel_z = (light_params[light_index].proj_param_a + light_params[light_index].proj_param_b / -largest);
+//			//light_z = -shadow_sample;
+//
+//			pixel_z = -largest;
+//			light_z = r_lights[light_index].proj_param_b / (shadow_sample - r_lights[light_index].proj_param_a);
+//
+//			//light_space_vec = normalize(light_space_vec);
+//
+//			return float(pixel_z >= light_z - 0.1);
+//
+//			/*if(pixel_z < light_z - 0.1)
+//			{
+//				shadow = 0.0;
+//			}*/
+//
+//			//if(pixel_z + 0.00000 < light_z)
+//			//{
+//			//	shadow = 0.25;
+//			//}
+//
+//			//return shadow;
 
-			float shadow_sample;
-			float largest;
-
-			float shadow = 1.0;
-
-			float light_z;
-			float pixel_z;
-
-            eye_space_light_position = r_lights[light_index].position_radius.xyz;
-            eye_space_light_vec = eye_space_position - eye_space_light_position;
-
-			light_space_vec = vec3(vec4(eye_space_light_vec, 0.0) * UNIFORM_view_matrix);
-			light_space_normal = vec3(vec4(eye_space_normal, 0.0) * UNIFORM_view_matrix);
-
-			//light_space_vec.z = -light_space_vec.z;
-
-			shadow_sample = -(texture(UNIFORM_texture_cube_array_sampler0, vec4(light_space_vec, float(r_lights[light_index].shadow_map))).r * 2.0 - 1.0);
-
-			//shadow_sample = texture(UNIFORM_texture_cube_array_sampler0, vec4(light_space_vec, float(light_params[light_index].shadow_map))).r * 2.0 - 1.0;
-
-			//shadow_sample = texture(UNIFORM_texture_cube_array_sampler0, vec4(eye_space_light_vec, 0.0)).r;
-
-            abs_light_space_vec = abs(light_space_vec);
-
-			largest = max(abs_light_space_vec.x, max(abs_light_space_vec.y, abs_light_space_vec.z));
-
-			//pixel_z = (light_params[light_index].proj_param_a + light_params[light_index].proj_param_b / -largest);
-			//light_z = -shadow_sample;
-
-			pixel_z = -largest;
-			light_z = r_lights[light_index].proj_param_b / (shadow_sample - r_lights[light_index].proj_param_a);
-
-			//light_space_vec = normalize(light_space_vec);
-
-			return float(pixel_z >= light_z - 0.1);
-
-			/*if(pixel_z < light_z - 0.1)
-			{
-				shadow = 0.0;
-			}*/
-
-			//if(pixel_z + 0.00000 < light_z)
-			//{
-			//	shadow = 0.25;
-			//}
-
-			//return shadow;
+            return 1.0;
 		}
 
 
@@ -396,7 +398,6 @@
 		{
 		    float t_min;
 		    float t_max;
-
 		};
 
 		bool trace_bsp(vec3 from, vec3 to)
@@ -466,6 +467,7 @@
 			ivec3 current_cluster;
 			int light_index;
 			unsigned int light_bitmask;
+			unsigned int shadow_bitmask;
 
 			vec3 eye_vec;
 			vec3 light_vec;
@@ -483,7 +485,10 @@
 			//current_cluster = cluster(gl_FragCoord.x, gl_FragCoord.y, -eye_space_position.z, 1.0, 500.0, float(UNIFORM_r_width), float(UNIFORM_r_height));
 			//light_bitmask = texelFetch(UNIFORM_cluster_texture, current_cluster, 0).r;
 
+            shadow_bitmask = texelFetch(UNIFORM_texture_usampler0, ivec2(0, 0), 0).r;
             light_bitmask = cluster_lights(gl_FragCoord.x, gl_FragCoord.y, -eye_space_position.z);
+
+            light_bitmask &= shadow_bitmask;
 
 			eye_vec = normalize(-eye_space_position);
 

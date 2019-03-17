@@ -132,6 +132,8 @@ int model_CreateEmptyModel(char *name)
     memset(model, 0, sizeof(struct model_t));
 
 	model->name = memory_Strdup(name);
+	model->file_name = NULL;
+	model->full_path = NULL;
 
 	return model_index;
 }
@@ -219,6 +221,7 @@ int model_LoadModel(char *file_name, char *model_name)
 
 
         model->file_name = memory_Strdup(path_GetFileNameFromPath(file_name));
+        model->full_path = file_name;
 
         model->vert_count = out_params.vertices_count;
         model->indice_count = out_params.indices_count;

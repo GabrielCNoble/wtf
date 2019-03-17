@@ -1,5 +1,6 @@
 #include "ed_ui_explorer.h"
 #include "ed_ui.h"
+#include "..\..\common\r_common.h"
 #include "..\..\common\gui.h"
 #include "..\..\common\path.h"
 //#include "ed_proj.h"
@@ -62,8 +63,9 @@ extern dir_element_t *pth_dir_elements;
 
 
 /* from r_main.c */
-extern int r_window_width;
-extern int r_window_height;
+extern struct renderer_t r_renderer;
+//extern int r_window_width;
+//extern int r_window_height;
 
 
 
@@ -100,7 +102,7 @@ void editor_ExplorerTopWindow()
 	{
 		/* Path text field... */
 		gui_ImGuiNewLine();
-		gui_ImGuiSameLine(r_window_width - window_size.x * 0.4 - 150.0, -1.0);
+		gui_ImGuiSameLine(r_renderer.r_window_width - window_size.x * 0.4 - 150.0, -1.0);
 		gui_ImGuiPushItemWidth(window_size.x * 0.4);
 		if(gui_ImGuiInputText("Path", ed_explorer_path_text_buffer, PATH_MAX, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
@@ -124,7 +126,7 @@ void editor_ExplorerTopWindow()
 
 		/* File text field... */
 		gui_ImGuiNewLine();
-		gui_ImGuiSameLine(r_window_width - window_size.x * 0.4 - 150.0, -1.0);
+		gui_ImGuiSameLine(r_renderer.r_window_width - window_size.x * 0.4 - 150.0, -1.0);
 		gui_ImGuiPushItemWidth(window_size.x * 0.4);
 		if(gui_ImGuiInputText("File", ed_explorer_file_text_buffer, PATH_MAX, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
@@ -221,7 +223,7 @@ void editor_ExplorerDirListWindow()
 
 	char selected = 1;
 	/* dir list... */
-	window_size.x = r_window_width - gui_ImGuiGetColumnOffset(-1) - 20;
+	window_size.x = r_renderer.r_window_width - gui_ImGuiGetColumnOffset(-1) - 20;
 	window_size.y = 0.0;
 
 	strcpy(ed_explorer_path_text_buffer, path_GetCurrentDirectory());
@@ -229,7 +231,7 @@ void editor_ExplorerDirListWindow()
 	gui_ImGuiBeginChild("Dirs window", window_size, 1, 0);
 	{
 		option_size = gui_ImGuiGetWindowSize();
-		option_size.x = r_window_width - option_size.x - 30;
+		option_size.x = r_renderer.r_window_width - option_size.x - 30;
 		option_size.y = 16.0;
 
 		go_up = 0;
@@ -356,7 +358,7 @@ void editor_UpdateExplorer()
 
 	if(ed_explorer_open)
 	{
-		gui_ImGuiSetNextWindowSize(vec2(r_window_width, r_window_height - 18.0), 0);
+		gui_ImGuiSetNextWindowSize(vec2(r_renderer.r_window_width, r_renderer.r_window_height - 18.0), 0);
 		gui_ImGuiSetNextWindowPos(vec2(0.0, 18.0), 0, vec2(0.0, 0.0));
 		gui_ImGuiPushStyleVarf(ImGuiStyleVar_WindowRounding, 0.0);
 		gui_ImGuiBegin("Explorer", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar);

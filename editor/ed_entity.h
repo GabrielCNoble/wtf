@@ -59,23 +59,23 @@ void editor_EntityEditorEdit();
 ===============================================================
 */
 
-pick_record_t editor_EntityEditorPickColliderPrimitive(float mouse_x, float mouse_y);
+//pick_record_t editor_EntityEditorPickColliderPrimitive(float mouse_x, float mouse_y);
 
-void editor_EntityEditorAddSelection(pick_record_t *record);
-
-void editor_EntityEditorDropSelection(pick_record_t *record);
-
-void editor_EntityEditorClearSelections();
-
-void editor_EntityEditorCopySelections();
-
-void editor_EntityEditorDestroySelections();
-
-void editor_EntityEditorTranslateSelections(vec3_t direction, float amount);
-
-void editor_EntityEditorRotateSelections(vec3_t axis, float amount);
-
-void editor_EntityEditorScaleSelections(vec3_t axis, float amount);
+//void editor_EntityEditorAddSelection(pick_record_t *record);
+//
+//void editor_EntityEditorDropSelection(pick_record_t *record);
+//
+//void editor_EntityEditorClearSelections();
+//
+//void editor_EntityEditorCopySelections();
+//
+//void editor_EntityEditorDestroySelections();
+//
+//void editor_EntityEditorTranslateSelections(vec3_t direction, float amount);
+//
+//void editor_EntityEditorRotateSelections(vec3_t axis, float amount);
+//
+//void editor_EntityEditorScaleSelections(vec3_t axis, float amount);
 
 
 /*

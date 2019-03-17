@@ -12,6 +12,9 @@
 //#include <stdint.h>
 
 
+
+
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -29,6 +32,8 @@ void renderer_BindNormalTexture(int texture_index);
 void renderer_BindClusterTexture();
 
 void renderer_BindShadowTexture();
+
+void renderer_BindShadowMaskTexture();
 
 void renderer_BindTexture(int texture_unit, int texture_target, int texture_index);
 
@@ -147,6 +152,15 @@ void renderer_ClearRegisteredCallbacks();
 ====================================================================
 */
 
+void renderer_ResizeWorldTrianglesUniformBuffer(int triangle_count);
+
+void renderer_FillWorldVerticesUniformBuffer(int vertice_count, void *verts, int stride);
+
+/*
+====================================================================
+====================================================================
+====================================================================
+*/
 //void renderer_SetActiveView(view_def_t *view);
 
 //void renderer_SetMainView(struct view_handle_t view);
@@ -191,6 +205,12 @@ void renderer_EndFrame();
 */
 
 void renderer_ZPrePass();
+
+void renderer_DrawRaytracedShadowMaps();
+
+void renderer_DrawShadowMaps();
+
+void renderer_GenerateShadowMask();
 
 void renderer_DrawWorld();
 

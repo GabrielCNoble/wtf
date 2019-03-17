@@ -207,6 +207,11 @@ struct physics_component_t
     short entity_contact_count;
     short max_entity_contact_count;
 
+
+    int first_raycast_entity_contact;
+    short entity_raycast_contact_count;
+    short align;
+
 	int flags;
 };
 

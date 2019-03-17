@@ -11,6 +11,8 @@
 //#include "r_text.h"
 #include "r_verts.h"
 #include "r_view.h"
+#include "script.h"
+#include "r_script.h"
 //#include "r_draw.h"
 
 #include "containers/stack_list.h"
@@ -45,8 +47,11 @@
 
 
 
-SDL_Window *window;
-SDL_GLContext context;
+struct renderer_t r_renderer;
+
+
+//SDL_Window *window;
+//SDL_GLContext context;
 
 
 
@@ -59,9 +64,10 @@ SDL_GLContext context;
 //unsigned int r_gbuffer_depth = 0;
 
 
-struct framebuffer_t r_cbuffer;
-struct framebuffer_t r_bbuffer;
-struct framebuffer_t r_sbuffer;
+//struct framebuffer_t r_cbuffer;
+//struct framebuffer_t r_bbuffer;
+//struct framebuffer_t r_sbuffer;
+//struct framebuffer_t r_shadow_mask_buffer;
 
 //unsigned int r_pbuffer_id = 0;
 //unsigned int r_pbuffer_color = 0;
@@ -69,28 +75,27 @@ struct framebuffer_t r_sbuffer;
 
 unsigned int r_default_vao;
 
-
-int r_z_pre_pass_shader;
-int r_forward_pass_shader;
-int r_forward_pass_no_shadow_shader;
-int r_particle_forward_pass_shader;
-int r_flat_pass_shader;
-int r_wireframe_pass_shader;
-int r_geometry_pass_shader;
-int r_shade_pass_shader;
-int r_stencil_lights_pass_shader;
-int r_shadow_pass_shader;
-int r_skybox_shader;
-int r_bloom0_shader;
-int r_bloom1_shader;
-int r_tonemap_shader;
-int r_blit_texture_shader;
-int r_portal_shader;
-int r_forward_pass_portal_shader;
-
-int r_gui_shader;
-
-extern int r_imediate_color_shader;
+//int r_z_pre_pass_shader;
+//int r_forward_pass_shader;
+//int r_forward_pass_no_shadow_shader;
+//int r_particle_forward_pass_shader;
+//int r_flat_pass_shader;
+//int r_wireframe_pass_shader;
+//int r_geometry_pass_shader;
+//int r_shade_pass_shader;
+//int r_stencil_lights_pass_shader;
+//int r_shadow_pass_shader;
+//int r_generate_shadow_mask_shader;
+//int r_skybox_shader;
+//int r_bloom0_shader;
+//int r_bloom1_shader;
+//int r_tonemap_shader;
+//int r_blit_texture_shader;
+//int r_portal_shader;
+//int r_forward_pass_portal_shader;
+//int r_gui_shader;
+//int r_imediate_color_shader;
+//int r_cluster_debug_shader;
 
 vec3_t r_clear_color = {0.0, 0.0, 0.0};
 
@@ -186,21 +191,21 @@ static void (*renderer_RendererResolutionChangeCallback[MAX_RENDER_FUNCTIONS])(v
 //void (*renderer_DrawWorld)() = NULL;
 //void (*renderer_DrawOpaque)() = NULL;
 
-unsigned int r_frame = 0;
+//unsigned int r_frame = 0;
 
 unsigned int query_object;
 
 
 
 
-int r_max_batch_size = 10;
-int r_draw_command_group_count = 0;
-//int r_draw_cmds_count = 0;
-//int r_max_draw_cmds_count = 0;
-draw_command_group_t *r_draw_command_groups = NULL;
-//static struct draw_command_t *r_sorted_draw_cmds = NULL;
-static struct list_t r_sorted_draw_cmds;
-//static struct draw_command_t *r_unsorted_draw_cmds = NULL;
+//int r_max_batch_size = 10;
+//int r_draw_command_group_count = 0;
+////int r_draw_cmds_count = 0;
+////int r_max_draw_cmds_count = 0;
+//draw_command_group_t *r_draw_command_groups = NULL;
+////static struct draw_command_t *r_sorted_draw_cmds = NULL;
+//static struct list_t r_sorted_draw_cmds;
+////static struct draw_command_t *r_unsorted_draw_cmds = NULL;
 
 float r_fade_value = 0.1;
 
@@ -236,34 +241,34 @@ static draw_command_t *r_translucent_draw_cmds = NULL;*/
 //unsigned int r_intensity_eight_vertical_color = 0;
 
 
-int r_width = 0;
-int r_height = 0;
-int r_window_width = 0;
-int r_window_height = 0;
-int r_window_flags = 0;
+//int r_width = 0;
+//int r_height = 0;
+//int r_window_width = 0;
+//int r_window_height = 0;
+//int r_window_flags = 0;
 
-int r_clusters_per_row = 0;
-int r_cluster_rows = 0;
-int r_cluster_layers = 0;
-struct cluster_t *r_clusters = NULL;
-unsigned int r_cluster_texture;
+//int r_clusters_per_row = 0;
+//int r_cluster_rows = 0;
+//int r_cluster_layers = 0;
+//struct cluster_t *r_clusters = NULL;
+//unsigned int r_cluster_texture;
 
-int r_msaa_samples = 1;
-int r_msaa_supported = 1;
-
-int r_draw_shadow_maps = 1;
-int r_z_prepass = 1;
-int r_query_stages = 0;
-int r_bloom = 1;
-int r_tonemap = 1;
-int r_draw_gui = 1;
-int r_clear_colorbuffer = 1;
+//int r_msaa_samples = 1;
+//int r_msaa_supported = 1;
+//
+//int r_draw_shadow_maps = 1;
+//int r_z_prepass = 1;
+//int r_query_stages = 0;
+//int r_bloom = 1;
+//int r_tonemap = 1;
+//int r_draw_gui = 1;
+//int r_clear_colorbuffer = 1;
 
 //int r_deferred = 0;
 
-int r_flat = 0;
-int r_wireframe = 0;
-int r_debug = 1;
+//int r_flat = 0;
+//int r_wireframe = 0;
+
 
 
 int r_caps[R_LAST_CAP] = {0};
@@ -273,16 +278,16 @@ int r_caps[R_LAST_CAP] = {0};
 
 int r_max_portal_recursion_level = 3;
 
-mat4_t r_projection_matrix;
-int r_projection_matrix_changed = 1;
+//mat4_t r_projection_matrix;
+//int r_projection_matrix_changed = 1;
+//
+//mat4_t r_view_matrix;
+//int r_view_matrix_changed = 1;
 
-mat4_t r_view_matrix;
-int r_view_matrix_changed = 1;
-
-mat4_t r_model_matrix;
-mat4_t r_view_projection_matrix;
-mat4_t r_model_view_matrix;
-mat4_t r_model_view_projection_matrix;
+//mat4_t r_model_matrix;
+//mat4_t r_view_projection_matrix;
+//mat4_t r_model_view_matrix;
+//mat4_t r_model_view_projection_matrix;
 
 //view_def_t *r_active_view = NULL;
 //camera_t *r_main_view = NULL;
@@ -295,32 +300,32 @@ struct view_data_t *r_active_views[R_MAX_ACTIVE_VIEWS];
 struct view_handle_t r_main_view = INVALID_VIEW_HANDLE;
 
 
-unsigned int r_cluster_texture = 0;
-unsigned int r_light_uniform_buffer = 0;
-unsigned int r_bsp_uniform_buffer = 0;
-unsigned int r_world_vertices_uniform_buffer = 0;
+//unsigned int r_cluster_texture = 0;
+//unsigned int r_light_uniform_buffer = 0;
+//unsigned int r_bsp_uniform_buffer = 0;
+//unsigned int r_world_vertices_uniform_buffer = 0;
 
 
-struct gpu_light_t *r_light_buffer = NULL;
-struct gpu_bsp_node_t *r_bsp_buffer = NULL;
-vec4_t *r_world_vertices_buffer = NULL;
-int r_bsp_node_count = 0;
+//struct gpu_light_t *r_light_buffer = NULL;
+//struct gpu_bsp_node_t *r_bsp_buffer = NULL;
+//vec4_t *r_world_vertices_buffer = NULL;
+//int r_bsp_node_count = 0;
 
 
 //extern camera_t *active_camera;
 //extern camera_t *main_view;
 
-unsigned int r_draw_calls = 0;
-unsigned int r_material_swaps = 0;
-unsigned int r_shader_swaps = 0;
-unsigned int r_shader_uniform_updates = 0;
-unsigned int r_frame_vert_count = 0;
+//unsigned int r_draw_calls = 0;
+//unsigned int r_material_swaps = 0;
+//unsigned int r_shader_swaps = 0;
+//unsigned int r_shader_uniform_updates = 0;
+//unsigned int r_frame_vert_count = 0;
 
 
-unsigned int r_shadow_map_framebuffer = 0;
-unsigned int r_shadow_map_array = 0;
-unsigned int r_shadow_map_resolution = 0;
-unsigned int r_force_shadow_map_update = 0;
+//unsigned int r_shadow_map_framebuffer = 0;
+//unsigned int r_shadow_map_array = 0;
+//unsigned int r_shadow_map_resolution = 0;
+//unsigned int r_force_shadow_map_update = 0;
 
 
 int r_frame_clamping = 0;
@@ -353,71 +358,73 @@ int renderer_Init(int width, int height, int init_mode)
 	char *ext_str;
 	char *sub_str;
 
-	int i;
+	/*int i;
 
 	int w;
-	int h;
+	int h;*/
 
-	r_window_flags = SDL_WINDOW_OPENGL;
-	SDL_DisplayMode display_mode;
+	//r_window_flags = SDL_WINDOW_OPENGL;
+	//SDL_DisplayMode display_mode;
 
-	int r;
+	//int r;
 
-	if(init_mode == INIT_FULLSCREEN_DESKTOP || init_mode == INIT_FULLSCREEN)
-	{
-		SDL_GetDisplayMode(0, 0, &display_mode);
-		r_width = display_mode.w;
-		r_height = display_mode.h;
-		r_window_width = r_width;
-		r_window_height = r_height;
-		if(init_mode == INIT_FULLSCREEN_DESKTOP)
-		{
-			r_window_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-		}
-
-	}
-	else
-	{
-		r_width = width;
-		r_height = height;
-		r_window_width = width;
-		r_window_height = height;
-	}
+//	if(init_mode == INIT_FULLSCREEN_DESKTOP || init_mode == INIT_FULLSCREEN)
+//	{
+//		SDL_GetDisplayMode(0, 0, &display_mode);
+//		r_width = display_mode.w;
+//		r_height = display_mode.h;
+//		r_window_width = r_width;
+//		r_window_height = r_height;
+//		if(init_mode == INIT_FULLSCREEN_DESKTOP)
+//		{
+//			r_window_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+//		}
+//
+//	}
+//	else
+//	{
+//		r_width = width;
+//		r_height = height;
+//		r_window_width = width;
+//		r_window_height = height;
+//	}
 
 	//r_active_shader = -1;
 
-	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-	//SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-	//SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-	//SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
-	//SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-	//SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
-    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG | SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-    //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 1);
+//	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+//	//SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+//	//SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+//	//SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+//	//SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+//	//SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+//	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+//	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+//	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+//    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG | SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+//    //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 1);
+//
+//	window = SDL_CreateWindow("wtf editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, r_width, r_height, r_window_flags);
+//	context = SDL_GL_CreateContext(window);
 
-	window = SDL_CreateWindow("wtf editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, r_width, r_height, r_window_flags);
-	context = SDL_GL_CreateContext(window);
 
 
-
-	SDL_GL_MakeCurrent(window, context);
+	//SDL_GL_MakeCurrent(window, context);
 
 	//SDL_GL_SetSwapInterval(0);
 
+    renderer_SetRendererResolution(width, height, 1);
 	renderer_SetFrameRateClamping(1);
+	renderer_Fullscreen(init_mode == INIT_FULLSCREEN_DESKTOP);
 
-	int error = glewInit();
+//	int error = glewInit();
+//
+//	if(error != GLEW_NO_ERROR)
+//	{
+//		log_LogMessage(LOG_MESSAGE_ERROR, 0, "renderer_Init: glew didn't init!\nError cause:\n %s", glewGetErrorString(error));
+//		return 0;
+//	}
 
-	if(error != GLEW_NO_ERROR)
-	{
-		log_LogMessage(LOG_MESSAGE_ERROR, 0, "renderer_Init: glew didn't init!\nError cause:\n %s", glewGetErrorString(error));
-		return 0;
-	}
-
-	log_LogMessage(LOG_MESSAGE_NONE, 0, "Window resolution: %d x %d", r_width, r_height);
+	log_LogMessage(LOG_MESSAGE_NONE, 0, "Window resolution: %d x %d", r_renderer.r_width, r_renderer.r_height);
 
 
     /*glGenVertexArrays(1, &r_default_vao);
@@ -430,7 +437,7 @@ int renderer_Init(int width, int height, int init_mode)
 
     glGenQueries(65356, r_occlusion_queries);
 
-    renderer_CheckFunctionPointers();
+
 
     renderer_SetMainView(INVALID_VIEW_HANDLE);
 
@@ -442,8 +449,8 @@ int renderer_Init(int width, int height, int init_mode)
     //r_default_view.x_shift = 0.0;
     //r_default_view.y_shift = 0.0;
 
-    r_default_view.width = r_window_width;
-    r_default_view.height = r_window_height;
+    r_default_view.width = r_renderer.r_window_width;
+    r_default_view.height = r_renderer.r_window_height;
     r_default_view.name = "default view";
     renderer_CreateViewData(&r_default_view.view_data);
 
@@ -468,34 +475,39 @@ int renderer_Init(int width, int height, int init_mode)
 
 
 
-	r_cbuffer.framebuffer_id = 0;
-	r_bbuffer.framebuffer_id = 0;
+//	r_cbuffer.framebuffer_id = 0;
+//	r_bbuffer.framebuffer_id = 0;
 
 	//renderer_SetRenderer(RENDERER_TYPE_CLUSTERED_FORWARD);
 
-	renderer_SetRendererResolution(r_width, r_height, 1);
+
 
 
     /* uniform buffer accessed by the clustered forward pass... */
-	glGenBuffers(1, &r_light_uniform_buffer);
-	glBindBuffer(GL_UNIFORM_BUFFER, r_light_uniform_buffer);
+	glGenBuffers(1, &r_renderer.r_light_uniform_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, r_renderer.r_light_uniform_buffer);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_light_t) * R_MAX_VISIBLE_LIGHTS, NULL, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 
     /* uniform buffer accessed during hybrid ray-traced shadows and reflections... */
-	glGenBuffers(1, &r_bsp_uniform_buffer);
-	glBindBuffer(GL_UNIFORM_BUFFER, r_bsp_uniform_buffer);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_bsp_node_t) * R_MAX_BSP_NODES, NULL, GL_DYNAMIC_DRAW);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+//	glGenBuffers(1, &r_renderer.r_bsp_uniform_buffer);
+//	glBindBuffer(GL_UNIFORM_BUFFER, r_renderer.r_bsp_uniform_buffer);
+//	glBufferData(GL_UNIFORM_BUFFER, sizeof(struct gpu_bsp_node_t) * R_MAX_BSP_NODES, NULL, GL_DYNAMIC_DRAW);
+//	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+    renderer_ResizeWorldTrianglesUniformBuffer(3);
 
-
-
-	glGenBuffers(1, &r_world_vertices_uniform_buffer);
-	glBindBuffer(GL_UNIFORM_BUFFER, r_world_vertices_uniform_buffer);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(vec4_t) * 32, NULL, GL_DYNAMIC_DRAW);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+//    glGenBuffers(1, &r_renderer.r_world_triangles_uniform_buffer);
+//    glBindBuffer(GL_UNIFORM_BUFFER, r_renderer.r_world_triangles_uniform_buffer);
+//    glBufferData(GL_UNIFORM_BUFFER, sizeof(vec4_t), * 32, NULL, GL_DYNAMIC_DRAW);
+//    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+//
+//
+//	glGenBuffers(1, &r_renderer.r_world_vertices_uniform_buffer);
+//	glBindBuffer(GL_UNIFORM_BUFFER, r_renderer.r_world_vertices_uniform_buffer);
+//	glBufferData(GL_UNIFORM_BUFFER, sizeof(vec4_t) * 32, NULL, GL_DYNAMIC_DRAW);
+//	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 
 	/*glGenBuffers(1, &r_world_index_uniform_buffer);
@@ -506,9 +518,16 @@ int renderer_Init(int width, int height, int init_mode)
 
 
 
-	r_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * R_MAX_VISIBLE_LIGHTS);
-	r_bsp_buffer = memory_Malloc(sizeof(struct gpu_bsp_node_t) * R_MAX_BSP_NODES);
+	r_renderer.r_light_buffer = memory_Malloc(sizeof(struct gpu_light_t) * R_MAX_VISIBLE_LIGHTS);
+	//r_renderer.r_bsp_buffer = memory_Malloc(sizeof(struct gpu_bsp_node_t) * R_MAX_BSP_NODES);
 
+    r_renderer.r_switches.r_clear_colorbuffer = 1;
+    r_renderer.r_switches.r_shadow_maps = 1;
+    r_renderer.r_switches.r_z_prepass = 1;
+    r_renderer.r_switches.r_bloom = 1;
+    r_renderer.r_switches.r_tonemap = 1;
+    r_renderer.r_switches.r_draw_gui = 1;
+    r_renderer.r_switches.r_debug = 1;
 
 
 
@@ -518,7 +537,7 @@ int renderer_Init(int width, int height, int init_mode)
 	//r_draw_groups = malloc(sizeof(draw_group_t) * MAX_MATERIALS);
 	//r_draw_cmds = malloc(sizeof(draw_command_t) * MAX_MATERIALS * MAX_ENTITIES);
 
-	r_draw_command_groups = memory_Malloc(sizeof(draw_command_group_t) * (MAX_MATERIALS + 1));
+	r_renderer.r_draw_command_groups = memory_Malloc(sizeof(draw_command_group_t) * (MAX_MATERIALS + 1));
 
 /*	for(i = 0; i <= MAX_MATERIALS; i++)
 	{
@@ -529,7 +548,7 @@ int renderer_Init(int width, int height, int init_mode)
 
 	//r_max_draw_cmds_count = R_MAX_DRAW_COMMANDS;
 	//r_unsorted_draw_cmds = memory_Malloc(sizeof(struct draw_command_t) * r_max_draw_cmds_count);
-	r_sorted_draw_cmds = list_create(sizeof(struct draw_command_t), R_MAX_DRAW_COMMANDS, NULL);
+	r_renderer.r_sorted_draw_cmds = list_create(sizeof(struct draw_command_t), R_MAX_DRAW_COMMANDS, NULL);
 	//r_sorted_draw_cmds = memory_Malloc(sizeof(struct draw_command_t) * r_max_draw_cmds_count);
 
 
@@ -545,12 +564,26 @@ int renderer_Init(int width, int height, int init_mode)
 
 	glGenQueries(1, &query_object);
 
-    renderer_InitVerts();
-	renderer_InitImediateDrawing();
-	renderer_InitDebug();
 
-	renderer_Enable(R_DEBUG);
-	renderer_Enable(R_VERBOSE_DEBUG);
+	script_RegisterGlobalFunction("void renderer_DrawPoint(vec3_t &in position, vec3_t &in color)", renderer_ScriptDrawPoint);
+	script_RegisterGlobalFunction("void renderer_DrawLine(vec3_t &in from, vec3_t &in to, vec3_t &in color)", renderer_ScriptDrawLine);
+
+
+	r_renderer.r_shaders.r_z_pre_pass_shader = shader_LoadShader("engine/z_pre_pass", "z prepass");
+	r_renderer.r_shaders.r_forward_pass_shader = shader_LoadShader("engine/forward_pass", "forward pass");
+	r_renderer.r_shaders.r_particle_forward_pass_shader = shader_LoadShader("engine/particle_forward_pass", "particle forward pass");
+	r_renderer.r_shaders.r_flat_pass_shader = shader_LoadShader("engine/flat_pass", "flat pass");
+	r_renderer.r_shaders.r_wireframe_pass_shader = shader_LoadShader("engine/wireframe_pass", "wireframe pass");
+	r_renderer.r_shaders.r_shadow_pass_shader = shader_LoadShader("engine/shadow_pass", "shadow pass");
+	r_renderer.r_shaders.r_generate_shadow_mask_shader = shader_LoadShader("engine/generate_shadow_mask", "generate shadow mask");
+	r_renderer.r_shaders.r_bloom0_shader = shader_LoadShader("engine/bloom0", "bloom pass 0");
+	r_renderer.r_shaders.r_bloom1_shader = shader_LoadShader("engine/bloom1", "bloom pass 1");
+	r_renderer.r_shaders.r_tonemap_shader = shader_LoadShader("engine/tonemap", "tonemap pass");
+	r_renderer.r_shaders.r_blit_texture_shader = shader_LoadShader("engine/blit_texture", "blit texture");
+	r_renderer.r_shaders.r_gui_shader = shader_LoadShader("engine/gui/gui", "gui");
+	r_renderer.r_shaders.r_imediate_color_shader = shader_LoadShader("engine/imediate draw/imediate_color", "imediate color");
+	r_renderer.r_shaders.r_cluster_debug_shader = shader_LoadShader("engine/cluster_debug", "cluster debug");
+
 
 	//renderer_VerboseDebugOutput(1);
 
@@ -573,23 +606,15 @@ void renderer_Finish()
 
 	//memory_Free(r_sorted_draw_cmds);
 	//memory_Free(r_unsorted_draw_cmds);
-	memory_Free(r_draw_command_groups);
-	memory_Free(r_light_buffer);
+	memory_Free(r_renderer.r_draw_command_groups);
+	memory_Free(r_renderer.r_light_buffer);
 
 	stack_list_destroy(&r_views);
-	list_destroy(&r_sorted_draw_cmds);
-
-	renderer_FinishDebug();
-	renderer_FinishImediateDrawing();
-	renderer_FinishVerts();
+	list_destroy(&r_renderer.r_sorted_draw_cmds);
 
 	glDeleteQueries(65536, r_occlusion_queries);
 	//memory_Free(r_translucent_draw_cmds);
 	//memory_Free(r_translucent_draw_groups);
-
-	SDL_GL_DeleteContext(context);
-	SDL_DestroyWindow(window);
-	SDL_Quit();
 }
 
 
@@ -641,18 +666,24 @@ void renderer_BindShadowTexture()
 	//glActiveTexture(GL_TEXTURE2);
 	//glBindTexture(GL_TEXTURE_2D, l_shared_shadow_map);
 
-	renderer_SetDefaultUniform1i(UNIFORM_texture_cube_array_sampler0, 5);
-	renderer_BindTextureTexUnit(GL_TEXTURE5, GL_TEXTURE_CUBE_MAP_ARRAY, r_shadow_map_array);
+	//renderer_SetDefaultUniform1i(UNIFORM_texture_cube_array_sampler0, 5);
+	//renderer_BindTextureTexUnit(GL_TEXTURE5, GL_TEXTURE_CUBE_MAP_ARRAY, r_shadow_map_array);
+}
+
+void renderer_BindShadowMaskTexture()
+{
+    renderer_SetDefaultUniform1i(UNIFORM_texture_usampler0, 6);
+    renderer_BindTextureTexUnit(GL_TEXTURE6, GL_TEXTURE_2D, r_renderer.r_shadow_mask_buffer.color_attachments[0].handle);
 }
 
 void renderer_BindClusterTexture()
 {
 	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_3D, r_cluster_texture);
+	glBindTexture(GL_TEXTURE_3D, r_renderer.r_cluster_texture);
 	renderer_SetDefaultUniform1i(UNIFORM_cluster_texture, 3);
-	renderer_SetDefaultUniform1i(UNIFORM_r_clusters_per_row, r_clusters_per_row);
-	renderer_SetDefaultUniform1i(UNIFORM_r_cluster_rows, r_cluster_rows);
-	renderer_SetDefaultUniform1i(UNIFORM_r_cluster_layers, r_cluster_layers);
+	renderer_SetDefaultUniform1i(UNIFORM_r_clusters_per_row, r_renderer.r_clusters_per_row);
+	renderer_SetDefaultUniform1i(UNIFORM_r_cluster_rows, r_renderer.r_cluster_rows);
+	renderer_SetDefaultUniform1i(UNIFORM_r_cluster_layers, r_renderer.r_cluster_layers);
 }
 
 /*
@@ -722,30 +753,31 @@ void renderer_SetUniformBuffers()
 	int i;
 
 
-    if(w_world_vertices)
-    {
-        main_view = renderer_GetMainViewPointer();
-
-        for(i = 0; i < w_world_vertices_count; i++)
-        {
-            r_world_vertices_buffer[i].vec3 = w_world_vertices[i].position;
-            r_world_vertices_buffer[i].w = 1.0;
-
-            mat4_t_vec4_t_mult(&main_view->view_data.view_matrix, r_world_vertices_buffer + i);
-        }
-
-        glBindBuffer(GL_UNIFORM_BUFFER, r_world_vertices_uniform_buffer);
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(vec4_t) * w_world_vertices_count, r_world_vertices_buffer, GL_DYNAMIC_DRAW);
-        glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    }
+//    if(w_world_vertices)
+//    {
+//        main_view = renderer_GetMainViewPointer();
+//
+//        for(i = 0; i < w_world_vertices_count; i++)
+//        {
+//            r_renderer.r_world_vertices_buffer[i].vec3 = w_world_vertices[i].position;
+//            r_renderer.r_world_vertices_buffer[i].w = 1.0;
+//
+//            mat4_t_vec4_t_mult(&main_view->view_data.view_matrix, r_renderer.r_world_vertices_buffer + i);
+//        }
+//
+//        glBindBuffer(GL_UNIFORM_BUFFER, r_renderer.r_world_vertices_uniform_buffer);
+//        glBufferData(GL_UNIFORM_BUFFER, sizeof(vec4_t) * w_world_vertices_count, r_renderer.r_world_vertices_buffer, GL_DYNAMIC_DRAW);
+//        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+//    }
 
 
 
 	//int cpu_timer = renderer_StartCpuTimer("renderer_SetUniformBuffers");
     //int gpu_timer = renderer_StartGpuTimer("renderer_SetUniformBuffers");
-	glBindBufferBase(GL_UNIFORM_BUFFER, R_LIGHT_UNIFORM_BUFFER_BINDING, r_light_uniform_buffer);
-	glBindBufferBase(GL_UNIFORM_BUFFER, R_BSP_UNIFORM_BUFFER_BINDING, r_bsp_uniform_buffer);
-	glBindBufferBase(GL_UNIFORM_BUFFER, R_WORLD_VERTICES_UNIFORM_BUFFER_BINDING, r_world_vertices_uniform_buffer);
+	glBindBufferBase(GL_UNIFORM_BUFFER, R_LIGHT_UNIFORM_BUFFER_BINDING, r_renderer.r_light_uniform_buffer);
+	//glBindBufferBase(GL_UNIFORM_BUFFER, R_BSP_UNIFORM_BUFFER_BINDING, r_renderer.r_bsp_uniform_buffer);
+	glBindBufferBase(GL_UNIFORM_BUFFER, R_WORLD_VERTICES_UNIFORM_BUFFER_BINDING, r_renderer.r_world_vertices_uniform_buffer);
+	glBindBufferBase(GL_UNIFORM_BUFFER, R_WORLD_TRIANGLES_UNIFORM_BUFFER_BINDING, r_renderer.r_world_triangles_uniform_buffer);
 	//renderer_StopTimer(cpu_timer);
 	//renderer_StopTimer(gpu_timer);
 	R_DBG_POP_FUNCTION_NAME();
@@ -771,32 +803,32 @@ void renderer_SetProjectionMatrix(mat4_t *matrix)
 {
 	if(!matrix)
 	{
-		r_projection_matrix.floats[0][0] = 1.0;
-		r_projection_matrix.floats[0][1] = 0.0;
-		r_projection_matrix.floats[0][2] = 0.0;
-		r_projection_matrix.floats[0][3] = 0.0;
+		r_renderer.r_projection_matrix.floats[0][0] = 1.0;
+		r_renderer.r_projection_matrix.floats[0][1] = 0.0;
+		r_renderer.r_projection_matrix.floats[0][2] = 0.0;
+		r_renderer.r_projection_matrix.floats[0][3] = 0.0;
 
-		r_projection_matrix.floats[1][0] = 0.0;
-		r_projection_matrix.floats[1][1] = 1.0;
-		r_projection_matrix.floats[1][2] = 0.0;
-		r_projection_matrix.floats[1][3] = 0.0;
+		r_renderer.r_projection_matrix.floats[1][0] = 0.0;
+		r_renderer.r_projection_matrix.floats[1][1] = 1.0;
+		r_renderer.r_projection_matrix.floats[1][2] = 0.0;
+		r_renderer.r_projection_matrix.floats[1][3] = 0.0;
 
-		r_projection_matrix.floats[2][0] = 0.0;
-		r_projection_matrix.floats[2][1] = 0.0;
-		r_projection_matrix.floats[2][2] = 1.0;
-		r_projection_matrix.floats[2][3] = 0.0;
+		r_renderer.r_projection_matrix.floats[2][0] = 0.0;
+		r_renderer.r_projection_matrix.floats[2][1] = 0.0;
+		r_renderer.r_projection_matrix.floats[2][2] = 1.0;
+		r_renderer.r_projection_matrix.floats[2][3] = 0.0;
 
-		r_projection_matrix.floats[3][0] = 0.0;
-		r_projection_matrix.floats[3][1] = 0.0;
-		r_projection_matrix.floats[3][2] = 0.0;
-		r_projection_matrix.floats[3][3] = 1.0;
+		r_renderer.r_projection_matrix.floats[3][0] = 0.0;
+		r_renderer.r_projection_matrix.floats[3][1] = 0.0;
+		r_renderer.r_projection_matrix.floats[3][2] = 0.0;
+		r_renderer.r_projection_matrix.floats[3][3] = 1.0;
 	}
 	else
 	{
-		r_projection_matrix = *matrix;
+		r_renderer.r_projection_matrix = *matrix;
 	}
 
-	r_projection_matrix_changed = 1;
+	r_renderer.r_projection_matrix_changed = 1;
 
 }
 
@@ -818,32 +850,32 @@ void renderer_SetViewMatrix(mat4_t *matrix)
 {
 	if(!matrix)
 	{
-		r_view_matrix.floats[0][0] = 1.0;
-		r_view_matrix.floats[0][1] = 0.0;
-		r_view_matrix.floats[0][2] = 0.0;
-		r_view_matrix.floats[0][3] = 0.0;
+		r_renderer.r_view_matrix.floats[0][0] = 1.0;
+		r_renderer.r_view_matrix.floats[0][1] = 0.0;
+		r_renderer.r_view_matrix.floats[0][2] = 0.0;
+		r_renderer.r_view_matrix.floats[0][3] = 0.0;
 
-		r_view_matrix.floats[1][0] = 0.0;
-		r_view_matrix.floats[1][1] = 1.0;
-		r_view_matrix.floats[1][2] = 0.0;
-		r_view_matrix.floats[1][3] = 0.0;
+		r_renderer.r_view_matrix.floats[1][0] = 0.0;
+		r_renderer.r_view_matrix.floats[1][1] = 1.0;
+		r_renderer.r_view_matrix.floats[1][2] = 0.0;
+		r_renderer.r_view_matrix.floats[1][3] = 0.0;
 
-		r_view_matrix.floats[2][0] = 0.0;
-		r_view_matrix.floats[2][1] = 0.0;
-		r_view_matrix.floats[2][2] = 1.0;
-		r_view_matrix.floats[2][3] = 0.0;
+		r_renderer.r_view_matrix.floats[2][0] = 0.0;
+		r_renderer.r_view_matrix.floats[2][1] = 0.0;
+		r_renderer.r_view_matrix.floats[2][2] = 1.0;
+		r_renderer.r_view_matrix.floats[2][3] = 0.0;
 
-		r_view_matrix.floats[3][0] = 0.0;
-		r_view_matrix.floats[3][1] = 0.0;
-		r_view_matrix.floats[3][2] = 0.0;
-		r_view_matrix.floats[3][3] = 1.0;
+		r_renderer.r_view_matrix.floats[3][0] = 0.0;
+		r_renderer.r_view_matrix.floats[3][1] = 0.0;
+		r_renderer.r_view_matrix.floats[3][2] = 0.0;
+		r_renderer.r_view_matrix.floats[3][3] = 1.0;
 	}
 	else
 	{
-		r_view_matrix = *matrix;
+		r_renderer.r_view_matrix = *matrix;
 	}
 
-	r_view_matrix_changed = 1;
+	r_renderer.r_view_matrix_changed = 1;
 
 }
 
@@ -865,29 +897,29 @@ void renderer_SetModelMatrix(mat4_t *matrix)
 {
 	if(!matrix)
 	{
-		r_model_matrix.floats[0][0] = 1.0;
-		r_model_matrix.floats[0][1] = 0.0;
-		r_model_matrix.floats[0][2] = 0.0;
-		r_model_matrix.floats[0][3] = 0.0;
+		r_renderer.r_model_matrix.floats[0][0] = 1.0;
+		r_renderer.r_model_matrix.floats[0][1] = 0.0;
+		r_renderer.r_model_matrix.floats[0][2] = 0.0;
+		r_renderer.r_model_matrix.floats[0][3] = 0.0;
 
-		r_model_matrix.floats[1][0] = 0.0;
-		r_model_matrix.floats[1][1] = 1.0;
-		r_model_matrix.floats[1][2] = 0.0;
-		r_model_matrix.floats[1][3] = 0.0;
+		r_renderer.r_model_matrix.floats[1][0] = 0.0;
+		r_renderer.r_model_matrix.floats[1][1] = 1.0;
+		r_renderer.r_model_matrix.floats[1][2] = 0.0;
+		r_renderer.r_model_matrix.floats[1][3] = 0.0;
 
-		r_model_matrix.floats[2][0] = 0.0;
-		r_model_matrix.floats[2][1] = 0.0;
-		r_model_matrix.floats[2][2] = 1.0;
-		r_model_matrix.floats[2][3] = 0.0;
+		r_renderer.r_model_matrix.floats[2][0] = 0.0;
+		r_renderer.r_model_matrix.floats[2][1] = 0.0;
+		r_renderer.r_model_matrix.floats[2][2] = 1.0;
+		r_renderer.r_model_matrix.floats[2][3] = 0.0;
 
-		r_model_matrix.floats[3][0] = 0.0;
-		r_model_matrix.floats[3][1] = 0.0;
-		r_model_matrix.floats[3][2] = 0.0;
-		r_model_matrix.floats[3][3] = 1.0;
+		r_renderer.r_model_matrix.floats[3][0] = 0.0;
+		r_renderer.r_model_matrix.floats[3][1] = 0.0;
+		r_renderer.r_model_matrix.floats[3][2] = 0.0;
+		r_renderer.r_model_matrix.floats[3][3] = 1.0;
 	}
 	else
 	{
-		r_model_matrix = *matrix;
+		r_renderer.r_model_matrix = *matrix;
 	}
 
 
@@ -908,25 +940,25 @@ OpenGL...
 */
 void renderer_UpdateMatrices()
 {
-	mat4_t_mult_fast(&r_model_view_matrix, &r_model_matrix, &r_view_matrix);
-	mat4_t_mult_fast(&r_model_view_projection_matrix, &r_model_view_matrix, &r_projection_matrix);
+	mat4_t_mult_fast(&r_renderer.r_model_view_matrix, &r_renderer.r_model_matrix, &r_renderer.r_view_matrix);
+	mat4_t_mult_fast(&r_renderer.r_model_view_projection_matrix, &r_renderer.r_model_view_matrix, &r_renderer.r_projection_matrix);
 
-	renderer_SetDefaultUniformMatrix4fv(UNIFORM_model_matrix, &r_model_matrix.floats[0][0]);
-	renderer_SetDefaultUniformMatrix4fv(UNIFORM_model_view_matrix, &r_model_view_matrix.floats[0][0]);
-	renderer_SetDefaultUniformMatrix4fv(UNIFORM_model_view_projection_matrix, &r_model_view_projection_matrix.floats[0][0]);
+	renderer_SetDefaultUniformMatrix4fv(UNIFORM_model_matrix, &r_renderer.r_model_matrix.floats[0][0]);
+	renderer_SetDefaultUniformMatrix4fv(UNIFORM_model_view_matrix, &r_renderer.r_model_view_matrix.floats[0][0]);
+	renderer_SetDefaultUniformMatrix4fv(UNIFORM_model_view_projection_matrix, &r_renderer.r_model_view_projection_matrix.floats[0][0]);
 
-	if(r_view_matrix_changed)
+	if(r_renderer.r_view_matrix_changed)
 	{
-		renderer_SetDefaultUniformMatrix4fv(UNIFORM_view_matrix, &r_view_matrix.floats[0][0]);
+		renderer_SetDefaultUniformMatrix4fv(UNIFORM_view_matrix, &r_renderer.r_view_matrix.floats[0][0]);
 	}
 
-	if(r_projection_matrix_changed)
+	if(r_renderer.r_projection_matrix_changed)
 	{
-		renderer_SetDefaultUniformMatrix4fv(UNIFORM_projection_matrix, &r_projection_matrix.floats[0][0]);
+		renderer_SetDefaultUniformMatrix4fv(UNIFORM_projection_matrix, &r_renderer.r_projection_matrix.floats[0][0]);
 	}
 
-	r_view_matrix_changed = 0;
-	r_projection_matrix_changed = 0;
+	r_renderer.r_view_matrix_changed = 0;
+	r_renderer.r_projection_matrix_changed = 0;
 }
 
 
@@ -994,7 +1026,7 @@ void renderer_SetMaterial(int material_index)
 
 		renderer_SetDefaultUniform1ui(UNIFORM_material_flags, texture_flags);
 
-		r_material_swaps++;
+		r_renderer.r_statistics.r_material_swaps++;
 	}
 }
 
@@ -1197,11 +1229,11 @@ void renderer_SortViewDrawCommands(struct view_data_t *view)
 
 	static char material_draw_groups[MAX_MATERIALS + 1];
 
-	r_draw_command_group_count = 0;
+	r_renderer.r_draw_command_group_count = 0;
 
-	if(view->draw_commands.element_count >= r_sorted_draw_cmds.max_elements)
+	if(view->draw_commands.element_count >= r_renderer.r_sorted_draw_cmds.max_elements)
 	{
-	    list_resize(&r_sorted_draw_cmds, r_sorted_draw_cmds.max_elements + R_DRAW_COMMAND_LIST_RESIZE_INCREMENT);
+	    list_resize(&r_renderer.r_sorted_draw_cmds, r_renderer.r_sorted_draw_cmds.max_elements + R_DRAW_COMMAND_LIST_RESIZE_INCREMENT);
 	}
 
 	for(i = 0; i <= MAX_MATERIALS; i++)
@@ -1209,7 +1241,7 @@ void renderer_SortViewDrawCommands(struct view_data_t *view)
 		material_draw_groups[i] = -1;
 	}
 
-    sorted_draw_commands = (struct draw_command_t *)r_sorted_draw_cmds.elements;
+    sorted_draw_commands = (struct draw_command_t *)r_renderer.r_sorted_draw_cmds.elements;
     unsorted_draw_commands = (struct draw_command_t *)view->draw_commands.elements;
 
 	for(i = 0; i < view->draw_commands.element_count; i++)
@@ -1219,28 +1251,28 @@ void renderer_SortViewDrawCommands(struct view_data_t *view)
 
 		if(material_draw_groups[material_index] < 0)
 		{
-			material_draw_groups[material_index] = r_draw_command_group_count;
-			r_draw_command_groups[r_draw_command_group_count].material_index = material_index - 1;
-			r_draw_command_groups[r_draw_command_group_count].max_draw_cmds = 0;
-			r_draw_command_groups[r_draw_command_group_count].draw_cmds_count = 0;
-			r_draw_command_group_count++;
+			material_draw_groups[material_index] = r_renderer.r_draw_command_group_count;
+			r_renderer.r_draw_command_groups[r_renderer.r_draw_command_group_count].material_index = material_index - 1;
+			r_renderer.r_draw_command_groups[r_renderer.r_draw_command_group_count].max_draw_cmds = 0;
+			r_renderer.r_draw_command_groups[r_renderer.r_draw_command_group_count].draw_cmds_count = 0;
+			r_renderer.r_draw_command_group_count++;
 		}
 
 		group_index = material_draw_groups[material_index];
-		r_draw_command_groups[group_index].max_draw_cmds++;
+		r_renderer.r_draw_command_groups[group_index].max_draw_cmds++;
 	}
 
-	r_draw_command_groups[0].draw_cmds = sorted_draw_commands;
+	r_renderer.r_draw_command_groups[0].draw_cmds = sorted_draw_commands;
 
-	for(i = 1; i < r_draw_command_group_count; i++)
+	for(i = 1; i < r_renderer.r_draw_command_group_count; i++)
 	{
-		r_draw_command_groups[i].draw_cmds = r_draw_command_groups[i - 1].draw_cmds + r_draw_command_groups[i - 1].max_draw_cmds;
+		r_renderer.r_draw_command_groups[i].draw_cmds = r_renderer.r_draw_command_groups[i - 1].draw_cmds + r_renderer.r_draw_command_groups[i - 1].max_draw_cmds;
 	}
 
 	for(i = 0; i < view->draw_commands.element_count; i++)
 	{
 		group_index = material_draw_groups[unsorted_draw_commands[i].material_index + 1];
-		group = &r_draw_command_groups[group_index];
+		group = &r_renderer.r_draw_command_groups[group_index];
 		group->draw_cmds[group->draw_cmds_count] = unsorted_draw_commands[i];
 		group->draw_cmds_count++;
 	}
@@ -1365,33 +1397,33 @@ void renderer_SetWindowSize(int width, int height)
 	{
 		height = RENDERER_MIN_HEIGHT;
 	}
-	else if(height > RENDERER_MIN_HEIGHT)
+	else if(height > RENDERER_MAX_HEIGHT)
 	{
-		height = RENDERER_MIN_HEIGHT;
+		height = RENDERER_MAX_HEIGHT;
 	}
 
-	if(r_window_width != width || r_window_height != height)
+	if(r_renderer.r_window_width != width || r_renderer.r_window_height != height)
 	{
-		r_window_width = width;
-		r_window_height = height;
+		r_renderer.r_window_width = width;
+		r_renderer.r_window_height = height;
 
-		SDL_SetWindowSize(window, r_window_width, r_window_height);
+		SDL_SetWindowSize(r_renderer.r_window, r_renderer.r_window_width, r_renderer.r_window_height);
 		SDL_GetDisplayMode(0, 0, &current_display);
-		SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+		SDL_SetWindowPosition(r_renderer.r_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
-		if(r_window_width < r_width || r_window_height < r_height)
+		if(r_renderer.r_window_width < r_renderer.r_width || r_renderer.r_window_height < r_renderer.r_height)
 		{
-			renderer_SetRendererResolution(r_width, r_height, r_msaa_samples);
+			renderer_SetRendererResolution(r_renderer.r_window_width, r_renderer.r_window_height, r_renderer.r_msaa_samples);
 		}
 
-		if(r_window_width == width && r_window_height == height)
-		{
-			renderer_Fullscreen(1);
-		}
-		else
-		{
-			renderer_Fullscreen(0);
-		}
+//		if(r_window_width == current_display.w && r_window_height == current_display.h)
+//		{
+//			renderer_Fullscreen(1);
+//		}
+//		else
+//		{
+//			renderer_Fullscreen(0);
+//		}
 	}
 }
 
@@ -1442,65 +1474,81 @@ void renderer_SetRendererResolution(int width, int height, int samples)
 		samples = RENDERER_MAX_MSAA_SAMPLES;
 	}
 
-	r_width = width;
-	r_height = height;
-	r_msaa_samples = 1;
+	r_renderer.r_width = width;
+	r_renderer.r_height = height;
+	r_renderer.r_msaa_samples = 1;
 
-	if(!r_cbuffer.framebuffer_id)
+    /* color buffer... */
+	if(!r_renderer.r_color_buffer.framebuffer_id)
 	{
-		r_cbuffer = renderer_CreateFramebuffer(r_width, r_height);
-		renderer_AddAttachment(&r_cbuffer, GL_COLOR_ATTACHMENT0, GL_RGBA16F, 1, GL_LINEAR);
+		r_renderer.r_color_buffer = renderer_CreateFramebuffer(r_renderer.r_width, r_renderer.r_height);
+		renderer_AddAttachment(&r_renderer.r_color_buffer, GL_COLOR_ATTACHMENT0, GL_RGBA16F, 1, GL_LINEAR);
 		//renderer_AddAttachment(&r_cbuffer, GL_COLOR_ATTACHMENT1, GL_RGBA8, 1, GL_LINEAR);
-		renderer_AddAttachment(&r_cbuffer, GL_DEPTH_STENCIL_ATTACHMENT, 0, 1, GL_NEAREST);
+		renderer_AddAttachment(&r_renderer.r_color_buffer, GL_DEPTH_STENCIL_ATTACHMENT, 0, 1, GL_NEAREST);
 	}
 	else
 	{
-		renderer_ResizeFramebuffer(&r_cbuffer, r_width, r_height);
+		renderer_ResizeFramebuffer(&r_renderer.r_color_buffer, r_renderer.r_width, r_renderer.r_height);
 	}
 
-	if(!r_bbuffer.framebuffer_id)
+    /* back buffer... */
+	if(!r_renderer.r_back_buffer.framebuffer_id)
 	{
-		r_bbuffer = renderer_CreateFramebuffer(r_width, r_height);
-		renderer_AddAttachment(&r_bbuffer, GL_COLOR_ATTACHMENT0, GL_RGBA8, 1, GL_LINEAR);
-		renderer_ShareAttachment(&r_cbuffer, &r_bbuffer, GL_DEPTH_ATTACHMENT);
+		r_renderer.r_back_buffer = renderer_CreateFramebuffer(r_renderer.r_width, r_renderer.r_height);
+		renderer_AddAttachment(&r_renderer.r_back_buffer, GL_COLOR_ATTACHMENT0, GL_RGBA8, 1, GL_LINEAR);
+		renderer_ShareAttachment(&r_renderer.r_color_buffer, &r_renderer.r_back_buffer, GL_DEPTH_ATTACHMENT);
 		//renderer_AddAttachment(&r_bbuffer, GL_DEPTH_ATTACHMENT, 0, 1);
 	}
 	else
 	{
-		renderer_ResizeFramebuffer(&r_bbuffer, r_width, r_height);
-	}
-
-	if(r_width > r_window_width || r_height > r_window_height)
-	{
-		renderer_SetWindowSize(r_width, r_height);
+		renderer_ResizeFramebuffer(&r_renderer.r_back_buffer, r_renderer.r_width, r_renderer.r_height);
 	}
 
 
-	clusters_per_row = (int)(ceil((float)r_width / (float)R_CLUSTER_WIDTH));
-	cluster_rows = (int)(ceil((float)r_height / (float)R_CLUSTER_HEIGHT));
-
-
-    if(clusters_per_row != r_clusters_per_row || cluster_rows != r_clusters_per_row)
+    /* shadow mask buffer... */
+	if(!r_renderer.r_shadow_mask_buffer.framebuffer_id)
 	{
-		r_clusters_per_row = clusters_per_row;
-		r_cluster_rows = cluster_rows;
-		r_cluster_layers = CLUSTER_LAYERS;
+		r_renderer.r_shadow_mask_buffer = renderer_CreateFramebuffer(r_renderer.r_width, r_renderer.r_height);
+		renderer_AddAttachment(&r_renderer.r_shadow_mask_buffer, GL_COLOR_ATTACHMENT0, GL_R32UI, 1, GL_NEAREST);
+		renderer_AddAttachment(&r_renderer.r_shadow_mask_buffer, GL_DEPTH_ATTACHMENT, 0, 1, GL_NEAREST);
+	}
+	else
+	{
+		renderer_ResizeFramebuffer(&r_renderer.r_shadow_mask_buffer, r_renderer.r_width, r_renderer.r_height);
+	}
 
 
-        if(r_clusters)
+	if(r_renderer.r_width > r_renderer.r_window_width || r_renderer.r_height > r_renderer.r_window_height)
+	{
+		renderer_SetWindowSize(r_renderer.r_width, r_renderer.r_height);
+	}
+
+
+	clusters_per_row = (int)(ceil((float)r_renderer.r_width / (float)R_CLUSTER_WIDTH));
+	cluster_rows = (int)(ceil((float)r_renderer.r_height / (float)R_CLUSTER_HEIGHT));
+
+
+    if(clusters_per_row != r_renderer.r_clusters_per_row || cluster_rows != r_renderer.r_clusters_per_row)
+	{
+		r_renderer.r_clusters_per_row = clusters_per_row;
+		r_renderer.r_cluster_rows = cluster_rows;
+		r_renderer.r_cluster_layers = CLUSTER_LAYERS;
+
+
+        if(r_renderer.r_clusters)
 		{
-			memory_Free(r_clusters);
+			memory_Free(r_renderer.r_clusters);
 		}
 
-		r_clusters = memory_Calloc(r_clusters_per_row * r_cluster_rows * r_cluster_layers, sizeof(struct cluster_t));
+		r_renderer.r_clusters = memory_Calloc(r_renderer.r_clusters_per_row * r_renderer.r_cluster_rows * r_renderer.r_cluster_layers, sizeof(struct cluster_t));
 
-		if(r_cluster_texture)
+		if(r_renderer.r_cluster_texture)
 		{
-			glDeleteTextures(1, &r_cluster_texture);
+			glDeleteTextures(1, &r_renderer.r_cluster_texture);
 		}
 
-		glGenTextures(1, &r_cluster_texture);
-		glBindTexture(GL_TEXTURE_3D, r_cluster_texture);
+		glGenTextures(1, &r_renderer.r_cluster_texture);
+		glBindTexture(GL_TEXTURE_3D, r_renderer.r_cluster_texture);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -1508,7 +1556,7 @@ void renderer_SetRendererResolution(int width, int height, int samples)
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BASE_LEVEL, 0);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 0);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_R32UI, r_clusters_per_row, r_cluster_rows, r_cluster_layers, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_R32UI, r_renderer.r_clusters_per_row, r_renderer.r_cluster_rows, r_renderer.r_cluster_layers, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
 		glBindTexture(GL_TEXTURE_3D, 0);
 	}
 }
@@ -1516,53 +1564,51 @@ void renderer_SetRendererResolution(int width, int height, int samples)
 
 int renderer_GetFullscreen()
 {
-    return (r_window_flags & SDL_WINDOW_FULLSCREEN_DESKTOP) && 1;
+    return (r_renderer.r_window_flags & SDL_WINDOW_FULLSCREEN_DESKTOP) && 1;
 }
 
 
 void renderer_Fullscreen(int enable)
 {
-	int w;
-	int h;
+	int width;
+	int height;
 	SDL_DisplayMode display_mode;
 	SDL_Rect display_bounds;
 
 	if(enable)
 	{
-		if(r_window_flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
+		if(r_renderer.r_window_flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
 			return;
 
 		SDL_GetDisplayBounds(0, &display_bounds);
-		r_window_width = display_bounds.w;
-		r_window_height = display_bounds.h;
-		r_window_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-		//SDL_SetWindowSize(window, r_window_width, r_window_height);
-		//SDL_SetWindowFullscreen(window, r_window_flags);
-		//renderer_SetRendererResolution(r_window_width, r_window_height, 1);
+		width = display_bounds.w;
+		height = display_bounds.h;
+		r_renderer.r_window_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 	}
 	else
 	{
-		if(!(r_window_flags & SDL_WINDOW_FULLSCREEN_DESKTOP))
+		if(!(r_renderer.r_window_flags & SDL_WINDOW_FULLSCREEN_DESKTOP))
 			return;
 
-		r_window_flags &= ~SDL_WINDOW_FULLSCREEN_DESKTOP;
-		r_window_width = r_width;
-		r_window_height = r_height;
+		r_renderer.r_window_flags &= ~SDL_WINDOW_FULLSCREEN_DESKTOP;
+		width = r_renderer.r_width;
+		height = r_renderer.r_height;
 
 	}
 
-	SDL_SetWindowSize(window, r_window_width, r_window_height);
-	SDL_SetWindowFullscreen(window, r_window_flags);
+	//SDL_SetWindowSize(window, r_window_width, r_window_height);
+    renderer_SetWindowSize(width, height);
+	SDL_SetWindowFullscreen(r_renderer.r_window, r_renderer.r_window_flags);
 
 	//renderer_Backbuffer(r_width, r_height, 1);
 
-	r_view_matrix_changed = 1;
-	r_projection_matrix_changed = 1;
+	r_renderer.r_view_matrix_changed = 1;
+	r_renderer.r_projection_matrix_changed = 1;
 }
 
 void renderer_ToggleFullscreen()
 {
-	if(r_window_flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
+	if(r_renderer.r_window_flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
 	{
 		renderer_Fullscreen(0);
 	}
@@ -1576,11 +1622,11 @@ void renderer_Multisample(int enable)
 {
 	if(enable)
 	{
-		r_msaa_samples = 1;
+		r_renderer.r_msaa_samples = 1;
 	}
 	else
 	{
-		r_msaa_samples = 4;
+		r_renderer.r_msaa_samples = 4;
 	}
 
 //	renderer_UpdateColorbuffer();
@@ -1588,7 +1634,7 @@ void renderer_Multisample(int enable)
 
 void renderer_ToggleMultisample()
 {
-	if(r_msaa_samples > 1)
+	if(r_renderer.r_msaa_samples > 1)
 	{
 		renderer_Multisample(0);
 	}
@@ -1614,11 +1660,11 @@ void renderer_Fullbright(int enable)
 {
 	if(enable)
 	{
-		r_flat = 1;
+		r_renderer.r_switches.r_flat = 1;
 	}
 	else
 	{
-		r_flat = 0;
+		r_renderer.r_switches.r_flat = 0;
 	}
 }
 
@@ -1672,7 +1718,7 @@ int i;
 
 int renderer_GetShadowMapResolution()
 {
-	return r_shadow_map_resolution;
+	//return r_shadow_map_resolution;
 }
 
 
@@ -1741,6 +1787,67 @@ void renderer_ClearRegisteredCallbacks()
 	renderer_resolution_change_callback_count = 0;
 	window_resize_callback_count = 0;
 }
+
+/*
+====================================================================
+====================================================================
+====================================================================
+*/
+
+void renderer_ResizeWorldTrianglesUniformBuffer(int triangle_count)
+{
+    if(!r_renderer.r_world_triangles_uniform_buffer)
+    {
+        glGenBuffers(1, &r_renderer.r_world_triangles_uniform_buffer);
+        glGenBuffers(1, &r_renderer.r_world_vertices_uniform_buffer);
+    }
+    else
+    {
+        memory_Free(r_renderer.r_world_vertices_buffer);
+        memory_Free(r_renderer.r_world_triangles_buffer);
+    }
+
+    glBindBuffer(GL_UNIFORM_BUFFER, r_renderer.r_world_triangles_uniform_buffer);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(int) * triangle_count * R_MAX_TRIANGLES_PER_LIGHT, NULL, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	glBindBuffer(GL_UNIFORM_BUFFER, r_renderer.r_world_vertices_uniform_buffer);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(vec4_t) * triangle_count * 3, NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	r_renderer.r_world_vertices_buffer = memory_Calloc(triangle_count * 3, sizeof(vec4_t));
+	r_renderer.r_world_triangles_buffer = memory_Calloc(triangle_count * R_MAX_TRIANGLES_PER_LIGHT, sizeof(int));
+}
+
+
+void renderer_FillWorldTriangleUniformBuffer(int triangle_count, int *triangles)
+{
+    if(triangle_count)
+    {
+        glBindBuffer(GL_UNIFORM_BUFFER, r_renderer.r_world_triangles_uniform_buffer);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(int) * triangle_count, r_renderer.r_world_triangles_buffer, GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    }
+}
+
+
+void renderer_FillWorldVerticesUniformBuffer(int vertice_count, void *verts, int stride)
+{
+    int i;
+
+    if(vertice_count)
+    {
+        for(i = 0; i < vertice_count; i++)
+        {
+            r_renderer.r_world_vertices_buffer[i] = *(vec4_t *)((unsigned char *)verts + stride * i);
+        }
+
+        glBindBuffer(GL_UNIFORM_BUFFER, r_renderer.r_world_vertices_uniform_buffer);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(vec4_t) * vertice_count, r_renderer.r_world_vertices_buffer, GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    }
+}
+
 
 /*
 ====================================================================
@@ -2175,12 +2282,12 @@ void renderer_StartFrame()
 
     int mask = GL_DEPTH_BUFFER_BIT;
 
-    if(r_clear_colorbuffer)
+    if(r_renderer.r_switches.r_clear_colorbuffer)
     {
         mask |= GL_COLOR_BUFFER_BIT;
     }
 
-    renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, &r_cbuffer);
+    renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, &r_renderer.r_color_buffer);
     glClearColor(r_clear_color.r, r_clear_color.g, r_clear_color.b, 1.0);
 	glClear(mask);
 
@@ -2207,6 +2314,7 @@ void renderer_DrawFrame()
 	renderer_SortDrawCommands();
 
     renderer_ZPrePass();
+    renderer_GenerateShadowMask();
     renderer_DrawWorld();
     renderer_DrawParticles();
 
@@ -2216,7 +2324,9 @@ void renderer_DrawFrame()
 	//	renderer_DrawBloom();
 	//}
 
-	if(r_tonemap && (!r_flat) && (!r_wireframe))
+	if(r_renderer.r_switches.r_tonemap &&
+        (!r_renderer.r_switches.r_flat) &&
+        (!r_renderer.r_switches.r_wireframe))
 	{
 		renderer_Tonemap();
 	}
@@ -2230,7 +2340,7 @@ void renderer_DrawFrame()
 		renderer_PostShadingRegisteredFunction[i]();
 	}
 
-	if(r_debug)
+	if(r_renderer.r_switches.r_debug)
 	{
 		renderer_DrawDebug();
 	}
@@ -2252,15 +2362,15 @@ void renderer_EndFrame()
 
 	renderer_DisableVertexReads();
 
-	SDL_GL_SwapWindow(window);
-	r_frame++;
+	SDL_GL_SwapWindow(r_renderer.r_window);
+	r_renderer.r_statistics.r_frame++;
 
 
-	r_draw_calls = 0;
-	r_material_swaps = 0;
-	r_shader_swaps = 0;
-	r_shader_uniform_updates = 0;
-	r_frame_vert_count = 0;
+	r_renderer.r_statistics.r_draw_calls = 0;
+	r_renderer.r_statistics.r_material_swaps = 0;
+	r_renderer.r_statistics.r_shader_swaps = 0;
+	r_renderer.r_statistics.r_shader_uniform_updates = 0;
+	r_renderer.r_statistics.r_frame_vert_count = 0;
 //	r_draw_cmds_count = 0;
 }
 
@@ -2279,7 +2389,7 @@ void renderer_ZPrePass()
 
     struct view_def_t *active_view = renderer_GetMainViewPointer();
 
-	renderer_SetShader(r_z_pre_pass_shader);
+	renderer_SetShader(r_renderer.r_shaders.r_z_pre_pass_shader);
 	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->position);
 
 	renderer_SetProjectionMatrix(&active_view->view_data.projection_matrix);
@@ -2385,6 +2495,39 @@ void renderer_ZPrePass()
 	//renderer_StopTimer(gpu_timer);
 }
 
+void renderer_DrawRaytracedShadowMaps()
+{
+
+}
+
+void renderer_DrawShadowMaps()
+{
+
+}
+
+void renderer_GenerateShadowMask()
+{
+    renderer_SetShader(r_renderer.r_shaders.r_generate_shadow_mask_shader);
+    renderer_PushFramebuffer(&r_renderer.r_shadow_mask_buffer);
+   // glClearColor(1.0, 1.0, 1.0, 1.0);
+    //glClear(GL_COLOR_BUFFER_BIT);
+    //glClearColor(0.0, 0.0, 0.0, 0.0);
+
+
+
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+
+    renderer_EnableImediateDrawing();
+    renderer_Rectf(-1.0, -1.0, 1.0, 1.0);
+	renderer_DisableImediateDrawing();
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+
+	renderer_PopFramebuffer();
+}
+
 void renderer_DrawWorld()
 {
 
@@ -2401,9 +2544,9 @@ void renderer_DrawWorld()
 
     active_view = renderer_GetMainViewPointer();
 
-    if(r_flat)
+    if(r_renderer.r_switches.r_flat)
 	{
-		renderer_SetShader(r_flat_pass_shader);
+		renderer_SetShader(r_renderer.r_shaders.r_flat_pass_shader);
 	}
 	else
 	{
@@ -2414,11 +2557,12 @@ void renderer_DrawWorld()
         }
         else*/
         {
-            renderer_SetShader(r_forward_pass_shader);
+            renderer_SetShader(r_renderer.r_shaders.r_forward_pass_shader);
             renderer_BindClusterTexture();
-            renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
-            renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
-            renderer_SetDefaultUniform1i(UNIFORM_r_frame, r_frame);
+            renderer_BindShadowMaskTexture();
+            renderer_SetDefaultUniform1i(UNIFORM_r_width, r_renderer.r_width);
+            renderer_SetDefaultUniform1i(UNIFORM_r_height, r_renderer.r_height);
+            renderer_SetDefaultUniform1i(UNIFORM_r_frame, r_renderer.r_statistics.r_frame);
             renderer_SetDefaultUniform1i(UNIFORM_r_world_vertices_count, w_world_vertices_count);
         }
 	}
@@ -2518,11 +2662,11 @@ void renderer_DrawWorld()
         /*}*/
 
         /* draw movable geometry... */
-        for(i = 0; i < r_draw_command_group_count; i++)
+        for(i = 0; i < r_renderer.r_draw_command_group_count; i++)
         {
-            renderer_SetMaterial(r_draw_command_groups[i].material_index);
-            draw_cmd_count = r_draw_command_groups[i].draw_cmds_count;
-            draw_cmds = r_draw_command_groups[i].draw_cmds;
+            renderer_SetMaterial(r_renderer.r_draw_command_groups[i].material_index);
+            draw_cmd_count = r_renderer.r_draw_command_groups[i].draw_cmds_count;
+            draw_cmds = r_renderer.r_draw_command_groups[i].draw_cmds;
 
             for(j = 0; j < draw_cmd_count; j++)
             {
@@ -2553,14 +2697,14 @@ void renderer_Tonemap()
     //int cpu_timer = renderer_StartCpuTimer("renderer_Tonemap");
     //int gpu_timer = renderer_StartGpuTimer("renderer_Tonemap");
 
-	renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, &r_bbuffer);
+	renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, &r_renderer.r_back_buffer);
 	//renderer_BindFramebuffer(GL_READ_FRAMEBUFFER, &r_cbuffer);
 
 	//glClear(GL_COLOR_BUFFER_BIT);
 	//glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_width, r_height, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
-	renderer_SetShader(r_tonemap_shader);
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_cbuffer.color_attachments[0].handle);
+	renderer_SetShader(r_renderer.r_shaders.r_tonemap_shader);
+	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_renderer.r_color_buffer.color_attachments[0].handle);
 	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
 
 	//glEnable(GL_TEXTURE_2D);
@@ -2584,118 +2728,118 @@ void renderer_DrawTranslucent()
 
 }
 
-
-
-void renderer_DrawShadowMaps()
-{
-    #if 0
-	camera_t *active_camera = camera_GetActiveCamera();
-	//triangle_group_t *triangle_group;
-	light_position_t *pos;
-	light_params_t *parms;
-	//int c = brush_count;
-	mat4_t mvm;
-
-	int i;
-	int j;
-	int light_index;
-
-	int shadow_map_res;
-
-
-
-	//int cache_index;
-	int shadow_map_index;
-
-	//if(!w_world_leaves)
-	//	return;
-
-	R_DBG_PUSH_FUNCTION_NAME();
-
-	renderer_SetShader(r_shadow_pass_shader);
-	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->position);
-
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	//glPolygonOffset(0.0, 0.0);
-	//glCullFace(GL_FRONT);
-
-
-	renderer_SetProjectionMatrix(&l_shadow_map_projection_matrix);
-	renderer_SetModelMatrix(NULL);
-
-	shadow_map_res = renderer_GetShadowMapResolution();
-
-	glDepthMask(GL_TRUE);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_shadow_map_framebuffer);
-	glDrawBuffer(GL_NONE);
-	glViewport(0, 0, shadow_map_res, shadow_map_res);
-
-
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-
-
-	for(j = 0; j < w_visible_lights_count; j++)
-	{
-		light_index = w_visible_lights[j];
-		pos = &l_light_positions[light_index];
-		parms = &l_light_params[light_index];
-
-		//if(!(parms->bm_flags & LIGHT_GENERATE_SHADOWS))
-		//continue;
-
-		if((!(parms->bm_flags & LIGHT_UPDATE_SHADOW_MAP)) && (!r_force_shadow_map_update))
-		{
-			continue;
-		}
-
-
-		//if(parms->bm_flags & LIGHT_DROPPED_SHADOW)
-		//	continue;
-
-		parms->bm_flags &= ~LIGHT_UPDATE_SHADOW_MAP;
-
-		shadow_map_index = l_light_params[light_index].shadow_map;
-
-		for(i = 0; i < 6; i++)
-		{
-			glFramebufferTextureLayer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, r_shadow_map_array, 0, shadow_map_index * 6 + i);
-			glClear(GL_DEPTH_BUFFER_BIT);
-
-			if(w_world_leaves)
-			{
-				mvm = l_shadow_map_mats[i];
-
-				mvm.floats[3][0] = mvm.floats[0][0] * (-pos->position.x) + mvm.floats[1][0] * (-pos->position.y) + mvm.floats[2][0] * (-pos->position.z);
-				mvm.floats[3][1] = mvm.floats[0][1] * (-pos->position.x) + mvm.floats[1][1] * (-pos->position.y) + mvm.floats[2][1] * (-pos->position.z);
-				mvm.floats[3][2] = mvm.floats[0][2] * (-pos->position.x) + mvm.floats[1][2] * (-pos->position.y) + mvm.floats[2][2] * (-pos->position.z);
-				mvm.floats[3][3] = 1.0;
-
-				renderer_SetViewMatrix(&mvm);
-				renderer_UpdateMatrices();
-
-				//glCullFace(GL_FRONT);
-				//glPolygonOffset(-1.0, 0.0);
-				//renderer_DrawElements(GL_TRIANGLES, parms->visible_triangles.element_count, GL_UNSIGNED_INT, (void *)(sizeof(int) * parms->indices_start));
-
-				glCullFace(GL_BACK);
-				glPolygonOffset(2.0, 0.0);
-				renderer_DrawElements(GL_TRIANGLES, parms->visible_triangles.element_count, GL_UNSIGNED_INT, (void *)(sizeof(int) * parms->indices_start));
-			}
-		}
-	}
-
-	r_force_shadow_map_update = 0;
-
-	glViewport(0, 0, r_width, r_height);
-
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glDisable(GL_POLYGON_OFFSET_FILL);
-	glCullFace(GL_BACK);
-
-	R_DBG_POP_FUNCTION_NAME();
-
-	#endif
-}
+//
+//
+//void renderer_DrawShadowMaps()
+//{
+//    #if 0
+//	camera_t *active_camera = camera_GetActiveCamera();
+//	//triangle_group_t *triangle_group;
+//	light_position_t *pos;
+//	light_params_t *parms;
+//	//int c = brush_count;
+//	mat4_t mvm;
+//
+//	int i;
+//	int j;
+//	int light_index;
+//
+//	int shadow_map_res;
+//
+//
+//
+//	//int cache_index;
+//	int shadow_map_index;
+//
+//	//if(!w_world_leaves)
+//	//	return;
+//
+//	R_DBG_PUSH_FUNCTION_NAME();
+//
+//	renderer_SetShader(r_shadow_pass_shader);
+//	renderer_SetVertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct compact_vertex_t), &((struct compact_vertex_t *)0)->position);
+//
+//	glEnable(GL_POLYGON_OFFSET_FILL);
+//	//glPolygonOffset(0.0, 0.0);
+//	//glCullFace(GL_FRONT);
+//
+//
+//	renderer_SetProjectionMatrix(&l_shadow_map_projection_matrix);
+//	renderer_SetModelMatrix(NULL);
+//
+//	shadow_map_res = renderer_GetShadowMapResolution();
+//
+//	glDepthMask(GL_TRUE);
+//	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, r_shadow_map_framebuffer);
+//	glDrawBuffer(GL_NONE);
+//	glViewport(0, 0, shadow_map_res, shadow_map_res);
+//
+//
+//	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+//
+//
+//	for(j = 0; j < w_visible_lights_count; j++)
+//	{
+//		light_index = w_visible_lights[j];
+//		pos = &l_light_positions[light_index];
+//		parms = &l_light_params[light_index];
+//
+//		//if(!(parms->bm_flags & LIGHT_GENERATE_SHADOWS))
+//		//continue;
+//
+//		if((!(parms->bm_flags & LIGHT_UPDATE_SHADOW_MAP)) && (!r_force_shadow_map_update))
+//		{
+//			continue;
+//		}
+//
+//
+//		//if(parms->bm_flags & LIGHT_DROPPED_SHADOW)
+//		//	continue;
+//
+//		parms->bm_flags &= ~LIGHT_UPDATE_SHADOW_MAP;
+//
+//		shadow_map_index = l_light_params[light_index].shadow_map;
+//
+//		for(i = 0; i < 6; i++)
+//		{
+//			glFramebufferTextureLayer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, r_shadow_map_array, 0, shadow_map_index * 6 + i);
+//			glClear(GL_DEPTH_BUFFER_BIT);
+//
+//			if(w_world_leaves)
+//			{
+//				mvm = l_shadow_map_mats[i];
+//
+//				mvm.floats[3][0] = mvm.floats[0][0] * (-pos->position.x) + mvm.floats[1][0] * (-pos->position.y) + mvm.floats[2][0] * (-pos->position.z);
+//				mvm.floats[3][1] = mvm.floats[0][1] * (-pos->position.x) + mvm.floats[1][1] * (-pos->position.y) + mvm.floats[2][1] * (-pos->position.z);
+//				mvm.floats[3][2] = mvm.floats[0][2] * (-pos->position.x) + mvm.floats[1][2] * (-pos->position.y) + mvm.floats[2][2] * (-pos->position.z);
+//				mvm.floats[3][3] = 1.0;
+//
+//				renderer_SetViewMatrix(&mvm);
+//				renderer_UpdateMatrices();
+//
+//				//glCullFace(GL_FRONT);
+//				//glPolygonOffset(-1.0, 0.0);
+//				//renderer_DrawElements(GL_TRIANGLES, parms->visible_triangles.element_count, GL_UNSIGNED_INT, (void *)(sizeof(int) * parms->indices_start));
+//
+//				glCullFace(GL_BACK);
+//				glPolygonOffset(2.0, 0.0);
+//				renderer_DrawElements(GL_TRIANGLES, parms->visible_triangles.element_count, GL_UNSIGNED_INT, (void *)(sizeof(int) * parms->indices_start));
+//			}
+//		}
+//	}
+//
+//	r_force_shadow_map_update = 0;
+//
+//	glViewport(0, 0, r_width, r_height);
+//
+//	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+//	glDisable(GL_POLYGON_OFFSET_FILL);
+//	glCullFace(GL_BACK);
+//
+//	R_DBG_POP_FUNCTION_NAME();
+//
+//	#endif
+//}
 
 
 void renderer_DrawParticles()
@@ -2709,10 +2853,10 @@ void renderer_DrawParticles()
 //	active_camera = camera_GetActiveCamera();
     struct view_def_t *active_view = renderer_GetMainViewPointer();
 
-	renderer_SetShader(r_particle_forward_pass_shader);
+	renderer_SetShader(r_renderer.r_shaders.r_particle_forward_pass_shader);
 	renderer_BindClusterTexture();
-	renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
-	renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
+	renderer_SetDefaultUniform1i(UNIFORM_r_width, r_renderer.r_width);
+	renderer_SetDefaultUniform1i(UNIFORM_r_height, r_renderer.r_height);
 
 	renderer_SetProjectionMatrix(&active_view->view_data.projection_matrix);
 	renderer_SetViewMatrix(&active_view->view_data.view_matrix);
@@ -2989,12 +3133,12 @@ void renderer_BlitColorbuffer()
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, r_cbuffer.framebuffer_id);
 	glReadBuffer(GL_COLOR_ATTACHMENT0);*/
 
-	renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, &r_bbuffer);
-	renderer_BindFramebuffer(GL_READ_FRAMEBUFFER, &r_cbuffer);
+	renderer_BindFramebuffer(GL_DRAW_FRAMEBUFFER, &r_renderer.r_back_buffer);
+	renderer_BindFramebuffer(GL_READ_FRAMEBUFFER, &r_renderer.r_color_buffer);
 
 	//while(glGetError() != GL_NO_ERROR);
-	glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_width, r_height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-	glBlitFramebuffer(0, 0, r_width, r_height, 0, 0, r_width, r_height, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
+	glBlitFramebuffer(0, 0, r_renderer.r_width, r_renderer.r_height, 0, 0, r_renderer.r_width, r_renderer.r_height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	glBlitFramebuffer(0, 0, r_renderer.r_width, r_renderer.r_height, 0, 0, r_renderer.r_width, r_renderer.r_height, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 	//printf("renderer_BlitColorbuffer: %x\n", glGetError());
 }
 
@@ -3022,8 +3166,8 @@ void renderer_BlitBackbuffer()
 //	glDisable(GL_DEPTH_TEST);
 
 	renderer_EnableImediateDrawing();
-	renderer_SetShader(r_blit_texture_shader);
-	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_bbuffer.color_attachments[0].handle);
+	renderer_SetShader(r_renderer.r_shaders.r_blit_texture_shader);
+	renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_renderer.r_back_buffer.color_attachments[0].handle);
 	renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
 	renderer_Rectf(-1.0, -1.0, 1.0, 1.0);
 	renderer_DisableImediateDrawing();

@@ -155,7 +155,8 @@ struct light_params_data_t
 	unsigned char r;
 	unsigned char g;
 	unsigned char b;
-	unsigned shadow_map;
+	unsigned int first_triangle;
+    unsigned int triangle_count;
 	//char cache;
 
 	//unsigned short radius;

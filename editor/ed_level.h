@@ -2,7 +2,9 @@
 #define ED_LEVEL_H
 
 #include "..\ed_common.h"
+#include "ed_level_common.h"
 #include "..\brush.h"
+
 
 
 
@@ -19,9 +21,9 @@ void editor_LevelEditorRestart();
 void editor_LevelEditorMain(float delta_time);
 
 
-pick_record_t editor_LevelEditorPickObject(float mouse_x, float mouse_y);
-
-int editor_LevelEditorPickBrushFace(brush_t *brush, float mouse_x, float mouse_y);
+//pick_record_t editor_LevelEditorPickObject(float mouse_x, float mouse_y);
+//
+//int editor_LevelEditorPickBrushFace(brush_t *brush, float mouse_x, float mouse_y);
 
 /*
 ====================================================================
@@ -39,6 +41,10 @@ void editor_LevelEditorSet3dHandleTransformMode(int mode);
 
 void editor_LevelEditorSetEditingMode(int mode);
 
+void editor_LevelEditorEnterManipulationMode(int transform_op, int axis_constraint);
+
+void editor_LevelEditorLeaveManipulationMode();
+
 /*
 ====================================================================
 ====================================================================
@@ -55,17 +61,17 @@ void editor_LevelEditorFly(float delta_time);
 ====================================================================
 */
 
-void editor_LevelEditorAddSelection(pick_record_t *record);
-
-void editor_LevelEditorDropSelection(pick_record_t *record);
-
-void editor_LevelEditorClearSelections();
-
-void editor_LevelEditorCopySelections();
-
-void editor_LevelEditorDestroySelections();
-
-pick_record_t editor_LevelEditorGetLastSelection();
+//void editor_LevelEditorAddSelection(pick_record_t *record);
+//
+//void editor_LevelEditorDropSelection(pick_record_t *record);
+//
+//void editor_LevelEditorClearSelections();
+//
+//void editor_LevelEditorCopySelections();
+//
+//void editor_LevelEditorDestroySelections();
+//
+//pick_record_t editor_LevelEditorGetLastSelection();
 
 /*
 ====================================================================
@@ -73,11 +79,11 @@ pick_record_t editor_LevelEditorGetLastSelection();
 ====================================================================
 */
 
-void editor_LevelEditorTranslateSelections(vec3_t direction, float amount);
-
-void editor_LevelEditorRotateSelections(vec3_t axis, float amount);
-
-void editor_LevelEditorScaleSelections(vec3_t axis, float amount);
+//void editor_LevelEditorTranslateSelections(vec3_t direction, float amount);
+//
+//void editor_LevelEditorRotateSelections(vec3_t axis, float amount);
+//
+//void editor_LevelEditorScaleSelections(vec3_t axis, float amount);
 
 /*
 ====================================================================

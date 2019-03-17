@@ -11,7 +11,7 @@ void editor_LevelEditorPostDraw();
 void editor_LevelEditorDrawBrushes();
 
 void editor_LevelEditorDrawGrid();
- 
+
 void editor_LevelEditorDrawSelected();
 
 void editor_LevelEditorDrawCursors();
@@ -28,8 +28,9 @@ void editor_LevelEditorDrawClippedPolygons();
 
 void editor_LevelEditorDrawEntitiesAabbs();
 
+void editor_LevelEditorDrawManipulationGuides();
 
-void editor_LevelEditorDrawBrush(brush_t *brush);
+
 
 
 #endif

@@ -52,6 +52,9 @@ struct script_context_t *scr_contexts;
 struct script_t *scr_scripts = NULL;
 struct script_t *scr_last_script = NULL;
 
+struct script_type_t *scr_script_types = NULL;
+struct script_type_t *scr_last_script_type = NULL;
+
 
 struct stack_list_t scr_timers;
 
@@ -180,7 +183,7 @@ void script_RegisterTypesAndFunctions()
 	scr_virtual_machine->RegisterGlobalFunction("float randfloat()", asFUNCTION(randfloat), asCALL_CDECL);
 //	scr_virtual_machine->RegisterGlobalFunction("void script_DebugPrint()", asFUNCTION(script_DebugPrint), asCALL_CDECL);
 
-	scr_virtual_machine->RegisterGlobalProperty("const int r_frame", &r_frame);
+	//scr_virtual_machine->RegisterGlobalProperty("const int r_frame", &r_renderer.r_frame);
 	scr_virtual_machine->RegisterGlobalProperty("const int ps_frame", &ps_frame);
 
 	scr_virtual_machine->RegisterGlobalFunction("int rand()", asFUNCTION(rand), asCALL_CDECL);
@@ -734,37 +737,109 @@ void script_PushArg(void *arg, int arg_type)
 =========================================================
 */
 
-struct script_t *script_CreateScript(char *file_name, char *script_name, int script_type_size, int (*get_data_callback)(struct script_t *script), void *(*setup_data_callback)(struct script_t *script, void *data))
+int script_RegisterScriptType(char *type, char *extension, int size, int (*get_data_callback)(struct script_t *), void (*reload_callback)(), void *(*setup_data_callback)(struct script_t *, void *))
 {
-	script_t *script;
+    struct script_type_t *script_type;
 
-	script = (struct script_t *)memory_Malloc(script_type_size);
+    script_type = script_GetScriptType(type);
 
-	script->next = NULL;
-	script->prev = NULL;
-	script->flags = 0;
+    if(!script_type)
+    {
+        script_type = (struct script_type_t *)memory_Calloc(sizeof(struct script_type_t), 1);
 
-	script->main_entry_point = NULL;
-	script->script_module = NULL;
-	script->script_source = NULL;
-	script->setup_data_callback = setup_data_callback;
-	script->get_data_callback = get_data_callback;
-	script->update_count = 0;
+        script_type->type = memory_Strdup(type);
+        script_type->extension = memory_Strdup(extension);
+        script_type->get_data_callback = get_data_callback;
+        script_type->reload_callback = reload_callback;
+        script_type->setup_data_callback = setup_data_callback;
+        script_type->size = size;
 
-	script->name = memory_Strdup(script_name);
-	script->file_name = memory_Strdup(path_GetFileNameFromPath(file_name));
 
-	if(!scr_scripts)
-	{
-		scr_scripts = script;
-	}
-	else
-	{
-		scr_last_script->next = script;
-		script->prev = scr_last_script;
-	}
+        if(!scr_script_types)
+        {
+            scr_script_types = script_type;
+        }
+        else
+        {
+            scr_last_script_type->next = script_type;
+        }
 
-	scr_last_script = script;
+        scr_last_script_type = script_type;
+
+        return 1;
+    }
+
+    return 0;
+}
+
+struct script_type_t *script_GetScriptType(char *type)
+{
+    struct script_type_t *script_type = NULL;
+
+    for(script_type = scr_script_types; script_type; script_type = script_type->next)
+    {
+        if(!strcmp(script_type->type, type))
+        {
+            break;
+        }
+    }
+
+    return script_type;
+}
+
+struct script_type_t *script_GetScriptTypeByExt(char *type_ext)
+{
+    struct script_type_t *script_type = NULL;
+
+    for(script_type = scr_script_types; script_type; script_type = script_type->next)
+    {
+        if(!strcmp(script_type->extension, type_ext))
+        {
+            break;
+        }
+    }
+
+    return script_type;
+}
+
+struct script_t *script_CreateScript(char *script_name)
+{
+	struct script_t *script = NULL;
+	struct script_type_t *script_type = NULL;
+
+    script_type = script_GetScriptTypeByExt(path_GetFileExtension(script_name));
+
+    if(script_type)
+    {
+        script = (struct script_t *)memory_Calloc(script_type->size, 1);
+
+        script->next = NULL;
+        script->prev = NULL;
+        script->flags = 0;
+
+        script->main_entry_point = NULL;
+        script->script_module = NULL;
+        script->script_source = NULL;
+        script->setup_data_callback = script_type->setup_data_callback;
+        script->get_data_callback = script_type->get_data_callback;
+        script->update_count = 0;
+
+        script->name = memory_Strdup(path_GetFileNameFromPath(script_name));
+        script->file_name = memory_Strdup(script_name);
+        //script->file_name = memory_Strdup(path_GetFileNameFromPath(file_name));
+
+        if(!scr_scripts)
+        {
+            scr_scripts = script;
+        }
+        else
+        {
+            scr_last_script->next = script;
+            script->prev = scr_last_script;
+        }
+
+        scr_last_script = script;
+    }
 
 	return script;
 
@@ -828,22 +903,23 @@ void script_DestroyAllScripts()
     }
 }
 
-struct script_t *script_LoadScript(char *file_name, char *script_name, int script_type_size, int (*get_data_callback)(struct script_t *script), void *(*setup_data_callback)(struct script_t *script, void *data))
+struct script_t *script_LoadScript(char *script_name)
 {
-	script_t *script = NULL;
+	struct script_t *script = NULL;
 	particle_system_script_t *ps_script;
 	//script_t temp_script;
 	FILE *file;
 	asIScriptModule *module = NULL;
 	char *script_text;
+	struct script_type_t *script_type;
 	//unsigned int script_file_size;
 
 
-	script_text = script_LoadScriptSource(file_name);
+	script_text = script_LoadScriptSource(script_name);
 
 	if(script_text)
 	{
-		script = script_CreateScript(file_name, script_name, script_type_size, get_data_callback, setup_data_callback);
+		script = script_CreateScript(script_name);
 		script_CompileScriptSource(script_text, script);
 		memory_Free(script_text);
 	}

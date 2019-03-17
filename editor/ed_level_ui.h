@@ -55,11 +55,11 @@ void editor_LevelEditorWaypointOptionsMenu();
 
 
 
-void editor_LevelEditorOpenAddToWorldMenu(int x, int y);
+void editor_LevelEditorOpenAddToWorldMenu();
 
 void editor_LevelEditorCloseAddToWorldMenu();
 
-void editor_LevelEditorOpenDeleteSelectionsMenu(int x, int y);
+void editor_LevelEditorOpenDeleteSelectionsMenu();
 
 void editor_LevelEditorCloseDeleteSelectionsMenu();
 

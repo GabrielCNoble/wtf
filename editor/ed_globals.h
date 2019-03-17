@@ -28,14 +28,14 @@ EDITOR_GLOBAL(int ed_forward_pass_brush_shader);
 
 EDITOR_GLOBAL(int ed_draw_3d_handle);
 
-EDITOR_GLOBAL(int ed_max_selections);
-EDITOR_GLOBAL(int ed_selection_count);
-EDITOR_GLOBAL(pick_record_t *ed_selections);
-EDITOR_GLOBAL(vec3_t ed_3d_cursor_position);
-EDITOR_GLOBAL(vec3_t ed_3d_handle_position);
-EDITOR_GLOBAL(int ed_3d_handle_flags);
-EDITOR_GLOBAL(int ed_3d_handle_pivot_mode);
-EDITOR_GLOBAL(int ed_3d_handle_transform_mode);
+//EDITOR_GLOBAL(int ed_max_selections);
+//EDITOR_GLOBAL(int ed_selection_count);
+//EDITOR_GLOBAL(pick_record_t *ed_selections);
+//EDITOR_GLOBAL(vec3_t ed_3d_cursor_position);
+//EDITOR_GLOBAL(vec3_t ed_3d_handle_position);
+//EDITOR_GLOBAL(int ed_3d_handle_flags);
+//EDITOR_GLOBAL(int ed_3d_handle_pivot_mode);
+//EDITOR_GLOBAL(int ed_3d_handle_transform_mode);
 EDITOR_GLOBAL(int ed_editing_mode);
 EDITOR_GLOBAL(float ed_3d_rotation_handle_angles_lut[ROTATION_HANDLE_DIVS][2]);
 

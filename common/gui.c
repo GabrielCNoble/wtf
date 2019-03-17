@@ -32,13 +32,15 @@
 
 
 /* from r_main.h */
-extern int r_width;
-extern int r_height;
-extern int r_window_width;
-extern int r_window_height;
+//extern int r_width;
+//extern int r_height;
+//extern int r_window_width;
+//extern int r_window_height;
 extern int r_imediate_color_shader;
 extern int r_gui_shader;
-extern SDL_Window *window;
+//extern SDL_Window *window;
+
+extern struct renderer_t r_renderer;
 
 /* from input.c */
 extern float normalized_mouse_x;
@@ -126,7 +128,7 @@ void gui_ImGuiInit()
 
 	SDL_SysWMinfo wmInfo;
     SDL_VERSION(&wmInfo.version);
-    SDL_GetWindowWMInfo(window, &wmInfo);
+    SDL_GetWindowWMInfo(r_renderer.r_window, &wmInfo);
     io.ImeWindowHandle = wmInfo.info.win.window;
 
 	io.MousePos.x = 0.0;
@@ -216,8 +218,8 @@ void gui_OpenGuiFrame()
 
 //	ImVec2 mouse_pos;
 
-	io.DisplaySize.x = r_window_width;
-	io.DisplaySize.y = r_window_height;
+	io.DisplaySize.x = r_renderer.r_window_width;
+	io.DisplaySize.y = r_renderer.r_window_height;
 
 	io.DisplayFramebufferScale.x = 1.0;
 	io.DisplayFramebufferScale.y = 1.0;
@@ -281,7 +283,7 @@ void gui_OpenGuiFrame()
 	}
 
 	io.MousePos.x = mouse_x;
-	io.MousePos.y = r_window_height - mouse_y;
+	io.MousePos.y = r_renderer.r_window_height - mouse_y;
 
 	keys = input_GetKeyArray();
 	for(i = SDL_SCANCODE_A; i < SDL_NUM_SCANCODES; i++)
@@ -331,7 +333,7 @@ void gui_DrawGUI()
 	mat4_t scale = mat4_t_id();
 
 	//CreateOrthographicMatrix(&gui_projection_matrix, -(r_window_width >> 1), r_window_width >> 1, r_window_height >> 1, -(r_window_height >> 1), -10.0, 10.0, NULL);
-	CreateOrthographicMatrix(&gui_projection_matrix, 0, r_window_width, 0, r_window_height, -10.0, 10.0, NULL);
+	CreateOrthographicMatrix(&gui_projection_matrix, 0, r_renderer.r_window_width, 0, r_renderer.r_window_height, -10.0, 10.0, NULL);
 
 
 	//scale.floats[1][1] = -1.0;
@@ -343,7 +345,7 @@ void gui_DrawGUI()
     //return ;
 
 	renderer_EnableImediateDrawing();
-	renderer_SetShader(r_gui_shader);
+	renderer_SetShader(r_renderer.r_shaders.r_gui_shader);
 	renderer_SetProjectionMatrix(&gui_projection_matrix);
 	//renderer_SetProjectionMatrix(NULL);
 	renderer_SetViewMatrix(&scale);

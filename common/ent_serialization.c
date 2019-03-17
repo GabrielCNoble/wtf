@@ -245,6 +245,11 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t parent_entity, s
 	entity_ptr = entity_GetEntityPointerHandle(entity);
 	parent_entity_ptr = entity_GetEntityPointerHandle(parent_entity);
 
+	if(!entity_ptr)
+    {
+        return;
+    }
+
 	//if(component_record->flags & COMPONENT_RECORD_FLAG_NESTLED)
 	if(entity_record->flags & ENTITY_RECORD_FLAG_DEF_REF)
 	{
@@ -289,13 +294,7 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t parent_entity, s
 				transform_component->position = component_record->component.transform_component.position;
 				transform_component->scale = component_record->component.transform_component.scale;
 
-				if(!transform_component->instance_name)
-				{
-					transform_component->instance_name = memory_Malloc(ENTITY_NAME_MAX_LEN);
-				}
-
 				strcpy(transform_component->instance_name, component_record->component.transform_component.instance_name);
-
 
 				/* if this is a reference to a def we need to make sure this
 				newly allocated transform component points to the original
@@ -342,7 +341,7 @@ void entity_ReadComponent(void **buffer, struct entity_handle_t parent_entity, s
 
 			if(!script)
 			{
-				script = (struct script_t *)entity_LoadScript(component_record->component.script_component.script_file_name, component_record->component.script_component.script_name);
+				script = (struct script_t *)entity_LoadScript(component_record->component.script_component.script_file_name);
 
 				if(!script)
 				{
@@ -870,9 +869,6 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
                        entity_WriteEntity((void **)&out, component->entity, transform_component->child_transforms[i], def_name_only, dry_fire);
                     }
                 }
-
-                ent_record_start->data_skip_offset = out - record_start;
-
             }
             else if(depth_level == 0)
             {
@@ -882,6 +878,7 @@ void entity_WriteEntity(void **buffer, struct entity_handle_t entity, struct com
                 entity_WriteComponent((void **)&out, entity_ptr->components[COMPONENT_TYPE_TRANSFORM], 0, 0, dry_fire);
             }
 
+            ent_record_start->data_skip_offset = out - record_start;
         }
 
 
@@ -1000,6 +997,11 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
                 {
                     entity_name = path_AddExtToName(ent_record_start->name, ".ent");
                     handle = entity_LoadEntityDef(entity_name);
+
+                    if(handle.entity_index == INVALID_ENTITY_INDEX)
+                    {
+                        in += ent_record_start->data_skip_offset;
+                    }
                 }
 			}
 		}
@@ -1011,7 +1013,15 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
 				/* ...if we're at the top of the hierarchy,
 				we use it's def to spawn it... */
 				entity_def = entity_GetEntityHandle(ent_record_start->def_name, 1);
-				handle = entity_SpawnEntity(NULL, vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), entity_def, ent_record_start->name);
+
+				if(entity_def.entity_index == INVALID_ENTITY_INDEX)
+                {
+                    in += ent_record_start->data_skip_offset;
+                }
+                else
+                {
+                    handle = entity_SpawnEntity(NULL, vec3_t_c(0.0, 0.0, 0.0), vec3_t_c(1.0, 1.0, 1.0), entity_def, ent_record_start->name);
+                }
 			}
 			else
 			{
@@ -1021,7 +1031,6 @@ struct entity_handle_t entity_ReadEntity(void **buffer, struct entity_handle_t p
 			}
 
 		}
-
 	}
 
 	while(loop)
@@ -1431,6 +1440,15 @@ void entity_SerializeEntityDef(void **buffer, int *buffer_size, struct entity_ha
 	int out_size = 0;
 	void *out_buffer;
 	void *write_buffer;
+
+	struct entity_t *def;
+
+	def = entity_GetEntityPointerHandle(entity_def);
+
+	if(!def)
+    {
+        return;
+    }
 
 	//entity_CalculateBufferSize(&out_size, entity_def, INVALID_COMPONENT_HANDLE);
 	entity_WriteEntity((void **)&out_size, entity_def, INVALID_COMPONENT_HANDLE, 0, 1);

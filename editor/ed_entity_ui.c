@@ -25,11 +25,14 @@
 
 #include "ed_entity.h"
 
+#include "..\..\common\engine.h"
+
 //extern struct entity_def_t *entity_editor_current_entity_def;
 
 /* from r_main.c */
-extern int r_window_width;
-extern int r_window_height;
+extern struct renderer_t r_renderer;
+//extern int r_window_width;
+//extern int r_window_height;
 
 /* from r_imediate.c */
 extern int r_imediate_color_shader;
@@ -141,15 +144,7 @@ void editor_EntityEditorAddColliderPrimitiveMenuCallback(widget_t *widget)
 	}*/
 }
 
-void editor_EntityEditorDestroySelectionMenuCallback(widget_t *widget)
-{
-	option_t *option;
 
-	if(widget->type == WIDGET_OPTION)
-	{
-		editor_EntityEditorDestroySelections();
-	}
-}
 
 
 /*
@@ -192,7 +187,7 @@ void editor_EntityEditorUpdateUI()
 			}
 			if(gui_ImGuiMenuItem("Exit", NULL, NULL, 1))
 			{
-				//engine_SetEngineState(ENGINE_QUIT);
+				engine_SetEngineState(ENGINE_QUIT);
 			}
 
 			gui_ImGuiEndMenu();
@@ -203,9 +198,6 @@ void editor_EntityEditorUpdateUI()
 
 
 	editor_EntityEditorDefTree();
-	editor_EntityEditorAddComponentMenu();
-	editor_EntityEditorSetComponentValueMenu();
-	editor_EntityEditorDefsMenu();
 }
 
 void editor_EntityEditorCloseAllMenus()
@@ -213,7 +205,7 @@ void editor_EntityEditorCloseAllMenus()
 
 }
 
-void editor_EntityEditorAddComponentMenu()
+void editor_EntityEditorAddComponentMenu(struct entity_handle_t current_entity, struct component_handle_t referencing_transform)
 {
 	int component_type;
 	int i;
@@ -221,134 +213,121 @@ void editor_EntityEditorAddComponentMenu()
 
 	struct entity_t *entity_defs;
 	struct entity_t *entity_def;
+	struct entity_t *entity;
 
 	struct transform_component_t *transform_component;
 
-	struct entity_handle_t handle;
+	struct entity_handle_t def_handle;
 
-	if(ed_entity_editor_add_component_menu_open)
-	{
-		if(ed_entity_editor_add_component_menu_open == 1)
-		{
-			gui_ImGuiOpenPopup(ed_entity_editor_add_component_menu_popup_name);
-			ed_entity_editor_add_component_menu_open = 2;
-		}
+	//if(ed_entity_editor_add_component_menu_open)
+	//{
+//		if(ed_entity_editor_add_component_menu_open == 1)
+//		{
+//			gui_ImGuiOpenPopup(ed_entity_editor_add_component_menu_popup_name);
+//			ed_entity_editor_add_component_menu_open = 2;
+//		}
+//
+//		if(!gui_ImGuiIsPopupOpen(ed_entity_editor_add_component_menu_popup_name))
+//		{
+//			/* If we got here it means this popup was closed by
+//			a mouse click outside of it. This means the flag
+//			'ed_entity_editor_add_component_menu_open' didn't
+//			get cleared, since no option was clicked. So, we
+//			clear it here to make sure everything works correctly... */
+//			ed_entity_editor_add_component_menu_open = 0;
+//			return;
+//		}
 
-		if(!gui_ImGuiIsPopupOpen(ed_entity_editor_add_component_menu_popup_name))
-		{
-			/* If we got here it means this popup was closed by
-			a mouse click outside of it. This means the flag
-			'ed_entity_editor_add_component_menu_open' didn't
-			get cleared, since no option was clicked. So, we
-			clear it here to make sure everything works correctly... */
-			ed_entity_editor_add_component_menu_open = 0;
-			return;
-		}
+		//gui_ImGuiSetNextWindowPos(ed_entity_editor_add_component_menu_pos, 0, vec2(0.0, 0.0));
+    if(gui_ImGuiIsPopupOpen(ed_entity_editor_add_component_menu_popup_name))
+    {
+        if(gui_ImGuiBeginPopup(ed_entity_editor_add_component_menu_popup_name, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            if(gui_ImGuiBeginMenu("Add component..."))
+            {
+                component_type = COMPONENT_TYPE_NONE;
 
-		gui_ImGuiSetNextWindowPos(ed_entity_editor_add_component_menu_pos, 0, vec2(0.0, 0.0));
-
-		if(gui_ImGuiBeginPopup(ed_entity_editor_add_component_menu_popup_name, ImGuiWindowFlags_AlwaysAutoResize))
-		{
-			if(gui_ImGuiBeginMenu("Components"))
-			{
-				if(gui_ImGuiMenuItem("Add physics component", NULL, NULL, 1))
-				{
-					component_type = COMPONENT_TYPE_PHYSICS;
-					ed_entity_editor_add_component_menu_open = 0;
-				}
-				if(gui_ImGuiMenuItem("Add model component", NULL, NULL, 1))
-				{
-					component_type = COMPONENT_TYPE_MODEL;
-					ed_entity_editor_add_component_menu_open = 0;
-				}
-				if(gui_ImGuiMenuItem("Add script component", NULL, NULL, 1))
-				{
-					component_type = COMPONENT_TYPE_SCRIPT;
-					ed_entity_editor_add_component_menu_open = 0;
-				}
-				if(gui_ImGuiMenuItem("Add camera component", NULL, NULL, 1))
-				{
-					component_type = COMPONENT_TYPE_CAMERA;
-					ed_entity_editor_add_component_menu_open = 0;
-				}
-				if(gui_ImGuiMenuItem("Add light component", NULL, NULL, 1))
-				{
-					component_type = COMPONENT_TYPE_LIGHT;
-					ed_entity_editor_add_component_menu_open = 0;
-				}
-				if(gui_ImGuiMenuItem("Add navigation component", NULL, NULL, 1))
+                if(gui_ImGuiMenuItem("Physics component", NULL, NULL, 1))
+                {
+                    component_type = COMPONENT_TYPE_PHYSICS;
+                }
+                if(gui_ImGuiMenuItem("Model component", NULL, NULL, 1))
+                {
+                    component_type = COMPONENT_TYPE_MODEL;
+                }
+                if(gui_ImGuiMenuItem("Script component", NULL, NULL, 1))
+                {
+                    component_type = COMPONENT_TYPE_SCRIPT;
+                }
+                if(gui_ImGuiMenuItem("Camera component", NULL, NULL, 1))
+                {
+                    component_type = COMPONENT_TYPE_CAMERA;
+                }
+                if(gui_ImGuiMenuItem("Light component", NULL, NULL, 1))
+                {
+                    component_type = COMPONENT_TYPE_LIGHT;
+                }
+                if(gui_ImGuiMenuItem("Navigation component", NULL, NULL, 1))
                 {
                     component_type = COMPONENT_TYPE_NAVIGATION;
-                    ed_entity_editor_add_component_menu_open = 0;
                 }
 
-				gui_ImGuiEndMenu();
+                gui_ImGuiEndMenu();
 
-
-				if(!ed_entity_editor_add_component_menu_open)
-				{
-					entity_AddComponent(ed_entity_editor_selected_def, component_type);
-					ed_entity_editor_selected_def.entity_index = INVALID_ENTITY_INDEX;
-					ed_entity_editor_update_preview_entity = 1;
-				}
-			}
-
-			if(gui_ImGuiBeginMenu("Entities"))
-			{
-				c = ent_entities[1].element_count;
-				entity_defs = (struct entity_t *)ent_entities[1].elements;
-
-				for(i = 0; i < c; i++)
-				{
-					entity_def = entity_defs + i;
-
-					if(entity_def->flags & ENTITY_FLAG_INVALID)
-					{
-						continue;
-					}
-
-					if(gui_ImGuiMenuItem(entity_def->name, NULL, NULL, 1) && ed_entity_editor_add_component_menu_open)
-					{
-						handle.def = 1;
-						handle.entity_index = i;
-
-						//entity_ParentEntity(ed_entity_editor_selected_def, handle);
-						if(ed_entity_editor_selected_def_transform.type == COMPONENT_TYPE_NONE)
-						{
-							entity_ParentEntity(ed_entity_editor_selected_def, handle);
-						}
-						else
-						{
-							entity_ParentEntityToEntityTransform(ed_entity_editor_selected_def_transform, handle);
-						}
-
-						ed_entity_editor_add_component_menu_open = 0;
-						ed_entity_editor_update_preview_entity = 1;
-					}
-				}
-
-				gui_ImGuiEndMenu();
-			}
-
-			if(gui_ImGuiMenuItem("Remove", NULL, NULL, 1))
-			{
-				transform_component = entity_GetComponentPointer(ed_entity_editor_selected_def_transform);
-
-				if(transform_component)
+                if(component_type != COMPONENT_TYPE_NONE)
                 {
-                    entity_UnpparentEntityFromEntityTransform(transform_component->parent, ed_entity_editor_selected_def);
+                    entity_AddComponent(current_entity, component_type);
+                    //ed_entity_editor_selected_def.entity_index = INVALID_ENTITY_INDEX;
+
+                    gui_ImGuiCloseCurrentPopup();
+                }
+            }
+
+            if(gui_ImGuiBeginMenu("Nestle entity..."))
+            {
+                c = ent_entities[1].element_count;
+                entity_defs = (struct entity_t *)ent_entities[1].elements;
+
+                for(i = 0; i < c; i++)
+                {
+                    entity_def = entity_defs + i;
+
+                    if(entity_def->flags & ENTITY_FLAG_INVALID)
+                    {
+                        continue;
+                    }
+
+                    if(gui_ImGuiMenuItem(entity_def->name, NULL, NULL, 1))
+                    {
+                        def_handle.def = 1;
+                        def_handle.entity_index = i;
+
+                        entity_ParentEntityToEntityTransform(referencing_transform, def_handle);
+
+                        ed_entity_editor_update_preview_entity = 1;
+                        gui_ImGuiCloseCurrentPopup();
+                        break;
+                    }
                 }
 
-				ed_entity_editor_add_component_menu_open = 0;
-				ed_entity_editor_update_preview_entity = 1;
-			}
+                gui_ImGuiEndMenu();
+            }
 
+            if(gui_ImGuiMenuItem("Remove nestled entity...", NULL, NULL, 1))
+            {
+                transform_component = entity_GetComponentPointer(referencing_transform);
 
-			gui_ImGuiEndPopup();
+                if(transform_component->flags & COMPONENT_FLAG_ENTITY_DEF_REF)
+                {
+                    entity_UnparentTransformComponent(transform_component->parent, referencing_transform);
+                }
 
+                ed_entity_editor_update_preview_entity = 1;
+            }
 
-		}
-	}
+            gui_ImGuiEndPopup();
+        }
+    }
 }
 
 void editor_EntityEditorPropMenu()
@@ -392,121 +371,121 @@ int editor_EntityEditorSetModelComponentValue(struct entity_handle_t entity)
 
 	return keep_open;
 }
-
-int editor_EntityEditorSetPhysicsComponentValue(struct entity_handle_t entity)
-{
-	int keep_open = 2;
-
-	struct collider_def_t *collider_defs;
-	struct collider_def_t *collider_def;
-	struct entity_t *entity_ptr;
-	struct physics_component_t *physics_component;
-	struct collider_handle_t collider_handle;
-
-	int i;
-	int k;
-	int c;
-
-	//collider_defs = phy_collider_defs;
-	collider_defs = physics_GetColliderDefsList(&c);
-	entity_ptr = entity_GetEntityPointerHandle(entity);
-	physics_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
-
-    for(i = 0; i < c; i++)
-    {
-        if(collider_defs->base.flags & COLLIDER_FLAG_INVALID)
-        {
-            continue;
-        }
-
-        if(gui_ImGuiMenuItem(collider_defs->name, NULL, NULL, 1))
-		{
-            physics_DecColliderDefRefCount(physics_component->collider);
-
-            collider_handle.type = COLLIDER_TYPE_COLLIDER_DEF;
-            collider_handle.index = i;
-
-			physics_IncColliderDefRefCount(collider_handle);
-
-			physics_component->collider = collider_handle;
-			ed_entity_editor_update_preview_entity = 1;
-			keep_open = 0;
-
-			break;
-		}
-    }
-
-	/*while(collider_defs)
-	{
-		if(gui_ImGuiMenuItem(collider_defs->name, NULL, NULL, 1))
-		{
-			//if(physics_component->collider.collider_def)
-			{
-				physics_DecColliderDefRefCount(physics_component->collider);
-			}
-
-			physics_IncColliderDefRefCount(collider_defs);
-
-			physics_component->collider.collider_def = collider_defs;
-			ed_entity_editor_update_preview_entity = 1;
-			keep_open = 0;
-		}
-
-		collider_defs = collider_defs->next;
-	}*/
-
-	if(keep_open)
-	{
-		if(gui_ImGuiBeginMenu("Create new..."))
-		{
-			if(gui_ImGuiMenuItem("Character collider", NULL, NULL, 1))
-			{
-				collider_handle = physics_CreateCharacterColliderDef("New character collider", 0.5, 0.5, 0.25, 0.5, 0.5, 2.0, 1.0);
-				keep_open = 0;
-			}
-
-			if(gui_ImGuiMenuItem("Rigid body collider", NULL, NULL, 1))
-			{
-				collider_handle = physics_CreateRigidBodyColliderDef("New character collider");
-				keep_open = 0;
-			}
-
-			if(gui_ImGuiMenuItem("Projectile collider", NULL, NULL, 1))
-			{
-			    collider_handle = INVALID_COLLIDER_HANDLE;
-				keep_open = 0;
-			}
-
-			if(!keep_open)
-			{
-				if(physics_component->collider.index != INVALID_COLLIDER_INDEX)
-				{
-					physics_DecColliderDefRefCount(physics_component->collider);
-
-					collider_def = physics_GetColliderDefPointerHandle(physics_component->collider);
-
-                    if(collider_def)
-                    {
-                        if(!collider_def->ref_count)
-                        {
-                            physics_DestroyColliderDef(physics_component->collider);
-                        }
-                    }
-				}
-
-				//physics_component->collider.collider_def = collider_defs;
-
-                entity_SetCollider(entity, &collider_handle);
-
-				ed_entity_editor_update_preview_entity = 1;
-			}
-
-			gui_ImGuiEndMenu();
-		}
-	}
-
-	return keep_open;
-}
+//
+//int editor_EntityEditorSetPhysicsComponentValue(struct entity_handle_t entity)
+//{
+//	int keep_open = 2;
+//
+//	struct collider_def_t *collider_defs;
+//	struct collider_def_t *collider_def;
+//	struct entity_t *entity_ptr;
+//	struct physics_component_t *physics_component;
+//	struct collider_handle_t collider_handle;
+//
+//	int i;
+//	int k;
+//	int c;
+//
+//	//collider_defs = phy_collider_defs;
+//	collider_defs = physics_GetColliderDefsList(&c);
+//	entity_ptr = entity_GetEntityPointerHandle(entity);
+//	physics_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_PHYSICS]);
+//
+//    for(i = 0; i < c; i++)
+//    {
+//        if(collider_defs[i].base.flags & COLLIDER_FLAG_INVALID)
+//        {
+//            continue;
+//        }
+//
+//        if(gui_ImGuiMenuItem(collider_defs[i].name, NULL, NULL, 1))
+//		{
+//            physics_DecColliderDefRefCount(physics_component->collider);
+//
+//            collider_handle.type = COLLIDER_TYPE_COLLIDER_DEF;
+//            collider_handle.index = i;
+//
+//			physics_IncColliderDefRefCount(collider_handle);
+//
+//			physics_component->collider = collider_handle;
+//			ed_entity_editor_update_preview_entity = 1;
+//			keep_open = 0;
+//
+//			break;
+//		}
+//    }
+//
+//	/*while(collider_defs)
+//	{
+//		if(gui_ImGuiMenuItem(collider_defs->name, NULL, NULL, 1))
+//		{
+//			//if(physics_component->collider.collider_def)
+//			{
+//				physics_DecColliderDefRefCount(physics_component->collider);
+//			}
+//
+//			physics_IncColliderDefRefCount(collider_defs);
+//
+//			physics_component->collider.collider_def = collider_defs;
+//			ed_entity_editor_update_preview_entity = 1;
+//			keep_open = 0;
+//		}
+//
+//		collider_defs = collider_defs->next;
+//	}*/
+//
+//	if(keep_open)
+//	{
+//		if(gui_ImGuiBeginMenu("Create new..."))
+//		{
+//			if(gui_ImGuiMenuItem("Character collider", NULL, NULL, 1))
+//			{
+//				collider_handle = physics_CreateCharacterColliderDef("New character collider", 0.5, 0.5, 0.25, 0.5, 0.5, 2.0, 1.0);
+//				keep_open = 0;
+//			}
+//
+//			if(gui_ImGuiMenuItem("Rigid body collider", NULL, NULL, 1))
+//			{
+//				collider_handle = physics_CreateRigidBodyColliderDef("New character collider");
+//				keep_open = 0;
+//			}
+//
+//			if(gui_ImGuiMenuItem("Projectile collider", NULL, NULL, 1))
+//			{
+//			    collider_handle = INVALID_COLLIDER_HANDLE;
+//				keep_open = 0;
+//			}
+//
+//			if(!keep_open)
+//			{
+//				if(physics_component->collider.index != INVALID_COLLIDER_INDEX)
+//				{
+//					physics_DecColliderDefRefCount(physics_component->collider);
+//
+//					collider_def = physics_GetColliderDefPointerHandle(physics_component->collider);
+//
+//                    if(collider_def)
+//                    {
+//                        if(!collider_def->ref_count)
+//                        {
+//                            physics_DestroyColliderDef(physics_component->collider);
+//                        }
+//                    }
+//				}
+//
+//				//physics_component->collider.collider_def = collider_defs;
+//
+//                entity_SetCollider(entity, &collider_handle);
+//
+//				ed_entity_editor_update_preview_entity = 1;
+//			}
+//
+//			gui_ImGuiEndMenu();
+//		}
+//	}
+//
+//	return keep_open;
+//}
 
 int editor_EntityEditorSetScriptComponentValue(struct entity_handle_t entity)
 {
@@ -539,82 +518,86 @@ int editor_EntityEditorSetScriptComponentValue(struct entity_handle_t entity)
 	return keep_open;
 }
 
-
-void editor_EntityEditorSetComponentValueMenu()
-{
-	int component_type;
-
-	struct entity_t *entity;
-
-	if(ed_entity_editor_set_component_value_menu_open)
-	{
-		if(ed_entity_editor_set_component_value_menu_open == 1)
-		{
-			gui_ImGuiOpenPopup(ed_entity_editor_set_component_value_menu_name);
-			ed_entity_editor_set_component_value_menu_open = 2;
-		}
-
-		if(!gui_ImGuiIsPopupOpen(ed_entity_editor_set_component_value_menu_name))
-		{
-			/* If we got here it means this popup was closed by
-			a mouse click outside of it. This means the flag
-			'ed_entity_editor_set_component_value_menu_open' didn't
-			get cleared, since no option was clicked. So, we
-			clear it here to make sure everything works correctly... */
-			ed_entity_editor_set_component_value_menu_open = 0;
-			return;
-		}
-
-		if(ed_entity_editor_set_component_type != COMPONENT_TYPE_NONE)
-		{
-			if(gui_ImGuiBeginPopup(ed_entity_editor_set_component_value_menu_name, ImGuiWindowFlags_AlwaysAutoResize))
-			{
-
-				switch(ed_entity_editor_set_component_type)
-				{
-					case COMPONENT_TYPE_MODEL:
-						ed_entity_editor_set_component_value_menu_open = editor_EntityEditorSetModelComponentValue(ed_entity_editor_selected_def);
-					break;
-
-					case COMPONENT_TYPE_PHYSICS:
-						ed_entity_editor_set_component_value_menu_open = editor_EntityEditorSetPhysicsComponentValue(ed_entity_editor_selected_def);
-					break;
-
-					case COMPONENT_TYPE_SCRIPT:
-						ed_entity_editor_set_component_value_menu_open = editor_EntityEditorSetScriptComponentValue(ed_entity_editor_selected_def);
-					break;
-
-				}
-
-				if(gui_ImGuiMenuItem("Remove", NULL, NULL, 1))
-				{
-					entity_RemoveComponent(ed_entity_editor_selected_def, ed_entity_editor_set_component_type);
-					ed_entity_editor_set_component_value_menu_open = 0;
-					ed_entity_editor_update_preview_entity;
-				}
-
-				if(!ed_entity_editor_set_component_value_menu_open)
-				{
-					ed_entity_editor_update_preview_entity = 1;
-				}
-
-				gui_ImGuiEndPopup();
-			}
-		}
-
-
-	}
-}
+//
+//void editor_EntityEditorSetComponentValueMenu()
+//{
+//	int component_type;
+//
+//	struct entity_t *entity;
+//
+//	if(ed_entity_editor_set_component_value_menu_open)
+//	{
+//		if(ed_entity_editor_set_component_value_menu_open == 1)
+//		{
+//			gui_ImGuiOpenPopup(ed_entity_editor_set_component_value_menu_name);
+//			ed_entity_editor_set_component_value_menu_open = 2;
+//		}
+//
+//		if(!gui_ImGuiIsPopupOpen(ed_entity_editor_set_component_value_menu_name))
+//		{
+//			/* If we got here it means this popup was closed by
+//			a mouse click outside of it. This means the flag
+//			'ed_entity_editor_set_component_value_menu_open' didn't
+//			get cleared, since no option was clicked. So, we
+//			clear it here to make sure everything works correctly... */
+//			ed_entity_editor_set_component_value_menu_open = 0;
+//			return;
+//		}
+//
+//		if(ed_entity_editor_set_component_type != COMPONENT_TYPE_NONE)
+//		{
+//			if(gui_ImGuiBeginPopup(ed_entity_editor_set_component_value_menu_name, ImGuiWindowFlags_AlwaysAutoResize))
+//			{
+//
+//				switch(ed_entity_editor_set_component_type)
+//				{
+//					case COMPONENT_TYPE_MODEL:
+//						ed_entity_editor_set_component_value_menu_open = editor_EntityEditorSetModelComponentValue(ed_entity_editor_selected_def);
+//					break;
+//
+//					case COMPONENT_TYPE_PHYSICS:
+//						ed_entity_editor_set_component_value_menu_open = editor_EntityEditorSetPhysicsComponentValue(ed_entity_editor_selected_def);
+//					break;
+//
+//					case COMPONENT_TYPE_SCRIPT:
+//						ed_entity_editor_set_component_value_menu_open = editor_EntityEditorSetScriptComponentValue(ed_entity_editor_selected_def);
+//					break;
+//
+//				}
+//
+//				if(gui_ImGuiMenuItem("Remove", NULL, NULL, 1))
+//				{
+//					entity_RemoveComponent(ed_entity_editor_selected_def, ed_entity_editor_set_component_type);
+//					ed_entity_editor_set_component_value_menu_open = 0;
+//					ed_entity_editor_update_preview_entity;
+//				}
+//
+//				if(!ed_entity_editor_set_component_value_menu_open)
+//				{
+//					ed_entity_editor_update_preview_entity = 1;
+//				}
+//
+//				gui_ImGuiEndPopup();
+//			}
+//		}
+//
+//
+//	}
+//}
 
 void editor_EntityEditorDefsMenu()
 {
 	struct entity_t *entity;
 	struct entity_handle_t entity_def;
 
+	struct transform_component_t *transform_component;
+
 	int i;
 	int c;
 
 	int selected = -1;
+
+	vec2_t size;
 
 	if(ed_entity_editor_defs_menu_open)
 	{
@@ -626,13 +609,13 @@ void editor_EntityEditorDefsMenu()
 		//if(gui_ImGuiBeginPopup(ed_entity_editor_add_component_menu_popup_name, ImGuiWindowFlags_AlwaysAutoResize))
 		gui_ImGuiBegin(ed_entity_editor_defs_menu_name, NULL, ImGuiWindowFlags_AlwaysAutoResize);
 
-		if(gui_ImGuiIsWindowHovered(0))
-		{
-			if(gui_ImGuiIsMouseClicked(1, 0))
-			{
-				printf("FUCK!\n");
-			}
-		}
+//		if(gui_ImGuiIsWindowHovered(0))
+//		{
+//			if(gui_ImGuiIsMouseClicked(1, 0))
+//			{
+//				printf("FUCK!\n");
+//			}
+//		}
 
 		for(i = 0; i < c; i++)
 		{
@@ -640,15 +623,42 @@ void editor_EntityEditorDefsMenu()
 
 			if(entity)
 			{
-				if(gui_ImGuiMenuItem(entity->name, NULL, NULL, 1) && selected == -1)
-				{
-					selected = i;
 
-					entity_def.def = 1;
-					entity_def.entity_index = i;
-					editor_EntityEditorSetCurrentEntityDef(entity_def);
-				}
+			    entity_def.def = 1;
+                entity_def.entity_index = i;
 
+                size.y = 20.0;
+                size.x = 300.0;
+
+//                size.x = -1.0;
+//                size.y = -1.0;
+
+                gui_ImGuiBeginChildFrame(i + 1, size, ImGuiWindowFlags_NoScrollbar);
+
+                transform_component = entity_GetComponentPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+
+                gui_ImGuiColumns(2, transform_component->instance_name, 0);
+
+                if(gui_ImGuiMenuItem(transform_component->instance_name, NULL, NULL, 1))
+                {
+                    editor_EntityEditorSetCurrentEntityDef(entity_def);
+                }
+
+                //gui_ImGuiIndent(16.0);
+
+                gui_ImGuiNextColumn();
+
+                if(gui_ImGuiMenuItem("Remove", NULL, NULL, 1))
+                {
+                    entity_RemoveEntity(entity_def);
+
+                    if(entity_def.entity_index == ed_entity_editor_entity_def.entity_index)
+                    {
+                        ed_entity_editor_entity_def = INVALID_ENTITY_HANDLE;
+                    }
+                }
+
+                gui_ImGuiEndChildFrame();
 			}
 		}
 
@@ -668,9 +678,10 @@ void editor_EntityEditorDefsMenu()
 ====================================================
 */
 
-void editor_EntityEditorTransformComponent(struct transform_component_t *transform_component, struct entity_handle_t entity, int ref_on_ref)
+void editor_EntityEditorEditTransformComponent(struct component_t *component)
 {
 	vec3_t euler;
+	struct transform_component_t *transform_component = (struct transform_component_t *)component;
 	mat3_t_euler(&transform_component->orientation, &euler);
 
 //	struct entity_t *entity;
@@ -719,12 +730,17 @@ void editor_EntityEditorTransformComponent(struct transform_component_t *transfo
 }
 
 
-void editor_EntityEditorModelComponent(struct model_component_t *model_component, struct entity_handle_t entity, int extra)
+void editor_EntityEditorEditModelComponent(struct component_t *component)
 {
 	struct model_t *model;
 	char *model_name;
 
+	struct model_component_t *model_component;
+
+	model_component = (struct model_component_t *)component;
+
 	model = model_GetModelPointerIndex(model_component->model_index);
+
 	if(model)
 	{
 		model_name = model->name;
@@ -737,23 +753,27 @@ void editor_EntityEditorModelComponent(struct model_component_t *model_component
 	gui_ImGuiText("Model: %s", model_name);
 }
 
-void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_component, struct entity_handle_t entity, int extra)
+void editor_EntityEditorEditPhysicsComponent(struct component_t *component)
 {
 	struct entity_t *entity_ptr;
+	struct entity_handle_t entity;
 	struct collider_def_t *collider_def;
+	struct collider_def_t *collider_defs;
 	struct collision_shape_t *collision_shape;
+	struct physics_component_t *physics_component;
 
 	mat4_t collision_shape_transform;
 
 //	camera_t *active_camera;
     struct view_def_t *main_view;
-
+    struct collider_handle_t collider_handle;
 	char *collision_shape_type;
 
 	char id[512];
 
 	int i;
 	int j;
+	int collider_def_count;
 
 	vec3_t euler;
 
@@ -769,6 +789,89 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 	char checked = 0;
 
 	//collider_def = (struct collider_def_t *)physics_component->collider.collider_def;
+
+	physics_component = (struct physics_component_t *)component;
+	entity = physics_component->base.entity;
+
+	if(gui_ImGuiIsPopupOpen(ed_entity_editor_set_component_value_menu_name))
+    {
+        if(gui_ImGuiBeginPopup(ed_entity_editor_set_component_value_menu_name, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            collider_defs = physics_GetColliderDefsList(&collider_def_count);
+
+            for(i = 0; i < collider_def_count; i++)
+            {
+                if(collider_defs[i].base.flags & COLLIDER_FLAG_INVALID)
+                {
+                    continue;
+                }
+
+                if(gui_ImGuiMenuItem(collider_defs[i].name, NULL, NULL, 1))
+                {
+                    physics_DecColliderDefRefCount(physics_component->collider);
+
+                    collider_handle.type = COLLIDER_TYPE_COLLIDER_DEF;
+                    collider_handle.index = i;
+
+                    physics_IncColliderDefRefCount(collider_handle);
+
+                    physics_component->collider = collider_handle;
+                    ed_entity_editor_update_preview_entity = 1;
+
+                    gui_ImGuiCloseCurrentPopup();
+
+                    break;
+                }
+            }
+
+            if(gui_ImGuiBeginMenu("Create new..."))
+            {
+                collider_handle = INVALID_COLLIDER_HANDLE;
+
+                if(gui_ImGuiMenuItem("Character collider", NULL, NULL, 1))
+                {
+                    collider_handle = physics_CreateCharacterColliderDef("New character collider", 0.5, 0.5, 0.25, 0.5, 0.5, 2.0, 1.0);
+                }
+
+                if(gui_ImGuiMenuItem("Rigid body collider", NULL, NULL, 1))
+                {
+                    collider_handle = physics_CreateRigidBodyColliderDef("New character collider");
+                }
+
+                if(gui_ImGuiMenuItem("Projectile collider", NULL, NULL, 1))
+                {
+
+                }
+
+                if(collider_handle.index != INVALID_COLLIDER_INDEX)
+                {
+                    if(physics_component->collider.index != INVALID_COLLIDER_INDEX)
+                    {
+                        physics_DecColliderDefRefCount(physics_component->collider);
+
+                        collider_def = physics_GetColliderDefPointerHandle(physics_component->collider);
+
+                        if(collider_def)
+                        {
+                            if(!collider_def->ref_count)
+                            {
+                                physics_DestroyColliderDef(physics_component->collider);
+                            }
+                        }
+                    }
+
+                    entity_SetCollider(entity, &collider_handle);
+
+                    ed_entity_editor_update_preview_entity = 1;
+                }
+
+                gui_ImGuiEndMenu();
+            }
+
+            gui_ImGuiEndPopup();
+        }
+    }
+
 
 	collider_def = physics_GetColliderDefPointerHandle(physics_component->collider);
 
@@ -822,15 +925,15 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 				/*********************************************************************************************/
 				/*********************************************************************************************/
 
-				ed_entity_editor_draw_collider_list[ed_entity_editor_draw_collider_list_cursor] = entity;
-				ed_entity_editor_draw_collider_list_cursor++;
+//				ed_entity_editor_draw_collider_list[ed_entity_editor_draw_collider_list_cursor] = entity;
+//				ed_entity_editor_draw_collider_list_cursor++;
 
 				if(gui_ImGuiIsItemClicked(1))
 				{
 					if(!gui_ImGuiIsPopupOpen("Add collision shape popup"))
 					{
 						gui_ImGuiOpenPopup("Add collision shape popup");
-						gui_ImGuiSetNextWindowPos(vec2(mouse_x, r_window_height - mouse_y), 0, vec2(0.0, 0.0));
+						gui_ImGuiSetNextWindowPos(vec2(mouse_x, r_renderer.r_window_height - mouse_y), 0, vec2(0.0, 0.0));
 					}
 				}
 
@@ -974,15 +1077,18 @@ void editor_EntityEditorPhysicsComponent(struct physics_component_t *physics_com
 
 }
 
-void editor_EntityEditorCameraComponent(struct camera_component_t *camera_component, struct entity_handle_t entity, int extra)
+void editor_EntityEditorEditCameraComponent(struct component_t *component)
 {
-	struct transform_component_t *transform_component;
-	struct entity_t *entity_ptr;
+
 }
 
-void editor_EntityEditorScriptComponent(struct script_component_t *script_component, struct entity_handle_t entity, int extra)
+void editor_EntityEditorEditScriptComponent(struct component_t *component)
 {
 	char *script_name;
+
+	struct script_component_t *script_component;
+
+	script_component = (struct script_component_t *)component;
 
 	if(script_component->script)
 	{
@@ -995,7 +1101,7 @@ void editor_EntityEditorScriptComponent(struct script_component_t *script_compon
 	gui_ImGuiText("Script: %s", script_name);
 }
 
-void editor_EntityEditorProp(struct entity_handle_t entity)
+void editor_EntityEditorEditEntityProps(struct entity_handle_t entity)
 {
     int i;
     struct entity_t *entity_ptr;
@@ -1080,7 +1186,7 @@ void editor_EntityEditorProp(struct entity_handle_t entity)
 	}
 }
 
-void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct component_handle_t transform, int ref_on_ref)
+void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct component_handle_t referencing_transform, int ref_on_ref)
 {
 	struct entity_t *entity_ptr;
 	struct component_t *component_ptr;
@@ -1109,10 +1215,9 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 	static int depth_level = -1;
 	static unsigned int id = 0;
 
-	void (*component_function)(void *component, struct entity_handle_t entity, int ref_on_ref);
+	void (*edit_component_function)(struct component_t *component);
 
 	depth_level++;
-
 
 	if(entity.entity_index != INVALID_ENTITY_INDEX)
 	{
@@ -1121,19 +1226,24 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 		gui_ImGuiPushStyleColor(ImGuiCol_Text, vec4(1.0, 1.0, 0.0, 1.0));
 
 
-		if(transform.type != COMPONENT_TYPE_NONE)
-		{
-			transform_component = entity_GetComponentPointer(transform);
-			entity_name = transform_component->instance_name;
-		}
-		else
-		{
-			entity_name = entity_ptr->name;
-		}
+//		if(referencing_transform.index != entity_ptr->components[COMPONENT_TYPE_TRANSFORM].index)
+//		{
+//		    /* if this is a def ref, the instance name will be stored in the transform
+//		    component instead of the actual entity it references... */
+//			transform_component = entity_GetComponentPointer(referencing_transform);
+//			entity_name = transform_component->instance_name;
+//		}
+//		else
+//		{
+//			entity_name = entity_ptr->name;
+//		}
+        transform_component = entity_GetComponentPointer(referencing_transform);
+
+        entity_name = transform_component->instance_name;
 
         gui_ImGuiSeparator();
 
-		sprintf(node_id, "Node%d%d", depth_level, transform.index);
+		sprintf(node_id, "Node%d%d", depth_level, referencing_transform.index);
 
 		if(gui_ImGuiTreeNodeEx(node_id, ImGuiTreeNodeFlags_DefaultOpen, " "))
 		{
@@ -1143,13 +1253,19 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 
 			if(gui_ImGuiIsItemClicked(1))
 			{
+			    if(!gui_ImGuiIsPopupOpen(ed_entity_editor_add_component_menu_popup_name))
+                {
+                    gui_ImGuiOpenPopup(ed_entity_editor_add_component_menu_popup_name);
+                }
 				/* add component to entity popup... */
-				editor_EntityEditorOpenAddComponentMenu(mouse_x, r_window_height - mouse_y, entity, transform);
+				//editor_EntityEditorOpenAddComponentMenu(mouse_x, r_window_height - mouse_y, entity, referencing_transform);
 			}
+
             //gui_ImGuiPushIDi(depth_level + 2);
             //sprintf(text_field_id, "Props%d%d", depth_level, transform.index);
 			//gui_ImGuiBeginChild("entity data", vec2(0.0, 0.0), 1, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar);
-			editor_EntityEditorProp(entity);
+			editor_EntityEditorEditEntityProps(entity);
+			editor_EntityEditorAddComponentMenu(entity, referencing_transform);
 
 			//gui_ImGuiEndChild();
 
@@ -1167,38 +1283,38 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 					{
 						case COMPONENT_TYPE_TRANSFORM:
 							component_name = "Transform component";
-							component_function = (void (*)(void *, struct entity_handle_t, int ))editor_EntityEditorTransformComponent;
+							edit_component_function = editor_EntityEditorEditTransformComponent;
 
-							if(transform.type != COMPONENT_TYPE_NONE)
+							if(referencing_transform.type != COMPONENT_TYPE_NONE)
 							{
-								component_ptr = entity_GetComponentPointer(transform);
+								component_ptr = entity_GetComponentPointer(referencing_transform);
 							}
 
 						break;
 
 						case COMPONENT_TYPE_MODEL:
 							component_name = "Model component";
-							component_function = (void (*)(void *, struct entity_handle_t, int ))editor_EntityEditorModelComponent;
+							edit_component_function = editor_EntityEditorEditModelComponent;
 						break;
 
 						case COMPONENT_TYPE_PHYSICS:
 							component_name = "Physics component";
-							component_function = (void (*)(void *, struct entity_handle_t, int ))editor_EntityEditorPhysicsComponent;
+							edit_component_function = editor_EntityEditorEditPhysicsComponent;
 						break;
 
 						case COMPONENT_TYPE_CAMERA:
 							component_name = "Camera component";
-							component_function = (void (*)(void *, struct entity_handle_t, int ))editor_EntityEditorCameraComponent;
+							edit_component_function = editor_EntityEditorEditCameraComponent;
 						break;
 
 						case COMPONENT_TYPE_SCRIPT:
 							component_name = "Script component";
-							component_function = (void (*)(void *, struct entity_handle_t, int ))editor_EntityEditorScriptComponent;
+							edit_component_function = editor_EntityEditorEditScriptComponent;
 						break;
 
 						case COMPONENT_TYPE_NAVIGATION:
                             component_name = "Navigation component";
-                            component_function = NULL;
+                            edit_component_function = NULL;
                         break;
 
 						default:
@@ -1207,37 +1323,52 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 						break;
 					}
 
-					sprintf(component_id, "%s%d", component_name, transform.index);
+					sprintf(component_id, "%s%d", component_name, referencing_transform.index);
 
-					component_node_open = gui_ImGuiTreeNode(component_id, "%s", component_name);
-
-					if(gui_ImGuiIsItemClicked(1))
+					if(gui_ImGuiTreeNode(component_id, "%s", component_name))
 					{
-						editor_EntityEditorOpenSetComponentValueMenu(mouse_x, r_window_height - mouse_y, entity, component_ptr->type);
-					}
-
-					if(component_node_open)
-					{
-					    if(component_function)
+					    if(gui_ImGuiIsItemClicked(1))
                         {
-                            component_function(component_ptr, entity, ref_on_ref);
+                            if(!gui_ImGuiIsPopupOpen(ed_entity_editor_set_component_value_menu_name))
+                            {
+                                gui_ImGuiOpenPopup(ed_entity_editor_set_component_value_menu_name);
+                            }
                         }
+
+					    if(edit_component_function)
+                        {
+                            edit_component_function(component_ptr);
+                        }
+
+                        if(gui_ImGuiIsPopupOpen(ed_entity_editor_set_component_value_menu_name))
+                        {
+                            if(gui_ImGuiBeginPopup(ed_entity_editor_set_component_value_menu_name, ImGuiWindowFlags_AlwaysAutoResize))
+                            {
+                                if(gui_ImGuiMenuItem("Remove component...", NULL, NULL, 1))
+                                {
+                                    if(component_ptr->type != COMPONENT_TYPE_TRANSFORM)
+                                    {
+                                        entity_RemoveComponent(entity, component_ptr->type);
+                                    }
+
+                                    gui_ImGuiCloseCurrentPopup();
+                                }
+
+                                gui_ImGuiEndPopup();
+                            }
+                        }
+
 						gui_ImGuiTreePop();
 					}
-
-
-
-
 				}
 			}
 
-			if(transform.type != COMPONENT_TYPE_NONE)
+			if(referencing_transform.type != entity_ptr->components[COMPONENT_TYPE_TRANSFORM].index)
 			{
-
-				/* This is a ref to a entity def, which means this transform
+				/* This is a ref to an entity def, which means this transform
 				can have stuff nestled in it... */
 
-				transform_component = entity_GetComponentPointer(transform);
+				transform_component = entity_GetComponentPointer(referencing_transform);
 
 				for(i = 0; i < transform_component->children_count; i++)
 				{
@@ -1283,16 +1414,33 @@ void editor_EntityEditorRecursiveDefTree(struct entity_handle_t entity, struct c
 void editor_EntityEditorDefTree()
 {
 	ed_entity_editor_draw_collider_list_cursor = 0;
+	struct entity_t *current_entity;
+	struct component_handle_t referencing_transform;
 
-	gui_ImGuiSetNextWindowPos(vec2(r_window_width - ENTITY_DEF_TREE_WINDOW_WIDTH, 0.0), 0, vec2(0.0, 0.0));
+	gui_ImGuiSetNextWindowPos(vec2(r_renderer.r_window_width - ENTITY_DEF_TREE_WINDOW_WIDTH, 0.0), 0, vec2(0.0, 0.0));
 	gui_ImGuiSetNextWindowSize(vec2(ENTITY_DEF_TREE_WINDOW_WIDTH, 550.0), 0);
 
 	if(gui_ImGuiBegin("Entity def tree", NULL, ImGuiWindowFlags_AlwaysHorizontalScrollbar))
 	{
-		editor_EntityEditorRecursiveDefTree(ed_entity_editor_entity_def, (struct component_handle_t){COMPONENT_TYPE_NONE, 1, INVALID_COMPONENT_INDEX}, 0);
+	    current_entity = entity_GetEntityPointerHandle(ed_entity_editor_entity_def);
+
+        if(current_entity)
+        {
+            referencing_transform = current_entity->components[COMPONENT_TYPE_TRANSFORM];
+        }
+        else
+        {
+            referencing_transform = INVALID_COMPONENT_HANDLE;
+        }
+
+		editor_EntityEditorRecursiveDefTree(ed_entity_editor_entity_def, referencing_transform, 0);
 	}
 
 	gui_ImGuiEnd();
+
+//	editor_EntityEditorAddComponentMenu();
+//	editor_EntityEditorSetComponentValueMenu();
+	editor_EntityEditorDefsMenu();
 }
 
 
@@ -1303,13 +1451,13 @@ void editor_EntityEditorDefTree()
 */
 
 
-void editor_EntityEditorOpenAddComponentMenu(int x, int y, struct entity_handle_t entity, struct component_handle_t transform)
+void editor_EntityEditorOpenAddComponentMenu(int x, int y, struct entity_handle_t entity, struct component_handle_t referencing_transform)
 {
 	ed_entity_editor_add_component_menu_open = 1;
 	ed_entity_editor_add_component_menu_pos.x = x;
 	ed_entity_editor_add_component_menu_pos.y = y;
 	ed_entity_editor_selected_def = entity;
-	ed_entity_editor_selected_def_transform = transform;
+	ed_entity_editor_selected_def_transform = referencing_transform;
 }
 
 void editor_EntityEditorOpenAddPropMenu(int x, int y, struct entity_handle_t entity)

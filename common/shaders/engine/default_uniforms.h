@@ -9,6 +9,7 @@
 
 	#define R_LIGHT_UNIFORM_BUFFER_SIZE 32
 	#define R_BSP_UNIFORM_BUFFER_SIZE 512
+	#define R_WORLD_TRIANGLE_UNIFORM_BUFFER_SIZE 1024
 
 	#define SHADOW_MAP_RESOLUTION 512
 	#define SHARED_SHADOW_MAP_HEIGHT 8192
@@ -45,38 +46,40 @@
 		vec4 forward_axis;
 		vec4 position_radius;
 		vec4 color_energy;
-		int bm_flags;
 		float proj_param_a;
 		float proj_param_b;
-		int shadow_map;
+        int first_triangle;
+        int triangle_count;
 	};
 
-
-    struct gpu_bsp_node_t
+	struct compact_vertex_t
     {
-        vec4 normal_dist;
-        unsigned int children[2];
-        int node_count;
-        int align1;
-    };
+        vec4 position_normal;
+        /*int normal;*/
 
+        /*int tangent;*/
+        /*int align0;*/
+        vec4 tex_coord;
+    };
 
 
 
 	layout(std140) uniform r_lights_uniform_block
 	{
-		gpu_light_t r_lights[R_LIGHT_UNIFORM_BUFFER_SIZE];
+		gpu_light_t r_lights[1];
 	};
 
-	layout(std140) uniform r_bsp_uniform_block
-	{
-        gpu_bsp_node_t r_bsp[R_BSP_UNIFORM_BUFFER_SIZE];
-	};
+    layout(std140) uniform r_world_triangles_uniform_block
+    {
+        int r_world_triangles[1];
+    };
 
     layout(std140) uniform r_world_vertices_uniform_block
     {
-        vec4 r_world_vertices[1024];
+        vec4 r_world_vertices[1];
     };
+
+
 
     uniform int UNIFORM_r_world_vertices_count;
 
@@ -85,6 +88,8 @@
 	uniform sampler2D UNIFORM_texture_sampler0;
 	uniform sampler2D UNIFORM_texture_sampler1;
 	uniform sampler2D UNIFORM_texture_sampler2;
+	uniform usampler2D UNIFORM_texture_usampler0;
+	uniform usampler2D UNIFORM_texture_usampler1;
 	uniform samplerCube UNIFORM_texture_cube_sampler0;
 	uniform sampler2DArray UNIFORM_texture_array_sampler0;
 

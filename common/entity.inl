@@ -152,8 +152,10 @@ static ALWAYS_FORCE_INLINE struct entity_handle_t entity_GetEntityHandle(char *n
 
 	get_def = get_def && 1;
 
-	handle.def = 0;
-	handle.entity_index = INVALID_ENTITY_INDEX;
+//	handle.def = 0;
+//	handle.entity_index = INVALID_ENTITY_INDEX;
+
+    handle = INVALID_ENTITY_HANDLE;
 
 	c = ent_entities[get_def].element_count;
 
@@ -236,7 +238,7 @@ static ALWAYS_FORCE_INLINE struct entity_handle_t entity_GetNestledEntityHandle(
 	}
 
 
-	return (struct entity_handle_t){parent_entity.def, INVALID_ENTITY_INDEX};
+	return INVALID_ENTITY_HANDLE;
 }
 #endif
 

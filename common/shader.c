@@ -48,6 +48,7 @@ extern int r_geometry_pass_shader;
 extern int r_shade_pass_shader;
 extern int r_stencil_lights_pass_shader;
 extern int r_shadow_pass_shader;
+extern int r_generate_shadow_mask_shader;
 extern int r_skybox_shader;
 extern int r_active_shader;
 extern int r_bloom0_shader;
@@ -91,6 +92,11 @@ int shader_Init()
 	SHADER_UNIFORM(UNIFORM_texture_sampler0, GL_SAMPLER_2D);
 	SHADER_UNIFORM(UNIFORM_texture_sampler1, GL_SAMPLER_2D);
 	SHADER_UNIFORM(UNIFORM_texture_sampler2, GL_SAMPLER_2D);
+
+	SHADER_UNIFORM(UNIFORM_texture_usampler0, GL_UNSIGNED_INT_SAMPLER_2D);
+	SHADER_UNIFORM(UNIFORM_texture_usampler1, GL_UNSIGNED_INT_SAMPLER_2D);
+//	SHADER_UNIFORM(UNIFORM_texture_usampler2, GL_UNSIGNED_INT_SAMPLER_2D);
+
 	SHADER_UNIFORM(UNIFORM_texture_cube_sampler0, GL_SAMPLER_CUBE);
 	SHADER_UNIFORM(UNIFORM_texture_array_sampler0, GL_SAMPLER_2D_ARRAY);
 	SHADER_UNIFORM(UNIFORM_texture_cube_array_sampler0, GL_SAMPLER_CUBE_MAP_ARRAY);
@@ -118,39 +124,40 @@ int shader_Init()
 
 
 
-	//shaders = memory_Malloc(sizeof(shader_t ) * shader_list_size);
-	//free_position_stack = memory_Malloc(sizeof(int) * shader_list_size);
-
-	r_z_pre_pass_shader = shader_LoadShader("engine/z_pre_pass", "z prepass");
-	r_forward_pass_shader = shader_LoadShader("engine/forward_pass", "forward pass");
-    //r_clustered_forward_pass_shader = shader_LoadShader("engine/clustered_forward", "clustered forward");
-
-    shader_AddDefine("NO_SHADOWS", NULL, 1);
-	r_forward_pass_no_shadow_shader = shader_LoadShader("engine/forward_pass", "forward pass no shadows");
-	shader_DropDefine("NO_SHADOWS", 1);
-
-	r_particle_forward_pass_shader = shader_LoadShader("engine/particle_forward_pass", "particle forward pass");
-	//r_forward_pass_portal_shader = shader_LoadShader("engine/forward_pass_portal", "portal forward pass");
-	r_flat_pass_shader = shader_LoadShader("engine/flat_pass", "flat pass");
-	r_wireframe_pass_shader = shader_LoadShader("engine/wireframe_pass", "wireframe pass");
-	//r_geometry_pass_shader = shader_LoadShader("engine/geometry_pass");
-	//r_shade_pass_shader = shader_LoadShader("engine/shade_pass");
-	//r_stencil_lights_pass_shader = shader_LoadShader("engine/stencil_light_pass");
-	r_shadow_pass_shader = shader_LoadShader("engine/shadow_pass", "shadow pass");
-	//r_skybox_shader = shader_LoadShader("engine/skybox");
-
-	r_bloom0_shader = shader_LoadShader("engine/bloom0", "bloom pass 0");
-	r_bloom1_shader = shader_LoadShader("engine/bloom1", "bloom pass 1");
-	r_tonemap_shader = shader_LoadShader("engine/tonemap", "tonemap pass");
-
-	r_blit_texture_shader = shader_LoadShader("engine/blit_texture", "blit texture");
-	//r_portal_shader = shader_LoadShader("engine/portal");
-
-	r_gui_shader = shader_LoadShader("engine/gui/gui", "gui");
-
-	r_imediate_color_shader = shader_LoadShader("engine/imediate draw/imediate_color", "imediate color");
-
-	r_cluster_debug_shader = shader_LoadShader("engine/cluster_debug", "cluster debug");
+//	//shaders = memory_Malloc(sizeof(shader_t ) * shader_list_size);
+//	//free_position_stack = memory_Malloc(sizeof(int) * shader_list_size);
+//
+//	r_z_pre_pass_shader = shader_LoadShader("engine/z_pre_pass", "z prepass");
+//	r_forward_pass_shader = shader_LoadShader("engine/forward_pass", "forward pass");
+//    //r_clustered_forward_pass_shader = shader_LoadShader("engine/clustered_forward", "clustered forward");
+//
+//    //shader_AddDefine("NO_SHADOWS", NULL, 1);
+//	//r_forward_pass_no_shadow_shader = shader_LoadShader("engine/forward_pass", "forward pass no shadows");
+//	//shader_DropDefine("NO_SHADOWS", 1);
+//
+//	r_particle_forward_pass_shader = shader_LoadShader("engine/particle_forward_pass", "particle forward pass");
+//	//r_forward_pass_portal_shader = shader_LoadShader("engine/forward_pass_portal", "portal forward pass");
+//	r_flat_pass_shader = shader_LoadShader("engine/flat_pass", "flat pass");
+//	r_wireframe_pass_shader = shader_LoadShader("engine/wireframe_pass", "wireframe pass");
+//	//r_geometry_pass_shader = shader_LoadShader("engine/geometry_pass");
+//	//r_shade_pass_shader = shader_LoadShader("engine/shade_pass");
+//	//r_stencil_lights_pass_shader = shader_LoadShader("engine/stencil_light_pass");
+//	r_shadow_pass_shader = shader_LoadShader("engine/shadow_pass", "shadow pass");
+//	r_generate_shadow_mask_shader = shader_LoadShader("engine/generate_shadow_mask", "generate shadow mask");
+//	//r_skybox_shader = shader_LoadShader("engine/skybox");
+//
+//	r_bloom0_shader = shader_LoadShader("engine/bloom0", "bloom pass 0");
+//	r_bloom1_shader = shader_LoadShader("engine/bloom1", "bloom pass 1");
+//	r_tonemap_shader = shader_LoadShader("engine/tonemap", "tonemap pass");
+//
+//	r_blit_texture_shader = shader_LoadShader("engine/blit_texture", "blit texture");
+//	//r_portal_shader = shader_LoadShader("engine/portal");
+//
+//	r_gui_shader = shader_LoadShader("engine/gui/gui", "gui");
+//
+//	r_imediate_color_shader = shader_LoadShader("engine/imediate draw/imediate_color", "imediate color");
+//
+//	r_cluster_debug_shader = shader_LoadShader("engine/cluster_debug", "cluster debug");
 
 	//shader_LoadShader("engine/include_test");
 
@@ -238,14 +245,19 @@ void shader_GetShaderDefaultUniformsLocations(struct shader_t *shader)
 		glUniformBlockBinding(shader->shader_program, i, R_LIGHT_UNIFORM_BUFFER_BINDING);
 	}
 
-	if((i = glGetUniformBlockIndex(shader->shader_program, "r_bsp_uniform_block")) != GL_INVALID_INDEX)
-    {
-        glUniformBlockBinding(shader->shader_program, i, R_BSP_UNIFORM_BUFFER_BINDING);
-    }
+//	if((i = glGetUniformBlockIndex(shader->shader_program, "r_bsp_uniform_block")) != GL_INVALID_INDEX)
+//    {
+//        glUniformBlockBinding(shader->shader_program, i, R_BSP_UNIFORM_BUFFER_BINDING);
+//    }
 
     if((i = glGetUniformBlockIndex(shader->shader_program, "r_world_vertices_uniform_block")) != GL_INVALID_INDEX)
     {
         glUniformBlockBinding(shader->shader_program, i, R_WORLD_VERTICES_UNIFORM_BUFFER_BINDING);
+    }
+
+    if((i = glGetUniformBlockIndex(shader->shader_program, "r_world_triangles_uniform_block")) != GL_INVALID_INDEX)
+    {
+        glUniformBlockBinding(shader->shader_program, i, R_WORLD_TRIANGLES_UNIFORM_BUFFER_BINDING);
     }
 
 	//log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "**************************\n");
@@ -538,6 +550,8 @@ int shader_CompileShaderSource(struct shader_t *shader, char **vertex_shader_sou
 		return 0;
 	}
 
+	glBindFragDataLocation(shader->shader_program, 0, "r_fsout");
+
 	glAttachShader(shader->shader_program, shader->vertex_shader);
 	glAttachShader(shader->shader_program, shader->fragment_shader);
 	glLinkProgram(shader->shader_program);
@@ -581,8 +595,11 @@ int shader_LoadShader(char *file_name, char *shader_name)
 	char *vertex_shader_source;
 	char *fragment_shader_source;
 
-
-	log_LogMessage(LOG_MESSAGE_NOTIFY, 0, "shader_LoadShader: loading shader [%s]", shader_name);
+    log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "*********************************************************");
+    log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "*********************************************************");
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "shader_LoadShader: loading shader [%s]", shader_name);
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "*********************************************************");
+	log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "*********************************************************");
 
 
     if(shader_LoadShaderSource(file_name, &vertex_shader_source, &fragment_shader_source))
@@ -604,11 +621,15 @@ int shader_LoadShader(char *file_name, char *shader_name)
 
 	if(shader_index == -1)
 	{
-		log_LogMessage(LOG_MESSAGE_ERROR, 1, "shader_LoadShader: couldn't load shader [%s]\n", shader_name);
+		log_LogMessage(LOG_MESSAGE_ERROR, 1, "shader_LoadShader: couldn't load shader [%s]", shader_name);
 	}
 	else
 	{
-		log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "shader_LoadShader: shader [%s] loaded successfully\n", shader_name);
+	    log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "*********************************************************");
+	    log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "*********************************************************");
+		log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "shader_LoadShader: shader [%s] loaded successfully", shader_name);
+		log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "*********************************************************");
+		log_LogMessage(LOG_MESSAGE_NOTIFY, 1, "*********************************************************\n\n");
 	}
 
 	return shader_index;

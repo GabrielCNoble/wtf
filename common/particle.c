@@ -74,6 +74,101 @@ void particle_DisposeParticleSystemCallback(void *particle_system)
 }
 
 
+
+
+int ps_current_particle_system;
+
+struct script_array_t particle_array;
+struct script_array_t particle_frame_array;
+struct script_array_t particle_positions_array;
+
+void *particle_SetupScriptDataCallback(struct script_t *script, void *particle_system)
+{
+	struct particle_system_script_t *ps_script = (struct particle_system_script_t *)script;
+	//struct particle_system_t *ps = (struct particle_system_t *)particle_system;
+	struct particle_system_t *ps;
+	void *entry_point = NULL;
+
+	ps = stack_list_get(&ps_particle_systems, (int)particle_system);
+	ps_current_particle_system = (int)particle_system;
+
+//	((struct script_array_t *)ps_script->particle_array)->buffer = ps->particles;
+//	((struct script_array_t *)ps_script->particle_frame_array)->buffer = ps->particle_frames;
+//	((struct script_array_t *)ps_script->particle_position_array)->buffer = ps->particle_positions;
+//	*((struct particle_system_t **)ps_script->particle_system) = ps;
+
+
+
+	//if(ps->flags & PARTICLE_SYSTEM_FLAG_JUST_SPAWNED)
+
+
+	particle_array.buffer = ps->particles;
+	particle_array.element_size = sizeof(struct particle_t);
+	particle_array.element_count = ps->particle_count;
+	particle_array.type_info = NULL;
+
+	particle_frame_array.buffer = ps->particle_frames;
+	particle_frame_array.element_size = sizeof(int);
+	particle_frame_array.element_count = ps->particle_count;
+
+	particle_positions_array.buffer = ps->particle_positions;
+	particle_positions_array.element_size = sizeof(vec4_t);
+	particle_positions_array.element_count = ps->particle_count;
+
+	//if(ps->flags & PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID)
+	if(ps->flags & PARTICLE_SYSTEM_FLAG_MARKED_FOR_REMOVAL)
+	{
+		//ps->flags &= ~PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID;
+		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_EXECUTED_DIE_FUNCTION))
+		{
+			script_QueueEntryPoint(ps_script->on_die_entry_point);
+			script_PushArg(ps, SCRIPT_ARG_TYPE_ADDRESS);
+		}
+
+		ps->flags |= PARTICLE_SYSTEM_FLAG_EXECUTED_DIE_FUNCTION;
+
+	}
+	else if(!(ps->flags & PARTICLE_SYSTEM_FLAG_EXECUTED_SPAWN_FUNCTION))
+	{
+		script_QueueEntryPoint(ps_script->on_spawn_entry_point);
+		script_PushArg(ps, SCRIPT_ARG_TYPE_ADDRESS);
+		script_PushArg(&particle_positions_array, SCRIPT_ARG_TYPE_ADDRESS);
+		script_PushArg(&particle_array, SCRIPT_ARG_TYPE_ADDRESS);
+		script_PushArg(&particle_frame_array, SCRIPT_ARG_TYPE_ADDRESS);
+
+		ps->flags |= PARTICLE_SYSTEM_FLAG_EXECUTED_SPAWN_FUNCTION;
+	}
+
+	script_QueueEntryPoint(ps_script->on_update_entry_point);
+	script_PushArg(ps, SCRIPT_ARG_TYPE_ADDRESS);
+	script_PushArg(&particle_positions_array, SCRIPT_ARG_TYPE_ADDRESS);
+	script_PushArg(&particle_array, SCRIPT_ARG_TYPE_ADDRESS);
+	script_PushArg(&particle_frame_array, SCRIPT_ARG_TYPE_ADDRESS);
+
+	return entry_point;
+}
+
+int particle_GetScriptDataCallback(struct script_t *script)
+{
+	int success = 1;
+	struct particle_system_script_t *ps_script;
+
+	ps_script = (struct particle_system_script_t *)script;
+
+	//ps_script->particle_array = script_GetGlobalVarAddress("ps_particles", script);
+	//ps_script->particle_frame_array = script_GetGlobalVarAddress("ps_particle_frames", script);
+	//ps_script->particle_position_array = script_GetGlobalVarAddress("ps_particle_positions", script);
+	//ps_script->particle_system = script_GetGlobalVarAddress("ps_particle_system", script);
+
+
+	ps_script->on_spawn_entry_point = script_GetFunctionAddress("OnSpawn", script);
+	ps_script->on_update_entry_point = script_GetFunctionAddress("OnUpdate", script);
+	ps_script->on_die_entry_point = script_GetFunctionAddress("OnDie", script);
+
+	return success;
+}
+
+
 int particle_Init()
 {
 	int i;
@@ -121,7 +216,7 @@ int particle_Init()
 
 	renderer_Write(ps_particle_quad_handle, 0, particle_quad, sizeof(vec4_t) * 4);
 
-
+    script_RegisterScriptType("particle_system_script", "pas", sizeof(struct particle_system_script_t), particle_GetScriptDataCallback, NULL, particle_SetupScriptDataCallback);
 
 	script_RegisterObjectType("particle_t", sizeof(struct particle_t), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
 	script_RegisterObjectProperty("particle_t", "int life", OFFSETOF(struct particle_t, life));
@@ -767,102 +862,10 @@ void particle_SortParticles(struct particle_system_t *particle_system)
 */
 
 
-int ps_current_particle_system;
 
-struct script_array_t particle_array;
-struct script_array_t particle_frame_array;
-struct script_array_t particle_positions_array;
-
-void *particle_SetupScriptDataCallback(struct script_t *script, void *particle_system)
+struct particle_system_script_t *particle_LoadParticleSystemScript(char *script_name)
 {
-	struct particle_system_script_t *ps_script = (struct particle_system_script_t *)script;
-	//struct particle_system_t *ps = (struct particle_system_t *)particle_system;
-	struct particle_system_t *ps;
-	void *entry_point = NULL;
-
-	ps = stack_list_get(&ps_particle_systems, (int)particle_system);
-	ps_current_particle_system = (int)particle_system;
-
-//	((struct script_array_t *)ps_script->particle_array)->buffer = ps->particles;
-//	((struct script_array_t *)ps_script->particle_frame_array)->buffer = ps->particle_frames;
-//	((struct script_array_t *)ps_script->particle_position_array)->buffer = ps->particle_positions;
-//	*((struct particle_system_t **)ps_script->particle_system) = ps;
-
-
-
-	//if(ps->flags & PARTICLE_SYSTEM_FLAG_JUST_SPAWNED)
-
-
-	particle_array.buffer = ps->particles;
-	particle_array.element_size = sizeof(struct particle_t);
-	particle_array.element_count = ps->particle_count;
-	particle_array.type_info = NULL;
-
-	particle_frame_array.buffer = ps->particle_frames;
-	particle_frame_array.element_size = sizeof(int);
-	particle_frame_array.element_count = ps->particle_count;
-
-	particle_positions_array.buffer = ps->particle_positions;
-	particle_positions_array.element_size = sizeof(vec4_t);
-	particle_positions_array.element_count = ps->particle_count;
-
-	//if(ps->flags & PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID)
-	if(ps->flags & PARTICLE_SYSTEM_FLAG_MARKED_FOR_REMOVAL)
-	{
-		//ps->flags &= ~PARTICLE_SYSTEM_FLAG_JUST_MARKED_INVALID;
-		if(!(ps->flags & PARTICLE_SYSTEM_FLAG_EXECUTED_DIE_FUNCTION))
-		{
-			script_QueueEntryPoint(ps_script->on_die_entry_point);
-			script_PushArg(ps, SCRIPT_ARG_TYPE_ADDRESS);
-		}
-
-		ps->flags |= PARTICLE_SYSTEM_FLAG_EXECUTED_DIE_FUNCTION;
-
-	}
-	else if(!(ps->flags & PARTICLE_SYSTEM_FLAG_EXECUTED_SPAWN_FUNCTION))
-	{
-		script_QueueEntryPoint(ps_script->on_spawn_entry_point);
-		script_PushArg(ps, SCRIPT_ARG_TYPE_ADDRESS);
-		script_PushArg(&particle_positions_array, SCRIPT_ARG_TYPE_ADDRESS);
-		script_PushArg(&particle_array, SCRIPT_ARG_TYPE_ADDRESS);
-		script_PushArg(&particle_frame_array, SCRIPT_ARG_TYPE_ADDRESS);
-
-		ps->flags |= PARTICLE_SYSTEM_FLAG_EXECUTED_SPAWN_FUNCTION;
-	}
-
-	script_QueueEntryPoint(ps_script->on_update_entry_point);
-	script_PushArg(ps, SCRIPT_ARG_TYPE_ADDRESS);
-	script_PushArg(&particle_positions_array, SCRIPT_ARG_TYPE_ADDRESS);
-	script_PushArg(&particle_array, SCRIPT_ARG_TYPE_ADDRESS);
-	script_PushArg(&particle_frame_array, SCRIPT_ARG_TYPE_ADDRESS);
-
-	return entry_point;
-}
-
-int particle_GetScriptDataCallback(struct script_t *script)
-{
-	int success = 1;
-	struct particle_system_script_t *ps_script;
-
-	ps_script = (struct particle_system_script_t *)script;
-
-	//ps_script->particle_array = script_GetGlobalVarAddress("ps_particles", script);
-	//ps_script->particle_frame_array = script_GetGlobalVarAddress("ps_particle_frames", script);
-	//ps_script->particle_position_array = script_GetGlobalVarAddress("ps_particle_positions", script);
-	//ps_script->particle_system = script_GetGlobalVarAddress("ps_particle_system", script);
-
-
-	ps_script->on_spawn_entry_point = script_GetFunctionAddress("OnSpawn", script);
-	ps_script->on_update_entry_point = script_GetFunctionAddress("OnUpdate", script);
-	ps_script->on_die_entry_point = script_GetFunctionAddress("OnDie", script);
-
-	return success;
-}
-
-
-struct particle_system_script_t *particle_LoadParticleSystemScript(char *file_name, char *script_name)
-{
-	return (struct particle_system_script_t *)script_LoadScript(file_name, script_name, sizeof(struct particle_system_script_t), particle_GetScriptDataCallback, particle_SetupScriptDataCallback);
+	return (struct particle_system_script_t *)script_LoadScript(script_name);
 }
 
 /*

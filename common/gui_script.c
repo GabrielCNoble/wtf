@@ -3,10 +3,10 @@
 #include "script.h"
 
 #include "vector.h"
+#include "r_common.h"
 
 
-extern int r_window_width;
-extern int r_window_height;
+extern struct renderer_t r_renderer;
 
 #ifdef __cplusplus
 extern "C"
@@ -25,14 +25,14 @@ void gui_ScriptTextWall(struct script_string_t *text, float alpha)
     gui_ImGuiPushStyleVarf(ImGuiStyleVar_Alpha, alpha);
     gui_ImGuiPushStyleColor(ImGuiCol_WindowBg, vec4(0.0, 0.0, 0.0, 1.0));
 
-    gui_ImGuiSetNextWindowSize(vec2(r_window_width, r_window_height), 0);
+    gui_ImGuiSetNextWindowSize(vec2(r_renderer.r_window_width, r_renderer.r_window_height), 0);
     gui_ImGuiSetNextWindowPos(vec2(0.0, 0.0), 0, vec2(0.0, 0.0));
 
     gui_ImGuiBegin("Text Wall", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
 
     text_size = gui_ImGuiCalcTexSize(wall_text, NULL, 0, -1);
-    cursor_pos.x = r_window_width / 2 - text_size.x / 2;
-    cursor_pos.y = r_window_height / 2 - text_size.y / 2;
+    cursor_pos.x = r_renderer.r_window_width / 2 - text_size.x / 2;
+    cursor_pos.y = r_renderer.r_window_height / 2 - text_size.y / 2;
 
     if(cursor_pos.x < 0.0)
     {

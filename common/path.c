@@ -59,7 +59,7 @@ extern "C"
 {
 #endif
 
-void path_Init(char *path)
+void path_Init()
 {
 
 	int i;
@@ -251,15 +251,19 @@ void path_WriteFile(char *file_name, void *file_buffer, int file_size)
 
 int path_CopyFile(char *from, char *to)
 {
-    void *file_buffer;
-    int file_buffer_size;
+    void *file_buffer = NULL;
+    int file_buffer_size = 0;
 
-    path_ReadFile(from, &file_buffer, &file_buffer_size);
-
-    if(file_buffer_size)
+    if(strcmp(from, to))
     {
-        path_WriteFile(to, file_buffer, file_buffer_size);
-        memory_Free(file_buffer);
+        /* only copy if source and destination aren't the same... */
+        path_ReadFile(from, &file_buffer, &file_buffer_size);
+
+        if(file_buffer_size)
+        {
+            path_WriteFile(to, file_buffer, file_buffer_size);
+            memory_Free(file_buffer);
+        }
     }
 
     return file_buffer_size;

@@ -165,7 +165,7 @@ void particle_SortParticles(struct particle_system_t *particle_system);
 ===========================================================================================
 */
 
-struct particle_system_script_t *particle_LoadParticleSystemScript(char *file_name, char *script_name);
+struct particle_system_script_t *particle_LoadParticleSystemScript(char *script_name);
 
 #ifdef __cplusplus
 }

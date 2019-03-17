@@ -191,6 +191,20 @@ struct script_t
 };
 
 
+struct script_type_t
+{
+    struct script_type_t *next;
+
+    int (*get_data_callback)(struct script_t *script);
+    void (*reload_callback)();
+    void *(*setup_data_callback)(struct script_t *script, void *data);
+
+    unsigned int size;
+    char *type;
+    char *extension;
+};
+
+
 
 
 #endif

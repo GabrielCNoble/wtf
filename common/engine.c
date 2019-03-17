@@ -10,6 +10,13 @@
 #include <malloc.h>
 #include <stdarg.h>
 
+struct subsystem_t
+{
+    char subsystem_name[128];
+    void (*subsystem_init_func)();
+    void (*subsystem_shutdown_func)();
+};
+
 
 int command_line_arg_count;
 char **command_line_args;
@@ -90,9 +97,10 @@ void engine_Init(int width, int height, int init_mode, int argc, char *argv[])
 		b_init_properly = 0;
 	}
 
-	memory_Init(0);
-
-	path_Init(argv[0]);
+	memory_Init();
+	path_Init();
+	shader_Init();
+	renderer_InitGL();
 	//path_AddSearchPath("fonts");
 
 	if(b_init_properly)
@@ -103,7 +111,7 @@ void engine_Init(int width, int height, int init_mode, int argc, char *argv[])
 
 		if(b_init_properly)
 		{
-			b_init_properly &= shader_Init();
+			//b_init_properly &= shader_Init();
 			b_init_properly &= input_Init();
 			b_init_properly &= animation_Init();
 			//b_init_properly &= gpu_Init();
@@ -113,7 +121,6 @@ void engine_Init(int width, int height, int init_mode, int argc, char *argv[])
 			b_init_properly &= light_Init();
 			b_init_properly &= event_Init();
 			b_init_properly &= world_Init();
-			//b_init_properly &= camera_Init();
 			b_init_properly &= sound_Init();
 			b_init_properly &= gui_Init();
 			b_init_properly &= physics_Init();
@@ -164,7 +171,6 @@ void engine_Finish()
 		model_Finish();
 		world_Finish();
 		event_Finish();
-		//camera_Finish();
 		light_Finish();
 		texture_Finish();
 		sound_Finish();

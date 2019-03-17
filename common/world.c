@@ -173,6 +173,108 @@ extern "C"
 {
 #endif
 
+
+void *world_SetupScriptDataCallback(struct script_t *script, void *data)
+{
+    struct world_script_t *world_script;
+	int i;
+
+    world_script = (struct world_script_t *)script;
+
+    if(w_execute_on_map_load)
+    {
+        script_QueueEntryPoint(world_script->on_map_load);
+        w_execute_on_map_load = 0;
+    }
+
+    if(w_execute_on_map_enter)
+    {
+        script_QueueEntryPoint(world_script->on_map_enter);
+        w_execute_on_map_enter = 0;
+    }
+
+	for(i = 0; i < world_script->event_count; i++)
+	{
+        if(world_script->events[i].executing)
+		{
+			script_QueueEntryPoint(world_script->events[i].event_function);
+		}
+	}
+
+    return NULL;
+}
+
+
+
+char on_map_enter_function_name[] = "OnMapEnter";
+char on_map_exit_function_name[] = "OnMapExit";
+char on_map_load_function_name[] = "OnMapLoad";
+
+int world_GetScriptDataCallback(struct script_t *script)
+{
+    struct world_script_t *world_script;
+
+    world_script = (struct world_script_t *)script;
+
+    void *function;
+    char *function_name;
+    char *function_name_postfix;
+
+    int function_count;
+    int i;
+
+
+    char event_postfix[] = "_event";
+
+	function_count = script_GetFunctionCount(script);
+
+	world_script->on_map_exit = script_GetFunctionAddress(on_map_exit_function_name, script);
+    world_script->on_map_enter = script_GetFunctionAddress(on_map_enter_function_name, script);
+    world_script->on_map_load = script_GetFunctionAddress(on_map_load_function_name, script);
+    world_script->current_event = -1;
+
+	if(function_count)
+	{
+		world_script->events = memory_Calloc(function_count, sizeof(struct world_event_t));
+		world_script->event_count = 0;
+
+        for(i = 0; i < function_count; i++)
+		{
+			function = script_GetFunctionAddressByIndex(i, script);
+
+			if(function != world_script->on_map_enter && function != world_script->on_map_exit)
+			{
+				function_name = script_GetFunctionName(function);
+
+				function_name_postfix = strstr(function_name, "_event");
+
+				if(function_name_postfix)
+				{
+					/* if this function has a _event substring,
+					check to see whether it's truly the end of the string... */
+
+					if(strlen(function_name_postfix) + 1 == sizeof(event_postfix))
+					{
+						world_script->events[world_script->event_count].event_function = function;
+
+						/* keep the name without the postfix... */
+						world_script->events[world_script->event_count].event_name = memory_Calloc(function_name_postfix - function_name + 1, 1);
+						memcpy(world_script->events[world_script->event_count].event_name, function_name, function_name_postfix - function_name);
+						world_script->events[world_script->event_count].executing = 0;
+						world_script->event_count++;
+					}
+				}
+			}
+		}
+	}
+
+	return 1;
+}
+
+
+
+
+
 int world_Init()
 {
 
@@ -189,6 +291,9 @@ int world_Init()
 	//w_visible_entities = list_create(sizeof(struct entity_handle_t), 128, NULL);
 
 	w_world_vars = list_create(sizeof(struct world_var_t), 128, NULL);
+
+
+	script_RegisterScriptType("world_script", "was", sizeof(struct world_script_t), world_GetScriptDataCallback, NULL, world_SetupScriptDataCallback);
 
 
 	script_RegisterGlobalFunction("void world_AddWorldVar(string &in name, ? &in type)", world_ScriptAddWorldVar);
@@ -3615,107 +3720,12 @@ void world_ClearWorldArrayVar(char *name)
 
 
 
-void *world_SetupScriptDataCallback(struct script_t *script, void *data)
+
+
+
+struct world_script_t *world_LoadScript(char *script_name)
 {
-    struct world_script_t *world_script;
-	int i;
-
-    world_script = (struct world_script_t *)script;
-
-    if(w_execute_on_map_load)
-    {
-        script_QueueEntryPoint(world_script->on_map_load);
-        w_execute_on_map_load = 0;
-    }
-
-    if(w_execute_on_map_enter)
-    {
-        script_QueueEntryPoint(world_script->on_map_enter);
-        w_execute_on_map_enter = 0;
-    }
-
-	for(i = 0; i < world_script->event_count; i++)
-	{
-        if(world_script->events[i].executing)
-		{
-			script_QueueEntryPoint(world_script->events[i].event_function);
-		}
-	}
-
-    return NULL;
-}
-
-char on_map_enter_function_name[] = "OnMapEnter";
-char on_map_exit_function_name[] = "OnMapExit";
-char on_map_load_function_name[] = "OnMapLoad";
-
-int world_GetScriptDataCallback(struct script_t *script)
-{
-    struct world_script_t *world_script;
-
-    world_script = (struct world_script_t *)script;
-
-    void *function;
-    char *function_name;
-    char *function_name_postfix;
-
-    int function_count;
-    int i;
-
-
-    char event_postfix[] = "_event";
-
-	function_count = script_GetFunctionCount(script);
-
-	world_script->on_map_exit = script_GetFunctionAddress(on_map_exit_function_name, script);
-    world_script->on_map_enter = script_GetFunctionAddress(on_map_enter_function_name, script);
-    world_script->on_map_load = script_GetFunctionAddress(on_map_load_function_name, script);
-    world_script->current_event = -1;
-
-	if(function_count)
-	{
-		world_script->events = memory_Calloc(function_count, sizeof(struct world_event_t));
-		world_script->event_count = 0;
-
-        for(i = 0; i < function_count; i++)
-		{
-			function = script_GetFunctionAddressByIndex(i, script);
-
-			if(function != world_script->on_map_enter && function != world_script->on_map_exit)
-			{
-				function_name = script_GetFunctionName(function);
-
-				function_name_postfix = strstr(function_name, "_event");
-
-				if(function_name_postfix)
-				{
-					/* if this function has a _event substring,
-					check to see whether it's truly the end of the string... */
-
-					if(strlen(function_name_postfix) + 1 == sizeof(event_postfix))
-					{
-						world_script->events[world_script->event_count].event_function = function;
-
-						/* keep the name without the postfix... */
-						world_script->events[world_script->event_count].event_name = memory_Calloc(function_name_postfix - function_name + 1, 1);
-						memcpy(world_script->events[world_script->event_count].event_name, function_name, function_name_postfix - function_name);
-						world_script->events[world_script->event_count].executing = 0;
-						world_script->event_count++;
-					}
-				}
-			}
-		}
-	}
-
-	return 1;
-}
-
-
-
-
-struct world_script_t *world_LoadScript(char *file_name, char *script_name)
-{
-    return (struct world_script_t *)script_LoadScript(file_name, script_name, sizeof(struct world_script_t), world_GetScriptDataCallback, world_SetupScriptDataCallback);
+    return (struct world_script_t *)script_LoadScript(script_name);
 }
 
 
@@ -3936,12 +3946,12 @@ void world_Update()
 		}
 	}
 
-	if(r_world_vertices_buffer)
-    {
-        memory_Free(r_world_vertices_buffer);
-    }
+//	if(r_world_vertices_buffer)
+//    {
+//        memory_Free(r_world_vertices_buffer);
+//    }
 
-	r_world_vertices_buffer = memory_Malloc(sizeof(vec4_t) * w_world_vertices_count);
+	//r_world_vertices_buffer = memory_Malloc(sizeof(vec4_t) * w_world_vertices_count);
 
 	w_world_handle = renderer_AllocVerticesAlign(sizeof(struct compact_vertex_t) * w_world_vertices_count, sizeof(struct compact_vertex_t));
 	w_world_start = renderer_GetAllocStart(w_world_handle) / sizeof(struct compact_vertex_t);
@@ -3953,10 +3963,11 @@ void world_Update()
     w_world_sorted_index_start = renderer_GetAllocStart(w_world_sorted_index_handle) / sizeof(int);
 
 
-    glBindBuffer(GL_UNIFORM_BUFFER, r_world_vertices_uniform_buffer);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(vec4_t) * w_world_vertices_count, NULL, GL_DYNAMIC_DRAW);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+//    glBindBuffer(GL_UNIFORM_BUFFER, r_world_vertices_uniform_buffer);
+//	glBufferData(GL_UNIFORM_BUFFER, sizeof(vec4_t) * w_world_vertices_count, NULL, GL_DYNAMIC_DRAW);
+//	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+    renderer_ResizeWorldTrianglesUniformBuffer(w_world_vertices_count / 3);
 
 	compact_world_vertices = model_ConvertVertices(w_world_vertices, w_world_vertices_count);
 	renderer_Write(w_world_handle, 0, compact_world_vertices, sizeof(struct compact_vertex_t) * w_world_vertices_count);
@@ -4244,7 +4255,7 @@ struct world_level_t *world_LoadLevelFromMemory(char *level_name, void **buffer)
 
     if(!world_script)
     {
-        world_script = world_LoadScript(world_script_full_name, world_script_full_name);
+        world_script = world_LoadScript(world_script_full_name);
     }
 
     level = world_CreateLevel(level_name, serializer, world_script);

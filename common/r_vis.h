@@ -15,6 +15,8 @@ void renderer_UploadVisibleLights();
 
 void renderer_VisibleEntities();
 
+void renderer_TrianglesOnVisibleLights();
+
 
 
 

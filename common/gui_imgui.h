@@ -383,6 +383,16 @@ vec2_t gui_ImGuiCalcTexSize(const char *text, const char *text_end, int hide_tex
 ===========================================================
 */
 
+int gui_ImGuiBeginChildFrame(int id, vec2_t size, int flags);
+
+void gui_ImGuiEndChildFrame();
+
+/*
+===========================================================
+===========================================================
+===========================================================
+*/
+
 int gui_ImGuiIsMouseDown(int button);
 
 int gui_ImGuiIsMouseClicked(int button, int repeat);

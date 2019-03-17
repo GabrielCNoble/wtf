@@ -102,14 +102,21 @@ vec3_t project3(vec3_t vec1, vec3_t vec2)
 	return mul3(vec2, k);
 }
 
-float get_angle(vec3_t vec0, vec3_t vec1, vec3_t plane_normal)
+float angle3(vec3_t vec0, vec3_t vec1, vec3_t plane_normal)
 {
 	//float s = length3(cross(vec0, vec1));
 
-	double s = dot3(plane_normal, cross(vec0, vec1));
+	vec0 = normalize3(vec0);
+	vec1 = normalize3(vec1);
+
+	return angle3_NORMALIZED(vec0, vec1, plane_normal);
+}
+
+float angle3_NORMALIZED(vec3_t vec0, vec3_t vec1, vec3_t plane_normal)
+{
+    double s = dot3(plane_normal, cross(vec0, vec1));
 	double c = dot3(vec0, vec1);
 	double a = asin(s);
-
 
 	if(c >= 0.0)
 	{
@@ -121,21 +128,21 @@ float get_angle(vec3_t vec0, vec3_t vec1, vec3_t plane_normal)
 		else
 		{
 			/* fourth quadrant... */
-			return M_PI * 2.0 + a;
+			return M_PI * 1.5 + a;
 		}
 	}
 	else
 	{
-		//if(s >= 0.0)
-		//{
+		if(s >= 0.0)
+		{
 			/* second quadrant... */
-		//	return M_PI - a;
-		//}
-		//else
-		//{
+			return M_PI * 0.25 + a;
+		}
+		else
+		{
 			/* third quadrant... */
-			return M_PI - a;
-		//}
+			return M_PI + a;
+		}
 	}
 }
 

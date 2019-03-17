@@ -44,13 +44,21 @@ void script_PushArg(void *arg, int arg_type);
 =========================================================
 */
 
-struct script_t *script_CreateScript(char *file_name, char *script_name, int script_type_size, int (*get_data_callback)(struct script_t *script), void *(*setup_data_callback)(struct script_t *script, void *data));
+int script_RegisterScriptType(char *type, char *extension, int size, int (*get_data_callback)(struct script_t *), void (*reload_callback)(), void *(*setup_data_callback)(struct script_t *, void *));
+
+struct script_type_t *script_GetScriptType(char *type);
+
+struct script_type_t *script_GetScriptTypeByExt(char *type_ext);
+
+//struct script_t *script_CreateScript(char *file_name, char *script_name, int script_type_size, int (*get_data_callback)(struct script_t *script), void *(*setup_data_callback)(struct script_t *script, void *data));
+
+struct script_t *script_CreateScript(char *script_name);
 
 void script_DestroyScript(struct script_t *script);
 
 void script_DestroyAllScripts();
 
-struct script_t *script_LoadScript(char *file_name, char *script_name, int script_type_size, int (*get_data_callback)(struct script_t *script), void *(*setup_data_callback)(struct script_t *script, void *data));
+struct script_t *script_LoadScript(char *script_name);
 
 char *script_LoadScriptSource(char *file_name);
 

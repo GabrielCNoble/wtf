@@ -2,6 +2,7 @@
 #define ENGINE_H
 
 #include "r_main.h"
+#include "r_gl.h"
 #include "path.h"
 #include "shader.h"
 #include "input.h"

@@ -64,11 +64,12 @@ editor_t *ed_current_editor = NULL;
 
 
 /* from r_main.c */
-extern int r_width;
-extern int r_height;
+//extern int r_width;
+//extern int r_height;
 extern int forward_pass_shader;
-extern int r_window_width;
-extern int r_window_height;
+extern struct renderer_t r_renderer;
+//extern int r_window_width;
+//extern int r_window_height;
 extern int r_draw_gui;
 
 /* from light.c */
@@ -317,7 +318,7 @@ void editor_Init()
 
 	input_RegisterKey(SDL_SCANCODE_X);
 	input_RegisterKey(SDL_SCANCODE_Y);
-
+    input_RegisterKey(SDL_SCANCODE_Z);
 
 	input_RegisterKey(SDL_SCANCODE_DELETE);
 	input_RegisterKey(SDL_SCANCODE_TAB);
@@ -336,7 +337,7 @@ void editor_Init()
 	renderer_AddAttachment(&ed_pick_framebuffer, GL_COLOR_ATTACHMENT0, GL_RGBA32F, 1, GL_LINEAR);
 	renderer_AddAttachment(&ed_pick_framebuffer, GL_DEPTH_ATTACHMENT, 0, 1, GL_NEAREST);
 
-	ed_cursors_framebuffer = renderer_CreateFramebuffer(r_window_width, r_window_height);
+	ed_cursors_framebuffer = renderer_CreateFramebuffer(r_renderer.r_window_width, r_renderer.r_window_height);
 	renderer_AddAttachment(&ed_cursors_framebuffer, GL_COLOR_ATTACHMENT0, GL_RGBA8, 1, GL_LINEAR);
 	renderer_AddAttachment(&ed_cursors_framebuffer, GL_DEPTH_STENCIL_ATTACHMENT, 0, 1, GL_NEAREST);
 
@@ -493,38 +494,38 @@ int editor_PickOnBrush(brush_t *brush)
 
 	#endif
 }
-
-void editor_Set3dHandleTransformMode(int mode)
-{
-	switch(mode)
-	{
-		case ED_3D_HANDLE_TRANSFORM_MODE_ROTATION:
-			//ed_editor_snap_value_str = ed_editor_angular_snap_values_str[ed_editor_angular_snap_value_index];
-		break;
-
-		case ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION:
-		case ED_3D_HANDLE_TRANSFORM_MODE_SCALE:
-			//ed_editor_snap_value_str = ed_editor_linear_snap_values_str[ed_editor_linear_snap_value_index];
-		break;
-
-		default:
-			return;
-	}
-
-	ed_3d_handle_transform_mode = mode;
-	//ed_handle_3d_mode_str = ed_handle_3d_mode_strs[mode];
-}
-
-void editor_Set3dHandlePivotMode(int mode)
-{
-	switch(mode)
-	{
-		case ED_3D_HANDLE_PIVOT_MODE_ACTIVE_OBJECT_ORIGIN:
-		case ED_3D_HANDLE_PIVOT_MODE_MEDIAN_POINT:
-			ed_3d_handle_pivot_mode = mode;
-		break;
-	}
-}
+//
+//void editor_Set3dHandleTransformMode(int mode)
+//{
+//	switch(mode)
+//	{
+//		case ED_3D_HANDLE_TRANSFORM_MODE_ROTATION:
+//			//ed_editor_snap_value_str = ed_editor_angular_snap_values_str[ed_editor_angular_snap_value_index];
+//		break;
+//
+//		case ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION:
+//		case ED_3D_HANDLE_TRANSFORM_MODE_SCALE:
+//			//ed_editor_snap_value_str = ed_editor_linear_snap_values_str[ed_editor_linear_snap_value_index];
+//		break;
+//
+//		default:
+//			return;
+//	}
+//
+//	ed_3d_handle_transform_mode = mode;
+//	//ed_handle_3d_mode_str = ed_handle_3d_mode_strs[mode];
+//}
+//
+//void editor_Set3dHandlePivotMode(int mode)
+//{
+//	switch(mode)
+//	{
+//		case ED_3D_HANDLE_PIVOT_MODE_ACTIVE_OBJECT_ORIGIN:
+//		case ED_3D_HANDLE_PIVOT_MODE_MEDIAN_POINT:
+//			ed_3d_handle_pivot_mode = mode;
+//		break;
+//	}
+//}
 
 void editor_SetEditingMode(int mode)
 {
@@ -548,18 +549,18 @@ void editor_SetEditingMode(int mode)
 
 	ed_editing_mode = mode;
 }
-
-void editor_ToggleBrushEditing()
-{
-	if(ed_editing_mode == EDITING_MODE_OBJECT)
-	{
-		editor_SetEditingMode(EDITING_MODE_BRUSH);
-	}
-	else
-	{
-		editor_SetEditingMode(EDITING_MODE_OBJECT);
-	}
-}
+//
+//void editor_ToggleBrushEditing()
+//{
+//	if(ed_editing_mode == EDITING_MODE_OBJECT)
+//	{
+//		editor_SetEditingMode(EDITING_MODE_BRUSH);
+//	}
+//	else
+//	{
+//		editor_SetEditingMode(EDITING_MODE_OBJECT);
+//	}
+//}
 
 
 
@@ -608,6 +609,9 @@ void editor_RegisterEditor(char *name, void (*init_callback)(), void (*finish_ca
 	editor->shutdown_callback = shutdown_callback;
 	editor->main_callback = main_callback;
 	editor->editor_data = NULL;
+
+
+	//editor->pick_list
 
 	if(editor->init_callback)
 	{

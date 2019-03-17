@@ -411,6 +411,7 @@ struct waypoint_t *navigation_GetClosestWaypoint(vec3_t position, int ignore_wor
 	float lowest_d = FLT_MAX;
 	struct waypoint_t *closest = NULL;
 	struct waypoint_t *waypoints;
+	struct collider_handle_t collider_handle;
 	float d;
 	vec3_t v;
 	int i;
@@ -435,7 +436,9 @@ struct waypoint_t *navigation_GetClosestWaypoint(vec3_t position, int ignore_wor
 
 		if(d < lowest_d)
 		{
-			if(!physics_Raycast(waypoints[i].position, position, NULL, NULL, !ignore_world))
+		    collider_handle = physics_Raycast(waypoints[i].position, position, NULL, NULL, !ignore_world);
+
+			if(collider_handle.index != INVALID_COLLIDER_INDEX)
 			{
 				lowest_d = d;
 				closest = waypoints + i;

@@ -213,6 +213,10 @@ void entity_ScriptAdvanceWaypoint();
 
 int entity_ScriptLineOfSightToEntity(struct entity_handle_t entity);
 
+struct entity_handle_t entity_ScriptRaycast(vec3_t *from, vec3_t *to);
+
+//struct entity_handle_t entity_ScriptRaycastFromEntity(struct entity_handle_t from, vec3_t *to);
+
 void entity_ScriptPrint(struct script_string_t *script_string);
 
 void *entity_ScriptGetEntities();

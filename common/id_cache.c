@@ -90,6 +90,7 @@ char *idcache_AllocUniqueName(struct id_cache_t *cache, char *name)
         for(i = 0; i < c; i++)
         {
             entry = entries + i;
+
             if(!strcmp(entry->base_name, ret))
             {
                 indexes = (int *)entry->indexes.elements;
@@ -183,7 +184,7 @@ void idcache_FreeUniqueName(struct id_cache_t *cache, char *name)
     int *indexes;
 
     static char base_name[512];
-    static char suffix[512];
+    static char suffix[8];
 
     base_name[0] = '\0';
     suffix[0] = '\0';
@@ -222,13 +223,12 @@ void idcache_FreeUniqueName(struct id_cache_t *cache, char *name)
 
         for(i = 0; i < c; i++)
         {
-            if(!strcmp(base_name, entry->base_name))
+            if(!strcmp(base_name, entry[i].base_name))
             {
-                indexes = (int *)entry->indexes.elements;
+                indexes = (int *)entry[i].indexes.elements;
                 indexes[index_index] &= ~(1 << bit_index);
+                break;
             }
-
-            entry++;
         }
     }
 }

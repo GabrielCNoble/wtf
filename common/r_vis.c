@@ -4,6 +4,7 @@
 #include "r_common.h"
 #include "r_debug.h"
 #include "l_common.h"
+#include "l_main.h"
 #include "entity.h"
 #include "containers/stack_list.h"
 #include "bsp.h"
@@ -17,11 +18,12 @@ extern unsigned int r_visible_lights_count;
 extern unsigned int r_visible_lights[];
 extern struct list_t r_visible_entities;
 extern unsigned int r_frame;
-extern unsigned int r_clusters_per_row;
-extern unsigned int r_cluster_rows;
-extern unsigned int r_cluster_layers;
-extern struct cluster_t *r_clusters;
-extern unsigned int r_cluster_texture;
+extern struct renderer_t r_renderer;
+//extern unsigned int r_clusters_per_row;
+//extern unsigned int r_cluster_rows;
+//extern unsigned int r_cluster_layers;
+//extern struct cluster_t *r_clusters;
+//extern unsigned int r_cluster_texture;
 
 extern struct gpu_light_t *r_light_buffer;
 extern unsigned int r_light_uniform_buffer;
@@ -183,7 +185,7 @@ void renderer_VisibleWorld()
 		{
 			leaf = r_visible_leaves[j];
 
-			leaf->visible_frame = r_frame;
+			leaf->visible_frame = r_renderer.r_statistics.r_frame;
 
 			c = leaf->tris_count;
 
@@ -213,7 +215,7 @@ void renderer_VisibleWorld()
         {
             leaf = r_visible_leaves[j];
 
-			leaf->visible_frame = r_frame;
+			leaf->visible_frame = r_renderer.r_statistics.r_frame;
 
 			c = leaf->tris_count;
 
@@ -514,29 +516,29 @@ void renderer_VisibleLightsBounds()
             //params->screen_min_max.z = x_max;
             //params->screen_min_max.w = y_max;
 
-			cluster_x_start = (int)((x_min * 0.5 + 0.5) * r_clusters_per_row);
-			cluster_y_start = (int)((y_min * 0.5 + 0.5) * r_cluster_rows);
+			cluster_x_start = (int)((x_min * 0.5 + 0.5) * r_renderer.r_clusters_per_row);
+			cluster_y_start = (int)((y_min * 0.5 + 0.5) * r_renderer.r_cluster_rows);
 			light_z = light_origin.z + light_radius;
 
-			if(cluster_x_start >= r_clusters_per_row) cluster_x_start = r_clusters_per_row - 1;
-			if(cluster_y_start >= r_cluster_rows) cluster_y_start = r_cluster_rows - 1;
+			if(cluster_x_start >= r_renderer.r_clusters_per_row) cluster_x_start = r_renderer.r_clusters_per_row - 1;
+			if(cluster_y_start >= r_renderer.r_cluster_rows) cluster_y_start = r_renderer.r_cluster_rows - 1;
 
 			if(light_z > -CLUSTER_NEAR) cluster_z_start = 0;
-			else cluster_z_start = (int)((log(-light_z / CLUSTER_NEAR) / denom) * (float)(r_cluster_layers));
+			else cluster_z_start = (int)((log(-light_z / CLUSTER_NEAR) / denom) * (float)(r_renderer.r_cluster_layers));
 
-			if(cluster_z_start > r_cluster_layers) cluster_z_start = r_cluster_layers - 1;
+			if(cluster_z_start > r_renderer.r_cluster_layers) cluster_z_start = r_renderer.r_cluster_layers - 1;
 
-			cluster_x_end = (int)((x_max * 0.5 + 0.5) * r_clusters_per_row);
-			cluster_y_end = (int)((y_max * 0.5 + 0.5) * r_cluster_rows);
+			cluster_x_end = (int)((x_max * 0.5 + 0.5) * r_renderer.r_clusters_per_row);
+			cluster_y_end = (int)((y_max * 0.5 + 0.5) * r_renderer.r_cluster_rows);
 			light_z = light_origin.z - light_radius;
 
-			if(cluster_x_end >= r_clusters_per_row) cluster_x_end = r_clusters_per_row - 1;
-			if(cluster_y_end >= r_cluster_rows) cluster_y_end = r_cluster_rows - 1;
+			if(cluster_x_end >= r_renderer.r_clusters_per_row) cluster_x_end = r_renderer.r_clusters_per_row - 1;
+			if(cluster_y_end >= r_renderer.r_cluster_rows) cluster_y_end = r_renderer.r_cluster_rows - 1;
 
 			if(light_z > -CLUSTER_NEAR) cluster_z_end = 0;
-			else cluster_z_end = (int)((log(-light_z / CLUSTER_NEAR) / denom) * (float)(r_cluster_layers));
+			else cluster_z_end = (int)((log(-light_z / CLUSTER_NEAR) / denom) * (float)(r_renderer.r_cluster_layers));
 
-			if(cluster_z_end > r_cluster_layers) cluster_z_end = r_cluster_layers - 1;
+			if(cluster_z_end > r_renderer.r_cluster_layers) cluster_z_end = r_renderer.r_cluster_layers - 1;
 
             cluster->first_cluster.x = cluster_x_start;
             cluster->first_cluster.y = cluster_y_start;
@@ -688,6 +690,7 @@ void renderer_VisibleLights()
 	}
 
     //renderer_VisibleLightsOnClusters();
+    renderer_TrianglesOnVisibleLights();
 	renderer_UploadVisibleLights();
 }
 /*
@@ -799,7 +802,7 @@ void renderer_UploadVisibleLights()
 
 	struct gpu_light_t *lights;
 
-	if(!r_light_uniform_buffer)
+	if(!r_renderer.r_light_uniform_buffer)
 		return;
 
 
@@ -815,7 +818,6 @@ void renderer_UploadVisibleLights()
 //	proj_param_b = l_shadow_map_projection_matrix.floats[3][2];
 
 	active_view = renderer_GetMainViewPointer();
-	glBindBuffer(GL_UNIFORM_BUFFER, r_light_uniform_buffer);
 	//lights = w_light_buffer;
 
 	//view_lights = view_data->view_lights;
@@ -842,19 +844,23 @@ void renderer_UploadVisibleLights()
 		//mat4_t_vec4_t_mult(&view_data->view_matrix, &light_position);
 		mat4_t_vec4_t_mult(&active_view->view_data.view_matrix, &light_position);
 
-		r_light_buffer[i].position_radius.x = light_position.x;
-		r_light_buffer[i].position_radius.y = light_position.y;
-		r_light_buffer[i].position_radius.z = light_position.z;
+		r_renderer.r_light_buffer[i].position_radius.x = light_position.x;
+		r_renderer.r_light_buffer[i].position_radius.y = light_position.y;
+		r_renderer.r_light_buffer[i].position_radius.z = light_position.z;
 
-		r_light_buffer[i].position_radius.w = UNPACK_LIGHT_RADIUS(position->radius);
+		r_renderer.r_light_buffer[i].position_radius.w = UNPACK_LIGHT_RADIUS(position->radius);
 
-		r_light_buffer[i].color_energy.r = (float)params->r / 255.0;
-		r_light_buffer[i].color_energy.g = (float)params->g / 255.0;
-		r_light_buffer[i].color_energy.b = (float)params->b / 255.0;
-		r_light_buffer[i].color_energy.a = UNPACK_LIGHT_ENERGY(params->energy);
+		r_renderer.r_light_buffer[i].color_energy.r = (float)params->r / 255.0;
+		r_renderer.r_light_buffer[i].color_energy.g = (float)params->g / 255.0;
+		r_renderer.r_light_buffer[i].color_energy.b = (float)params->b / 255.0;
+		r_renderer.r_light_buffer[i].color_energy.a = UNPACK_LIGHT_ENERGY(params->energy);
+
+
+		r_renderer.r_light_buffer[i].first_triangle = params->first_triangle;
+		r_renderer.r_light_buffer[i].first_triangle = params->triangle_count;
 
 //		w_light_buffer[i].x_y = (parms->y << 16) | parms->x;
-		r_light_buffer[i].bm_flags = position->flags & (~LIGHT_GENERATE_SHADOWS);
+		//r_renderer.r_light_buffer[i].bm_flags = position->flags & (~LIGHT_GENERATE_SHADOWS);
 
 		//r_light_buffer[i].proj_param_a = proj_param_a;
 		//r_light_buffer[i].proj_param_b = proj_param_b;
@@ -874,8 +880,11 @@ void renderer_UploadVisibleLights()
 		}*/
 	}
 
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(struct gpu_light_t) * R_MAX_VISIBLE_LIGHTS, r_light_buffer);
+
+    glBindBuffer(GL_UNIFORM_BUFFER, r_renderer.r_light_uniform_buffer);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(struct gpu_light_t) * R_MAX_VISIBLE_LIGHTS, r_renderer.r_light_buffer);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
 
 
 	/*************************************************************/
@@ -884,7 +893,7 @@ void renderer_UploadVisibleLights()
 
 	#undef CLUSTER_OFFSET
 
-	#define CLUSTER_OFFSET(x, y, z) (x+y*r_clusters_per_row+z*r_clusters_per_row*r_cluster_rows)
+	#define CLUSTER_OFFSET(x, y, z) (x+y*r_renderer.r_clusters_per_row+z*r_renderer.r_clusters_per_row*r_renderer.r_cluster_rows)
 
 
     //memset(r_clusters, 0, sizeof(struct cluster_t) * r_cluster_layers * r_cluster_rows * r_clusters_per_row);
@@ -901,11 +910,11 @@ void renderer_UploadVisibleLights()
 		}
 	}*/
 
-	cluster_count = r_cluster_layers * r_cluster_rows * r_clusters_per_row;
+	cluster_count = r_renderer.r_cluster_layers * r_renderer.r_cluster_rows * r_renderer.r_clusters_per_row;
 
 	for(x = 0; x < cluster_count; x++)
     {
-        r_clusters[x].light_indexes_bm = 0;
+        r_renderer.r_clusters[x].light_indexes_bm = 0;
     }
 
 
@@ -939,7 +948,7 @@ void renderer_UploadVisibleLights()
 				for(x = cluster_x_start; x <= cluster_x_end; x++)
 				{
 					cluster_index = CLUSTER_OFFSET(x, y, z);
-					r_clusters[cluster_index].light_indexes_bm |= 1 << i;
+					r_renderer.r_clusters[cluster_index].light_indexes_bm |= 1 << i;
 				}
 			}
 		}
@@ -948,8 +957,8 @@ void renderer_UploadVisibleLights()
 
 
 	/* this is a bottleneck... */
-	glBindTexture(GL_TEXTURE_3D, r_cluster_texture);
-	glTexImage3D(GL_TEXTURE_3D, 0, GL_R32UI, r_clusters_per_row, r_cluster_rows, r_cluster_layers, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, r_clusters);
+	glBindTexture(GL_TEXTURE_3D, r_renderer.r_cluster_texture);
+	glTexImage3D(GL_TEXTURE_3D, 0, GL_R32UI, r_renderer.r_clusters_per_row, r_renderer.r_cluster_rows, r_renderer.r_cluster_layers, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, r_renderer.r_clusters);
 	glBindTexture(GL_TEXTURE_3D, 0);
 
 
@@ -1054,6 +1063,61 @@ void renderer_VisibleEntities()
 	r_visible_entities.element_count = visible_entity_count;
 }
 
+void renderer_TrianglesOnVisibleLights()
+{
+    int i;
+    int j;
+    int k;
+    struct light_pointer_t light_pointer;
+    struct bsp_dleaf_t *leaf;
+
+    vec3_t leaf_light_vec;
+
+    float sqrd_radius;
+    float sqrd_dist;
+
+    int last_entry = 0;
+
+    for(i = 0; i < r_visible_lights_count; i++)
+    {
+        light_pointer = light_GetLightPointerIndex(i);
+
+        sqrd_radius = light_pointer.position->radius * light_pointer.position->radius;
+
+        light_pointer.params->first_triangle = last_entry;
+        light_pointer.params->triangle_count = 0;
+
+        for(j = 0; j < r_visible_leaves_count; j++)
+        {
+            leaf = r_visible_leaves[j];
+            leaf_light_vec = sub3(light_pointer.position->position, leaf->center);
+
+            sqrd_dist = dot3(leaf_light_vec, leaf_light_vec);
+
+            if(fabs(leaf_light_vec.x) > leaf->extents.x) leaf_light_vec.x = leaf->extents.x;
+            if(fabs(leaf_light_vec.y) > leaf->extents.y) leaf_light_vec.y = leaf->extents.y;
+            if(fabs(leaf_light_vec.z) > leaf->extents.z) leaf_light_vec.z = leaf->extents.z;
+
+            if(sqrd_dist - dot3(leaf_light_vec, leaf_light_vec) < sqrd_radius)
+            {
+                if(light_pointer.params->triangle_count >= R_MAX_TRIANGLES_PER_LIGHT)
+                {
+                    break;
+                }
+
+                /* light is touching this leaf's bounding box... */
+                for(k = 0; k < leaf->tris_count; k++)
+                {
+                    r_renderer.r_world_triangles_buffer[light_pointer.params->first_triangle + k] = leaf->tris->first_vertex;
+                }
+
+                light_pointer.params->triangle_count += k;
+            }
+        }
+
+        last_entry = light_pointer.params->triangle_count;
+    }
+}
 
 
 

@@ -14,7 +14,7 @@
 
 GLenum r_imediate_current_mode = GL_INVALID_OPERATION;
 
-int r_imediate_color_shader;
+extern int r_imediate_color_shader;
 int r_glff_fixed_function_texture_shader;
 
 //int r_glff_fixed_function_enabled = 0;

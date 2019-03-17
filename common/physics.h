@@ -160,9 +160,7 @@ struct contact_record_t *physics_GetColliderContactRecords(struct collider_handl
 =================================================================
 */
 
-int physics_Raycast(vec3_t from, vec3_t to, vec3_t *hit_position, vec3_t *hit_normal, int world_only);
-
-//int physics_RaycastFromCollider(vec3)
+struct collider_handle_t physics_Raycast(vec3_t from, vec3_t to, vec3_t *hit_position, vec3_t *hit_normal, int world_only);
 
 /*
 =================================================================

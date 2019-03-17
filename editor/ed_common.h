@@ -5,22 +5,7 @@
 
 #define ROTATION_HANDLE_DIVS 32
 
-enum PICK_TYPE
-{
-	PICK_NONE = 0,
-	PICK_HANDLE,
-	PICK_BRUSH,
-	PICK_BRUSH_FACE,
-	PICK_BRUSH_EDGE,
-	PICK_LIGHT,
-	PICK_ENTITY,
-	PICK_SPAWN_POINT,
-	PICK_UV_VERTEX,
-	PICK_COLLIDER_PRIMITIVE,
-	PICK_PORTAL,
-	PICK_WAYPOINT,
-	PICK_TRIGGER,
-};
+
 
 enum ED_3D_HANDLE_FLAGS
 {
@@ -59,25 +44,25 @@ enum ED_3D_HANDLE_TRANSFORM_ORIENTATION
 /************************************************************************************************************/
 /************************************************************************************************************/
 
-enum LEVEL_EDITOR_HANDLE_TRANSFORM_TYPE
-{
-	HANDLE_TRANSFORM_TYPE_TRANSLATION = 0,
-	HANDLE_TRANSFORM_TYPE_ROTATION,
-	HANDLE_TRANSFORM_TYPE_SCALE,
-};
-
-enum LEVEL_EDITOR_HANDLE_TRANSFORM_ORIENTATION
-{
-	HANDLE_TRANSFORM_ORIENTATION_LOCAL,
-	HANDLE_TRANSFORM_ORIENTATION_GLOBAL,
-};
-
-enum LEVEL_EDITOR_HANDLE_PIVOT_MODE
-{
-	HANDLE_PIVOT_MODE_ACTIVE_OBJECT_ORIGIN = 1,
-	HANDLE_PIVOT_MODE_MEDIAN_POINT,
-	HANDLE_PIVOT_MODE_3D_CURSOR
-};
+//enum LEVEL_EDITOR_HANDLE_TRANSFORM_TYPE
+//{
+//	HANDLE_TRANSFORM_TYPE_TRANSLATION = 0,
+//	HANDLE_TRANSFORM_TYPE_ROTATION,
+//	HANDLE_TRANSFORM_TYPE_SCALE,
+//};
+//
+//enum LEVEL_EDITOR_HANDLE_TRANSFORM_ORIENTATION
+//{
+//	HANDLE_TRANSFORM_ORIENTATION_LOCAL,
+//	HANDLE_TRANSFORM_ORIENTATION_GLOBAL,
+//};
+//
+//enum LEVEL_EDITOR_HANDLE_PIVOT_MODE
+//{
+//	HANDLE_PIVOT_MODE_ACTIVE_OBJECT_ORIGIN = 1,
+//	HANDLE_PIVOT_MODE_MEDIAN_POINT,
+//	HANDLE_PIVOT_MODE_3D_CURSOR
+//};
 
 enum LEVEL_EDITOR_EDITING_MODE
 {
@@ -128,22 +113,7 @@ enum EDITORS
 	EDITOR_PARTICLE_SYSTEM_EDITOR,
 };
 
-typedef struct
-{
-	int type;
-	int index0;
-	void *pointer;
-	int index1;
-	int index2;
-}pick_record_t;
 
-typedef struct
-{
-	int record_count;
-	int max_records;
-	int last_selection_type;
-	pick_record_t *records;
-}pick_list_t;
 
 
 enum EDITOR_ACTION_RECORD_TYPE
@@ -191,7 +161,13 @@ typedef struct editor_t
 
 	void *editor_data;
 
+//	vec3_t manipulator_position;
+//	vec3_t cursor_position;
+
+	//struct pick_list_t pick_list;
+
 }editor_t;
+
 
 
 #endif

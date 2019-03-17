@@ -106,20 +106,22 @@ extern struct batch_t *w_world_z_batches;
 
 extern unsigned int *r_occlusion_queries;
 
+extern struct stack_list_t r_views;
 
 
 /* from r_imediate.c */
 extern int r_imediate_color_shader;
-int r_cluster_debug_shader;
+extern int r_cluster_debug_shader;
 
-extern struct framebuffer_t r_cbuffer;
-extern int r_clusters_per_row;
-extern int r_cluster_rows;
-extern int r_cluster_layers;
-extern int r_window_width;
-extern int r_window_height;
-extern int r_width;
-extern int r_height;
+//extern struct framebuffer_t r_cbuffer;
+//extern int r_clusters_per_row;
+//extern int r_cluster_rows;
+//extern int r_cluster_layers;
+//extern int r_window_width;
+//extern int r_window_height;
+//extern int r_width;
+//extern int r_height;
+extern struct renderer_t r_renderer;
 extern int r_frame;
 
 extern unsigned int r_draw_calls;
@@ -259,9 +261,9 @@ void renderer_InitDebug()
 	r_dbg_max_draw_bytes = 4 << 16;
 	r_dbg_draw_bytes = memory_Malloc(r_dbg_max_draw_bytes);
 
-	renderer_VerboseDebugOutput(1);
+	//renderer_VerboseDebugOutput(0);
 
-	//glEnable(GL_DEBUG_OUTPUT);
+	glEnable(GL_DEBUG_OUTPUT);
 	glDebugMessageCallbackARB((GLDEBUGPROC)renderer_GLReportCallback, 0);
 
     glGenQueries(1, &r_timestamp_query);
@@ -282,7 +284,7 @@ void renderer_FinishDebug()
 
 void renderer_Debug(int enable, int verbose)
 {
-	r_debug = enable && 1;
+	r_renderer.r_switches.r_debug = enable && 1;
 
 	if(verbose)
 	{
@@ -449,7 +451,7 @@ int renderer_StartTimer(const char *timer_name, int gpu_timer)
 
     R_DBG_PUSH_FUNCTION_NAME();
 
-    if(r_debug)
+    if(r_renderer.r_switches.r_debug)
     {
         if(r_timers_count < R_DEBUG_MAX_TIMERS)
         {
@@ -458,7 +460,7 @@ int renderer_StartTimer(const char *timer_name, int gpu_timer)
             r_timers_count++;
 
             timer->name = timer_name;
-            timer->frame = r_frame;
+            timer->frame = r_renderer.r_statistics.r_frame;
             timer->gpu_timer = gpu_timer && 1;
 
             if(gpu_timer)
@@ -485,13 +487,13 @@ void renderer_StopTimer(int timer_index)
 
     R_DBG_PUSH_FUNCTION_NAME();
 
-    if(r_debug)
+    if(r_renderer.r_switches.r_debug)
     {
         if(timer_index >= 0 && timer_index < R_DEBUG_MAX_TIMERS)
         {
             timer = &r_timers[timer_index];
 
-            if(timer->frame == r_frame)
+            if(timer->frame == r_renderer.r_statistics.r_frame)
             {
                 if(timer->gpu_timer)
                 {
@@ -960,10 +962,12 @@ void renderer_DrawPortalViews()
 
 void renderer_DrawViews()
 {
-
-    #if 0
+	struct view_def_t *views;
 	struct view_def_t *view;
 	struct view_def_t *active_view;
+	int view_count;
+	int i;
+	float far;
 	mat4_t view_transform;
 
 	vec3_t near_color;
@@ -974,14 +978,16 @@ void renderer_DrawViews()
 	vec3_t up_vector;
 	vec3_t center;
 
-	view = cameras;
-	float far;
+//	view = cameras;
 
 	//active_view = camera_GetActiveCamera();
 
-	active_view = renderer_GetMainView();
+	active_view = renderer_GetMainViewPointer();
+	views = (struct view_def_t *)r_views.elements;
+	view_count = r_views.element_count;
 
-	renderer_SetShader(r_imediate_color_shader);
+
+	renderer_SetShader(r_renderer.r_shaders.r_imediate_color_shader);
 	renderer_SetModelMatrix(NULL);
 
 	//renderer_EnableImediateDrawing();
@@ -990,8 +996,11 @@ void renderer_DrawViews()
 	glDisable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-	while(view)
+	//while(view)
+	for(i = 0; i < view_count; i++)
 	{
+	    view = views + i;
+
 		if(view != active_view)
 		{
 		/*	forward_vector.x = view->world_orientation.floats[0][2];
@@ -1008,7 +1017,7 @@ void renderer_DrawViews()
 
 			center = view->world_position;*/
 
-			if(view->bm_flags & CAMERA_INACTIVE)
+			if(view->flags & CAMERA_INACTIVE)
 			{
 				/*near_color.r = 0.1;
 				near_color.g = 0.1;
@@ -1018,7 +1027,6 @@ void renderer_DrawViews()
 				far_color.g = 0.01;
 				far_color.b = 0.01;*/
 
-				view = view->next;
 				continue;
 			}
 
@@ -1075,8 +1083,6 @@ void renderer_DrawViews()
 			renderer_End();
 
 		}
-
-		view = view->next;
 	}
 
 	glEnable(GL_CULL_FACE);
@@ -1084,12 +1090,6 @@ void renderer_DrawViews()
 	glDisable(GL_POINT_SMOOTH);
 	glPointSize(1.0);
 
-	//renderer_SetViewMatrix(NULL);
-
-
-	//renderer_DisableImediateDrawing();
-
-	#endif
 }
 
 
@@ -1104,7 +1104,7 @@ void renderer_DrawWaypoints()
 	struct waypoint_t *linked_waypoint;
 
 
-	renderer_SetShader(r_imediate_color_shader);
+	renderer_SetShader(r_renderer.r_shaders.r_imediate_color_shader);
 	renderer_SetModelMatrix(NULL);
 
 
@@ -1176,17 +1176,25 @@ void renderer_DrawColliders()
 
 	struct collider_t *colliders;
 	struct rigid_body_collider_t *rigid_body_colliders;
+	struct rigid_body_collider_t *rigid_body_collider;
+	struct collider_def_t *collider_def;
 	struct character_collider_t *character_colliders;
+	struct collision_shape_t *collision_shape;
 	int collider_count;
+
+	mat4_t collider_transform;
+	mat4_t collision_shape_local_transform;
+	mat4_t collision_shape_world_transform;
 
 	//colliders
 
-	renderer_SetShader(r_imediate_color_shader);
-	renderer_SetModelMatrix(NULL);
+	renderer_SetShader(r_renderer.r_shaders.r_imediate_color_shader);
 
 	for(type = 0; type < COLLIDER_TYPE_LAST; type++)
 	{
 		collider_count = phy_colliders[type].element_count;
+
+		renderer_SetModelMatrix(NULL);
 
 		switch(type)
 		{
@@ -1266,6 +1274,85 @@ void renderer_DrawColliders()
 			break;
 
 			case COLLIDER_TYPE_RIGID_BODY_COLLIDER:
+                rigid_body_colliders = (struct rigid_body_collider_t *)phy_colliders[type].elements;
+
+                for(i = 0; i < collider_count; i++)
+                {
+                    rigid_body_collider = rigid_body_colliders + i;
+
+                    if(rigid_body_collider->base.flags & COLLIDER_FLAG_INVALID)
+                    {
+                        continue;
+                    }
+
+                    collider_def = physics_GetColliderPointer(rigid_body_collider->base.def);
+
+                    if(collider_def)
+                    {
+                        mat4_t_compose2(&collider_transform, &rigid_body_collider->base.orientation,
+                                                            rigid_body_collider->base.position,
+                                                            rigid_body_collider->base.scale);
+
+
+                        for(j = 0; j < collider_def->collision_shape.element_count; j++)
+                        {
+                            collision_shape = (struct collision_shape_t *)collider_def->collision_shape.elements + j;
+
+
+                            mat4_t_compose2(&collision_shape_local_transform, &collision_shape->orientation,
+                                                                               collision_shape->position,
+                                                                               collision_shape->scale);
+
+
+                            mat4_t_mult_fast(&collision_shape_world_transform, &collision_shape_local_transform,
+                                                                               &collider_transform);
+
+
+                            renderer_SetModelMatrix(&collision_shape_world_transform);
+
+                            for(k = 0; k < 2; k++)
+                            {
+                                switch(k)
+                                {
+                                    case 0:
+                                        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                                        glEnable(GL_BLEND);
+                                        glDepthMask(GL_FALSE);
+                                        renderer_Color4f(0.0, 1.0, 0.0, 0.2);
+                                    break;
+
+                                    case 1:
+                                        glDepthMask(GL_TRUE);
+                                        glDisable(GL_BLEND);
+                                        renderer_Color3f(0.0, 1.0, 0.0);
+                                        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                                    break;
+                                }
+
+                                switch(collision_shape->type)
+                                {
+                                    case COLLISION_SHAPE_BOX:
+                                        renderer_DrawBox();
+                                    break;
+
+                                    case COLLISION_SHAPE_SPHERE:
+                                        renderer_DrawCylinder(16, 1.0, 5.0, k);
+                                    break;
+
+                                    case COLLISION_SHAPE_CYLINDER:
+
+                                    break;
+
+                                    case COLLISION_SHAPE_CAPSULE:
+
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+
+                }
 
 			break;
 
@@ -1288,7 +1375,7 @@ void renderer_DrawEntities()
 
 	glEnable(GL_POINT_SMOOTH);
 	//glPointSize(8.0);
-	renderer_SetShader(r_imediate_color_shader);
+	renderer_SetShader(r_renderer.r_shaders.r_imediate_color_shader);
 	renderer_SetModelMatrix(NULL);
 
 	c = ent_entities[0].element_count;
@@ -1391,7 +1478,7 @@ void renderer_DrawTriggers()
     //glDisable(GL_CULL_FACE);
     //renderer_Color3f(1.0, 1.0, 0.0);
 
-    renderer_SetShader(r_imediate_color_shader);
+    renderer_SetShader(r_renderer.r_shaders.r_imediate_color_shader);
 	renderer_SetModelMatrix(NULL);
 
 	glEnable(GL_BLEND);
@@ -1440,7 +1527,7 @@ void renderer_DrawLights()
 
     float color[3] = {0.0};
 
-    renderer_SetShader(r_imediate_color_shader);
+    renderer_SetShader(r_renderer.r_shaders.r_imediate_color_shader);
 	renderer_SetModelMatrix(NULL);
 
 
@@ -1502,16 +1589,16 @@ void renderer_DrawClusters()
     struct view_def_t *active_view;
     active_view = renderer_GetMainViewPointer();
 
-    renderer_SetShader(r_cluster_debug_shader);
-    renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_cbuffer.depth_attachment);
+    renderer_SetShader(r_renderer.r_shaders.r_cluster_debug_shader);
+    renderer_BindTextureTexUnit(GL_TEXTURE0, GL_TEXTURE_2D, r_renderer.r_color_buffer.depth_attachment);
     renderer_SetDefaultUniform1i(UNIFORM_texture_sampler0, 0);
     renderer_SetDefaultUniform1f(UNIFORM_r_near, active_view->frustum.znear);
     renderer_SetDefaultUniform1f(UNIFORM_r_far, active_view->frustum.zfar);
     //renderer_SetDefaultUniform1i(UNIFORM_r_clusters_per_row, r_clusters_per_row);
     //renderer_SetDefaultUniform1i(UNIFORM_r_cluster_rows, r_cluster_rows);
     //renderer_SetDefaultUniform1i(UNIFORM_r_cluster_layers, r_cluster_layers);
-    renderer_SetDefaultUniform1i(UNIFORM_r_width, r_width);
-    renderer_SetDefaultUniform1i(UNIFORM_r_height, r_height);
+    renderer_SetDefaultUniform1i(UNIFORM_r_width, r_renderer.r_width);
+    renderer_SetDefaultUniform1i(UNIFORM_r_height, r_renderer.r_height);
     renderer_BindClusterTexture();
 
 
@@ -1551,13 +1638,13 @@ void renderer_DrawStatistics()
     gui_ImGuiSetNextWindowFocus();
     gui_ImGuiBegin("Statistics", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs);
 
-    gui_ImGuiText("Screen size: %d x %d\n", r_window_width, r_window_height);
-    gui_ImGuiText("Renderer resolution: %d x %d\n", r_width, r_height);
-    gui_ImGuiText("Frame: %d\n", r_frame);
-    gui_ImGuiText("Draw calls: %d\n", r_draw_calls);
-    gui_ImGuiText("Shader swaps: %d\n", r_shader_swaps);
-    gui_ImGuiText("Uniform updates: %d\n", r_shader_uniform_updates);
-    gui_ImGuiText("Drawn verts: %d\n", r_frame_vert_count);
+    gui_ImGuiText("Screen size: %d x %d\n", r_renderer.r_window_width, r_renderer.r_window_height);
+    gui_ImGuiText("Renderer resolution: %d x %d\n", r_renderer.r_width,r_renderer. r_height);
+    gui_ImGuiText("Frame: %d\n", r_renderer.r_statistics.r_frame);
+    gui_ImGuiText("Draw calls: %d\n", r_renderer.r_statistics.r_draw_calls);
+    gui_ImGuiText("Shader swaps: %d\n", r_renderer.r_statistics.r_shader_swaps);
+    gui_ImGuiText("Uniform updates: %d\n", r_renderer.r_statistics.r_shader_uniform_updates);
+    gui_ImGuiText("Drawn verts: %d\n", r_renderer.r_statistics.r_frame_vert_count);
 
     if(r_timers_count)
     {
@@ -1600,7 +1687,7 @@ void renderer_DrawLeaves()
     struct view_def_t *active_view;
     active_view = renderer_GetMainViewPointer();
 
-    renderer_SetShader(r_imediate_color_shader);
+    renderer_SetShader(r_renderer.r_shaders.r_imediate_color_shader);
     renderer_SetViewMatrix(&active_view->view_data.view_matrix);
     renderer_SetProjectionMatrix(&active_view->view_data.projection_matrix);
     renderer_SetModelMatrix(NULL);
@@ -1867,7 +1954,7 @@ void renderer_DrawDebug()
 
     renderer_DrawSkeletons();
 
-    renderer_SetShader(r_imediate_color_shader);
+    renderer_SetShader(r_renderer.r_shaders.r_imediate_color_shader);
 	renderer_SetModelMatrix(NULL);
 
 	while(r_dbg_debug_cmd_next_out != r_dbg_debug_cmd_next_in)

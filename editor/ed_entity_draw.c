@@ -9,6 +9,7 @@
 #include "..\..\common\r_debug.h"
 #include "..\..\common\r_shader.h"
 #include "..\..\common\r_view.h"
+#include "..\..\common\r_common.h"
 #include "..\..\common\camera.h"
 #include "..\..\common\gmath\vector.h"
 #include "..\..\common\gmath\matrix.h"
@@ -44,11 +45,12 @@ extern int ed_pick_shader;
 
 
 /* from r_main.c */
-extern int r_width;
-extern int r_height;
-extern int r_window_width;
-extern int r_window_height;
-extern int r_blit_texture_shader;
+extern struct renderer_t r_renderer;
+//extern int r_width;
+//extern int r_height;
+//extern int r_window_width;
+//extern int r_window_height;
+//extern int r_blit_texture_shader;
 
 
 
@@ -186,7 +188,7 @@ void editor_EntityEditorDrawColliderDef(int pick)
 	//active_camera = camera_GetActiveCamera();
 	main_view = renderer_GetMainViewPointer();
 	renderer_EnableImediateDrawing();
-	renderer_SetShader(r_imediate_color_shader);
+	renderer_SetShader(r_renderer.r_shaders.r_imediate_color_shader);
 
 	glEnable(GL_BLEND);
 	//glDisable(GL_DEPTH_TEST);
@@ -422,7 +424,7 @@ void editor_EntityEditorDrawGrid()
 
 	//glUseProgram(0);
 	//renderer_SetShader(-1);
-	renderer_SetShader(r_imediate_color_shader);
+	renderer_SetShader(r_renderer.r_shaders.r_imediate_color_shader);
 	glLineWidth(2.0);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glEnable(GL_DEPTH_TEST);

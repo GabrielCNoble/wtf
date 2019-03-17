@@ -206,6 +206,8 @@ void entity_TranslateEntity(struct entity_handle_t entity, vec3_t direction, flo
 
 void entity_SetEntityPosition(struct entity_handle_t entity, vec3_t position);
 
+vec3_t entity_GetEntityPosition(struct entity_handle_t entity, int local_position);
+
 
 void entity_RotateEntity(struct entity_handle_t entity, vec3_t axis, float amount, int set);
 
@@ -243,6 +245,8 @@ void entity_UpdateCameraComponents();
 void entity_UpdateEntities();
 
 int entity_LineOfSightToEntity(struct entity_handle_t from, struct entity_handle_t to);
+
+struct entity_handle_t entity_Raycast(vec3_t from, vec3_t to);
 
 /*
 ==============================================================
@@ -284,7 +288,7 @@ void entity_DestroyAllTriggers();
 */
 
 
-struct entity_script_t *entity_LoadScript(char *file_name, char *script_name);
+struct entity_script_t *entity_LoadScript(char *script_name);
 
 
 /*

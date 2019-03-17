@@ -132,7 +132,7 @@ void world_ClearWorldArrayVar(char *name);
 
 
 
-struct world_script_t *world_LoadScript(char *file_name, char *script_name);
+struct world_script_t *world_LoadScript(char *script_name);
 
 void world_SetWorldScript(struct world_script_t *world_script);
 

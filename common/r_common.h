@@ -4,6 +4,7 @@
 #include "gmath/vector.h"
 #include "gmath/matrix.h"
 #include "containers/list.h"
+#include "SDL2/SDL.h"
 //#include "camera_types.h"
 
 
@@ -24,8 +25,10 @@
 #define R_LIGHT_UNIFORM_BUFFER_BINDING 0
 #define R_BSP_UNIFORM_BUFFER_BINDING 2
 #define R_WORLD_VERTICES_UNIFORM_BUFFER_BINDING 3
+#define R_WORLD_TRIANGLES_UNIFORM_BUFFER_BINDING 4
 
 #define R_MAX_VISIBLE_LIGHTS 32
+#define R_MAX_TRIANGLES_PER_LIGHT 1024
 #define R_MAX_BSP_NODES 512
 #define R_MAX_VISIBLE_LEAVES 512
 #define R_MAX_VISIBLE_ENTITIES 4096
@@ -140,6 +143,9 @@ enum DRAW_COMMAND_FLAGS
 {
 	DRAW_COMMAND_FLAG_INDEXED_DRAW = 1,
 };
+
+
+
 
 
 struct draw_command_t
@@ -331,10 +337,10 @@ struct gpu_light_t
 	vec4_t forward_axis;
 	vec4_t position_radius;
 	vec4_t color_energy;
-	int bm_flags;
 	float proj_param_a;
 	float proj_param_b;
-	int shadow_map;
+	int first_triangle;
+    int triangle_count;
 };
 
 struct gpu_bsp_node_t
@@ -346,6 +352,123 @@ struct gpu_bsp_node_t
 };
 
 
+
+
+struct renderer_t
+{
+    int r_window_width;
+    int r_window_height;
+    int r_window_flags;
+
+    int r_width;
+    int r_height;
+
+    int r_msaa_samples;
+
+    SDL_Window *r_window;
+    SDL_GLContext r_context;
+
+
+    int r_clusters_per_row;
+    int r_cluster_rows;
+    int r_cluster_layers;
+    struct cluster_t *r_clusters;
+    unsigned int r_cluster_texture;
+
+    unsigned int r_light_uniform_buffer;
+    unsigned int r_bsp_uniform_buffer;
+    unsigned int r_world_vertices_uniform_buffer;
+    unsigned int r_world_triangles_uniform_buffer;
+
+    struct gpu_light_t *r_light_buffer;
+    struct gpu_bsp_node_t *r_bsp_buffer;
+    int *r_world_triangles_buffer;
+    vec4_t *r_world_vertices_buffer;
+    int r_bsp_node_count;
+
+
+    struct framebuffer_t r_color_buffer;
+    struct framebuffer_t r_back_buffer;
+    struct framebuffer_t r_shadow_buffer;
+    struct framebuffer_t r_shadow_mask_buffer;
+
+
+    mat4_t r_model_matrix;
+    mat4_t r_view_projection_matrix;
+    mat4_t r_model_view_matrix;
+    mat4_t r_model_view_projection_matrix;
+
+    mat4_t r_projection_matrix;
+    int r_projection_matrix_changed;
+
+    mat4_t r_view_matrix;
+    int r_view_matrix_changed;
+
+    struct
+    {
+        unsigned int r_frame;
+        unsigned int r_draw_calls;
+        unsigned int r_material_swaps;
+        unsigned int r_shader_swaps;
+        unsigned int r_shader_uniform_updates;
+        unsigned int r_frame_vert_count;
+
+    }r_statistics;
+
+
+
+    struct
+    {
+        int r_shadow_maps;
+        int r_z_prepass;
+        int r_bloom;
+        int r_tonemap;
+        int r_draw_gui;
+        int r_clear_colorbuffer;
+        int r_flat;
+        int r_wireframe;
+        int r_debug;
+
+    }r_switches;
+
+
+
+    struct
+    {
+        int r_z_pre_pass_shader;
+        int r_forward_pass_shader;
+        int r_forward_pass_no_shadow_shader;
+        int r_particle_forward_pass_shader;
+        int r_flat_pass_shader;
+        int r_wireframe_pass_shader;
+        int r_geometry_pass_shader;
+        int r_shade_pass_shader;
+        int r_stencil_lights_pass_shader;
+        int r_shadow_pass_shader;
+        int r_generate_shadow_mask_shader;
+        int r_skybox_shader;
+        int r_bloom0_shader;
+        int r_bloom1_shader;
+        int r_tonemap_shader;
+        int r_blit_texture_shader;
+        int r_portal_shader;
+        int r_forward_pass_portal_shader;
+        int r_gui_shader;
+        int r_imediate_color_shader;
+        int r_cluster_debug_shader;
+    }r_shaders;
+
+
+
+    int r_msaa_supported;
+
+
+
+    int r_max_batch_size;
+    int r_draw_command_group_count;
+    draw_command_group_t *r_draw_command_groups;
+    struct list_t r_sorted_draw_cmds;
+};
 
 
 #endif

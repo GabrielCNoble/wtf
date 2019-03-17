@@ -25,7 +25,7 @@ static mat3_t mat3_ret;
 
 struct script_array_t array_return;
 
-extern int r_frame;
+extern int ent_frame;
 
 /*
 =====================================
@@ -257,17 +257,17 @@ void *entity_ScriptGetEntityVector(struct entity_handle_t entity, int axis, int 
 		{
 			local_transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
-			vec3_ret.x = local_transform->orientation.floats[0][axis];
-			vec3_ret.y = local_transform->orientation.floats[1][axis];
-			vec3_ret.z = local_transform->orientation.floats[2][axis];
+			vec3_ret.x = local_transform->orientation.floats[axis][0];
+			vec3_ret.y = local_transform->orientation.floats[axis][1];
+			vec3_ret.z = local_transform->orientation.floats[axis][2];
 		}
 		else
 		{
 			world_transform = entity_GetWorldTransformPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
 
-			vec3_ret.x = world_transform->transform.floats[0][axis];
-			vec3_ret.y = world_transform->transform.floats[1][axis];
-			vec3_ret.z = world_transform->transform.floats[2][axis];
+			vec3_ret.x = world_transform->transform.floats[axis][0];
+			vec3_ret.y = world_transform->transform.floats[axis][1];
+			vec3_ret.z = world_transform->transform.floats[axis][2];
 		}
 	}
 	else
@@ -354,7 +354,7 @@ int entity_ScriptGetLife()
 
 	entity = entity_GetEntityPointerHandle(current_entity);
 
-	return r_frame - entity->spawn_time;
+	return ent_frame - entity->spawn_time;
 }
 
 struct entity_handle_t entity_ScriptGetCurrentEntity()
@@ -865,6 +865,16 @@ int entity_ScriptLineOfSightToEntity(struct entity_handle_t entity)
     script_GetCurrentContextData(&current_entity, sizeof(struct entity_handle_t));
 
 	return entity_LineOfSightToEntity(current_entity, entity);
+}
+
+//struct entity_handle_t entity_ScriptRaycastFromEntity(struct entity_handle_t from, vec3_t *to)
+//{
+//    return entity_Raycast(from, *to);
+//}
+
+struct entity_handle_t entity_ScriptRaycast(vec3_t *from, vec3_t *to)
+{
+    return entity_Raycast(*from, *to);
 }
 
 void entity_ScriptPrint(struct script_string_t *script_string)

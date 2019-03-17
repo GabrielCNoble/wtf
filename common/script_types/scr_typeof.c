@@ -17,21 +17,21 @@ void *script_TypeofConstructor(void *type_info)
 
 void *script_TypeofDestructor(void *type_info)
 {
-	
+	return type_info;
 }
 
 void *script_TestTypeof(void *type_info)
 {
 	asITypeInfo *tinfo;
 	asITypeInfo *stinfo;
-	
+
 	tinfo = (asITypeInfo *)type_info;
 	stinfo = tinfo->GetSubType();
-	
-	
+
+
 	int size = script_GetTypeSize(type_info);
-	
-	
+
+
 	if(!stinfo)
 	{
 		printf("type is: %s\nsize is: %d\n", tinfo->GetName(), size);
@@ -40,7 +40,9 @@ void *script_TestTypeof(void *type_info)
 	{
 		printf("type is: %s\nsize is %d\n", stinfo->GetName(), size);
 	}
-	
+
+	return NULL;
+
 }
 
 #ifdef __cplusplus

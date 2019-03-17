@@ -823,6 +823,23 @@ vec2_t gui_ImGuiCalcTexSize(const char *text, const char *text_end, int hide_tex
 ===========================================================
 */
 
+int gui_ImGuiBeginChildFrame(int id, vec2_t size, int flags)
+{
+    ImVec2 s = ImVec2(size.x, size.y);
+    return ImGui::BeginChildFrame(id, s, flags);
+}
+
+void gui_ImGuiEndChildFrame()
+{
+    ImGui::EndChildFrame();
+}
+
+/*
+===========================================================
+===========================================================
+===========================================================
+*/
+
 int gui_ImGuiIsMouseDown(int button)
 {
 	return ImGui::IsMouseDown(button);

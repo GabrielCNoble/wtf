@@ -394,6 +394,10 @@
 		<Unit filename="../common/r_main.h">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../common/r_script.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../common/r_script.h" />
 		<Unit filename="../common/r_shader.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -561,10 +565,15 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="ed_level.h" />
+		<Unit filename="ed_level_common.h" />
 		<Unit filename="ed_level_draw.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="ed_level_draw.h" />
+		<Unit filename="ed_level_manip.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_level_manip.h" />
 		<Unit filename="ed_level_ui.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -573,6 +582,14 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="ed_name.h" />
+		<Unit filename="ed_picking.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_picking.h" />
+		<Unit filename="ed_picklist.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ed_picklist.h" />
 		<Unit filename="ed_selection.c">
 			<Option compilerVar="CC" />
 		</Unit>

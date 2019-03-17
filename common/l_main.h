@@ -44,6 +44,8 @@ struct light_pointer_t light_GetLightPointer(char *name);
 
 struct light_pointer_t light_GetLightPointerIndex(int light_index);
 
+struct light_pointer_t *light_GetValidLights();
+
 
 
 /* updates which leaves contains which lights... */
@@ -70,6 +72,8 @@ void light_ClearLightLeaves();
 void light_EntitiesOnLights();
 
 void light_TranslateLight(int light_index, vec3_t direction, float amount);
+
+vec3_t light_GetLightPosition(int light_index);
 
 //void light_SetLight(int light_index);
 

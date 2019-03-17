@@ -37,10 +37,10 @@ extern int w_visible_leaves_count;
 extern struct bsp_dleaf_t **w_visible_leaves;
 
 
-struct id_cache_t ent_id_cache;
+struct id_cache_t ent_id_cache[2];
 
 /* from model.c */
-extern struct model_t *mdl_models;
+//extern struct model_t *mdl_models;
 
 
 extern int r_frame;
@@ -81,6 +81,9 @@ struct stack_list_t ent_world_transforms;
 struct list_t ent_top_transforms;
 
 struct list_t ent_entity_contacts;
+struct list_t ent_entity_unordered_raycast_contacts;
+struct list_t ent_entity_raycast_contacts;
+
 struct list_t ent_invalid_entities[2];
 struct list_t ent_valid_entity_defs;
 
@@ -142,6 +145,108 @@ void entity_TransformComponentDisposeCallback(void *data)
 }
 
 
+
+//struct entity_handle_t ent_current_entity;
+
+struct entity_handle_t entity_handles[1024];
+struct script_array_t script_array;
+
+void *entity_SetupScriptDataCallback(struct script_t *script, void *script_controller)
+{
+	struct entity_script_t *entity_script;
+	struct entity_t *ent;
+	void *entry_point;
+
+	struct script_array_t *collided_entities;
+
+	struct script_component_t *script_component;
+	struct physics_component_t *physics_component;
+
+
+	struct entity_handle_t *touched;
+	int touched_count;
+
+	assert(script_controller);
+
+	entity_script = (struct entity_script_t *)script;
+	script_component = (struct script_component_t *)script_controller;
+
+	script_SetCurrentContextData(&script_component->base.entity, sizeof(struct entity_handle_t));
+
+	ent = entity_GetEntityPointerHandle(script_component->base.entity);
+
+	physics_component = entity_GetComponentPointer(ent->components[COMPONENT_TYPE_PHYSICS]);
+
+	if(engine_GetEngineState() & ENGINE_PLAYING)
+	{
+		if(ent->flags & ENTITY_FLAG_MARKED_INVALID)
+		{
+			if(!(ent->flags & ENTITY_FLAG_EXECUTED_DIE_FUNCTION))
+			{
+				script_QueueEntryPoint(entity_script->on_die_entry_point);
+			}
+
+			ent->flags |= ENTITY_FLAG_EXECUTED_DIE_FUNCTION;
+		}
+		else
+		{
+			if(!(ent->flags & ENTITY_FLAG_EXECUTED_SPAWN_FUNCTION))
+			{
+				script_QueueEntryPoint(entity_script->on_spawn_entry_point);
+			}
+
+			ent->flags |= ENTITY_FLAG_EXECUTED_SPAWN_FUNCTION;
+
+			if(physics_component)
+			{
+				if(entity_script->on_collision_entry_point)
+				{
+					if(physics_component->entity_contact_count)
+					{
+						script_array.buffer = (struct entity_contact_t *)ent_entity_contacts.elements + physics_component->first_entity_contact;
+						script_array.element_count = physics_component->entity_contact_count;
+						script_array.element_size = sizeof(struct entity_contact_t);
+
+						script_QueueEntryPoint(entity_script->on_collision_entry_point);
+						script_PushArg(&script_array, SCRIPT_ARG_TYPE_ADDRESS);
+					}
+				}
+			}
+
+			script_QueueEntryPoint(entity_script->on_update_entry_point);
+		}
+	}
+
+
+
+
+	//script_component->flags &= ~SCRIPT_CONTROLLER_FLAG_FIRST_RUN;
+	return entry_point;
+}
+
+int entity_GetScriptDataCallback(struct script_t *script)
+{
+	struct entity_script_t *entity_script;
+
+	entity_script = (struct entity_script_t *)script;
+	entity_script->on_first_run_entry_point = script_GetFunctionAddress("OnFirstRun", script);
+	entity_script->on_spawn_entry_point = script_GetFunctionAddress("OnSpawn", script);
+	entity_script->on_die_entry_point = script_GetFunctionAddress("OnDie", script);
+	entity_script->on_collision_entry_point = script_GetFunctionAddress("OnCollision", script);
+	entity_script->on_update_entry_point = script_GetFunctionAddress("OnUpdate", script);
+
+	entity_script->collided_array = script_GetGlobalVarAddress("collided_entities", script);
+
+/*	if(!entity_script->entity_handle)
+	{
+		return 0;
+	}*/
+
+
+	return 1;
+}
+
+
 int entity_Init()
 {
 	int i;
@@ -175,10 +280,11 @@ int entity_Init()
 	ent_invalid_entities[1] = list_create(sizeof(struct entity_handle_t ), 512, NULL);
 	ent_valid_entity_defs = list_create(sizeof(struct entity_handle_t), 512, NULL);
     ent_entity_contacts = list_create(sizeof(struct entity_contact_t), 65536, NULL);
+    ent_entity_raycast_contacts = list_create(sizeof(struct entity_contact_t), 512, NULL);
+    ent_entity_unordered_raycast_contacts = list_create(sizeof(struct entity_contact_t), 512, NULL);
 
-    ent_id_cache = idcache_Create();
-
-
+    ent_id_cache[0] = idcache_Create();
+    ent_id_cache[1] = idcache_Create();
 
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_TRANSFORM, sizeof(struct transform_component_t));
 	DECLARE_COMPONENT_SIZE(COMPONENT_TYPE_PHYSICS, sizeof(struct physics_component_t));
@@ -228,6 +334,8 @@ int entity_Init()
 
 	ent_triggers = stack_list_create(sizeof(struct trigger_t), 128, NULL);
 
+
+    script_RegisterScriptType("entity_script", "eas", sizeof(struct entity_script_t), entity_GetScriptDataCallback, NULL, entity_SetupScriptDataCallback);
 
     script_RegisterEnum("COMPONENT_TYPES");
     script_RegisterEnumValue("COMPONENT_TYPES", "COMPONENT_TYPE_TRANSFORM", COMPONENT_TYPE_TRANSFORM);
@@ -335,7 +443,8 @@ int entity_Init()
 
     script_RegisterGlobalFunction("int entity_IsEntityValid(entity_handle_t entity)", entity_ScriptIsEntityValid);
     script_RegisterGlobalFunction("int entity_LineOfSightToEntity(entity_handle_t entity)", entity_ScriptLineOfSightToEntity);
-
+    script_RegisterGlobalFunction("entity_handle_t entity_Raycast(vec3_t &in from, vec3_t &in to)", entity_ScriptRaycast);
+    //script_RegisterGlobalFunction("entity_handle_t entity_RaycastFromEntity(entity_handle_t entity, vec3_t &in to)", entity_ScriptRaycastFromEntity);
 
     script_RegisterGlobalFunction("int entity_GetTrigger(string &in trigger)", entity_ScriptGetTrigger);
     script_RegisterGlobalFunction("void entity_SetTriggerPosition(int trigger_index, vec3_t &in position)", entity_ScriptSetTriggerPosition);
@@ -439,6 +548,11 @@ struct component_handle_t entity_AllocComponent(int component_type, int alloc_fo
 				transform->parent.type = COMPONENT_TYPE_NONE;
 				transform->bone.type = COMPONENT_TYPE_NONE;
 				transform->children_count = 0;
+
+				if(!transform->instance_name)
+                {
+                    transform->instance_name = memory_Calloc(ENTITY_NAME_MAX_LEN, 1);
+                }
 
 				/* if this transform isn't getting alloc'd for
 				an entity def, add it to the top list so it
@@ -718,9 +832,13 @@ void entity_ParentEntityToEntityTransform(struct component_handle_t parent_trans
 	struct entity_t *child_entity;
 	struct entity_t *parent_entity;
 
+	int i;
+
 	struct component_handle_t child_transform;
 	struct transform_component_t *transform_component;
 	struct transform_component_t *child_transform_component;
+
+	char entity_name[ENTITY_NAME_MAX_LEN];
 
 	if(parent_transform.def != child.def)
 	{
@@ -747,7 +865,14 @@ void entity_ParentEntityToEntityTransform(struct component_handle_t parent_trans
 			transform_component->instance_name = memory_Malloc(ENTITY_NAME_MAX_LEN);
 		}
 
-		strcpy(transform_component->instance_name, child_entity->name);
+		for(i = 0; i < ENTITY_NAME_MAX_LEN - 1 && child_entity->name[i]; i++)
+        {
+            entity_name[i] = child_entity->name[i];
+        }
+
+        entity_name[i] = '\0';
+
+        strcpy(transform_component->instance_name, idcache_AllocUniqueName(&ent_id_cache[1], entity_name));
 
 		child_transform_component = entity_GetComponentPointer(child_entity->components[COMPONENT_TYPE_TRANSFORM]);
 
@@ -983,6 +1108,9 @@ struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int
 	struct entity_t *entity_ptr;
 	struct entity_t *entity_def_ptr;
 	int component_index;
+	int i;
+
+	char entity_instance_name[ENTITY_NAME_MAX_LEN];
 
 	struct component_handle_t component_transform;
 	struct component_handle_t component;
@@ -1037,20 +1165,18 @@ struct component_handle_t entity_AddComponent(struct entity_handle_t entity, int
 
 		switch(component_ptr->type)
 		{
-
 			case COMPONENT_TYPE_TRANSFORM:
-				if(entity.def)
-				{
-					transform_component = (struct transform_component_t *)component_ptr;
+                transform_component = (struct transform_component_t *)component_ptr;
 
-					if(!transform_component->instance_name)
-					{
-						transform_component->instance_name = memory_Malloc(ENTITY_NAME_MAX_LEN);
-					}
+                if(!entity.def)
+                {
+                    strcpy(transform_component->instance_name, idcache_AllocUniqueName(&ent_id_cache[0], entity_ptr->name));
+                }
+                else
+                {
+                    strcpy(transform_component->instance_name, entity_ptr->name);
+                }
 
-					strcpy(transform_component->instance_name, entity_ptr->name);
-					entity_ptr->ref_count++;
-				}
 			break;
 
 			case COMPONENT_TYPE_CAMERA:
@@ -1727,6 +1853,8 @@ struct entity_handle_t entity_CreateEntity(char *name, int def)
 	int entity_index;
 	int i;
 
+	char entity_name[ENTITY_NAME_MAX_LEN];
+
 	def = def && 1;
 
 	entity_index = stack_list_add(&ent_entities[def], NULL);
@@ -1758,14 +1886,21 @@ struct entity_handle_t entity_CreateEntity(char *name, int def)
 			entity_ptr->name = memory_Malloc(ENTITY_NAME_MAX_LEN);
 		}
 
+
+        /* the name stored inside an entity is not necessarily unique,
+        but the name stored in its transform component is guaranteed
+        to be. This is needed so scripts can properly query for nestled
+        entities of its entity by name... */
 		for(i = 0; name[i] && i < ENTITY_NAME_MAX_LEN - 1; i++)
 		{
 			entity_ptr->name[i] = name[i];
 		}
 
-		/* TODO: make sure no two entities in the world
-		have the same name... */
 		entity_ptr->name[i] = '\0';
+
+//		entity_name[i] = '\0';
+
+//        strcpy(entity_ptr->name, idcache_AllocUniqueName(&ent_id_cache[def], entity_name));
 	}
 
 	return handle;
@@ -1822,6 +1957,8 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 
 	struct entity_prop_t *props;
 
+	char *instance_name;
+
 	struct component_handle_t component;
 
 	int i;
@@ -1834,7 +1971,9 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 
 	entity_def_ptr = entity_GetEntityPointerHandle(entity_def);
 
-	handle = entity_CreateEntity(idcache_AllocUniqueName(&ent_id_cache, entity_def_ptr->name), 0);
+    /* this newly created entity will have the same name of
+    its def... */
+	handle = entity_CreateEntity(entity_def_ptr->name, 0);
 
 	entity_ptr = entity_GetEntityPointerHandle(handle);
 
@@ -1868,11 +2007,16 @@ struct entity_handle_t entity_RecursiveSpawnEntity(mat3_t *orientation, vec3_t p
 			{
 				case COMPONENT_TYPE_TRANSFORM:
 					entity_SetTransform(handle, orientation, position, scale, 1);
+					entity_transform_component = entity_GetComponentPointer(component_handle);
 
-                    if(transform_component->bone.type != COMPONENT_TYPE_NONE)
+					instance_name = idcache_AllocUniqueName(&ent_id_cache[0], entity_ptr->name);
+
+                    for(i = 0; i < ENTITY_NAME_MAX_LEN && instance_name[i]; i++)
                     {
-                        entity_transform_component = entity_GetComponentPointer(component_handle);
+                        entity_transform_component->instance_name[i] = instance_name[i];
                     }
+
+                    entity_transform_component->instance_name[i] = '\0';
 
 				break;
 
@@ -2033,7 +2177,7 @@ void entity_MarkForRemoval(struct entity_handle_t entity)
 }
 
 
-void entity_RecursiveRemoveEntity(struct component_handle_t referencing_transform)
+void entity_RecursiveDestroyEntity(struct component_handle_t referencing_transform)
 {
     struct entity_t *entity_ptr;
 	struct entity_t *child_entity_ptr;
@@ -2068,7 +2212,24 @@ void entity_RecursiveRemoveEntity(struct component_handle_t referencing_transfor
         }
 
         /* free the unique name allocated for this entity... */
-        idcache_FreeUniqueName(&ent_id_cache, entity_ptr->name);
+//        if(referencing_transform.index == entity_ptr->components[COMPONENT_TYPE_TRANSFORM].index)
+//        {
+//            /* if this is the actual entity, free its name... */
+//            idcache_FreeUniqueName(&ent_id_cache[transform_component->base.entity.def], entity_ptr->name);
+//        }
+//        else
+//        {
+//            /* this is an def ref, which means the transform contains the instance name, which also
+//            has to be freed... */
+//            idcache_FreeUniqueName(&ent_id_cache[1], transform_component->instance_name);
+//        }
+
+        if(!transform_component->base.entity.def)
+        {
+            /* if this is an entity instance... */
+            idcache_FreeUniqueName(&ent_id_cache[0], transform_component->instance_name);
+        }
+
 
 		for(i = 0; i < transform_component->children_count; i++)
 		{
@@ -2083,7 +2244,7 @@ void entity_RecursiveRemoveEntity(struct component_handle_t referencing_transfor
                 //{
                 /* for entity defs only, make sure this isn't a reference to another
                 def... */
-                entity_RecursiveRemoveEntity(transform_component->child_transforms[i]);
+                entity_RecursiveDestroyEntity(transform_component->child_transforms[i]);
                 //}
 			}
 		}
@@ -2137,78 +2298,8 @@ void entity_RemoveEntity(struct entity_handle_t entity)
 
     if(entity_ptr)
     {
-        entity_RecursiveRemoveEntity(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+        entity_RecursiveDestroyEntity(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
     }
-
-
-//	if(entity.def)
-//	{
-//		printf("entity_RemoveEntity: can't remove entity def\n");
-//		return;
-//	}
-
-//	entity_ptr = entity_GetEntityPointerHandle(entity);
-//
-//	if(entity_ptr)
-//	{
-//
-//        if(!entity.def)
-//        {
-//            if(entity_ptr->components[COMPONENT_TYPE_SCRIPT].type != COMPONENT_TYPE_NONE)
-//            {
-//                script_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_SCRIPT]);
-//
-//                script_ExecuteScriptImediate(script_component->script, script_component);
-//            }
-//        }
-//
-//        idcache_FreeUniqueName(&ent_id_cache, entity_ptr->name);
-//
-//		transform_component = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
-//
-//		for(i = 0; i < transform_component->children_count; i++)
-//		{
-//			child_transform_component = (struct transform_component_t *)entity_GetComponentPointer(transform_component->child_transforms[i]);
-//
-//			if(child_transform_component->base.entity.entity_index != INVALID_ENTITY_INDEX)
-//			{
-//			    if(!(child_transform_component->flags & COMPONENT_FLAG_ENTITY_DEF_REF))
-//                {
-//                    /* for entity defs only, make sure this isn't a reference to another
-//                    def... */
-//                    entity_RemoveEntity(child_transform_component->base.entity);
-//                }
-//			}
-//		}
-//
-//		for(component_type = 0; component_type < COMPONENT_TYPE_LAST; component_type++)
-//		{
-//			component = entity_ptr->components[component_type];
-//			if(component.type != COMPONENT_TYPE_NONE)
-//			{
-//				switch(component_type)
-//				{
-//					case COMPONENT_TYPE_CAMERA:
-//						camera_component = entity_GetComponentPointer(component);
-////						camera_DestroyCamera(camera_component->camera);
-//                        renderer_DestroyViewDef(camera_component->view);
-//			//			entity_DeallocComponent(camera_component->transform);
-//					break;
-//
-//					case COMPONENT_TYPE_PHYSICS:
-//						physics_component = entity_GetComponentPointer(component);
-//						physics_DestroyCollider(physics_component->collider);
-//					break;
-//				}
-//				entity_DeallocComponent(component);
-//			}
-//		}
-//
-//		entity_ptr->flags = ENTITY_FLAG_INVALID;
-//
-//		stack_list_remove(&ent_entities[entity.def], entity.entity_index);
-//	}
-
 }
 
 void entity_RemoveAllEntities(int remove_defs)
@@ -2728,6 +2819,35 @@ void entity_SetEntityPosition(struct entity_handle_t entity, vec3_t position)
     }
 }
 
+vec3_t entity_GetEntityPosition(struct entity_handle_t entity, int local_position)
+{
+    struct entity_t *entity_ptr;
+    struct transform_component_t *local_transform;
+    struct entity_transform_t *world_transform;
+
+    vec3_t position = vec3_t_c(0.0, 0.0, 0.0);
+
+    entity_ptr = entity_GetEntityPointerHandle(entity);
+
+    if(entity_ptr)
+    {
+        if(local_position)
+        {
+            local_transform = entity_GetComponentPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+            position = local_transform->position;
+        }
+        else
+        {
+            world_transform = entity_GetWorldTransformPointer(entity_ptr->components[COMPONENT_TYPE_TRANSFORM]);
+
+            position.x = world_transform->transform.floats[3][0];
+            position.y = world_transform->transform.floats[3][1];
+            position.z = world_transform->transform.floats[3][2];
+        }
+    }
+
+    return position;
+}
 
 
 
@@ -3626,25 +3746,61 @@ int entity_LineOfSightToEntity(struct entity_handle_t from, struct entity_handle
 {
     struct entity_t *entity_from;
     struct entity_t *entity_to;
+    struct entity_handle_t hit_entity = INVALID_ENTITY_HANDLE;
 
     struct entity_transform_t *from_transform;
     struct entity_transform_t *to_transform;
 
+//    struct collider_handle_t collider_handle = INVALID_COLLIDER_HANDLE;
+
     entity_from = entity_GetEntityPointerHandle(from);
     entity_to = entity_GetEntityPointerHandle(to);
 
-    if(entity_from && entity_to)
+    if(entity_to)
 	{
 		from_transform = entity_GetWorldTransformPointer(entity_from->components[COMPONENT_TYPE_TRANSFORM]);
 		to_transform = entity_GetWorldTransformPointer(entity_to->components[COMPONENT_TYPE_TRANSFORM]);
 
-
-        return !physics_Raycast(vec3_t_c(from_transform->transform.floats[3][0], from_transform->transform.floats[3][1], from_transform->transform.floats[3][2]),
-							   vec3_t_c(to_transform->transform.floats[3][0], to_transform->transform.floats[3][1], to_transform->transform.floats[3][2]), NULL, NULL, 1);
-
+        hit_entity = entity_Raycast(vec3_t_c(from_transform->transform.floats[3][0], from_transform->transform.floats[3][1], from_transform->transform.floats[3][2]),
+                                    vec3_t_c(to_transform->transform.floats[3][0], to_transform->transform.floats[3][1], to_transform->transform.floats[3][2]));
+        //collider_handle =
+//        collider_handle = physics_Raycast(vec3_t_c(from_transform->transform.floats[3][0], from_transform->transform.floats[3][1], from_transform->transform.floats[3][2]),
+//                                          vec3_t_c(to_transform->transform.floats[3][0], to_transform->transform.floats[3][1], to_transform->transform.floats[3][2]), NULL, NULL, 1);
 	}
 
-	return 0;
+	return hit_entity.entity_index != INVALID_ENTITY_INDEX;
+}
+
+struct entity_handle_t entity_Raycast(vec3_t from, vec3_t to)
+{
+//    struct entity_t *entity;
+//
+//    entity = entity_GetEntityPointerHandle(from);
+//
+//    struct entity_transform_t *from_transform;
+    struct collider_t *collider;
+    struct collider_handle_t collider_handle = INVALID_COLLIDER_HANDLE;
+    struct entity_handle_t hit_entity = INVALID_ENTITY_HANDLE;
+
+//    if(entity)
+    {
+        //from_transform = entity_GetWorldTransformPointer(entity->components[COMPONENT_TYPE_TRANSFORM]);
+
+        /*collider_handle = physics_Raycast(vec3_t_c(from_transform->transform.floats[3][0],
+                                                   from_transform->transform.floats[3][1],
+                                                   from_transform->transform.floats[3][2]),
+                                          to, NULL, NULL, 0);*/
+        collider_handle = physics_Raycast(from, to, NULL, NULL, 0);
+
+        collider = physics_GetColliderPointer(collider_handle);
+
+        if(collider)
+        {
+            hit_entity = ENTITY_HANDLE(collider->entity_index, 0);
+        }
+    }
+
+    return hit_entity;
 }
 
 /*
@@ -3990,159 +4146,10 @@ void entity_DestroyAllTriggers()
 ==============================================================
 */
 
-//struct entity_handle_t ent_current_entity;
 
-struct entity_handle_t entity_handles[1024];
-struct script_array_t script_array;
-
-void *entity_SetupScriptDataCallback(struct script_t *script, void *script_controller)
+struct entity_script_t *entity_LoadScript(char *script_name)
 {
-	struct entity_script_t *entity_script;
-	struct entity_t *ent;
-	void *entry_point;
-
-	struct script_array_t *collided_entities;
-
-	struct script_component_t *script_component;
-	struct physics_component_t *physics_component;
-
-
-	struct entity_handle_t *touched;
-	int touched_count;
-
-	assert(script_controller);
-
-	entity_script = (struct entity_script_t *)script;
-	script_component = (struct script_component_t *)script_controller;
-
-
-	/*if(script_GetContextStackTop() < MAX_SCRIPT_CONTEXTS - 2)
-	{
-		printf("entity_SetupScriptDataCallback: reentrant scripts not supported yet!\n");
-	}*/
-
-	//collided_entities = entity_script->collided_array;
-
-	//ent_current_entity = script_component->base.entity;
-
-	script_SetCurrentContextData(&script_component->base.entity, sizeof(struct entity_handle_t));
-
-	ent = entity_GetEntityPointerHandle(script_component->base.entity);
-
-	physics_component = entity_GetComponentPointer(ent->components[COMPONENT_TYPE_PHYSICS]);
-
-
-	if(engine_GetEngineState() & ENGINE_PLAYING)
-	{
-		if(ent->flags & ENTITY_FLAG_MARKED_INVALID)
-		{
-			if(!(ent->flags & ENTITY_FLAG_EXECUTED_DIE_FUNCTION))
-			{
-				script_QueueEntryPoint(entity_script->on_die_entry_point);
-			}
-
-			ent->flags |= ENTITY_FLAG_EXECUTED_DIE_FUNCTION;
-		}
-		else
-		{
-			//if(r_frame - ent->spawn_time <= 1)
-			//{
-			if(!(ent->flags & ENTITY_FLAG_EXECUTED_SPAWN_FUNCTION))
-			{
-				script_QueueEntryPoint(entity_script->on_spawn_entry_point);
-			}
-
-			ent->flags |= ENTITY_FLAG_EXECUTED_SPAWN_FUNCTION;
-				//script_QueueEntryPoint(entity_script->on_spawn_entry_point);
-			//}
-
-			if(physics_component)
-			{
-				if(entity_script->on_collision_entry_point)
-				{
-					if(physics_component->entity_contact_count)
-					{
-						script_array.buffer = (struct entity_contact_t *)ent_entity_contacts.elements + physics_component->first_entity_contact;
-						script_array.element_count = physics_component->entity_contact_count;
-						script_array.element_size = sizeof(struct entity_contact_t);
-
-						script_QueueEntryPoint(entity_script->on_collision_entry_point);
-						script_PushArg(&script_array, SCRIPT_ARG_TYPE_ADDRESS);
-					}
-
-
-					#if 0
-					if(physics_HasNewCollisions(physics_component->collider.collider_handle))
-					{
-						touched = entity_GetTouchedEntities(ent_current_entity, &touched_count);
-
-						if(touched_count)
-						{
-							memcpy(entity_handles, touched, sizeof(struct entity_handle_t) * touched_count);
-
-							script_array.buffer = entity_handles;
-							script_array.element_size = sizeof(struct entity_handle_t);
-							script_array.element_count = touched_count;
-
-						/*	if(collided_entities)
-							{
-								collided_entities->buffer = entity_handles;
-								collided_entities->element_size = sizeof(struct entity_handle_t);
-								collided_entities->element_count = touched_count;
-							}
-							else
-							{
-
-							}*/
-
-
-
-							script_QueueEntryPoint(entity_script->on_collision_entry_point);
-							script_PushArg(&script_array, SCRIPT_ARG_TYPE_ADDRESS);
-						}
-					}
-
-					#endif
-				}
-
-			}
-
-			script_QueueEntryPoint(entity_script->on_update_entry_point);
-		}
-	}
-
-
-
-
-	//script_component->flags &= ~SCRIPT_CONTROLLER_FLAG_FIRST_RUN;
-	return entry_point;
-}
-
-int entity_GetScriptDataCallback(struct script_t *script)
-{
-	struct entity_script_t *entity_script;
-
-	entity_script = (struct entity_script_t *)script;
-	entity_script->on_first_run_entry_point = script_GetFunctionAddress("OnFirstRun", script);
-	entity_script->on_spawn_entry_point = script_GetFunctionAddress("OnSpawn", script);
-	entity_script->on_die_entry_point = script_GetFunctionAddress("OnDie", script);
-	entity_script->on_collision_entry_point = script_GetFunctionAddress("OnCollision", script);
-	entity_script->on_update_entry_point = script_GetFunctionAddress("OnUpdate", script);
-
-	entity_script->collided_array = script_GetGlobalVarAddress("collided_entities", script);
-
-/*	if(!entity_script->entity_handle)
-	{
-		return 0;
-	}*/
-
-
-	return 1;
-}
-
-struct entity_script_t *entity_LoadScript(char *file_name, char *script_name)
-{
-	return (struct entity_script_t *)script_LoadScript(file_name, script_name, sizeof(struct entity_script_t), entity_GetScriptDataCallback, entity_SetupScriptDataCallback);
+	return (struct entity_script_t *)script_LoadScript(script_name);
 }
 
 /*
@@ -4187,7 +4194,7 @@ void entity_SaveEntityDef(char *path, struct entity_handle_t entity_def)
 
 	char full_path[PATH_MAX];
 
-	struct entity_t *entity = entity_GetEntityPointerHandle(entity_def);
+ 	struct entity_t *entity = entity_GetEntityPointerHandle(entity_def);
 	entity_SerializeEntityDef(&buffer, &buffer_size, entity_def);
 
     //entity->flags |= ENTITY_FLAG_ON_DISK;

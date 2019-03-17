@@ -51,11 +51,12 @@ SDL_Cursor *v_arrows;
 SDL_Cursor *dl_arrows;
 SDL_Cursor *dr_arrows;
 
-extern SDL_Window *window;
-extern int r_width;
-extern int r_height;
-extern int r_window_width;
-extern int r_window_height;
+//extern SDL_Window *window;
+//extern int r_width;
+//extern int r_height;
+//extern int r_window_width;
+//extern int r_window_height;
+extern struct renderer_t r_renderer;
 extern int engine_state;
 
 short key_pos_map[SDL_NUM_SCANCODES];
@@ -208,17 +209,17 @@ void input_GetInput(double delta_time)
         last_mouse_x = 0.0;
         last_mouse_y = 0.0;
 
-        normalized_mouse_x = (float)mouse_x / (float)r_window_width;
-        normalized_mouse_y = (float)mouse_y / (float)r_window_height;
+        normalized_mouse_x = (float)mouse_x / (float)r_renderer.r_window_width;
+        normalized_mouse_y = (float)mouse_y / (float)r_renderer.r_window_height;
     }
     else
     {
         SDL_SetRelativeMouseMode(0);
         bm = SDL_GetMouseState(&mouse_x, &mouse_y);
-        mouse_y = r_window_height - mouse_y;
+        mouse_y = r_renderer.r_window_height - mouse_y;
 
-        normalized_mouse_x = ((float)mouse_x / (float)r_window_width) * 2.0 - 1.0;
-        normalized_mouse_y = ((float)mouse_y / (float)r_window_height) * 2.0 - 1.0;
+        normalized_mouse_x = ((float)mouse_x / (float)r_renderer.r_window_width) * 2.0 - 1.0;
+        normalized_mouse_y = ((float)mouse_y / (float)r_renderer.r_window_height) * 2.0 - 1.0;
 
     }
 

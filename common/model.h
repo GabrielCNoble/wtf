@@ -35,7 +35,6 @@ struct compact_vertex_t
 	int tangent;
 	int align0;
 	vec2_t tex_coord;
-
 };
 
 struct c_vertex_t
@@ -124,6 +123,7 @@ struct model_t
 
 	char *name;
 	char *file_name;
+	char *full_path;
 };
 
 

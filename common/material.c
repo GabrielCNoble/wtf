@@ -36,7 +36,8 @@ struct id_cache_t mat_id_cache;
 /* from r_main.c */
 extern int r_z_pre_pass_shader;
 extern int r_forward_pass_shader;
-extern int r_frame;
+extern struct renderer_t r_renderer;
+//extern int r_frame;
 
 
 #ifdef __cplusplus
@@ -74,7 +75,7 @@ int material_Init()
 	default_material->roughness = 10;
 	default_material->metalness = 0;
 
-	default_material->shader_index = r_forward_pass_shader;
+	default_material->shader_index = r_renderer.r_shaders.r_forward_pass_shader;
 	default_material->diffuse_texture = -1;
 	default_material->normal_texture = -1;
 	default_material->height_texture = -1;
@@ -394,7 +395,7 @@ int material_CreateMaterial(char *name, vec4_t base_color, float metalness, floa
 	material->roughness_texture = -1;
 
 	//material->shader_index = shader_index;
-	material->shader_index = r_forward_pass_shader;
+	material->shader_index = r_renderer.r_shaders.r_forward_pass_shader;
 	material->draw_group = -1;
 	material->flags = 0;
 	//material->last_referenced = -1;
@@ -539,9 +540,9 @@ int material_IncCurrentFrameRefCount(int material_index)
 		if(!(mat_materials[material_index].flags & MATERIAL_INVALID))
 		{
 
-			if(mat_materials[material_index].last_ref_frame != r_frame)
+			if(mat_materials[material_index].last_ref_frame != r_renderer.r_statistics.r_frame)
 			{
-				mat_materials[material_index].last_ref_frame = r_frame;
+				mat_materials[material_index].last_ref_frame = r_renderer.r_statistics.r_frame;
 				mat_materials[material_index].frame_ref_count = 0;
 			}
 

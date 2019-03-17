@@ -19,10 +19,11 @@ extern struct stack_list_t shd_shaders;
 
 
 /* from r_main.c */
-extern int r_view_matrix_changed;
-extern int r_projection_matrix_changed;
-extern int r_shader_swaps;
-extern int r_shader_uniform_updates;
+extern struct renderer_t r_renderer;
+//extern int r_view_matrix_changed;
+//extern int r_projection_matrix_changed;
+//extern int r_shader_swaps;
+//extern int r_shader_uniform_updates;
 
 
 #ifdef __cplusplus
@@ -85,9 +86,9 @@ void renderer_SetShader(int shader_index)
 	glUseProgram(program);
 	r_active_shader = shader_index;
 
-	r_view_matrix_changed = 1;
-	r_projection_matrix_changed = 1;
-	r_shader_swaps++;
+	r_renderer.r_view_matrix_changed = 1;
+	r_renderer.r_projection_matrix_changed = 1;
+	r_renderer.r_statistics.r_shader_swaps++;
 
 	R_DBG_POP_FUNCTION_NAME();
 }
@@ -126,7 +127,7 @@ void renderer_SetUniform1i(uniform_t *uniform, int value)
 		case GL_SAMPLER_CUBE_MAP_ARRAY:
 
 			glUniform1i(uniform->location, value);
-			r_shader_uniform_updates++;
+			r_renderer.r_statistics.r_shader_uniform_updates++;
 
 		break;
 	}
@@ -160,7 +161,7 @@ void renderer_SetUniform1iv(uniform_t *uniform, int count, int *value)
 		case GL_SAMPLER_CUBE_MAP_ARRAY:
 
 			glUniform1iv(uniform->location, count, value);
-			r_shader_uniform_updates++;
+			r_renderer.r_statistics.r_shader_uniform_updates++;
 
 		break;
 	}
@@ -177,7 +178,7 @@ void renderer_SetUniform1ui(uniform_t *uniform, unsigned int value)
 	{
 		case GL_UNSIGNED_INT:
 			glUniform1ui(uniform->location, value);
-			r_shader_uniform_updates++;
+			r_renderer.r_statistics.r_shader_uniform_updates++;
 		break;
 	}
 }
@@ -196,7 +197,7 @@ void renderer_SetUniform1f(uniform_t *uniform, float value)
 	{
 		case GL_FLOAT:
 			glUniform1f(uniform->location, value);
-			r_shader_uniform_updates++;
+			r_renderer.r_statistics.r_shader_uniform_updates++;
 		break;
 	}
 }
@@ -215,7 +216,7 @@ void renderer_SetUniform4fv(uniform_t *uniform, int count, float *value)
 	{
 		case GL_FLOAT_VEC4:
 			glUniform4fv(uniform->location, count, value);
-			r_shader_uniform_updates++;
+			r_renderer.r_statistics.r_shader_uniform_updates++;
 		break;
 	}
 }
@@ -234,7 +235,7 @@ void renderer_SetUniformMatrix4fv(uniform_t *uniform, float *value)
 	{
 		case GL_FLOAT_MAT4:
 			glUniformMatrix4fv(uniform->location, 1, GL_FALSE, value);
-			r_shader_uniform_updates++;
+			r_renderer.r_statistics.r_shader_uniform_updates++;
 		break;
 	}
 }

@@ -2,6 +2,7 @@
 #include "ed_common.h"
 #include "camera.h"
 #include "r_imediate.h"
+#include "r_common.h"
 #include "r_shader.h"
 #include "r_main.h"
 
@@ -10,7 +11,8 @@
 #include "ed_globals.h"
 #include "r_view.h"
 
-extern int r_imediate_color_shader;
+extern struct renderer_t r_renderer;
+//extern int r_imediate_color_shader;
 
 
 void editor_Draw3dHandle(vec3_t position, int transform_mode)
@@ -110,7 +112,7 @@ void editor_Draw3dHandle(vec3_t position, int transform_mode)
 			forward_vector.y *= d;
 			forward_vector.z *= d;
 
-			renderer_SetShader(r_imediate_color_shader);
+			renderer_SetShader(r_renderer.r_shaders.r_imediate_color_shader);
 			renderer_SetProjectionMatrix(&main_view->view_data.projection_matrix);
 			renderer_SetViewMatrix(&main_view->view_data.view_matrix);
 			renderer_SetModelMatrix(NULL);
@@ -336,7 +338,7 @@ void editor_Draw3dCursor(vec3_t position)
 		cursor_position.x = (cursor_position.x * qr) / cursor_position.z;
 		cursor_position.y = (cursor_position.y * qt) / cursor_position.z;
 
-		renderer_SetShader(r_imediate_color_shader);
+		renderer_SetShader(r_renderer.r_shaders.r_imediate_color_shader);
 		renderer_EnableImediateDrawing();
 		renderer_SetProjectionMatrix(NULL);
 		renderer_SetViewMatrix(NULL);

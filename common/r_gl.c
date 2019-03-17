@@ -1,4 +1,7 @@
 #include "r_gl.h"
+#include "r_verts.h"
+#include "r_debug.h"
+#include "r_imediate.h"
 #include "log.h"
 #include "SDL2/SDL.h"
 #include "GL/glew.h"
@@ -7,18 +10,23 @@
 #include <assert.h>
 
 /* from r_main.c */
-extern int r_draw_calls;
-extern int r_frame_vert_count;
-extern int r_width;
-extern int r_height;
-extern int r_window_width;
-extern int r_window_height;
+//extern int r_draw_calls;
+//extern int r_frame_vert_count;
+//extern int r_width;
+//extern int r_height;
+//extern int r_window_width;
+//extern int r_window_height;
 
 int prev_depth_test_state = GL_TRUE;
 int prev_stencil_test_state = GL_FALSE;
 int prev_scissor_test_state = GL_FALSE;
 
 
+extern SDL_Window *window;
+extern SDL_GLContext context;
+
+
+extern struct renderer_t r_renderer;
 
 
 /*
@@ -75,6 +83,59 @@ static int depth_states_stack_top = -1;
 extern "C"
 {
 #endif
+
+void renderer_InitGL()
+{
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+	//SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+	//SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+	//SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+	//SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+	//SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG | SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+    //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 1);
+
+	r_renderer.r_window = SDL_CreateWindow("wtf editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 320, 240, SDL_WINDOW_OPENGL);
+	r_renderer.r_context = SDL_GL_CreateContext(r_renderer.r_window);
+	SDL_GL_MakeCurrent(r_renderer.r_window, r_renderer.r_context);
+
+	int error = glewInit();
+
+	if(error != GLEW_NO_ERROR)
+	{
+		log_LogMessage(LOG_MESSAGE_ERROR, 0, "renderer_InitGL: glew didn't init!\nError cause:\n %s", glewGetErrorString(error));
+		return 0;
+	}
+
+	renderer_CheckFunctionPointers();
+
+	renderer_InitVerts();
+	renderer_InitImediateDrawing();
+	renderer_InitDebug();
+
+	renderer_Enable(R_DEBUG);
+	renderer_Enable(R_VERBOSE_DEBUG);
+}
+
+void renderer_FinishGL()
+{
+    renderer_FinishDebug();
+	renderer_FinishImediateDrawing();
+	renderer_FinishVerts();
+
+    SDL_GL_DeleteContext(r_renderer.r_context);
+	SDL_DestroyWindow(r_renderer.r_window);
+	SDL_Quit();
+}
+
+/*
+===============================================================================
+===============================================================================
+===============================================================================
+*/
 
 
 void renderer_PushStates(GLenum cap)
@@ -272,14 +333,14 @@ void renderer_PushScissorRect(int x, int y, int w, int h, int clip_rect)
 		r_scissor_rect_stack_top++;
 		rect = &r_scissor_rect_stack[r_scissor_rect_stack_top];
 
-		if(w > r_window_width)
+		if(w > r_renderer.r_window_width)
 		{
-			w = r_window_width;
+			w = r_renderer.r_window_width;
 		}
 
-		if(h > r_window_height)
+		if(h > r_renderer.r_window_height)
 		{
-			h = r_window_height;
+			h = r_renderer.r_window_height;
 		}
 
 		if(x < 0)
@@ -376,22 +437,22 @@ void renderer_ClearScissorRectStack()
 void renderer_DrawArrays(int mode, int first, int count)
 {
 	glDrawArrays(mode, first, count);
-	r_draw_calls++;
-	r_frame_vert_count += count;
+	r_renderer.r_statistics.r_draw_calls++;
+	r_renderer.r_statistics.r_frame_vert_count += count;
 }
 
 void renderer_DrawElements(int mode, int count, int type, void *indices)
 {
 	glDrawElements(mode, count, type, indices);
-	r_draw_calls++;
-	r_frame_vert_count += count;
+	r_renderer.r_statistics.r_draw_calls++;
+	r_renderer.r_statistics.r_frame_vert_count += count;
 }
 
 void renderer_DrawArraysInstanced(int mode, int first, int count, int primcount)
 {
 	glDrawArraysInstanced(mode, first, count, primcount);
-	r_draw_calls++;
-	r_frame_vert_count += count * primcount;
+	r_renderer.r_statistics.r_draw_calls++;
+	r_renderer.r_statistics.r_frame_vert_count += count * primcount;
 }
 
 /*
@@ -546,6 +607,16 @@ void renderer_AddAttachment(struct framebuffer_t *framebuffer, int attachment, i
 			format = GL_RGB;
 			type = GL_UNSIGNED_BYTE;
 		break;
+
+		case GL_R32UI:
+            format = GL_RED_INTEGER;
+            type = GL_UNSIGNED_INT;
+        break;
+
+        case GL_RGBA32UI:
+            format = GL_RGBA_INTEGER;
+            type = GL_UNSIGNED_INT;
+        break;
 
 		default:
 		    format = GL_DEPTH_STENCIL;
@@ -765,8 +836,8 @@ void renderer_BindFramebuffer(int target, struct framebuffer_t *framebuffer)
     if((!framebuffer) || (!framebuffer->framebuffer_id))
     {
         screen_framebuffer.framebuffer_id = 0;
-        screen_framebuffer.width = r_window_width;
-        screen_framebuffer.height = r_window_height;
+        screen_framebuffer.width = r_renderer.r_window_width;
+        screen_framebuffer.height = r_renderer.r_window_height;
 
         screen_framebuffer.color_attachments[0].format = GL_RGBA;
         screen_framebuffer.color_attachments[0].type = GL_UNSIGNED_BYTE;
@@ -775,8 +846,8 @@ void renderer_BindFramebuffer(int target, struct framebuffer_t *framebuffer)
 
         framebuffer = &screen_framebuffer;
 
-        width = r_window_width;
-        height = r_window_height;
+        width = r_renderer.r_window_width;
+        height = r_renderer.r_window_height;
         id = 0;
         color_attachments[0] = GL_BACK_LEFT;
         attachment_count = 1;

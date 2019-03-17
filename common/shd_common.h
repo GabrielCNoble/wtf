@@ -9,6 +9,11 @@ enum SHADER_UNIFORMS
 	UNIFORM_texture_sampler0 = 0,
 	UNIFORM_texture_sampler1,
 	UNIFORM_texture_sampler2,
+
+	UNIFORM_texture_usampler0,
+	UNIFORM_texture_usampler1,
+
+
 	UNIFORM_texture_cube_sampler0,
 
 	UNIFORM_texture_array_sampler0,

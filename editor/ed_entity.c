@@ -17,6 +17,7 @@
 #include "..\..\common\r_view.h"
 #include "..\..\common\r_main.h"
 #include "..\r_debug.h"
+#include "..\r_common.h"
 #include "..\..\common\entity.h"
 #include "..\..\common\model.h"
 #include "..\..\common\l_main.h"
@@ -35,8 +36,9 @@ extern int mouse_x;
 extern int mouse_y;
 
 /* from r_main.c */
-extern int r_window_width;
-extern int r_window_height;
+extern struct renderer_t r_renderer;
+//extern int r_window_width;
+//extern int r_window_height;
 
 
 /* from physics.c */
@@ -54,7 +56,7 @@ extern struct collider_def_t *collider_defs;
 struct view_handle_t entity_editor_view = INVALID_VIEW_HANDLE;
 int entity_editor_light_index = -1;
 
-pick_list_t entity_editor_pick_list;
+//pick_list_t entity_editor_pick_list;
 
 
 vec3_t entity_editor_3d_cursor_position = {0.0, 0.0, 0.0};
@@ -102,7 +104,7 @@ void editor_EntityEditorInit()
 {
 	mat3_t orientation = mat3_t_id();
 	//entity_editor_camera = camera_CreateCamera("entity editor camera", vec3_t_c(0.0, 0.0, 0.0), &orientation, 0.68, r_window_width, r_window_height, 0.1, 100.0, 0);
-    entity_editor_view = renderer_CreateViewDef("entity editor camera", vec3_t_c(0.0, 0.0, 0.0), &orientation, 0.68, r_window_width, r_window_height, 0.1, 100.0, 0);
+    entity_editor_view = renderer_CreateViewDef("entity editor camera", vec3_t_c(0.0, 0.0, 0.0), &orientation, 0.68, r_renderer.r_window_width, r_renderer.r_window_height, 0.1, 100.0, 0);
 //	camera_Deactivate(entity_editor_camera);
 
 	entity_editor_camera_v_angle = -0.15;
@@ -112,10 +114,10 @@ void editor_EntityEditorInit()
 	editor_EntityEditorMoveCamera();
 
 
-	entity_editor_pick_list.max_records = 1024;
-	entity_editor_pick_list.record_count = 0;
-	entity_editor_pick_list.records = memory_Malloc(sizeof(pick_record_t) * entity_editor_pick_list.max_records);
-	entity_editor_pick_list.last_selection_type = PICK_NONE;
+//	entity_editor_pick_list.max_records = 1024;
+//	entity_editor_pick_list.record_count = 0;
+//	entity_editor_pick_list.records = memory_Malloc(sizeof(pick_record_t) * entity_editor_pick_list.max_records);
+//	entity_editor_pick_list.last_selection_type = PICK_NONE;
 
 	editor_EntityEditorInitUI();
 
@@ -125,7 +127,7 @@ void editor_EntityEditorInit()
 void editor_EntityEditorFinish()
 {
 	editor_EntityEditorFinishUI();
-	memory_Free(entity_editor_pick_list.records);
+//	memory_Free(entity_editor_pick_list.records);
 }
 
 void editor_EntityEditorSetup()
@@ -185,7 +187,7 @@ void editor_EntityEditorMain(float delta_time)
 
 
 	//{
-    CreatePerspectiveMatrix(&view->view_data.projection_matrix, 0.68, (float)r_window_width/(float)r_window_height, 0.1, 100.0, 0.0, 0.0, &view->frustum);
+    CreatePerspectiveMatrix(&view->view_data.projection_matrix, 0.68, (float)r_renderer.r_window_width/(float)r_renderer.r_window_height, 0.1, 100.0, 0.0, 0.0, &view->frustum);
 	//}
 
 
@@ -237,7 +239,7 @@ void editor_EntityEditorCheck3dHandle(float mouse_x, float mouse_y)
 
 void editor_EntityEditorSet3dCursorPosition(float mouse_x, float mouse_y)
 {
-	entity_editor_3d_cursor_position = editor_3dCursorPosition(mouse_x, mouse_y);
+//	entity_editor_3d_cursor_position = editor_3dCursorPosition(mouse_x, mouse_y);
 }
 
 void editor_EntityEditorUpdate3dHandlePosition()
@@ -417,7 +419,7 @@ void editor_EntityEditorUpdatePreviewEntity()
 
 void editor_EntityEditorEdit()
 {
-	pick_record_t record;
+//	pick_record_t record;
 	int lshift;
 
 	vec4_t p;
@@ -445,165 +447,165 @@ void editor_EntityEditorEdit()
 		return;
 	}
 
-	lshift = input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED;
-
-	if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
-	{
-		entity_editor_3d_handle_flags = 0;
-
-		if(entity_editor_draw_3d_handle)
-		{
-			editor_EntityEditorCheck3dHandle(normalized_mouse_x, normalized_mouse_y);
-		}
-
-		if(!entity_editor_3d_handle_flags)
-		{
-			editor_EntityEditorSet3dCursorPosition(normalized_mouse_x, normalized_mouse_y);
-		}
-	}
-
-	if(!(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED))
-	{
-		entity_editor_3d_handle_flags = 0;
-	}
-
-	if(entity_editor_3d_handle_flags)
-	{
-
-		if(entity_editor_3d_handle_flags & ED_3D_HANDLE_X_AXIS_GRABBED)
-		{
-			direction = vec3_t_c(1.0, 0.0, 0.0);
-		}
-		else if(entity_editor_3d_handle_flags & ED_3D_HANDLE_Y_AXIS_GRABBED)
-		{
-			direction = vec3_t_c(0.0, 1.0, 0.0);
-		}
-		else if(entity_editor_3d_handle_flags & ED_3D_HANDLE_Z_AXIS_GRABBED)
-		{
-			direction = vec3_t_c(0.0, 0.0, 1.0);
-		}
-
-		amount = editor_GetMouseOffsetFrom3dHandle(normalized_mouse_x, normalized_mouse_y, entity_editor_3d_handle_position, direction, entity_editor_3d_handle_transform_mode, entity_editor_linear_snap_value, entity_editor_angular_snap_value);
-
-		//if(entity_editor_editing_mode == EDITING_MODE_OBJECT)
-		{
-			switch(entity_editor_3d_handle_transform_mode)
-			{
-				case ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION:
-					editor_EntityEditorTranslateSelections(direction, amount);
-				break;
-
-				case ED_3D_HANDLE_TRANSFORM_MODE_ROTATION:
-					editor_EntityEditorRotateSelections(direction, amount);
-				break;
-
-				case ED_3D_HANDLE_TRANSFORM_MODE_SCALE:
-					editor_EntityEditorScaleSelections(direction, amount);
-				break;
-			}
-
-		}
-	}
-
-	else if(bm_mouse & MOUSE_RIGHT_BUTTON_JUST_CLICKED)
-	{
-		record = editor_EntityEditorPickColliderPrimitive(normalized_mouse_x, normalized_mouse_y);
-
-		if(record.type != PICK_NONE)
-		{
-
-			//printf("%d\n", record.index0);
-
-			if(record.type == entity_editor_pick_list.records[entity_editor_pick_list.record_count - 1].type)
-			{
-				/* if the just picked thing is the same as the last picked thing... */
-				if(record.index0 == entity_editor_pick_list.records[entity_editor_pick_list.record_count - 1].index0)
-				{
-					_same_selection:
-					/* this record already exists in the list, so drop it... */
-					editor_EntityEditorDropSelection(&record);
-
-					if(!lshift)
-					{
-						if(entity_editor_pick_list.record_count)
-						{
-							goto _add_new_selection;
-						}
-					}
-
-					goto _set_handle_3d_position;
-				}
-				else
-				{
-					/* if this record  is not equal to the last in the list,
-					append it to the list or set it as the only active object... */
-					goto _add_new_selection;
-				}
-
-			}
-			else
-			{
-				_add_new_selection:
-				/* holding shift enables selecting multiple objects... */
-				if(!lshift)
-				{
-					editor_EntityEditorClearSelections();
-				}
-
-				editor_EntityEditorAddSelection(&record);
-
-				_set_handle_3d_position:
-
-				editor_EntityEditorUpdate3dHandlePosition();
-
-			}
-		}
-	}
-
-	if(entity_editor_pick_list.record_count)
-	{
-		entity_editor_draw_3d_handle = 1;
-		editor_EntityEditorUpdate3dHandlePosition();
-	}
-	else
-	{
-		entity_editor_draw_3d_handle = 0;
-	}
-
-	if(input_GetKeyStatus(SDL_SCANCODE_A) & KEY_JUST_PRESSED)
-	{
-		if(lshift)
-		{
-			//editor_EntityEditorOpenAddComponentMenu(mouse_x, r_window_height - mouse_y);
-			//editor_EntityEditorOpenAddColliderPrimitiveMenu(r_window_width * 0.5 * normalized_mouse_x, r_window_height * 0.5 * normalized_mouse_y);
-		}
-		else
-		{
-			editor_EntityEditorClearSelections();
-		}
-
-	}
-	else if(input_GetKeyStatus(SDL_SCANCODE_T) & KEY_JUST_PRESSED)
-	{
-		if(lshift)
-		{
-			editor_EntityEditorToggleDefsMenu();
-		}
-	}
-	else if(input_GetKeyStatus(SDL_SCANCODE_G) & KEY_JUST_PRESSED)
-	{
-		editor_EntityEditorSet3dHandleTransformMode(ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION);
-	}
-	else if(input_GetKeyStatus(SDL_SCANCODE_S) & KEY_JUST_PRESSED)
-	{
-		editor_EntityEditorSet3dHandleTransformMode(ED_3D_HANDLE_TRANSFORM_MODE_SCALE);
-	}
-	else if(input_GetKeyStatus(SDL_SCANCODE_DELETE) & KEY_JUST_PRESSED)
-	{
-		//editor_EntityEditorOpenDestroySelectionMenu(r_window_width * 0.5 * normalized_mouse_x, r_window_height * 0.5 * normalized_mouse_y);
-	}
-
-
+//	lshift = input_GetKeyStatus(SDL_SCANCODE_LSHIFT) & KEY_PRESSED;
+//
+//	if(bm_mouse & MOUSE_LEFT_BUTTON_JUST_CLICKED)
+//	{
+//		entity_editor_3d_handle_flags = 0;
+//
+//		if(entity_editor_draw_3d_handle)
+//		{
+//			editor_EntityEditorCheck3dHandle(normalized_mouse_x, normalized_mouse_y);
+//		}
+//
+//		if(!entity_editor_3d_handle_flags)
+//		{
+//			editor_EntityEditorSet3dCursorPosition(normalized_mouse_x, normalized_mouse_y);
+//		}
+//	}
+//
+//	if(!(bm_mouse & MOUSE_LEFT_BUTTON_CLICKED))
+//	{
+//		entity_editor_3d_handle_flags = 0;
+//	}
+//
+//	if(entity_editor_3d_handle_flags)
+//	{
+//
+//		if(entity_editor_3d_handle_flags & ED_3D_HANDLE_X_AXIS_GRABBED)
+//		{
+//			direction = vec3_t_c(1.0, 0.0, 0.0);
+//		}
+//		else if(entity_editor_3d_handle_flags & ED_3D_HANDLE_Y_AXIS_GRABBED)
+//		{
+//			direction = vec3_t_c(0.0, 1.0, 0.0);
+//		}
+//		else if(entity_editor_3d_handle_flags & ED_3D_HANDLE_Z_AXIS_GRABBED)
+//		{
+//			direction = vec3_t_c(0.0, 0.0, 1.0);
+//		}
+//
+//		amount = editor_GetMouseOffsetFrom3dHandle(normalized_mouse_x, normalized_mouse_y, entity_editor_3d_handle_position, direction, entity_editor_3d_handle_transform_mode, entity_editor_linear_snap_value, entity_editor_angular_snap_value);
+//
+//		//if(entity_editor_editing_mode == EDITING_MODE_OBJECT)
+//		{
+//			switch(entity_editor_3d_handle_transform_mode)
+//			{
+//				case ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION:
+//					editor_EntityEditorTranslateSelections(direction, amount);
+//				break;
+//
+//				case ED_3D_HANDLE_TRANSFORM_MODE_ROTATION:
+//					editor_EntityEditorRotateSelections(direction, amount);
+//				break;
+//
+//				case ED_3D_HANDLE_TRANSFORM_MODE_SCALE:
+//					editor_EntityEditorScaleSelections(direction, amount);
+//				break;
+//			}
+//
+//		}
+//	}
+//
+//	else if(bm_mouse & MOUSE_RIGHT_BUTTON_JUST_CLICKED)
+//	{
+//		record = editor_EntityEditorPickColliderPrimitive(normalized_mouse_x, normalized_mouse_y);
+//
+//		if(record.type != PICK_NONE)
+//		{
+//
+//			//printf("%d\n", record.index0);
+//
+//			if(record.type == entity_editor_pick_list.records[entity_editor_pick_list.record_count - 1].type)
+//			{
+//				/* if the just picked thing is the same as the last picked thing... */
+//				if(record.index0 == entity_editor_pick_list.records[entity_editor_pick_list.record_count - 1].index0)
+//				{
+//					_same_selection:
+//					/* this record already exists in the list, so drop it... */
+//					editor_EntityEditorDropSelection(&record);
+//
+//					if(!lshift)
+//					{
+//						if(entity_editor_pick_list.record_count)
+//						{
+//							goto _add_new_selection;
+//						}
+//					}
+//
+//					goto _set_handle_3d_position;
+//				}
+//				else
+//				{
+//					/* if this record  is not equal to the last in the list,
+//					append it to the list or set it as the only active object... */
+//					goto _add_new_selection;
+//				}
+//
+//			}
+//			else
+//			{
+//				_add_new_selection:
+//				/* holding shift enables selecting multiple objects... */
+//				if(!lshift)
+//				{
+//					editor_EntityEditorClearSelections();
+//				}
+//
+//				editor_EntityEditorAddSelection(&record);
+//
+//				_set_handle_3d_position:
+//
+//				editor_EntityEditorUpdate3dHandlePosition();
+//
+//			}
+//		}
+//	}
+//
+//	if(entity_editor_pick_list.record_count)
+//	{
+//		entity_editor_draw_3d_handle = 1;
+//		editor_EntityEditorUpdate3dHandlePosition();
+//	}
+//	else
+//	{
+//		entity_editor_draw_3d_handle = 0;
+//	}
+//
+//	if(input_GetKeyStatus(SDL_SCANCODE_A) & KEY_JUST_PRESSED)
+//	{
+//		if(lshift)
+//		{
+//			//editor_EntityEditorOpenAddComponentMenu(mouse_x, r_window_height - mouse_y);
+//			//editor_EntityEditorOpenAddColliderPrimitiveMenu(r_window_width * 0.5 * normalized_mouse_x, r_window_height * 0.5 * normalized_mouse_y);
+//		}
+//		else
+//		{
+//			editor_EntityEditorClearSelections();
+//		}
+//
+//	}
+//	else if(input_GetKeyStatus(SDL_SCANCODE_T) & KEY_JUST_PRESSED)
+//	{
+//		if(lshift)
+//		{
+//			editor_EntityEditorToggleDefsMenu();
+//		}
+//	}
+//	else if(input_GetKeyStatus(SDL_SCANCODE_G) & KEY_JUST_PRESSED)
+//	{
+//		editor_EntityEditorSet3dHandleTransformMode(ED_3D_HANDLE_TRANSFORM_MODE_TRANSLATION);
+//	}
+//	else if(input_GetKeyStatus(SDL_SCANCODE_S) & KEY_JUST_PRESSED)
+//	{
+//		editor_EntityEditorSet3dHandleTransformMode(ED_3D_HANDLE_TRANSFORM_MODE_SCALE);
+//	}
+//	else if(input_GetKeyStatus(SDL_SCANCODE_DELETE) & KEY_JUST_PRESSED)
+//	{
+//		//editor_EntityEditorOpenDestroySelectionMenu(r_window_width * 0.5 * normalized_mouse_x, r_window_height * 0.5 * normalized_mouse_y);
+//	}
+//
+//
 
 
 
@@ -618,178 +620,178 @@ void editor_EntityEditorEdit()
 */
 
 
-pick_record_t editor_EntityEditorPickColliderPrimitive(float mouse_x, float mouse_y)
-{
-
-	int x;
-	int y;
-
-	int pick_type;
-
-
-	pick_record_t record;
-	float q[4];
-
-	record.type = PICK_NONE;
-
-	//if(entity_editor_current_entity_def)
-	{
-		/*if(entity_editor_current_entity_def->collider_def)
-		{
-			editor_EnablePicking();
-			editor_EntityEditorDrawColliderDef(1);
-
-
-			x = r_window_width * (mouse_x * 0.5 + 0.5);
-			y = r_window_height * (mouse_y * 0.5 + 0.5);
-			glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, q);
-
-			editor_DisablePicking();
-
-			record.type = *(int *)&q[0];
-
-
-			switch(record.type)
-			{
-				case PICK_COLLIDER_PRIMITIVE:
-					record.pointer = entity_editor_current_entity_def->collider_def;
-					record.index0 = (*(int *)&q[1]) - 1;
-				break;
-			}
-		}*/
-
-	}
-
-	return record;
-}
-
-void editor_EntityEditorAddSelection(pick_record_t *record)
-{
-	editor_AddSelection(record, &entity_editor_pick_list);
-}
-
-void editor_EntityEditorDropSelection(pick_record_t *record)
-{
-	editor_DropSelection(record, &entity_editor_pick_list);
-}
-
-void editor_EntityEditorClearSelections()
-{
-	editor_ClearSelection(&entity_editor_pick_list);
-}
-
-void editor_EntityEditorCopySelections()
-{
-
-}
-
-void editor_EntityEditorDestroySelections()
-{
-	int i;
-	struct collision_shape_t *collision_shapes;
-
-	//if(!entity_editor_current_entity_def)
-	{
-		return;
-	}
-
-/*	if(!entity_editor_current_entity_def->collider_def)
-	{
-		return;
-	}
-
-	collision_shapes = entity_editor_current_entity_def->collider_def->collider_data.generic_collider_data.collision_shape;
-
-	for(i = 0; i < entity_editor_pick_list.record_count; i++)
-	{
-		switch(entity_editor_pick_list.records[i].type)
-		{
-			case PICK_COLLIDER_PRIMITIVE:
-				physics_RemoveCollisionShape(entity_editor_current_entity_def->collider_def, entity_editor_pick_list.records[i].index0);
-			break;
-		}
-	}
-
-	if(!entity_editor_current_entity_def->collider_def->collider_data.generic_collider_data.collision_shape_count)
-	{
-		physics_DestroyColliderDef(entity_editor_current_entity_def->collider_def->name);
-		entity_editor_current_entity_def->collider_def = NULL;
-	}*/
-}
-
-void editor_EntityEditorTranslateSelections(vec3_t direction, float amount)
-{
-	int i;
-	struct collision_shape_t *collision_shapes;
-	vec3_t translation;
-
-	translation.x = direction.x * amount;
-	translation.y = direction.y * amount;
-	translation.z = direction.z * amount;
-
-	//if(!entity_editor_current_entity_def)
-	{
-		return;
-	}
-
-	/*if(!entity_editor_current_entity_def->collider_def)
-	{
-		return;
-	}
-
-	collision_shapes = entity_editor_current_entity_def->collider_def->collider_data.generic_collider_data.collision_shape;
-
-	for(i = 0; i < entity_editor_pick_list.record_count; i++)
-	{
-		switch(entity_editor_pick_list.records[i].type)
-		{
-			case PICK_COLLIDER_PRIMITIVE:
-				physics_TranslateCollisionShape(entity_editor_current_entity_def->collider_def, translation, entity_editor_pick_list.records[i].index0);
-			break;
-		}
-	}*/
-	//editor_TranslateSelections(&entity_editor_pick_list, direction, amount);
-}
-
-void editor_EntityEditorRotateSelections(vec3_t axis, float amount)
-{
-	//editor_RotateSelections(&entity_editor_pick_list, axis, amount);
-}
-
-void editor_EntityEditorScaleSelections(vec3_t axis, float amount)
-{
-	int i;
-	struct collision_shape_t *collision_shapes;
-	vec3_t scale;
-
-	scale.x = axis.x * amount;
-	scale.y = axis.y * amount;
-	scale.z = axis.z * amount;
-
-	//if(!entity_editor_current_entity_def)
-	{
-		return;
-	}
-
-	/*if(!entity_editor_current_entity_def->collider_def)
-	{
-		return;
-	}
-
-	collision_shapes = entity_editor_current_entity_def->collider_def->collider_data.generic_collider_data.collision_shape;
-
-	for(i = 0; i < entity_editor_pick_list.record_count; i++)
-	{
-		switch(entity_editor_pick_list.records[i].type)
-		{
-			case PICK_COLLIDER_PRIMITIVE:
-				physics_ScaleCollisionShape(entity_editor_current_entity_def->collider_def, scale, entity_editor_pick_list.records[i].index0);
-				//physics_TranslateCollisionShape(entity_editor_current_entity_def->collider_def, translation, entity_editor_pick_list.records[i].index0);
-			break;
-		}
-	}*/
-	//editor_ScaleSelections(&entity_editor_pick_list, axis, amount);
-}
+//pick_record_t editor_EntityEditorPickColliderPrimitive(float mouse_x, float mouse_y)
+//{
+//
+//	int x;
+//	int y;
+//
+//	int pick_type;
+//
+//
+//	pick_record_t record;
+//	float q[4];
+//
+//	record.type = PICK_NONE;
+//
+//	//if(entity_editor_current_entity_def)
+//	{
+//		/*if(entity_editor_current_entity_def->collider_def)
+//		{
+//			editor_EnablePicking();
+//			editor_EntityEditorDrawColliderDef(1);
+//
+//
+//			x = r_window_width * (mouse_x * 0.5 + 0.5);
+//			y = r_window_height * (mouse_y * 0.5 + 0.5);
+//			glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, q);
+//
+//			editor_DisablePicking();
+//
+//			record.type = *(int *)&q[0];
+//
+//
+//			switch(record.type)
+//			{
+//				case PICK_COLLIDER_PRIMITIVE:
+//					record.pointer = entity_editor_current_entity_def->collider_def;
+//					record.index0 = (*(int *)&q[1]) - 1;
+//				break;
+//			}
+//		}*/
+//
+//	}
+//
+//	return record;
+//}
+//
+//void editor_EntityEditorAddSelection(pick_record_t *record)
+//{
+//	editor_AddSelection(record, &entity_editor_pick_list);
+//}
+//
+//void editor_EntityEditorDropSelection(pick_record_t *record)
+//{
+//	editor_DropSelection(record, &entity_editor_pick_list);
+//}
+//
+//void editor_EntityEditorClearSelections()
+//{
+//	editor_ClearSelection(&entity_editor_pick_list);
+//}
+//
+//void editor_EntityEditorCopySelections()
+//{
+//
+//}
+//
+//void editor_EntityEditorDestroySelections()
+//{
+//	int i;
+//	struct collision_shape_t *collision_shapes;
+//
+//	//if(!entity_editor_current_entity_def)
+//	{
+//		return;
+//	}
+//
+///*	if(!entity_editor_current_entity_def->collider_def)
+//	{
+//		return;
+//	}
+//
+//	collision_shapes = entity_editor_current_entity_def->collider_def->collider_data.generic_collider_data.collision_shape;
+//
+//	for(i = 0; i < entity_editor_pick_list.record_count; i++)
+//	{
+//		switch(entity_editor_pick_list.records[i].type)
+//		{
+//			case PICK_COLLIDER_PRIMITIVE:
+//				physics_RemoveCollisionShape(entity_editor_current_entity_def->collider_def, entity_editor_pick_list.records[i].index0);
+//			break;
+//		}
+//	}
+//
+//	if(!entity_editor_current_entity_def->collider_def->collider_data.generic_collider_data.collision_shape_count)
+//	{
+//		physics_DestroyColliderDef(entity_editor_current_entity_def->collider_def->name);
+//		entity_editor_current_entity_def->collider_def = NULL;
+//	}*/
+//}
+//
+//void editor_EntityEditorTranslateSelections(vec3_t direction, float amount)
+//{
+//	int i;
+//	struct collision_shape_t *collision_shapes;
+//	vec3_t translation;
+//
+//	translation.x = direction.x * amount;
+//	translation.y = direction.y * amount;
+//	translation.z = direction.z * amount;
+//
+//	//if(!entity_editor_current_entity_def)
+//	{
+//		return;
+//	}
+//
+//	/*if(!entity_editor_current_entity_def->collider_def)
+//	{
+//		return;
+//	}
+//
+//	collision_shapes = entity_editor_current_entity_def->collider_def->collider_data.generic_collider_data.collision_shape;
+//
+//	for(i = 0; i < entity_editor_pick_list.record_count; i++)
+//	{
+//		switch(entity_editor_pick_list.records[i].type)
+//		{
+//			case PICK_COLLIDER_PRIMITIVE:
+//				physics_TranslateCollisionShape(entity_editor_current_entity_def->collider_def, translation, entity_editor_pick_list.records[i].index0);
+//			break;
+//		}
+//	}*/
+//	//editor_TranslateSelections(&entity_editor_pick_list, direction, amount);
+//}
+//
+//void editor_EntityEditorRotateSelections(vec3_t axis, float amount)
+//{
+//	//editor_RotateSelections(&entity_editor_pick_list, axis, amount);
+//}
+//
+//void editor_EntityEditorScaleSelections(vec3_t axis, float amount)
+//{
+//	int i;
+//	struct collision_shape_t *collision_shapes;
+//	vec3_t scale;
+//
+//	scale.x = axis.x * amount;
+//	scale.y = axis.y * amount;
+//	scale.z = axis.z * amount;
+//
+//	//if(!entity_editor_current_entity_def)
+//	{
+//		return;
+//	}
+//
+//	/*if(!entity_editor_current_entity_def->collider_def)
+//	{
+//		return;
+//	}
+//
+//	collision_shapes = entity_editor_current_entity_def->collider_def->collider_data.generic_collider_data.collision_shape;
+//
+//	for(i = 0; i < entity_editor_pick_list.record_count; i++)
+//	{
+//		switch(entity_editor_pick_list.records[i].type)
+//		{
+//			case PICK_COLLIDER_PRIMITIVE:
+//				physics_ScaleCollisionShape(entity_editor_current_entity_def->collider_def, scale, entity_editor_pick_list.records[i].index0);
+//				//physics_TranslateCollisionShape(entity_editor_current_entity_def->collider_def, translation, entity_editor_pick_list.records[i].index0);
+//			break;
+//		}
+//	}*/
+//	//editor_ScaleSelections(&entity_editor_pick_list, axis, amount);
+//}
 
 
 

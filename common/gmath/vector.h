@@ -42,7 +42,9 @@ vec3_t GetMiddlePoint(vec3_t A, vec3_t B);
 
 vec3_t project3(vec3_t vec1, vec3_t vec2);
 
-float get_angle(vec3_t vec0, vec3_t vec1, vec3_t plane_normal);
+float angle3(vec3_t vec0, vec3_t vec1, vec3_t plane_normal);
+
+float angle3_NORMALIZED(vec3_t vec0, vec3_t vec1, vec3_t plane_normal);
 
 vec3_t project3_NORMALIZED(vec3_t vec1, vec3_t vec2);
 
@@ -93,10 +95,6 @@ quaternion_t qinverse(quaternion_t *q);
 quaternion_t qmult(quaternion_t *a, quaternion_t *b);
 
 float dot3(vec3_t vec1, vec3_t vec2);
-
-float angle3(vec3_t vec1, vec3_t vec2);
-
-float angle3_NORMALIZED(vec3_t vec1, vec3_t vec2);
 
 float length3(vec3_t vec);
 

@@ -573,7 +573,9 @@ int light_CreateLight(char *name, mat3_t *orientation, vec3_t position, vec3_t c
 	light_params->g = 0xff * color.g;
 	light_params->b = 0xff * color.b;
 	//light_param->cache = -1;
-	light_params->shadow_map = L_INVALID_SHADOW_MAP_INDEX;
+	//light_params->shadow_map = L_INVALID_SHADOW_MAP_INDEX;
+	light_params->first_triangle = 0;
+	light_params->triangle_count = 0;
 	light_params->energy = PACK_LIGHT_ENERGY(energy);
 
 	if(!light_params->name)
@@ -760,6 +762,37 @@ struct light_pointer_t light_GetLightPointerIndex(int light_index)
 }
 
 
+struct light_pointer_t l_valid_lights[MAX_WORLD_LIGHTS];
+
+struct light_pointer_t *light_GetValidLights(int *light_count)
+{
+    int i;
+    int count = 0;
+
+    struct light_position_data_t *light_position;
+
+    for(i = 0; i < l_light_positions.element_count; i++)
+    {
+        light_position = (struct light_position_data_t *)l_light_positions.elements;
+
+        if(light_position->flags & LIGHT_INVALID)
+        {
+            continue;
+        }
+
+        l_valid_lights[count].position = light_position;
+        l_valid_lights[count].params = (struct light_params_data_t *)l_light_params.elements + i;
+        l_valid_lights[count].cluster = (struct light_cluster_data_t *)l_light_clusters.elements + i;
+
+        count++;
+    }
+
+    *light_count = count;
+
+    return l_valid_lights;
+}
+
+
 void light_VisibleTriangles(int light_index)
 {
 
@@ -930,6 +963,20 @@ void light_TranslateLight(int light_index, vec3_t direction, float amount)
             light_position->flags |= LIGHT_MOVED | LIGHT_UPDATE_SHADOW_MAP;
         }
 	}
+}
+
+vec3_t light_GetLightPosition(int light_index)
+{
+    struct light_pointer_t light;
+
+    light = light_GetLightPointerIndex(light_index);
+
+    if(light.position)
+    {
+        return light.position->position;
+    }
+
+    return vec3_t_c(0.0, 0.0, 0.0);
 }
 
 int cur_light_index = -1;

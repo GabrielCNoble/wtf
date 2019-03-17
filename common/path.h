@@ -48,7 +48,7 @@ extern "C"
 {
 #endif
 
-void path_Init(char *path);
+void path_Init();
 
 void path_Finish();
 

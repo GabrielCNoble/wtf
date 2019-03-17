@@ -56,7 +56,7 @@ void editor_StartEditor(char *name);
 
 
 
-#endif 
+#endif
 
 
 
