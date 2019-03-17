@@ -2,7 +2,7 @@
 
 
 #include "ed_ui.h"
-#include "ed_proj.h"
+//#include "ed_proj.h"
 #include "engine.h"
 #include "bsp_cmp.h"
 #include "editor.h"

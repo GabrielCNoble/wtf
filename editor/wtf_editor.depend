@@ -12756,10 +12756,9 @@
 	"ed_globals.h"
 	"ed_draw.h"
 
-1543281005 source:d:\files\gabriel noble\compiler\wtf\editor\ed_ui.c
+1552802732 source:d:\files\gabriel noble\compiler\wtf\editor\ed_ui.c
 	<stdio.h>
 	"ed_ui.h"
-	"ed_proj.h"
 	"engine.h"
 	"bsp_cmp.h"
 	"editor.h"
@@ -13621,7 +13620,7 @@
 	<stdlib.h>
 	<string.h>
 
-1552801283 source:d:\files\gabriel noble\compiler\wtf\editor\ed_picking.c
+1552802343 source:d:\files\gabriel noble\compiler\wtf\editor\ed_picking.c
 	"ed_picking.h"
 	"..\common\r_gl.h"
 	"..\common\r_shader.h"

@@ -36,7 +36,7 @@
 
 #include "ed_ui.h"
 #include "ed_ui_explorer.h"
-#include "ed_proj.h"
+//#include "ed_proj.h"
 
 
 #include "ed_level.h"
