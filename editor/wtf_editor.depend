@@ -12614,7 +12614,7 @@
 1540524392 d:\files\gabriel noble\compiler\wtf\editor\ed_ui.h
 	"gui.h"
 
-1552802262 source:d:\files\gabriel noble\compiler\wtf\editor\ed_level.c
+1552802901 source:d:\files\gabriel noble\compiler\wtf\editor\ed_level.c
 	"ed_level.h"
 	"ed_level_draw.h"
 	"ed_level_ui.h"
@@ -12626,7 +12626,6 @@
 	"..\..\common\gmath\vector.h"
 	"..\..\common\gui.h"
 	"..\ed_common.h"
-	"..\ed_cursors.h"
 	"..\editor.h"
 	"..\ed_selection.h"
 	"..\ed_level_manip.h"

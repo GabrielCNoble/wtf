@@ -32,7 +32,7 @@
 
 #include "r_main.h"
 #include "r_debug.h"
-#include "r_editor.h"
+//#include "r_editor.h"
 
 #include "ed_ui.h"
 #include "ed_ui_explorer.h"

@@ -12,7 +12,7 @@
 #include "..\..\common\gui.h"
 
 #include "..\ed_common.h"
-#include "..\ed_cursors.h"
+//#include "..\ed_cursors.h"
 #include "..\editor.h"
 #include "..\ed_selection.h"
 #include "..\ed_level_manip.h"
