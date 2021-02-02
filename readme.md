@@ -1,6 +1,6 @@
 # wtf
 
-This is the engine (and level editor used to create (Porcelanic War)[https://gabrielcnoble.itch.io/porcelanic-war]).
+This is the engine and level editor used to create [Porcelanic War](https://gabrielcnoble.itch.io/porcelanic-war).
 
 Currently not working due to incomplete refactors.
 
